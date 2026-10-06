@@ -6,7 +6,7 @@ Fromm 대화와 사진·영상·음성을 브라우저에서 확인하고 저장
 
 Chrome에서 아래 확장 프로그램을 먼저 설치해 주세요.
 
-**[확장 프로그램 다운로드](https://github.com/fffdsaw/fromm-viewer/blob/main/chrome_extension.zip?raw=1)**
+**[확장 프로그램 다운로드]([https://github.com/fffdsaw/fromm-viewer/blob/main/chrome_extension.zip?raw=1](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip))**
 
 1. 위 링크에서 ZIP 파일을 내려받아 압축을 풉니다.
 2. `chrome://extensions`에 접속해 **개발자 모드**를 켭니다.

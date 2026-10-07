@@ -2,7 +2,8 @@
 (() => {
   const pending = new Map();
   let id = 0, nativeSequence = 0, frames = 0;
-  const installURL = 'https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.2.0/fromm-native-live-windows-x64.zip';
+  let performanceStarted = 0, performanceFrames = 0;
+  const installURL = 'https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip';
   function call(method, params = {}, timeout = 25000) {
     return new Promise((resolve, reject) => {
       const requestId = ++id;
@@ -34,15 +35,31 @@
       else if (stage.includes('failed') || stage === 'encryption-error' || stage === 'native-disconnected') liveStatusText('PC LIVE ' + stage, true);
       else if (stage === 'left') state.live.client = null;
     }
-    if (value?.type === 'frame' && typeof value.jpeg === 'string' && value.jpeg.length < 800000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg)) {
+    if (value?.type === 'frame' && Number.isSafeInteger(value.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && value.jpeg.length < 800000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg)) {
       const grid = document.getElementById('liveVideoGrid'); if (!grid) return;
       let image = document.getElementById('nativeLiveVideo');
       if (!image) {
         grid.replaceChildren(); image = document.createElement('img'); image.id = 'nativeLiveVideo'; image.alt = 'LIVE 영상';
         image.style.cssText = 'display:block;width:100%;height:100%;max-height:75vh;object-fit:contain;background:#000'; grid.append(image);
       }
+      const connection = nativeSequence;
+      image.onload = () => {
+        if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
+        window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
+        if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
+        requestAnimationFrame(() => {
+          if (connection !== nativeSequence || !image.isConnected) return;
+          const now = performance.now();
+          if (!performanceStarted) performanceStarted = now;
+          performanceFrames++;
+          if (now - performanceStarted >= 5000) {
+            recordLiveDiagnostic('native-web-performance', { targetFps: 30, displayFps: Math.round(performanceFrames * 10000 / (now - performanceStarted)) / 10, synthetic: false });
+            performanceStarted = now; performanceFrames = 0;
+          }
+        });
+      };
+      image.onerror = () => { if (connection === nativeSequence) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin); };
       image.src = value.jpeg;
-      if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
     }
   });
   const originalEncryption = liveEncryptionCandidates;
@@ -58,7 +75,7 @@
   };
   stopLivePlayback = async options => {
     const wasNative = nativeSequence;
-    nativeSequence = 0; frames = 0;
+    nativeSequence = 0; frames = 0; performanceStarted = 0; performanceFrames = 0;
     const stopping = originalStop(options);
     if (wasNative) { try { await call('leave', {}, 3000); } catch {} }
     await stopping;
@@ -71,7 +88,8 @@
     const requestSeq = state.live.requestSeq, generation = state.scanGeneration;
     await stopLivePlayback();
     if (requestSeq !== state.live.requestSeq || generation !== state.scanGeneration || state.filter !== 'live') return;
-    await call('hello', {}, 4000);
+    const hello = await call('hello', {}, 4000);
+    if (!hello.frameAck || hello.targetFps !== 30 || hello.extensionVersion !== '1.0.7') throw new Error('30fps 재생에는 PC LIVE 도구 0.3.0과 확장 1.0.7이 필요합니다. PC LIVE 설치로 업데이트해 주세요.');
     const auth = currentAuth();
     const seq = ++state.live.connectionSeq; nativeSequence = seq; frames = 0;
     state.live.phase = 'native-join';

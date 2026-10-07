@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><title>웹 30fps 성능 테스트 · 실제 방송 아님</title></head><body><div id="liveVideoGrid"></div><script>
+const state = { live: { room: { id: 'synthetic-room', encryptionKey: 'x'.repeat(64) }, tokenInfo: {}, currentLiveRoomId: 'synthetic-room', entry: { channelId: 'synthetic-channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
+function currentAuth(){ return { token:'SYNTHETIC_DO_NOT_USE', uuid:'synthetic-device' }; }
+function resolveAgoraJoinArgs(){} function decodeLiveEncryptionSalt(){} function liveStatusText(){}
+function liveEncryptionCandidates(){} function connectAgoraLive(){} function resumeLiveAudio(){} function renderLiveView(){}
+function stopLivePlayback(){ state.live.connectionSeq++; }
+function recordLiveDiagnostic(stage, value){ window.postMessage({protocol:'fromm-benchmark', value:{stage,...value,synthetic:true,mediaVerified:false}}, location.origin); }
+</script><script src="web-native-live.js"></script><script>connectAgoraLive().catch(()=>{});</script></body></html>

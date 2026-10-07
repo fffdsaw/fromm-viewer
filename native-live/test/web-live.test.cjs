@@ -4,16 +4,16 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
-function setup(keyBytes = 64, platform = 'Windows') {
+function setup(keyBytes = 64, platform = 'Windows', options = {}) {
   const listeners = new Map(), calls = [];
   let webJoins = 0;
   const state = { live: { room: { id: 'room', encryptionKey: 'x'.repeat(keyBytes), encryptionSalt: 'synthetic' }, tokenInfo: {}, currentLiveRoomId: 'room', entry: { channelId: 'channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
   const window = { addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
     calls.push(message.value);
-    queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true } } }));
+    queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
   } };
   const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
-    document: { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout,
+    document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: callback => callback(),
     state, currentAuth: () => ({ token: 'synthetic-auth', uuid: 'synthetic-device' }), resolveAgoraJoinArgs: () => {},
     decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic() {}, liveStatusText() {},
     liveEncryptionCandidates(room) { if (room.encryptionKey.length > 62) throw new Error('WEB_LIMIT'); return [{ mode: 'web' }]; },
@@ -37,6 +37,23 @@ test('64-byte key stays unchanged; Native host receives login context rather tha
 });
 test('mobile cannot accidentally launch Windows Native path', async () => {
   const h = setup(64, 'Android'); await assert.rejects(h.context.connectAgoraLive(), /Windows/); assert.equal(h.calls.length, 0);
+});
+test('older Native host or extension is rejected before submitting login credentials', async () => {
+  for (const hello of [{frameAck:false}, {extensionVersion:'1.0.6'}, {targetFps:10}]) {
+    const h = setup(64, 'Windows', { hello }); await assert.rejects(h.context.connectAgoraLive(), /0.3.0/);
+    assert.equal(h.calls.some(v => v.method === 'join'), false);
+  }
+});
+test('web acknowledges decoded frames only and ignores stale playback after leaving', async () => {
+  let image;
+  const grid = { replaceChildren(){image=null;}, append(value){image=value;} };
+  const document = { querySelector:()=>null, getElementById:id=>id==='liveVideoGrid'?grid:id==='nativeLiveVideo'?image:null,
+    createElement:()=>({style:{},isConnected:true}) };
+  const h = setup(64, 'Windows', { document }); await h.context.connectAgoraLive();
+  const dispatch = sequence => h.listeners.get('message')({ source:h.window,origin:'https://fffdsaw.github.io',data:{protocol:'fromm-native-v1',direction:'extension',value:{type:'frame',sequence,jpeg:'data:image/jpeg;base64,AQ=='}} });
+  dispatch(1); assert.equal(h.calls.some(v=>v.method==='frame-ack'),false);
+  image.onload(); assert.equal(h.calls.find(v=>v.method==='frame-ack').params.sequence,1);
+  const src=image.src; await h.context.stopLivePlayback(); dispatch(2); assert.equal(image.src,src);
 });
 test('extension background accepts only the official Viewer top frame', () => {
   const context = vm.createContext({ URL, chrome: { runtime: { onConnect: { addListener() {} } } } });

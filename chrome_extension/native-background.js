@@ -9,7 +9,7 @@ chrome.runtime.onConnect.addListener(port => {
   function open() {
     if (nativePort) return nativePort;
     nativePort = chrome.runtime.connectNative('com.fromm.viewer.native_live');
-    nativePort.onMessage.addListener(value => { try { port.postMessage(value); } catch {} });
+    nativePort.onMessage.addListener(value => { try { port.postMessage(value?.id && value?.ok ? { ...value, extensionVersion: chrome.runtime.getManifest().version } : value); } catch {} });
     nativePort.onDisconnect.addListener(() => {
       void chrome.runtime.lastError;
       nativePort = null;
@@ -18,8 +18,12 @@ chrome.runtime.onConnect.addListener(port => {
     return nativePort;
   }
   port.onMessage.addListener(message => {
-    if (!Number.isSafeInteger(message?.id) || !['hello', 'join', 'leave', 'show'].includes(message.method)) return;
+    if (!Number.isSafeInteger(message?.id) || !['hello', 'join', 'leave', 'show', 'frame-ack'].includes(message.method)) return;
     let params = {};
+    if (message.method === 'frame-ack') {
+      if (!nativePort || Object.keys(message.params || {}).length !== 1 || !Number.isSafeInteger(message.params?.sequence) || message.params.sequence <= 0) return;
+      nativePort.postMessage({ id: message.id, method: 'frame-ack', params: { sequence: message.params.sequence } }); return;
+    }
     if (message.method === 'join') {
       const p = message.params;
       if (!p || Object.keys(p).some(k => !['roomId', 'channelId', 'uuid', 'authToken'].includes(k))) return;

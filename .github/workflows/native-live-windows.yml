@@ -27,18 +27,22 @@ jobs:
           node -e 'const fs=require("fs"),cp=require("child_process"),path=require("path");const exe=path.resolve("node_modules/electron/dist/electron.exe");for(const p of [exe,"node_modules/agora-electron-sdk/build/Release/agora_node_ext.node","node_modules/agora-electron-sdk/build/Release/agora_rtc_sdk.dll"])if(!fs.existsSync(p))throw Error("RUNTIME_MISSING");const r=cp.spawnSync(exe,[process.cwd(),"--self-test"],{encoding:"utf8",timeout:30000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("self-test-passed"))throw Error("NATIVE_SELF_TEST_FAILED");'
       - name: Test contracts and browser routing
         run: node --test native-live/test/*.test.cjs
+      - name: Measure synthetic 720x1280 frame delivery
+        working-directory: native-live
+        run: |
+          node -e 'const cp=require("child_process"),p=require("path");const r=cp.spawnSync(p.resolve("node_modules/electron/dist/electron.exe"),[process.cwd(),"--frame-benchmark"],{encoding:"utf8",timeout:25000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("frame-benchmark-passed"))throw Error("FRAME_BENCHMARK_FAILED");'
       - name: Bundle the connection tool and extension
         shell: pwsh
         run: |
-          Compress-Archive -Path native-live,chrome_extension -DestinationPath fromm-native-live-windows-x64.zip -CompressionLevel Optimal
+          Compress-Archive -Path native-live,chrome_extension,web-native-live.js -DestinationPath fromm-native-live-windows-x64.zip -CompressionLevel Optimal
       - name: Publish Windows download
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view native-live-0.2.0 *> $null
+          gh release view native-live-0.3.0 *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create native-live-0.2.0 --target "$env:GITHUB_SHA" --title "Windows web LIVE connection" --notes "Extract the ZIP, run native-live/Install-Web-LIVE.cmd once, load chrome_extension in Chrome, then use LIVE on the Fromm Viewer website."
+            gh release create native-live-0.3.0 --target "$env:GITHUB_SHA" --title "Windows web LIVE connection" --notes "Extract the ZIP, run native-live/Install-Web-LIVE.cmd once, load chrome_extension in Chrome, then use LIVE on the Fromm Viewer website."
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload native-live-0.2.0 fromm-native-live-windows-x64.zip --clobber
+          gh release upload native-live-0.3.0 fromm-native-live-windows-x64.zip --clobber

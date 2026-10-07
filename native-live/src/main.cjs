@@ -7,12 +7,18 @@ const { apiRequest, enterEnvelope, token007, safeDiagnostic, fail } = require('.
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_HASH = '12be0bed8cce3ecd5f32dda2ed0dd8dab96413159e143b0f398fb04d8b2ad481';
 const SELF_TEST = process.argv.includes('--self-test');
+const FRAME_BENCHMARK = process.argv.includes('--frame-benchmark');
 const UI_SMOKE = process.argv.includes('--ui-smoke');
 const MONITOR = process.argv.includes('--monitor');
 const NATIVE_HOST = process.argv.includes('--fromm-native-bridge');
 let nativeController;
+let frameBenchmark;
 app.commandLine.appendSwitch('disable-logging');
 app.commandLine.appendSwitch('log-level', '3');
+// This app's hidden Native canvas must continue feeding the visible web page.
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 protocol.registerSchemesAsPrivileged([{ scheme: 'fromm', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 let viewer, player, playerReady, resolvePlayerReady, cachedEntry = null, pendingRenew = null;
 let auth = '', authEpoch = 0, enterSerial = 0, commandSerial = 0;
@@ -21,7 +27,7 @@ function status(value) {
   const safe = safeDiagnostic(value);
   statusHistory.push(safe); if (statusHistory.length > 100) statusHistory.shift();
   if (viewer && !viewer.isDestroyed()) viewer.webContents.send('live:status', safe);
-  if (SELF_TEST || MONITOR) process.stdout.write(JSON.stringify(safe) + '\n');
+  if (SELF_TEST || MONITOR || FRAME_BENCHMARK) process.stdout.write(JSON.stringify(safe) + '\n');
   nativeController?.status(safe);
 }
 function senderIs(event, window, url) {
@@ -48,7 +54,7 @@ function lockedWindow(options) {
 async function ensurePlayer() {
   if (player && !player.isDestroyed()) return playerReady;
   playerReady = new Promise(resolve => { resolvePlayerReady = resolve; });
-  player = lockedWindow({ title: 'Fromm Native LIVE', width: 1000, height: 820, show: !SELF_TEST,
+  player = lockedWindow({ title: 'Fromm Native LIVE', width: 1000, height: 820, show: !(SELF_TEST || FRAME_BENCHMARK),
     webPreferences: { session: session.fromPartition('fromm-native-player', { cache: false }), backgroundThrottling: false,
       preload: path.join(__dirname, 'player-preload.cjs'), sandbox: false } });
   player.on('closed', () => { player = null; commandSerial++; clearEntry(); status({ stage: 'left' }); });
@@ -65,7 +71,7 @@ ipcMain.on('player:status', (event, value) => {
   if (SELF_TEST && ['self-test-passed', 'self-test-failed'].includes(value?.stage)) setTimeout(() => app.exit(value.stage === 'self-test-passed' ? 0 : 1), 100);
 });
 ipcMain.on('player:frame', (event, value) => {
-  if (senderIs(event, player, 'fromm://player/player.html')) nativeController?.frame(value);
+  if (senderIs(event, player, 'fromm://player/player.html')) { nativeController?.frame(value); frameBenchmark?.frame(value); }
 });
 // Network bridge is restricted to three official Fromm API hosts. No generic native fetch API.
 ipcMain.handle('fromm:request', async (event, input) => {
@@ -172,6 +178,12 @@ app.whenReady().then(async () => {
   if (process.platform !== 'win32' || process.arch !== 'x64') fail('WINDOWS_X64_REQUIRED');
   const viewerSession = setupSession('fromm-native-viewer');
   setupSession('fromm-native-player');
+  if (FRAME_BENCHMARK) {
+    await ensurePlayer();
+    frameBenchmark = await require('./frame-benchmark-main.cjs')({ app, BrowserWindow, ipcMain, session,
+      senderIs, player, root: ROOT, lockedWindow });
+    return;
+  }
   if (NATIVE_HOST) {
     const identity = require('../extension-identity.json');
     if (process.argv[process.argv.indexOf('--fromm-extension-id') + 1] !== identity.id) fail('NATIVE_ORIGIN_DENIED');
@@ -183,6 +195,7 @@ app.whenReady().then(async () => {
       input: pipe, sendMessage: value => pipe.write(encode(value)),
       join: async payload => { await ensurePlayer(); player.show(); player.webContents.send('player:command', { type: 'join', payload, inlineVideo: true }); },
       leave: leavePlayer,
+      acknowledge: sequence => { if (player && !player.isDestroyed()) player.webContents.send('player:frame-ack', { sequence }); },
       show: () => { if (player && !player.isDestroyed()) { player.show(); player.focus(); } },
       renew: token => { if (player && !player.isDestroyed()) player.webContents.send('player:command', { type: 'renew', token }); },
       quit: () => app.quit()

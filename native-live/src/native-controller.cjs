@@ -2,7 +2,7 @@
 const { Decoder, encode } = require('./native-wire.cjs');
 const { enterEnvelope, token007, safeDiagnostic, fail } = require('./contracts.cjs');
 const { net } = require('electron');
-function createController({ join, leave, show, renew, quit, input = process.stdin, sendMessage }) {
+function createController({ join, leave, show, renew, quit, acknowledge, input = process.stdin, sendMessage }) {
   let credentials = null, envelope = null, busy = Promise.resolve(), serial = 0;
   const send = sendMessage || (value => process.stdout.write(encode(value, true)));
   function clear() { serial++; credentials = null; if (envelope) { envelope.encryptionKey = ''; envelope.rtcToken = ''; envelope.encryptionKdfSalt.fill(0); } envelope = null; }
@@ -36,10 +36,14 @@ function createController({ join, leave, show, renew, quit, input = process.stdi
     } catch { send({ type: 'status', value: { stage: 'token-renew-failed' } }); }
   }
   const decoder = new Decoder(message => {
-    if (!message || !Number.isSafeInteger(message.id) || !['hello', 'join', 'leave', 'show'].includes(message.method)) return;
+    if (!message || !Number.isSafeInteger(message.id) || !['hello', 'join', 'leave', 'show', 'frame-ack'].includes(message.method)) return;
+    if (message.method === 'frame-ack') {
+      if (envelope && Object.keys(message.params || {}).length === 1 && Number.isSafeInteger(message.params?.sequence) && message.params.sequence > 0) acknowledge?.(message.params.sequence);
+      return;
+    }
     busy = busy.then(async () => {
       try {
-        if (message.method === 'hello') send({ id: message.id, ok: true, version: 1, inlineVideo: true });
+        if (message.method === 'hello') send({ id: message.id, ok: true, version: 2, inlineVideo: true, frameAck: true, targetFps: 30 });
         else if (message.method === 'leave') { clear(); leave(); send({ id: message.id, ok: true }); }
         else if (message.method === 'show') { show(); send({ id: message.id, ok: true }); }
         else {
@@ -63,7 +67,7 @@ function createController({ join, leave, show, renew, quit, input = process.stdi
   input.on('error', () => { clear(); leave(); quit(); });
   return {
     status(value) { send({ type: 'status', value: safeDiagnostic(value) }); if (value.stage === 'token-renew-needed') renewToken(); },
-    frame(value) { if (envelope && typeof value?.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) send({ type: 'frame', jpeg: value.jpeg }); }
+    frame(value) { if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }); }
   };
 }
 module.exports = { createController };

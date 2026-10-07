@@ -8,7 +8,7 @@
     const m = event.data;
     if (event.source !== window || event.origin !== location.origin || m?.protocol !== 'fromm-native-v1' || m.direction !== 'page') return;
     const request = m.value;
-    if (!Number.isSafeInteger(request?.id) || !['hello', 'join', 'leave', 'show'].includes(request.method)) return;
+    if (!Number.isSafeInteger(request?.id) || !['hello', 'join', 'leave', 'show', 'frame-ack'].includes(request.method)) return;
     try { port.postMessage(request); } catch {}
   });
 })();

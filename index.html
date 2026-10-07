@@ -446,6 +446,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .live-stage-empty .small { color: var(--muted); font-size: 12px; line-height: 1.6; max-width: 520px; }
 .live-spinner { width: 24px; height: 24px; border-radius: 50%; border-width: 2px; border-style: solid; border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.14) rgba(255, 255, 255, 0.14); border-image: none; animation: 0.8s linear 0s infinite normal none running spin; margin-bottom: 5px; }
 .live-foot { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.live-foot[hidden] { display: none; }
 .live-foot .status { flex: 1 1 0%; min-width: 0px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .live-error { color: rgb(255, 154, 165); }
 .live-debug { opacity: 0.7; font-variant-numeric: tabular-nums; }
@@ -2647,6 +2648,8 @@ function liveStatusText(text,isError=false){
   if(el){
     el.textContent=text || "";
     el.classList.toggle("live-error",!!isError);
+    const footer=el.closest(".live-foot");
+    if(footer) footer.hidden=!isError;
   }
   state.live.lastError=isError ? String(text||"") : "";
 }
@@ -2798,7 +2801,7 @@ function renderLiveView(){
 
   const footerText=state.live.lastError || (mockStreaming ? "TEST · 과거 LIVE 로그 Mock · 실제 영상 연결 생략" : streaming ? "방송 정보 확인됨" : "");
   const footerHtml=(footerText || roomId) ? `
-        <div class="live-foot">
+        <div class="live-foot"${state.live.lastError ? "" : " hidden"}>
           <span id="liveConnectionStatus" class="status">${esc(footerText)}</span>
           ${roomId ? `<span class="live-debug">room ${esc(roomId.slice(0,8))}</span>` : ""}
         </div>` : "";

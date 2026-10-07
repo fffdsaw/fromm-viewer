@@ -16,7 +16,15 @@ jobs:
           node-version: '22'
       - name: Install official Windows Native runtime
         working-directory: native-live
-        run: npm ci
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node node_modules/electron/install.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify bundled official executable and addon
+        working-directory: native-live
+        run: |
+          node -e 'const fs=require("fs"),cp=require("child_process"),path=require("path");const exe=path.resolve("node_modules/electron/dist/electron.exe");for(const p of [exe,"node_modules/agora-electron-sdk/build/Release/agora_node_ext.node","node_modules/agora-electron-sdk/build/Release/agora_rtc_sdk.dll"])if(!fs.existsSync(p))throw Error("RUNTIME_MISSING");const r=cp.spawnSync(exe,[process.cwd(),"--self-test"],{encoding:"utf8",timeout:30000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("self-test-passed"))throw Error("NATIVE_SELF_TEST_FAILED");'
       - name: Test contracts and browser routing
         run: node --test native-live/test/*.test.cjs
       - name: Bundle the connection tool and extension

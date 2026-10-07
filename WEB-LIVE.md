@@ -6,7 +6,7 @@
 
 1. [Windows LIVE 연결 도구 0.3.0](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip)를 내려받아 고정된 폴더에 압축을 푼다.
 2. `native-live/Install-Web-LIVE.cmd`를 실행한다. 현재 사용자 Chrome/Edge에 Native Messaging host를 등록한다. 관리자 권한은 필요하지 않다.
-3. Chrome 확장 관리에서 기존 Fromm 확장프로그램을 끄고, 개발자 모드의 **압축해제된 확장프로그램을 로드**로 함께 받은 `chrome_extension` 폴더를 선택한다. 이 버전은 1.0.7이다. 기존 폴더의 파일을 갱신했다면 확장 관리의 새로고침 버튼을 눌러 다시 로드한다.
+3. Chrome 확장 관리에서 기존 Fromm 확장프로그램을 끄고, 개발자 모드의 **압축해제된 확장프로그램을 로드**로 함께 받은 `chrome_extension` 폴더를 선택한다. 이 버전은 1.0.8이다. 기존 폴더의 파일을 갱신했다면 확장 관리의 새로고침 버튼을 눌러 다시 로드한다.
 4. [Fromm Viewer 1.08](https://fffdsaw.github.io/fromm-viewer/?v=1.08)을 Ctrl+F5로 새로고침한다.
 
 그 다음부터 웹에서 로그인하고 LIVE 방송을 선택한다. PC 도구가 정상 `/enter`로 시청 권한을 확인하고 Native SDK로 수신한다. 웹 LIVE 화면에는 Native에서 출력한 영상 프레임이 표시되고 소리는 PC 도구에서 나온다. Native 창은 최소화해도 되며, 닫으면 재생이 종료된다. 웹 LIVE를 떠나거나 웹 탭을 닫으면 연결도 종료된다. 채팅은 기존 폰 앱에서 사용할 수 있다.
@@ -25,8 +25,10 @@ secret/token은 메모리 통신만 사용하며 파일·URL·명령줄·로그�
 
 ## 배포와 검증
 
-GitHub Pages는 main의 웹 파일을 사용한다. Windows 패키지는 main 적용 시 GitHub Actions가 공식 Electron/Agora SDK를 설치해 release `native-live-0.3.0`으로 빌드한다. 도구 0.3.0과 확장 1.0.7을 함께 사용해야 ACK가 전달된다. 구버전이면 입장 정보 전달 전에 업데이트 안내를 표시한다.
+GitHub Pages는 main의 웹 파일을 사용한다. Windows 패키지는 main 적용 시 GitHub Actions가 공식 Electron/Agora SDK를 설치해 release `native-live-0.3.0`으로 빌드한다. 도구 0.3.0과 확장 1.0.8을 함께 사용해야 ACK가 전달된다. 구버전이면 입장 정보 전달 전에 업데이트 안내를 표시한다.
 
-자동 검증 22개: 원본 보존, 키/salt/RTC identity 검증, Native Messaging framing, 웹/Native 라우팅, 모바일 경계, 악성 origin/iframe 거부. 실제 Windows에서 relay ↔ Electron handshake와 공식 Native addon 설정을 확인했다. 별도 프로토타입에서 실제 LIVE의 Native 영상·소리 재생을 검증했고, 웹 연결 후의 실제 로그인/inline 영상·소리 검증은 별도로 기록한다.
+자동 검증 26개: 원본 보존, 키/salt/RTC identity 검증, Native Messaging framing, 웹/Native 라우팅, 모바일 경계, 악성 origin/iframe 거부. 실제 Windows에서 relay ↔ Electron handshake와 공식 Native addon 설정을 확인했다. 별도 프로토타입에서 실제 LIVE의 Native 영상·소리 재생을 검증했고, 웹 연결 후의 실제 로그인/inline 영상·소리 검증은 별도로 기록한다.
 
 공식 근거: [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Agora Electron SDK](https://github.com/AgoraIO-Extensions/Electron-SDK), [EncryptionConfig](https://api-ref.agora.io/en/video-sdk/electron/4.x/API/class_encryptionconfig.html).
+
+확장은 API/미디어와 LIVE 연결을 함께 제공하는 1.0.8 하나를 사용한다. 페이지가 BFCache에 들어갈 때 content/background의 onDisconnect에서 runtime.lastError를 소비하고 기존 연결을 정리한다. 복귀하면 확장 통신만 다시 연결하며 로그인 정보나 기존 join 요청을 저장하거나 재전송하지 않는다. LIVE는 방송 카드에서 새로고침해 다시 연결한다. 웹은 기존 1.0.7과 수정 버전 1.0.8 모두 같은 30fps 프로토콜로 허용한다.

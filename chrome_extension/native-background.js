@@ -33,5 +33,8 @@ chrome.runtime.onConnect.addListener(port => {
     try { open().postMessage({ id: message.id, method: message.method, params }); }
     catch { port.postMessage({ id: message.id, ok: false, code: 'NATIVE_NOT_INSTALLED' }); }
   });
-  port.onDisconnect.addListener(() => { nativePort?.disconnect(); nativePort = null; });
+  port.onDisconnect.addListener(() => {
+    void chrome.runtime.lastError;
+    nativePort?.disconnect(); nativePort = null;
+  });
 });

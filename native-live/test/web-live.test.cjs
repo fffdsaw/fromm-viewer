@@ -13,7 +13,7 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
     queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
   } };
   const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
-    document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: callback => callback(),
+    document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: options.requestAnimationFrame || (callback => callback()), cancelAnimationFrame: options.cancelAnimationFrame || (()=>{}),
     state, currentAuth: () => ({ token: 'synthetic-auth', uuid: 'synthetic-device' }), resolveAgoraJoinArgs: () => {},
     decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic() {}, liveStatusText() {},
     liveEncryptionCandidates(room) { if (room.encryptionKey.length > 62) throw new Error('WEB_LIMIT'); return [{ mode: 'web' }]; },
@@ -61,4 +61,30 @@ test('extension background accepts only the official Viewer top frame', () => {
   assert.equal(context.allowedSender({ frameId: 0, tab: { id: 1 }, url: 'https://fffdsaw.github.io/fromm-viewer/?v=1.07' }), true);
   for (const url of ['https://evil.example/fromm-viewer/', 'https://fffdsaw.github.io/other/', 'http://fffdsaw.github.io/fromm-viewer/']) assert.equal(context.allowedSender({ frameId: 0, tab: { id: 1 }, url }), false);
   assert.equal(context.allowedSender({ frameId: 1, tab: { id: 1 }, url: 'https://fffdsaw.github.io/fromm-viewer/' }), false);
+});
+test('hidden web tab retains only one repaint and ACK waits for actual image decoding', async () => {
+  let image, decode;
+  const callbacks = new Map(); let next = 0;
+  const grid = { replaceChildren(){image=null;}, append(value){image=value;} };
+  const document = { querySelector:()=>null, getElementById:id=>id==='liveVideoGrid'?grid:id==='nativeLiveVideo'?image:null,
+    createElement:()=>({style:{},isConnected:true,decode:()=>new Promise(resolve=>{decode=resolve;})}) };
+  const h = setup(64,'Windows',{document,requestAnimationFrame:callback=>{callbacks.set(++next,callback);return next;},cancelAnimationFrame:id=>callbacks.delete(id)});
+  await h.context.connectAgoraLive();
+  for (let sequence=1;sequence<=5;sequence++) {
+    h.listeners.get('message')({source:h.window,origin:'https://fffdsaw.github.io',data:{protocol:'fromm-native-v1',direction:'extension',value:{type:'frame',sequence,jpeg:'data:image/jpeg;base64,AQ=='}}});
+    const loaded=image.onload(); assert.equal(h.calls.filter(v=>v.method==='frame-ack').length,sequence-1);
+    decode(); await loaded; assert.equal(h.calls.filter(v=>v.method==='frame-ack').length,sequence); assert.equal(callbacks.size,1);
+  }
+  await h.context.stopLivePlayback(); assert.equal(callbacks.size,0);
+});
+test('a superseded image decoding error acknowledges its own sequence, never the newer pending frame', async () => {
+  let image; const decoders=[];
+  const grid={replaceChildren(){image=null;},append(value){image=value;}};
+  const document={querySelector:()=>null,getElementById:id=>id==='liveVideoGrid'?grid:id==='nativeLiveVideo'?image:null,
+    createElement:()=>({style:{},isConnected:true,decode:()=>new Promise((resolve,reject)=>decoders.push({resolve,reject}))})};
+  const h=setup(64,'Windows',{document}); await h.context.connectAgoraLive();
+  const frame=sequence=>h.listeners.get('message')({source:h.window,origin:'https://fffdsaw.github.io',data:{protocol:'fromm-native-v1',direction:'extension',value:{type:'frame',sequence,jpeg:'data:image/jpeg;base64,AQ=='}}});
+  frame(1);const first=image.onload();frame(2);const second=image.onload();decoders[0].reject();await first;
+  assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1]);
+  decoders[1].resolve();await second;assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1,2]);
 });

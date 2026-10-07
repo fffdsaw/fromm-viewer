@@ -2754,7 +2754,9 @@ function liveHeadingText(){
   const live=state.live;
   if(live.config?.isStreaming){
     const started=liveStartedLabel();
-    return {title:liveRoomTitle(),sub:started ? `시작 ${started}` : ""};
+    const entrance=live.entrances.find(room=>String(room.liveRoomId || "")===String(live.currentLiveRoomId || live.config.liveRoomId || "")) || pickLiveEntrance(live.entrances,live.entry);
+    const artist=String(entrance?.artiName || "");
+    return {title:liveRoomTitle(),sub:[artist,started ? `시작 ${started}` : ""].filter(Boolean).join(" · ")};
   }
   const entrance=pickLiveEntrance(live.entrances,live.entry);
   const title=entrance ? String(entrance.artiName || "라이브 방송")+" LIVE"
@@ -4303,12 +4305,14 @@ function renderLiveEntrances(){
     sub.textContent=heading.sub;
     sub.hidden=!heading.sub;
   }
+  const onlyCurrentBroadcast=!!live.config?.isStreaming && live.entrances.length===1 &&
+    String(live.entrances[0].liveRoomId || "")===String(live.currentLiveRoomId || live.config.liveRoomId || "");
   el.innerHTML=(live.discoveryError ? `<p class="live-entry-note live-error">${esc(live.discoveryError)}</p>` : "")+
-    (live.entrances.length ? live.entrances.map((room,index)=>{
+    (!onlyCurrentBroadcast && live.entrances.length ? live.entrances.map((room,index)=>{
       const selected=room.liveRoomId===live.currentLiveRoomId || room.liveRoomId===live.entry?.liveRoomId;
       const connected=room.liveRoomId===live.currentLiveRoomId && (!!live.client || !!live.config?.mock);
-      const label=connected ? "연결됨" : selected ? "선택됨" : "방송 보기";
-      return `<button type="button" class="live-mini-btn" data-live-index="${index}" aria-pressed="${selected}">${esc(room.artiName)} · ${label}</button>`;
+      const label=connected ? "연결됨" : selected ? "" : "방송 보기";
+      return `<button type="button" class="live-mini-btn" data-live-index="${index}" aria-pressed="${selected}">${esc(room.artiName)}${label ? ` · ${label}` : ""}</button>`;
     }).join("") : "");
   el.style.display=el.childElementCount ? "" : "none";
   for(const button of el.querySelectorAll("[data-live-index]")){
@@ -8878,6 +8882,6 @@ autoConnectSaved();
 
 
 
-<script src="web-native-live.js?v=1.08.2"></script>
+<script src="web-native-live.js?v=1.08.3"></script>
 </body>
 </html>

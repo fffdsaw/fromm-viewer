@@ -4,7 +4,6 @@
   let id = 0, nativeSequence = 0, frames = 0;
   let performanceStarted = 0, performanceFrames = 0;
   let repaintFrame;
-  const installURL = 'https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip';
   function call(method, params = {}, timeout = 25000) {
     return new Promise((resolve, reject) => {
       const requestId = ++id;
@@ -77,7 +76,6 @@
   const originalConnect = connectAgoraLive;
   const originalStop = stopLivePlayback;
   const originalAudio = resumeLiveAudio;
-  const originalRender = renderLiveView;
   liveEncryptionCandidates = room => {
     if (typeof room?.encryptionKey === 'string' && new TextEncoder().encode(room.encryptionKey).length > 62) {
       return [{ mode: 'aes-256-gcm2', key: room.encryptionKey, salt: decodeLiveEncryptionSalt(room.encryptionSalt), native: true }];
@@ -116,14 +114,5 @@
     } catch (error) { nativeSequence = 0; throw error; }
   };
   resumeLiveAudio = () => nativeSequence ? call('show', {}, 3000) : originalAudio();
-  renderLiveView = () => {
-    originalRender();
-    if (state.live.centerMode !== 'live' || !/Windows/i.test(navigator.userAgent)) return;
-    const actions = document.querySelector('.live-head-actions');
-    if (actions && !document.getElementById('nativeLiveInstall')) {
-      const link = document.createElement('a'); link.id = 'nativeLiveInstall'; link.className = 'live-mini-btn';
-      link.href = installURL; link.textContent = 'PC LIVE 설치'; actions.append(link);
-    }
-  };
   window.addEventListener('pagehide', () => { if (nativeSequence) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'leave' } }, location.origin); });
 })();

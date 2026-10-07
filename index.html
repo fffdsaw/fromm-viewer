@@ -2754,7 +2754,9 @@ function liveHeadingText(){
   const live=state.live;
   if(live.config?.isStreaming){
     const started=liveStartedLabel();
-    return {title:liveRoomTitle(),sub:started ? `시작 ${started}` : ""};
+    const entrance=live.entrances.find(room=>String(room.liveRoomId || "")===String(live.currentLiveRoomId || live.config.liveRoomId || "")) || pickLiveEntrance(live.entrances,live.entry);
+    const artist=String(entrance?.artiName || "");
+    return {title:liveRoomTitle(),sub:[artist,started ? `시작 ${started}` : ""].filter(Boolean).join(" · ")};
   }
   const entrance=pickLiveEntrance(live.entrances,live.entry);
   const title=entrance ? String(entrance.artiName || "라이브 방송")+" LIVE"
@@ -2791,7 +2793,7 @@ function renderLiveView(){
   }else if(state.live.status==="error"){
     stageHtml=`<div class="live-stage-empty"><div class="big">LIVE 재생을 시작하지 못했습니다</div><div class="small">아래 연결 상태를 확인하고 새로고침으로 다시 시도해주세요.</div></div>`;
   }else{
-    stageHtml=`<div id="liveVideoGrid" class="live-video-grid"><div id="liveWaiting" class="live-stage-empty"><div class="live-spinner"></div><div class="big">방송 연결 중...</div><div class="small">영상 스트림을 기다리고 있습니다.</div></div></div>`;
+    stageHtml=`<div id="liveVideoGrid" class="live-video-grid" tabindex="0" aria-label="LIVE 영상"><div id="liveWaiting" class="live-stage-empty"><div class="live-spinner"></div><div class="big">방송 연결 중...</div><div class="small">영상 스트림을 기다리고 있습니다.</div></div></div>`;
   }
 
   const footerText=state.live.lastError || (mockStreaming ? "TEST · 과거 LIVE 로그 Mock · 실제 영상 연결 생략" : streaming ? "방송 정보 확인됨" : "");
@@ -2811,10 +2813,6 @@ function renderLiveView(){
             <div class="live-title">${esc(title)}</div>
             <div class="live-sub"${sub ? "" : " hidden"}>${esc(sub)}</div>
           </div>
-          <div class="live-head-actions">
-            <button id="liveSoundBtn" class="live-mini-btn" type="button" ${streaming&&!mockStreaming&&!!state.live.client?"":"disabled"}>소리 켜기</button>
-            <button id="liveRefreshBtn" class="live-mini-btn" type="button">새로고침</button>
-          </div>
         </div>
         <div id="liveEntrances" class="live-entry-form" aria-live="polite"></div>
         <div class="live-stage">${stageHtml}</div>
@@ -2823,8 +2821,14 @@ function renderLiveView(){
     </div>`;
 
   bindLiveCenterTabs();
-  $("#liveRefreshBtn")?.addEventListener("click",()=>refreshLiveStatus({force:true,autoplay:true}));
-  $("#liveSoundBtn")?.addEventListener("click",resumeLiveAudio);
+  const videoGrid=$("#liveVideoGrid");
+  const resumeBlockedAudio=()=>{if(state.live.audioBlocked) resumeLiveAudio();};
+  videoGrid?.addEventListener("click",resumeBlockedAudio);
+  videoGrid?.addEventListener("keydown",event=>{
+    if(event.target===videoGrid && state.live.audioBlocked && (event.key==="Enter" || event.key===" ")){
+      event.preventDefault();resumeBlockedAudio();
+    }
+  });
   renderLiveEntrances();
 }
 
@@ -3992,7 +3996,7 @@ async function subscribeLiveUser(user,mediaType,sourceClient=state.live.client,s
         if(current()){
           state.live.audioBlocked=true;
           recordLiveDiagnostic("audio-play-blocked",{...diagnostic,error:liveErrorDiagnostic(e)});
-          liveStatusText("소리가 안 나면 ‘소리 켜기’를 눌러주세요");
+          liveStatusText("소리가 안 나면 영상 화면을 눌러주세요");
         }
       }
     }
@@ -4303,12 +4307,14 @@ function renderLiveEntrances(){
     sub.textContent=heading.sub;
     sub.hidden=!heading.sub;
   }
+  const onlyCurrentBroadcast=!!live.config?.isStreaming && live.entrances.length===1 &&
+    String(live.entrances[0].liveRoomId || "")===String(live.currentLiveRoomId || live.config.liveRoomId || "");
   el.innerHTML=(live.discoveryError ? `<p class="live-entry-note live-error">${esc(live.discoveryError)}</p>` : "")+
-    (live.entrances.length ? live.entrances.map((room,index)=>{
+    (!onlyCurrentBroadcast && live.entrances.length ? live.entrances.map((room,index)=>{
       const selected=room.liveRoomId===live.currentLiveRoomId || room.liveRoomId===live.entry?.liveRoomId;
       const connected=room.liveRoomId===live.currentLiveRoomId && (!!live.client || !!live.config?.mock);
-      const label=connected ? "연결됨" : selected ? "선택됨" : "방송 보기";
-      return `<button type="button" class="live-mini-btn" data-live-index="${index}" aria-pressed="${selected}">${esc(room.artiName)} · ${label}</button>`;
+      const label=connected ? "연결됨" : selected ? "" : "방송 보기";
+      return `<button type="button" class="live-mini-btn" data-live-index="${index}" aria-pressed="${selected}">${esc(room.artiName)}${label ? ` · ${label}` : ""}</button>`;
     }).join("") : "");
   el.style.display=el.childElementCount ? "" : "none";
   for(const button of el.querySelectorAll("[data-live-index]")){
@@ -8878,6 +8884,6 @@ autoConnectSaved();
 
 
 
-<script src="web-native-live.js?v=1.08.2"></script>
+<script src="web-native-live.js?v=1.08.3"></script>
 </body>
 </html>

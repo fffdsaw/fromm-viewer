@@ -31,4 +31,4 @@ GitHub Pages는 main의 웹 파일을 사용한다. Windows 패키지는 main �
 
 공식 근거: [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Agora Electron SDK](https://github.com/AgoraIO-Extensions/Electron-SDK), [EncryptionConfig](https://api-ref.agora.io/en/video-sdk/electron/4.x/API/class_encryptionconfig.html).
 
-확장은 API/미디어와 LIVE 연결을 함께 제공하는 1.0.8 하나를 사용한다. 페이지가 BFCache에 들어갈 때 content/background의 onDisconnect에서 runtime.lastError를 소비하고 기존 연결을 정리한다. 복귀하면 확장 통신만 다시 연결하며 로그인 정보나 기존 join 요청을 저장하거나 재전송하지 않는다. LIVE는 방송 카드에서 새로고침해 다시 연결한다. 웹은 기존 1.0.7과 수정 버전 1.0.8 모두 같은 30fps 프로토콜로 허용한다.
+확장은 API/미디어와 LIVE 연결을 함께 제공하는 1.0.8 하나를 사용한다. 페이지가 BFCache에 들어갈 때 content/background의 onDisconnect에서 runtime.lastError를 소비하고 기존 연결을 정리한다. 복귀하면 확장 통신만 다시 연결하며 로그인 정보나 기존 join 요청을 저장하거나 재전송하지 않는다. LIVE는 상단 새로고침해 다시 연결한다. 웹은 기존 1.0.7과 수정 버전 1.0.8 모두 같은 30fps 프로토콜로 허용한다.

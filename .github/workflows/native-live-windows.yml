@@ -1,0 +1,36 @@
+name: Windows LIVE connection tool
+on:
+  push:
+    branches: [main]
+    paths: ['native-live/**', 'chrome_extension/**', '.github/workflows/native-live-windows.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install official Windows Native runtime
+        working-directory: native-live
+        run: npm ci
+      - name: Test contracts and browser routing
+        run: node --test native-live/test/*.test.cjs
+      - name: Bundle the connection tool and extension
+        shell: pwsh
+        run: |
+          Compress-Archive -Path native-live,chrome_extension -DestinationPath fromm-native-live-windows-x64.zip -CompressionLevel Optimal
+      - name: Publish Windows download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view native-live-0.2.0 *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create native-live-0.2.0 --target "$env:GITHUB_SHA" --title "Windows web LIVE connection" --notes "Extract the ZIP, run native-live/Install-Web-LIVE.cmd once, load chrome_extension in Chrome, then use LIVE on the Fromm Viewer website."
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload native-live-0.2.0 fromm-native-live-windows-x64.zip --clobber

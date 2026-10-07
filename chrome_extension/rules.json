@@ -1,0 +1,159 @@
+[
+  {
+    "id": 1,
+    "priority": 10,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://channel.frommyarti.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://channel.frommyarti.com/"
+        }
+      ],
+      "responseHeaders": [
+        {
+          "header": "access-control-allow-origin",
+          "operation": "set",
+          "value": "https://fffdsaw.github.io"
+        },
+        {
+          "header": "access-control-allow-methods",
+          "operation": "set",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "header": "access-control-allow-headers",
+          "operation": "set",
+          "value": "Authorization, Content-Type, Accept, uuid, channel-id, X-Requested-With"
+        },
+        {
+          "header": "access-control-expose-headers",
+          "operation": "set",
+          "value": "Content-Type, Content-Length, Content-Disposition, Accept-Ranges"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://(api|channel-api|account-api|channel-contents)\\.frommyarti\\.com/",
+      "requestDomains": [
+        "api.frommyarti.com",
+        "channel-api.frommyarti.com",
+        "account-api.frommyarti.com",
+        "channel-contents.frommyarti.com"
+      ],
+      "initiatorDomains": [
+        "fffdsaw.github.io"
+      ],
+      "resourceTypes": [
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 20,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "user-agent",
+          "operation": "set",
+          "value": "okhttp/5.1.0"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "|https://account-api.frommyarti.com/",
+      "initiatorDomains": [
+        "fffdsaw.github.io"
+      ],
+      "resourceTypes": [
+        "xmlhttprequest",
+        "other"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 20,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "user-agent",
+          "operation": "set",
+          "value": "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36"
+        },
+        {
+          "header": "x-requested-with",
+          "operation": "set",
+          "value": "com.knowmerce.fromm.fan"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "|https://channel-contents.frommyarti.com/",
+      "initiatorDomains": [
+        "fffdsaw.github.io"
+      ],
+      "resourceTypes": [
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "access-control-allow-origin",
+          "operation": "set",
+          "value": "https://fffdsaw.github.io"
+        },
+        {
+          "header": "access-control-allow-methods",
+          "operation": "set",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "header": "access-control-allow-headers",
+          "operation": "set",
+          "value": "Authorization, Content-Type, Accept, uuid, channel-id, X-Requested-With"
+        },
+        {
+          "header": "access-control-expose-headers",
+          "operation": "set",
+          "value": "Content-Type, Content-Length, Content-Disposition, Accept-Ranges"
+        },
+        {
+          "header": "cross-origin-resource-policy",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://",
+      "initiatorDomains": [
+        "fffdsaw.github.io"
+      ],
+      "resourceTypes": [
+        "xmlhttprequest",
+        "media",
+        "image",
+        "other"
+      ]
+    }
+  }
+]

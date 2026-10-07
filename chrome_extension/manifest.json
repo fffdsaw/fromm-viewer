@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Fromm Stream Nexus Proxy",
+  "version": "1.0.6",
+  "minimum_chrome_version": "101",
+  "description": "Adjusts Fromm API/media CORS headers only for requests initiated by the Fromm Viewer page.",
+  "permissions": [
+    "declarativeNetRequest",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://fffdsaw.github.io/*",
+    "https://*/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "cors_rules",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqvYXDl0QfOCjndOZVbQlqL2GQLmBxO5SnJ3k0xFOBFd4G7+L7NmrXm9EiFEosKIJBqaNA1OdEQwrgCaXckS8C5Smr84gL7dInjxWUgWNUO2yuyMtC6QMNcIK2DmjLQ5kJWnzSTLlFJuWYEJ/I1r0bl+ltIVdpPqhVk4hIjqr8KzNKLDDc3CbF/UuFYw0l7djWo+/R/Jh/bYDflmBVy3nNtH9gieLlAP8i5xhXYqrSuyPg9kajGf6N7mnI20oeBHR+eqVH7dHgsjAN0m4UiGO8Zh1Z4ppWwurEaCLDdKFrlYMNWytmBOOt1oZeLHBPUVUvLXyPPzlLfrPmLooDTc6wQIDAQAB",
+  "background": {
+    "service_worker": "native-background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://fffdsaw.github.io/fromm-viewer/*"
+      ],
+      "js": [
+        "native-content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

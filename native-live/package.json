@@ -1,0 +1,24 @@
+{
+  "name": "fromm-native-live-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "self-test": "electron . --self-test",
+    "test": "node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "agora-electron-sdk": "4.6.2",
+    "electron": "44.6.0"
+  },
+  "agora_electron": {
+    "prebuilt": true,
+    "arch": "x64",
+    "platform": "win32"
+  },
+  "allowScripts": {
+    "agora-electron-sdk@4.6.2": true,
+    "electron@44.6.0": true
+  }
+}

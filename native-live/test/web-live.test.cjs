@@ -44,6 +44,12 @@ test('older Native host or extension is rejected before submitting login credent
     assert.equal(h.calls.some(v => v.method === 'join'), false);
   }
 });
+
+test('BFCache fix extension remains compatible with the current Native host', async () => {
+  const h = setup(64, 'Windows', { hello: { extensionVersion: '1.0.8' } });
+  await h.context.connectAgoraLive();
+  assert.equal(h.calls.some(v => v.method === 'join'), true);
+});
 test('web acknowledges decoded frames only and ignores stale playback after leaving', async () => {
   let image;
   const grid = { replaceChildren(){image=null;}, append(value){image=value;} };

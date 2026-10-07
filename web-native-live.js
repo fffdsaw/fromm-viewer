@@ -102,7 +102,7 @@
     await stopLivePlayback();
     if (requestSeq !== state.live.requestSeq || generation !== state.scanGeneration || state.filter !== 'live') return;
     const hello = await call('hello', {}, 4000);
-    if (!hello.frameAck || hello.targetFps !== 30 || hello.extensionVersion !== '1.0.7') throw new Error('30fps 재생에는 PC LIVE 도구 0.3.0과 확장 1.0.7이 필요합니다. PC LIVE 설치로 업데이트해 주세요.');
+    if (!hello.frameAck || hello.targetFps !== 30 || !['1.0.7', '1.0.8'].includes(hello.extensionVersion)) throw new Error('30fps 재생에는 PC LIVE 도구 0.3.0과 최신 확장이 필요합니다. PC LIVE 설치로 업데이트해 주세요.');
     const auth = currentAuth();
     const seq = ++state.live.connectionSeq; nativeSequence = seq; frames = 0;
     state.live.phase = 'native-join';

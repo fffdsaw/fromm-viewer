@@ -4,33 +4,41 @@ Fromm 대화와 사진·영상·음성을 브라우저에서 확인하고 저장
 
 **[Fromm Viewer 열기](https://fffdsaw.github.io/fromm-viewer/?v=1.08)**
 
-현재 배포 버전은 웹 **1.08**, 확장 프로그램 **1.0.7**, Windows LIVE 연결 도구 **0.3.0**입니다.
+현재 배포 버전은 웹 **1.08**, 확장 프로그램 **1.0.8**, Windows LIVE 연결 도구 **0.3.0**입니다.
 
-## 시작하기
+## 처음 설치
 
-대화·미디어·Replay를 이용하려면 아래 확장 프로그램을 먼저 설치해 주세요. Windows에서 LIVE도 시청하려면 다음의 **Windows LIVE 처음 설치**를 따라 주세요. LIVE 설치 파일에 확장 프로그램도 들어 있으므로 따로 다운로드할 필요가 없습니다.
+**확장은 LIVE 연결 기능이 포함된 1.0.8 하나로 통일되어 있습니다.** 이 확장 하나로 대화·미디어·Replay와 Windows LIVE 연결을 함께 사용합니다. 일반용과 LIVE용 확장을 따로 설치하거나 동시에 켤 필요가 없습니다.
 
-**[확장 프로그램 다운로드](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip)**
+### 1. 다운로드 선택
 
-1. 위 링크에서 ZIP 파일을 내려받아 압축을 풉니다.
-2. Chrome에서 `chrome://extensions`를 엽니다. 기존 Fromm 확장이 있다면 먼저 끕니다.
-3. **개발자 모드**를 켜고 **압축해제된 확장프로그램을 로드**를 누릅니다.
-4. `manifest.json`이 들어 있는 `chrome_extension` 폴더를 선택합니다. 확장 이름은 **Fromm Stream Nexus Proxy**, 버전은 **1.0.7**입니다.
-5. [Fromm Viewer](https://fffdsaw.github.io/fromm-viewer/?v=1.08)에 접속하고 이메일 확인 후 로그인합니다. 이미 열어 둔 페이지라면 새로고침합니다.
+| 사용할 기능 | 다운로드 |
+| --- | --- |
+| Windows에서 LIVE까지 시청 | [확장 + Windows LIVE 연결 도구](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip) |
+| 대화·미디어·Replay만 이용 | [같은 확장만 다운로드](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip) |
 
-## Windows LIVE 처음 설치
+두 다운로드의 `chrome_extension`은 같은 **1.0.8**입니다. LIVE 패키지를 받았다면 확장을 따로 다운로드하지 마세요. Windows LIVE 연결 도구는 Windows 64비트 PC의 Chrome 또는 Edge에서 사용할 수 있으며, 관리자 권한이나 별도 Node.js 설치는 필요하지 않습니다.
 
-**[Windows LIVE 설치 파일 다운로드](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip)**
+받은 ZIP은 계속 사용할 폴더에 압축을 풉니다. 예를 들어 문서 폴더 안에 `Fromm-Viewer` 폴더를 만들어 사용합니다. GitHub의 **Code → Download ZIP**은 소스 코드이므로, 바로 사용할 LIVE 재생 프로그램이 필요하면 위의 **확장 + Windows LIVE 연결 도구**를 받으세요.
 
-Windows 64비트 PC의 Chrome 또는 Edge에서 사용할 수 있습니다. 관리자 권한이나 별도 Node.js 설치는 필요하지 않습니다.
+### 2. 확장 한 번 등록
 
-1. 위 설치 파일을 내려받아 계속 사용할 폴더에 압축을 풉니다. 예를 들어 문서 폴더 안에 `Fromm-LIVE` 폴더를 만들어 사용합니다.
-2. 압축을 푼 폴더의 `native-live` 폴더를 열고 **Install-Web-LIVE.cmd**를 더블클릭합니다. 이 단계에서 해당 PC에 LIVE 연결 도구를 등록합니다.
-3. Chrome에서 `chrome://extensions`를 엽니다. Edge에서는 `edge://extensions`를 엽니다. 기존 Fromm 확장이 있다면 먼저 끕니다.
-4. **개발자 모드 → 압축해제된 확장프로그램을 로드**를 누르고, 이번에 압축을 푼 폴더 안의 **chrome_extension** 폴더를 선택합니다. 확장 버전 **1.0.7**이 표시되는지 확인합니다.
-5. [Fromm Viewer](https://fffdsaw.github.io/fromm-viewer/?v=1.08)에 접속해 **Ctrl+F5**로 새로고침한 뒤 로그인하고, **라이브**에서 진행 중인 방송을 선택합니다.
+1. Chrome에서 `chrome://extensions`를 엽니다. Edge에서는 `edge://extensions`를 엽니다.
+2. 기존 Fromm 확장이 있다면 먼저 끕니다. **개발자 모드 → 압축해제된 확장프로그램을 로드**를 누릅니다.
+3. 이번에 압축을 푼 폴더 안에서 `manifest.json`이 들어 있는 **chrome_extension** 폴더를 선택합니다.
+4. 확장 이름 **Fromm Stream Nexus Proxy**, 버전 **1.0.8**을 확인하고 켜짐 상태로 둡니다. Fromm 확장은 이 최신 버전 하나만 켭니다.
 
-GitHub의 **Code → Download ZIP**은 소스 코드입니다. 바로 사용할 LIVE 재생 프로그램은 위의 **Windows LIVE 설치 파일**에 포함되어 있습니다.
+이미 최신 확장 1.0.8을 등록했다면 다시 설치할 필요가 없습니다. 다음 단계만 진행하세요.
+
+### 3. Windows LIVE 연결 도구 등록
+
+Windows에서 LIVE를 시청할 때만 필요한 단계입니다. 대화·미디어·Replay만 이용한다면 건너뜁니다.
+
+1. LIVE 패키지의 **native-live** 폴더를 열고 **Install-Web-LIVE.cmd**를 더블클릭합니다. 이 단계에서 해당 PC에 연결 도구를 등록합니다. 앞에서 등록한 확장은 그대로 사용합니다.
+2. [Fromm Viewer](https://fffdsaw.github.io/fromm-viewer/?v=1.08)에 접속해 **Ctrl+F5**로 새로고침한 뒤 이메일 확인 후 로그인합니다.
+3. 상단 **라이브**에서 진행 중인 방송을 선택합니다.
+
+연결 도구를 설치하지 않아도 같은 확장으로 대화·미디어·Replay를 이용할 수 있습니다. 그 경우에도 [Fromm Viewer](https://fffdsaw.github.io/fromm-viewer/?v=1.08)에 접속해 로그인하면 됩니다.
 
 ### 다음부터는 웹에서 LIVE만 선택
 
@@ -48,7 +56,9 @@ GitHub의 **Code → Download ZIP**은 소스 코드입니다. 바로 사용할 
 
 - **확장 폴더를 찾기 어려움:** 폴더 선택 창에서 **Ctrl+L → chrome_extension 폴더의 전체 경로 붙여넣기 → Enter → 폴더 선택** 순서로 진행합니다. `manifest.json` 파일 자체가 아니라 그 파일이 들어 있는 폴더를 선택합니다.
 - **확장이 이미 설치됨:** 같은 폴더의 파일을 업데이트했다면 확장 관리 화면에서 해당 확장의 새로고침 버튼을 누릅니다. 다른 폴더에 새로 압축을 풀었다면 기존 확장을 끄고 새 폴더를 로드합니다.
-- **LIVE 연결 도구가 없거나 구버전이라고 표시됨:** 최신 Windows LIVE 설치 파일을 사용해 `Install-Web-LIVE.cmd`를 실행하고, 함께 받은 확장 **1.0.7**을 로드한 뒤 웹을 **Ctrl+F5**로 새로고침합니다.
+- **뒤로 가기·앞으로 가기 후 연결이 끊김:** 확장 1.0.8은 페이지 복귀 시 확장 통신을 다시 연결합니다. 이전 방송 입장 요청을 자동 반복하지 않으므로 LIVE 재생은 방송 카드의 새로고침으로 다시 연결합니다.
+- **확장 카드에 오류가 표시됨:** **오류** 버튼을 눌러 문구를 확인합니다. 버튼만 보고 정상이라고 판단하지 마세요. Fromm 확장이 하나만 켜져 있는지 확인하고, 오류를 공유할 때는 토큰·키·응답 본문을 제외한 오류 문구만 알려 주세요.
+- **LIVE 연결 도구가 없거나 구버전이라고 표시됨:** 최신 Windows LIVE 설치 파일을 사용해 `Install-Web-LIVE.cmd`를 실행하고, 함께 받은 확장 **1.0.8**을 로드한 뒤 웹을 **Ctrl+F5**로 새로고침합니다.
 
 웹 영상 전달은 **30fps를 목표**로 하며 방송 원본과 PC 성능에 따라 실제 프레임률은 달라질 수 있습니다. 별도 Native 프로토타입의 실제 방송 영상·소리 재생과 합성 영상의 약 30fps 전달은 확인했습니다. 웹·확장·연결 도구를 모두 연결한 실제 LIVE 재생은 다음 방송에서 추가 확인이 필요합니다. 자세한 구현과 검증 범위는 [웹 LIVE 안내](WEB-LIVE.md)를 참고해 주세요.
 

@@ -104,12 +104,12 @@
     const auth = currentAuth();
     const seq = ++state.live.connectionSeq; nativeSequence = seq; frames = 0;
     state.live.phase = 'native-join';
+    state.live.audioBlocked = false;
     liveStatusText('PC LIVE 연결 중...');
     try {
       await call('join', { roomId: room.id, channelId: state.live.entry.channelId, uuid: auth.uuid, authToken: auth.token }, 35000);
       if (seq !== state.live.connectionSeq || requestSeq !== state.live.requestSeq) return;
       state.live.client = { removeAllListeners() {}, leave: async () => {}, remoteUsers: [] };
-      document.getElementById('liveSoundBtn')?.removeAttribute('disabled');
       liveStatusText('LIVE 연결 요청됨 · 영상 스트림 대기 중');
     } catch (error) { nativeSequence = 0; throw error; }
   };

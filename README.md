@@ -11,7 +11,7 @@ Chrome에서 아래 확장 프로그램을 먼저 설치해 주세요.
 1. 위 링크에서 ZIP 파일을 내려받아 압축을 풉니다.
 2. `chrome://extensions`에 접속해 **개발자 모드**를 켭니다.
 3. **압축해제된 확장 프로그램을 로드**를 누르고, `manifest.json`이 들어 있는 `chrome_extension` 폴더를 선택합니다.
-4. https://fffdsaw.github.io/fromm-viewer/?v=95 링크로 접속합니다
+4. https://fffdsaw.github.io/fromm-viewer/?v=99 링크로 접속합니다
 5. Fromm Viewer 페이지를 새로고침하고 이메일 확인 후 로그인합니다.
 
 ## 사용 방법

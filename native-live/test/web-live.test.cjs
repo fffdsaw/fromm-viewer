@@ -1,0 +1,47 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
+function setup(keyBytes = 64, platform = 'Windows') {
+  const listeners = new Map(), calls = [];
+  let webJoins = 0;
+  const state = { live: { room: { id: 'room', encryptionKey: 'x'.repeat(keyBytes), encryptionSalt: 'synthetic' }, tokenInfo: {}, currentLiveRoomId: 'room', entry: { channelId: 'channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
+  const window = { addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
+    calls.push(message.value);
+    queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true } } }));
+  } };
+  const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
+    document: { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout,
+    state, currentAuth: () => ({ token: 'synthetic-auth', uuid: 'synthetic-device' }), resolveAgoraJoinArgs: () => {},
+    decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic() {}, liveStatusText() {},
+    liveEncryptionCandidates(room) { if (room.encryptionKey.length > 62) throw new Error('WEB_LIMIT'); return [{ mode: 'web' }]; },
+    connectAgoraLive: async () => { webJoins++; }, stopLivePlayback: async () => { state.live.connectionSeq++; }, resumeLiveAudio() {}, renderLiveView() {} });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../web-native-live.js'), 'utf8'), context);
+  return { context, state, calls, listeners, window, webJoins: () => webJoins };
+}
+test('web-compatible keys keep original Web playback path', async () => {
+  for (const size of [32, 62]) { const h = setup(size); await h.context.connectAgoraLive(); assert.equal(h.webJoins(), 1); assert.equal(h.calls.length, 0); }
+});
+test('64-byte key stays unchanged; Native host receives login context rather than arbitrary RTC secrets', async () => {
+  const h = setup();
+  const candidates = h.context.liveEncryptionCandidates(h.state.live.room);
+  assert.equal(candidates[0].key, 'x'.repeat(64)); assert.equal(candidates[0].salt.length, 32);
+  await h.context.connectAgoraLive();
+  assert.equal(h.webJoins(), 0);
+  const join = h.calls.find(v => v.method === 'join');
+  assert.deepEqual(Object.keys(join.params).sort(), ['authToken', 'channelId', 'roomId', 'uuid']);
+  assert.equal(join.params.roomId, 'room');
+  await h.context.stopLivePlayback(); assert.equal(h.calls.at(-1).method, 'leave');
+});
+test('mobile cannot accidentally launch Windows Native path', async () => {
+  const h = setup(64, 'Android'); await assert.rejects(h.context.connectAgoraLive(), /Windows/); assert.equal(h.calls.length, 0);
+});
+test('extension background accepts only the official Viewer top frame', () => {
+  const context = vm.createContext({ URL, chrome: { runtime: { onConnect: { addListener() {} } } } });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../chrome_extension/native-background.js'), 'utf8'), context);
+  assert.equal(context.allowedSender({ frameId: 0, tab: { id: 1 }, url: 'https://fffdsaw.github.io/fromm-viewer/?v=1.07' }), true);
+  for (const url of ['https://evil.example/fromm-viewer/', 'https://fffdsaw.github.io/other/', 'http://fffdsaw.github.io/fromm-viewer/']) assert.equal(context.allowedSender({ frameId: 0, tab: { id: 1 }, url }), false);
+  assert.equal(context.allowedSender({ frameId: 1, tab: { id: 1 }, url: 'https://fffdsaw.github.io/fromm-viewer/' }), false);
+});

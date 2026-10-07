@@ -1,0 +1,4 @@
+native-live/node_modules/
+native-live/com.fromm.viewer.native_live.json
+*.log
+*.dmp

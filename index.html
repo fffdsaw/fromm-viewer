@@ -435,13 +435,13 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .live-mini-btn { height: 34px; padding: 0px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, 0.04); color: var(--text); cursor: pointer; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; }
 .live-mini-btn:hover { background: rgba(255, 255, 255, 0.08); }
 .live-mini-btn:disabled { opacity: 0.45; cursor: default; }
-.live-stage { position: relative; min-height: min(62vh, 680px); background: rgb(8, 9, 12); }
-.live-video-grid { width: 100%; min-height: min(62vh, 680px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); place-items: stretch; }
-.live-video-grid.single { display: block; }
-.live-video-tile { position: relative; min-height: min(62vh, 680px); background: rgb(8, 9, 12); overflow: hidden; }
+.live-stage { position: relative; width: 100%; aspect-ratio: 1.45 / 1; min-height: 0; max-height: min(72vh, 820px); background: rgb(8, 9, 12); overflow: hidden; }
+.live-video-grid { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); grid-auto-rows: minmax(0, 1fr); place-items: stretch; }
+.live-video-grid.single { display: block; height: 100%; }
+.live-video-tile { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; background: rgb(8, 9, 12); overflow: hidden; }
 .live-video-tile > div, .live-video-tile video { width: 100% !important; height: 100% !important; object-fit: contain !important; }
 .live-video-label { position: absolute; left: 12px; bottom: 12px; z-index: 3; max-width: calc(100% - 24px); padding: 6px 9px; border-radius: 9px; background: rgba(0, 0, 0, 0.5); color: rgb(255, 255, 255); font-size: 11px; backdrop-filter: blur(8px); }
-.live-stage-empty { min-height: min(58vh, 620px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 34px 22px; text-align: center; }
+.live-stage-empty { position: absolute; inset: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 34px 22px; text-align: center; }
 .live-stage-empty .big { font-size: 17px; font-weight: 750; }
 .live-stage-empty .small { color: var(--muted); font-size: 12px; line-height: 1.6; max-width: 520px; }
 .live-spinner { width: 24px; height: 24px; border-radius: 50%; border-width: 2px; border-style: solid; border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.14) rgba(255, 255, 255, 0.14); border-image: none; animation: 0.8s linear 0s infinite normal none running spin; margin-bottom: 5px; }
@@ -454,7 +454,8 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .live-card { border-radius: 16px; }
 .live-head { align-items: flex-start; flex-wrap: wrap; }
 .live-head-actions { width: 100%; }
-.live-stage, .live-video-grid, .live-video-tile { min-height: 56vh; }
+.live-stage { aspect-ratio: 1.2 / 1; max-height: none; }
+.live-stage-empty { padding: 18px 14px; }
 }
 .top-auth-controls { gap: 8px !important; }
 .header-icon-cluster { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
@@ -1773,7 +1774,7 @@ function proxyUrl(m, download=false){
 }
 
 const FROMM_COMPAT = Object.freeze({
-  viewerBuild:"1.03",
+  viewerBuild:"1.05",
   bases:Object.freeze({
     api:"https://api.frommyarti.com",
     account:"https://account-api.frommyarti.com",
@@ -2436,12 +2437,17 @@ function decodeLiveEncryptionSalt(value){
   }
   let bytes;
   try{ bytes=base64Bytes(base64); }catch{ throw new Error("라이브 암호화 salt 디코딩에 실패했습니다."); }
-  if(bytes.length!==32) throw new Error("라이브 암호화 salt는 디코딩 후 32바이트여야 합니다.");
-  return bytes;
+  if(bytes.length<32) throw new Error("라이브 암호화 salt는 디코딩 후 최소 32바이트여야 합니다.");
+  // Android copies the first 32 decoded bytes into EncryptionConfig.encryptionKdfSalt.
+  return bytes.slice(0,32);
 }
 
 function saltBytes(value){
   try{ return decodeLiveEncryptionSalt(value); }catch{ return null; }
+}
+
+function liveSaltDecodedLength(value){
+  try{ return base64Bytes(String(value || "").replace(/[\t\n\r ]/g,"")).length; }catch{ return 0; }
 }
 
 function liveEncryptionCandidates(room){
@@ -3881,10 +3887,17 @@ async function subscribeLiveUser(user,mediaType,sourceClient=state.live.client,s
   if(!client || !user || !current()) return;
   const diagnostic={mediaType,uidType:typeof user.uid,hasVideo:!!user.hasVideo,hasAudio:!!user.hasAudio};
   recordLiveDiagnostic("subscribe-started",diagnostic);
+  let stage="subscribe";
   try{
     await client.subscribe(user,mediaType);
     if(!current()) return;
     recordLiveDiagnostic("subscribe-succeeded",diagnostic);
+    recordLiveDiagnostic("media-track-state",{...diagnostic,hasVideoTrack:!!user.videoTrack,hasAudioTrack:!!user.audioTrack});
+    if((mediaType==="video" && !user.videoTrack) || (mediaType==="audio" && !user.audioTrack)){
+      recordLiveDiagnostic("media-track-missing",diagnostic);
+      return;
+    }
+    stage="play";
     if(mediaType==="video" && user.videoTrack){
       const tile=ensureLiveTile(user);
       if(!tile){recordLiveDiagnostic("video-render-missing-container",diagnostic);return;}
@@ -3901,6 +3914,12 @@ async function subscribeLiveUser(user,mediaType,sourceClient=state.live.client,s
       await user.videoTrack.play(tile,{fit:"contain",mirror:false});
       if(!current()) return;
       recordLiveDiagnostic("video-play-requested",diagnostic);
+      const video=tile.querySelector("video");
+      if(video?.requestVideoFrameCallback){
+        video.requestVideoFrameCallback((_now,frame)=>{
+          if(current()) recordLiveDiagnostic("video-first-frame-rendered",{...diagnostic,width:frame.width,height:frame.height,presentedFrames:frame.presentedFrames,mediaVerified:true});
+        });
+      }
       liveStatusText("LIVE 영상 재생 요청됨");
     }
     if(mediaType==="audio" && user.audioTrack){
@@ -3918,7 +3937,9 @@ async function subscribeLiveUser(user,mediaType,sourceClient=state.live.client,s
     }
   }catch(e){
     if(current()){
-      recordLiveDiagnostic("stream-failed",{...diagnostic,error:liveErrorDiagnostic(e)});
+      const error=liveErrorDiagnostic(e);
+      recordLiveDiagnostic(stage==="subscribe" ? "subscribe-failed" : "media-play-failed",{...diagnostic,error});
+      recordLiveDiagnostic("stream-failed",{...diagnostic,stage,error});
       liveStatusText(`스트림 구독/재생 실패: ${safeLiveErrorDetail(e?.message || e)}`,true);
     }
   }
@@ -4013,6 +4034,7 @@ async function connectAgoraLive({candidateIndex=0}={}){
     joinSecondsRemaining:info.joinExpiresAt ? info.joinExpiresAt-now : null,
     encryptionMode:"aes-256-gcm2",encryptionKeyBytes:new TextEncoder().encode(String(room.encryptionKey || "")).length,
     encryptionSaltBytes:saltBytes(room.encryptionSalt)?.length || 0,
+    encryptionSaltDecodedBytes:liveSaltDecodedLength(room.encryptionSalt),
     secureContext:window.isSecureContext,webCrypto:!!window.crypto?.subtle};
   recordLiveDiagnostic("join-arguments",joinDiagnostic);
   if(info.version==="007" && (info.expiresAt<=now || (info.joinExpiresAt && info.joinExpiresAt<=now))){
@@ -4113,6 +4135,7 @@ async function connectAgoraLive({candidateIndex=0}={}){
   state.live.phase="agora-join";
   liveStatusText("Agora LIVE 연결 중...");
   const joinStarted=Date.now();
+  recordLiveDiagnostic("join-requested",joinDiagnostic);
   try{ await client.join(appId,channelName,token,uid); }catch(e){
     const errorDiagnostic=liveErrorDiagnostic(e);
     recordLiveDiagnostic("join-failed",{...joinDiagnostic,elapsedMs:Date.now()-joinStarted,
@@ -4318,6 +4341,7 @@ async function refreshLiveStatus({force=false,autoplay=true,silent=false}={}){
           ...liveApiOptions(entry),method:"POST",query:{channelId:entry.channelId},body:{role:"subscriber"}
         });
     if(!current()) return;
+    recordLiveDiagnostic("enter-succeeded",{mock:MOCK_LIVE_MODE});
     const data=extractLiveEnterMeta(response);
     const room=extractEnteredLiveRoom(data,entry.liveRoomId);
     if(!room){
@@ -4371,7 +4395,8 @@ async function refreshLiveStatus({force=false,autoplay=true,silent=false}={}){
       roomKeys:Object.keys(room).slice(0,20),tokenSource:issued?.source || "none",
       roomUserIdType:typeof room.user?.userId,
       encryptionKeyBytes:new TextEncoder().encode(String(room.encryptionKey || "")).length,
-      encryptionSaltBytes:saltBytes(room.encryptionSalt)?.length || 0});
+      encryptionSaltBytes:saltBytes(room.encryptionSalt)?.length || 0,
+      encryptionSaltDecodedBytes:liveSaltDecodedLength(room.encryptionSalt)});
     let token=issued?.token || "";
     if(!token){
       state.live.phase="viewer-token";

@@ -77,3 +77,14 @@ test('hidden web tab retains only one repaint and ACK waits for actual image dec
   }
   await h.context.stopLivePlayback(); assert.equal(callbacks.size,0);
 });
+test('a superseded image decoding error acknowledges its own sequence, never the newer pending frame', async () => {
+  let image; const decoders=[];
+  const grid={replaceChildren(){image=null;},append(value){image=value;}};
+  const document={querySelector:()=>null,getElementById:id=>id==='liveVideoGrid'?grid:id==='nativeLiveVideo'?image:null,
+    createElement:()=>({style:{},isConnected:true,decode:()=>new Promise((resolve,reject)=>decoders.push({resolve,reject}))})};
+  const h=setup(64,'Windows',{document}); await h.context.connectAgoraLive();
+  const frame=sequence=>h.listeners.get('message')({source:h.window,origin:'https://fffdsaw.github.io',data:{protocol:'fromm-native-v1',direction:'extension',value:{type:'frame',sequence,jpeg:'data:image/jpeg;base64,AQ=='}}});
+  frame(1);const first=image.onload();frame(2);const second=image.onload();decoders[0].reject();await first;
+  assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1]);
+  decoders[1].resolve();await second;assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1,2]);
+});

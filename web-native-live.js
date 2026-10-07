@@ -44,12 +44,15 @@
         image.style.cssText = 'display:block;width:100%;height:100%;max-height:75vh;object-fit:contain;background:#000'; grid.append(image);
       }
       const connection = nativeSequence;
+      const acknowledgeFrame = () => {
+        if (connection === nativeSequence && connection === state.live.connectionSeq && image.isConnected) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
+      };
       image.onload = async () => {
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
         try { if (image.decode) await image.decode(); }
-        catch { image.onerror(); return; }
+        catch { acknowledgeFrame(); return; }
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
-        window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
+        acknowledgeFrame();
         if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
         // At most one pending repaint, including while a web tab is hidden.
         // Several decoded images before one repaint count as one displayed frame.
@@ -66,7 +69,7 @@
           }
         });
       };
-      image.onerror = () => { if (connection === nativeSequence) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin); };
+      image.onerror = acknowledgeFrame;
       image.src = value.jpeg;
     }
   });

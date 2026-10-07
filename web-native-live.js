@@ -3,6 +3,7 @@
   const pending = new Map();
   let id = 0, nativeSequence = 0, frames = 0;
   let performanceStarted = 0, performanceFrames = 0;
+  let repaintFrame;
   const installURL = 'https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip';
   function call(method, params = {}, timeout = 25000) {
     return new Promise((resolve, reject) => {
@@ -43,11 +44,18 @@
         image.style.cssText = 'display:block;width:100%;height:100%;max-height:75vh;object-fit:contain;background:#000'; grid.append(image);
       }
       const connection = nativeSequence;
-      image.onload = () => {
+      image.onload = async () => {
+        if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
+        try { if (image.decode) await image.decode(); }
+        catch { image.onerror(); return; }
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
         window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
         if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
-        requestAnimationFrame(() => {
+        // At most one pending repaint, including while a web tab is hidden.
+        // Several decoded images before one repaint count as one displayed frame.
+        if (repaintFrame !== undefined) return;
+        repaintFrame = requestAnimationFrame(() => {
+          repaintFrame = undefined;
           if (connection !== nativeSequence || !image.isConnected) return;
           const now = performance.now();
           if (!performanceStarted) performanceStarted = now;
@@ -75,6 +83,8 @@
   };
   stopLivePlayback = async options => {
     const wasNative = nativeSequence;
+    if (repaintFrame !== undefined) cancelAnimationFrame(repaintFrame);
+    repaintFrame = undefined;
     nativeSequence = 0; frames = 0; performanceStarted = 0; performanceFrames = 0;
     const stopping = originalStop(options);
     if (wasNative) { try { await call('leave', {}, 3000); } catch {} }

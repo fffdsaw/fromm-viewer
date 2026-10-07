@@ -2,7 +2,7 @@ name: Windows LIVE connection tool
 on:
   push:
     branches: [main]
-    paths: ['native-live/**', 'chrome_extension/**', '.github/workflows/native-live-windows.yml']
+    paths: ['native-live/**', 'chrome_extension/**', 'web-native-live.js', '.github/workflows/native-live-windows.yml']
   workflow_dispatch:
 permissions:
   contents: write

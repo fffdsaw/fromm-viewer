@@ -113,7 +113,7 @@
         if (image.decode) sample('imageDecode', decodedAt - decodeStarted);
         latestDecodedAt = decodedAt;
         acknowledgeFrame();
-        if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
+        if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: !syntheticFrames, synthetic: syntheticFrames }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
         // At most one pending repaint, including while a web tab is hidden.
         // Several decoded images before one repaint count as one displayed frame.
         if (repaintFrame !== undefined) return;

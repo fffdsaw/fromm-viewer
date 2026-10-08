@@ -67,7 +67,13 @@ function createController({ join, leave, show, renew, quit, acknowledge, input =
   input.on('error', () => { clear(); leave(); quit(); });
   return {
     status(value) { send({ type: 'status', value: safeDiagnostic(value) }); if (value.stage === 'token-renew-needed') renewToken(); },
-    frame(value) { if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }); }
+    frame(value) {
+      if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) {
+        const timing = {};
+        for (const key of ['sentAt', 'nativeIpcMs']) if (Number.isFinite(value[key]) && value[key] >= 0) timing[key] = value[key];
+        send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence, ...timing, synthetic: false });
+      }
+    }
   };
 }
 module.exports = { createController };

@@ -4,6 +4,52 @@
   let id = 0, nativeSequence = 0, frames = 0;
   let performanceStarted = 0, performanceFrames = 0;
   let repaintFrame;
+  let latestDecodedAt = 0, syntheticFrames = false;
+  let rtc = null, rtcAt = 0, web = null, webAt = 0, pipeline = null, overlay, overlayTimer;
+  const rtcFields = ['receivedWidth', 'receivedHeight', 'decoderFps', 'rendererFps', 'receivedBitrateKbps',
+    'frameLossPercent', 'packetLossPercent', 'rxStreamType', 'videoE2eDelayMs', 'nativeAvSyncMs',
+    'videoFrozenMs', 'videoFrozenPercent', 'audioNetworkDelayMs', 'audioJitterBufferMs', 'audioLossPercent', 'audioBitrateKbps', 'audioE2eDelayMs'];
+  const latencyNames = ['captureEncode', 'ackRoundTrip', 'nativeIpc', 'transport', 'imageLoadDecode', 'imageDecode', 'repaintWait'];
+  const latencyFields = latencyNames.flatMap(name => [name + 'AvgMs', name + 'MaxMs', name + 'Samples']);
+  const samples = new Map();
+  function sample(name, ms) {
+    if (!Number.isFinite(ms) || ms < 0 || ms > 60000) return;
+    const v = samples.get(name) || { sum: 0, max: 0, count: 0 };
+    v.sum += ms; v.max = Math.max(v.max, ms); v.count++; samples.set(name, v);
+  }
+  function takeSamples() {
+    const out = {};
+    for (const [name, v] of samples) {
+      out[name + 'AvgMs'] = Math.round(v.sum / v.count * 10) / 10;
+      out[name + 'MaxMs'] = Math.round(v.max * 10) / 10; out[name + 'Samples'] = v.count;
+    }
+    samples.clear(); return out;
+  }
+  function metricsSnapshot() {
+    const available = nativeSequence && rtc && performance.now() - rtcAt < 6500;
+    return { sourceResolution: 'UNAVAILABLE', rtc: available ? { ...rtc } : 'UNAVAILABLE',
+      web: web && performance.now() - webAt < 6500 ? { ...web } : 'UNAVAILABLE', pipeline: pipeline ? { ...pipeline } : 'UNAVAILABLE' };
+  }
+  // Contains only allowlisted numeric measurements. No room, account or SDK callback object.
+  window.FrommLiveMetrics = metricsSnapshot;
+  function renderMetrics() {
+    const grid = document.getElementById('liveVideoGrid');
+    if (!grid?.after) return;
+    if (!overlay?.isConnected) {
+      overlay = document.createElement('details'); overlay.id = 'nativeLiveMetrics';
+      overlay.style.cssText = 'font-size:11px;opacity:.75;padding:4px 8px';
+      const summary = document.createElement('summary'); summary.textContent = 'LIVE 진단';
+      const text = document.createElement('pre'); text.style.cssText = 'white-space:pre-wrap;margin:4px 0';
+      overlay.append(summary, text); grid.after(overlay);
+      if (typeof setInterval === 'function' && overlayTimer === undefined) overlayTimer = setInterval(() => { if (overlay?.open) renderMetrics(); }, 1000);
+    }
+    const snapshot = metricsSnapshot(), r = snapshot.rtc;
+    const number = (v, suffix = '') => Number.isFinite(v) ? v + suffix : 'UNAVAILABLE';
+    const title = r === 'UNAVAILABLE' ? 'RTC UNAVAILABLE' :
+      `Received ${number(r.receivedWidth)}×${number(r.receivedHeight)} · Decode ${number(r.decoderFps, 'fps')} · Render ${number(r.rendererFps, 'fps')} · ${number(Number.isFinite(r.receivedBitrateKbps) ? Math.round(r.receivedBitrateKbps / 100) / 10 : undefined, 'Mbps')}`;
+    const w = snapshot.web;
+    overlay.lastChild.textContent = title + ` · Web ${number(w?.displayFps, 'fps')}${w?.synthetic ? ' (SYNTHETIC)' : ''}\nSource UNAVAILABLE\n` + JSON.stringify(snapshot, null, 2);
+  }
   function call(method, params = {}, timeout = 25000) {
     return new Promise((resolve, reject) => {
       const requestId = ++id;
@@ -28,12 +74,18 @@
     if (value?.type === 'status') {
       const stage = /^[a-z0-9-]{1,64}$/.test(value.value?.stage) ? value.value.stage : 'unknown';
       const details = { stage };
-      for (const key of ['code', 'width', 'height', 'keyBytes', 'saltBytes']) if (Number.isFinite(value.value[key])) details[key] = value.value[key];
+      for (const key of ['code', 'width', 'height', 'keyBytes', 'saltBytes', ...rtcFields, ...latencyFields,
+        'targetFps', 'captureFps', 'ackWaitTicks', 'ackTimeouts', 'captureMisses']) if (Number.isFinite(value.value[key])) details[key] = value.value[key];
+      if (typeof value.value.synthetic === 'boolean') details.synthetic = value.value.synthetic;
       recordLiveDiagnostic('native-' + stage, details);
+      if (stage === 'rtc-video-stats' && !details.synthetic) { rtc = details; rtcAt = performance.now(); renderMetrics(); }
+      else if (stage === 'rtc-audio-stats' && rtc) { rtc = { ...rtc, ...details, stage: 'rtc-video-stats' }; renderMetrics(); }
+      else if (stage === 'pipeline-performance') { pipeline = details; renderMetrics(); }
+      else if (stage === 'rtc-unavailable') { rtc = null; renderMetrics(); }
       if (stage === 'join-succeeded') liveStatusText('LIVE 연결됨 · 영상 스트림 대기 중');
       else if (stage === 'audio-frame') liveStatusText('LIVE 소리 수신됨 · PC 연결 도구에서 재생');
       else if (stage.includes('failed') || stage === 'encryption-error' || stage === 'native-disconnected') liveStatusText('PC LIVE ' + stage, true);
-      else if (stage === 'left') state.live.client = null;
+      else if (stage === 'left' || stage === 'native-disconnected') { state.live.client = null; rtc = null; web = null; pipeline = null; renderMetrics(); }
     }
     if (value?.type === 'frame' && Number.isSafeInteger(value.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && value.jpeg.length < 800000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg)) {
       const grid = document.getElementById('liveVideoGrid'); if (!grid) return;
@@ -43,14 +95,23 @@
         image.style.cssText = 'display:block;width:100%;height:100%;max-height:75vh;object-fit:contain;background:#000'; grid.append(image);
       }
       const connection = nativeSequence;
+      const receivedAt = performance.now();
+      syntheticFrames = value.synthetic === true;
+      sample('nativeIpc', value.nativeIpcMs);
+      sample('transport', performance.timeOrigin + receivedAt - value.sentAt);
       const acknowledgeFrame = () => {
         if (connection === nativeSequence && connection === state.live.connectionSeq && image.isConnected) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
       };
       image.onload = async () => {
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
+        const decodeStarted = performance.now();
         try { if (image.decode) await image.decode(); }
         catch { acknowledgeFrame(); return; }
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
+        const decodedAt = performance.now();
+        sample('imageLoadDecode', decodedAt - receivedAt);
+        if (image.decode) sample('imageDecode', decodedAt - decodeStarted);
+        latestDecodedAt = decodedAt;
         acknowledgeFrame();
         if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
         // At most one pending repaint, including while a web tab is hidden.
@@ -60,10 +121,15 @@
           repaintFrame = undefined;
           if (connection !== nativeSequence || !image.isConnected) return;
           const now = performance.now();
-          if (!performanceStarted) performanceStarted = now;
+          sample('repaintWait', now - latestDecodedAt);
+          // rAF is a scheduling proxy, not proof of compositor presentation.
+          if (!performanceStarted) { performanceStarted = now; performanceFrames = 0; return; }
           performanceFrames++;
           if (now - performanceStarted >= 5000) {
-            recordLiveDiagnostic('native-web-performance', { targetFps: 30, displayFps: Math.round(performanceFrames * 10000 / (now - performanceStarted)) / 10, synthetic: false });
+            web = { targetFps: 30, displayFps: Math.round(performanceFrames * 10000 / (now - performanceStarted)) / 10,
+              ...takeSamples(), synthetic: syntheticFrames };
+            webAt = now;
+            recordLiveDiagnostic('native-web-performance', web); renderMetrics();
             performanceStarted = now; performanceFrames = 0;
           }
         });
@@ -87,6 +153,8 @@
     if (repaintFrame !== undefined) cancelAnimationFrame(repaintFrame);
     repaintFrame = undefined;
     nativeSequence = 0; frames = 0; performanceStarted = 0; performanceFrames = 0;
+    rtc = null; web = null; pipeline = null; samples.clear(); overlay?.remove(); overlay = undefined;
+    if (overlayTimer !== undefined) clearInterval(overlayTimer); overlayTimer = undefined;
     const stopping = originalStop(options);
     if (wasNative) { try { await call('leave', {}, 3000); } catch {} }
     await stopping;

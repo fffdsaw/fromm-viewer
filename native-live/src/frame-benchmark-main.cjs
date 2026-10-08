@@ -137,6 +137,6 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
     allFrames++;
     if (finished || !host || host.destroyed) return;
     if (measuring) { captureMs += value.captureMs; flightTimes.set(value.sequence, performance.now()); }
-    host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }));
+    host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence, sentAt: value.sentAt, nativeIpcMs: value.nativeIpcMs, synthetic: true }));
   } };
 };

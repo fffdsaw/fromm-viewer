@@ -10,7 +10,10 @@ test('SDK remote receive fields use correct units; source resolution and identit
   assert.deepEqual(stats, { stage: 'rtc-video-stats', synthetic: false, receivedWidth: 720, receivedHeight: 1280,
     decoderFps: 30, rendererFps: 29, receivedBitrateKbps: 1600, frameLossPercent: 2, packetLossPercent: 1, rxStreamType: 0, nativeAvSyncMs: -12 });
   assert.deepEqual(safeDiagnostic(stats), stats);
-  const sdkTypes = fs.readFileSync(path.join(__dirname, '../node_modules/agora-electron-sdk/types/Private/IAgoraRtcEngine.d.ts'), 'utf8');
+});
+const sdkTypesPath = path.join(__dirname, '../node_modules/agora-electron-sdk/types/Private/IAgoraRtcEngine.d.ts');
+test('installed Agora 4.6.2 declares the mapped remote callback fields', { skip: !fs.existsSync(sdkTypesPath) }, () => {
+  const sdkTypes = fs.readFileSync(sdkTypesPath, 'utf8');
   const video = sdkTypes.split('class RemoteVideoStats')[1].split('\n}')[0];
   for (const field of ['width', 'height', 'decoderOutputFrameRate', 'rendererOutputFrameRate', 'receivedBitrate', 'packetLossRate', 'avSyncTimeMs']) assert.ok(video.includes(field + '?: number'));
 });

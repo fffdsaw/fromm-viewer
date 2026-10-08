@@ -1,5 +1,6 @@
 // Browser LIVE integration. The normal Viewer API/UI remains authoritative.
 (() => {
+  const desktop = window.frommDesktop;
   const pending = new Map();
   let id = 0, nativeSequence = 0, frames = 0;
   let performanceStarted = 0, performanceFrames = 0;
@@ -51,6 +52,10 @@
     overlay.lastChild.textContent = title + ` · Web ${number(w?.displayFps, 'fps')}${w?.synthetic ? ' (SYNTHETIC)' : ''}\nSource UNAVAILABLE\n` + JSON.stringify(snapshot, null, 2);
   }
   function call(method, params = {}, timeout = 25000) {
+    if (desktop) return desktop.nativeCall(method, params).then(value => {
+      if (!value.ok) throw new Error(/^[A-Z_]{1,64}$/.test(value.code) ? value.code : 'NATIVE_FAILED');
+      return value;
+    });
     return new Promise((resolve, reject) => {
       const requestId = ++id;
       const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('PC LIVE 연결 도구와 새 확장프로그램을 설치한 뒤 웹을 새로고침해주세요.')); }, timeout);
@@ -58,10 +63,7 @@
       window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: requestId, method, params } }, location.origin);
     });
   }
-  window.addEventListener('message', event => {
-    const m = event.data;
-    if (event.source !== window || event.origin !== location.origin || m?.protocol !== 'fromm-native-v1' || m.direction !== 'extension') return;
-    const value = m.value;
+  function receive(value) {
     if (Number.isSafeInteger(value?.id) && pending.has(value.id)) {
       const p = pending.get(value.id); clearTimeout(p.timer); pending.delete(value.id);
       value.ok ? p.resolve(value) : p.reject(new Error('PC LIVE 연결 실패 · ' + (/^[A-Z_]{1,64}$/.test(value.code) ? value.code : 'NATIVE_FAILED')));
@@ -83,6 +85,7 @@
       else if (stage === 'pipeline-performance') { pipeline = details; renderMetrics(); }
       else if (stage === 'rtc-unavailable') { rtc = null; renderMetrics(); }
       if (stage === 'join-succeeded') liveStatusText('LIVE 연결됨 · 영상 스트림 대기 중');
+      else if (stage === 'token-renew-needed' && desktop) renewLiveToken();
       else if (stage === 'audio-frame') liveStatusText('LIVE 소리 수신됨 · PC 연결 도구에서 재생');
       else if (stage.includes('failed') || stage === 'encryption-error' || stage === 'native-disconnected') liveStatusText('PC LIVE ' + stage, true);
       else if (stage === 'left' || stage === 'native-disconnected') { state.live.client = null; rtc = null; web = null; pipeline = null; renderMetrics(); }
@@ -100,7 +103,9 @@
       sample('nativeIpc', value.nativeIpcMs);
       sample('transport', performance.timeOrigin + receivedAt - value.sentAt);
       const acknowledgeFrame = () => {
-        if (connection === nativeSequence && connection === state.live.connectionSeq && image.isConnected) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
+        if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
+        if (desktop) { void call('frame-ack', { sequence: value.sequence }).catch(() => {}); return; }
+        window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'frame-ack', params: { sequence: value.sequence } } }, location.origin);
       };
       image.onload = async () => {
         if (connection !== nativeSequence || connection !== state.live.connectionSeq || !image.isConnected) return;
@@ -113,7 +118,7 @@
         if (image.decode) sample('imageDecode', decodedAt - decodeStarted);
         latestDecodedAt = decodedAt;
         acknowledgeFrame();
-        if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: true }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
+        if (frames++ === 0) { recordLiveDiagnostic('native-web-frame', { mediaVerified: !syntheticFrames, synthetic: syntheticFrames }); liveStatusText('LIVE 재생 중 · PC 소리 출력'); }
         // At most one pending repaint, including while a web tab is hidden.
         // Several decoded images before one repaint count as one displayed frame.
         if (repaintFrame !== undefined) return;
@@ -137,13 +142,19 @@
       image.onerror = acknowledgeFrame;
       image.src = value.jpeg;
     }
+  }
+  if (desktop) desktop.onMessage(receive);
+  else window.addEventListener('message', event => {
+    const m = event.data;
+    if (event.source !== window || event.origin !== location.origin || m?.protocol !== 'fromm-native-v1' || m.direction !== 'extension') return;
+    receive(m.value);
   });
   const originalEncryption = liveEncryptionCandidates;
   const originalConnect = connectAgoraLive;
   const originalStop = stopLivePlayback;
   const originalAudio = resumeLiveAudio;
   liveEncryptionCandidates = room => {
-    if (typeof room?.encryptionKey === 'string' && new TextEncoder().encode(room.encryptionKey).length > 62) {
+    if (typeof room?.encryptionKey === 'string' && (desktop || new TextEncoder().encode(room.encryptionKey).length > 62)) {
       return [{ mode: 'aes-256-gcm2', key: room.encryptionKey, salt: decodeLiveEncryptionSalt(room.encryptionSalt), native: true }];
     }
     return originalEncryption(room);
@@ -157,12 +168,13 @@
     if (overlayTimer !== undefined) clearInterval(overlayTimer); overlayTimer = undefined;
     const stopping = originalStop(options);
     if (wasNative) { try { await call('leave', {}, 3000); } catch {} }
+    if (desktop && options?.clearRoom) await desktop.reset();
     await stopping;
   };
   connectAgoraLive = async options => {
     const room = state.live.room;
-    if (!room || typeof room.encryptionKey !== 'string' || new TextEncoder().encode(room.encryptionKey).length <= 62) return originalConnect(options);
-    if (!/Windows/i.test(navigator.userAgent)) throw new Error('이 방송은 Windows PC LIVE 연결 도구로 시청할 수 있습니다.');
+    if (!room || typeof room.encryptionKey !== 'string' || (!desktop && new TextEncoder().encode(room.encryptionKey).length <= 62)) return originalConnect(options);
+    if (!desktop && !/Windows/i.test(navigator.userAgent)) throw new Error('이 방송은 Windows PC LIVE 연결 도구로 시청할 수 있습니다.');
     resolveAgoraJoinArgs(room, state.live.tokenInfo, state.live.currentLiveRoomId);
     const requestSeq = state.live.requestSeq, generation = state.scanGeneration;
     await stopLivePlayback();
@@ -175,12 +187,17 @@
     state.live.audioBlocked = false;
     liveStatusText('PC LIVE 연결 중...');
     try {
-      await call('join', { roomId: room.id, channelId: state.live.entry.channelId, uuid: auth.uuid, authToken: auth.token }, 35000);
+      await call('join', desktop ? { roomId: room.id } : { roomId: room.id, channelId: state.live.entry.channelId, uuid: auth.uuid, authToken: auth.token }, 35000);
       if (seq !== state.live.connectionSeq || requestSeq !== state.live.requestSeq) return;
-      state.live.client = { removeAllListeners() {}, leave: async () => {}, remoteUsers: [] };
+      state.live.client = { removeAllListeners() {}, leave: async () => {}, remoteUsers: [],
+        ...(desktop ? { renewToken: async () => { const r = await desktop.renew(); if (!r.ok) throw new Error(r.code); } } : {}) };
       liveStatusText('LIVE 연결 요청됨 · 영상 스트림 대기 중');
     } catch (error) { nativeSequence = 0; throw error; }
   };
   resumeLiveAudio = () => nativeSequence ? call('show', {}, 3000) : originalAudio();
-  window.addEventListener('pagehide', () => { if (nativeSequence) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'leave' } }, location.origin); });
+  window.addEventListener('pagehide', () => {
+    if (!nativeSequence) return;
+    if (desktop) { void call('leave').catch(() => {}); return; }
+    window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'leave' } }, location.origin);
+  });
 })();

@@ -7,7 +7,8 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   const ses = session.fromPartition('fromm-frame-benchmark', { cache: false });
   ses.protocol.handle('fromm', request => {
     const u = new URL(request.url);
-    const file = u.pathname === '/index.html' ? path.join(root, 'test/frame-benchmark.html') : u.pathname === '/web-native-live.js' ? path.join(root, '../web-native-live.js') : null;
+    const adapter = fs.existsSync(path.join(root, 'ui/web-native-live.js')) ? path.join(root, 'ui/web-native-live.js') : path.join(root, '../web-native-live.js');
+    const file = u.pathname === '/index.html' ? path.join(root, 'test/frame-benchmark.html') : u.pathname === '/web-native-live.js' ? adapter : null;
     if (u.host !== 'benchmark' || !file) return new Response('', { status: 404 });
     return new Response(fs.readFileSync(file), { headers: { 'content-type': file.endsWith('.js') ? 'text/javascript' : 'text/html' } });
   });

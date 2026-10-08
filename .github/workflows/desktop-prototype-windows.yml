@@ -1,0 +1,47 @@
+name: Windows desktop prototype
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['native-live/**', 'index.html', 'web-native-live.js', '.github/workflows/desktop-prototype-windows.yml']
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned runtime
+        working-directory: native-live
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node node_modules/electron/install.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run prepare-ui
+      - name: Test routing and credential boundary
+        run: node --test native-live/test/*.test.cjs
+      - name: Test current desktop UI and reject unauthorized joins
+        working-directory: native-live
+        run: |
+          node -e 'const cp=require("child_process"),p=require("path");const r=cp.spawnSync(p.resolve("node_modules/electron/dist/electron.exe"),[process.cwd(),"--ui-smoke"],{encoding:"utf8",timeout:30000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("ui-smoke-passed"))throw Error("DESKTOP_UI_SMOKE_FAILED");'
+      - name: Build portable single executable (no publishing)
+        working-directory: native-live
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run desktop:build
+      - name: Test packaged Native addon (no LIVE or credentials)
+        working-directory: native-live
+        run: |
+          node -e 'const cp=require("child_process"),p=require("path");const r=cp.spawnSync(p.resolve("dist/win-unpacked/Fromm Viewer.exe"),["--self-test"],{encoding:"utf8",timeout:30000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("self-test-passed"))throw Error("PACKAGED_SELF_TEST_FAILED");'
+      # Real Windows benchmark; still synthetic and not an RTC LIVE check.
+      - name: Measure packaged offline frame pipeline
+        working-directory: native-live
+        run: |
+          node -e 'const cp=require("child_process"),p=require("path");const r=cp.spawnSync(p.resolve("dist/win-unpacked/Fromm Viewer.exe"),["--frame-benchmark"],{encoding:"utf8",timeout:25000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("frame-benchmark-passed"))throw Error("PACKAGED_BENCHMARK_FAILED");'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fromm-viewer-desktop-prototype
+          path: native-live/dist/Fromm Viewer.exe

@@ -5,7 +5,6 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { apiRequest, enterEnvelope, token007, safeDiagnostic, fail } = require('./contracts.cjs');
 const ROOT = path.resolve(__dirname, '..');
-const BASELINE_HASH = '12be0bed8cce3ecd5f32dda2ed0dd8dab96413159e143b0f398fb04d8b2ad481';
 const SELF_TEST = process.argv.includes('--self-test');
 const FRAME_BENCHMARK = process.argv.includes('--frame-benchmark');
 const UI_SMOKE = process.argv.includes('--ui-smoke');
@@ -26,7 +25,7 @@ const statusHistory = [];
 function status(value) {
   const safe = safeDiagnostic(value);
   statusHistory.push(safe); if (statusHistory.length > 100) statusHistory.shift();
-  if (viewer && !viewer.isDestroyed()) viewer.webContents.send('live:status', safe);
+  if (viewer && !viewer.isDestroyed()) { viewer.webContents.send('live:status', safe); viewer.webContents.send('live:message', { type: 'status', value: safe }); }
   if (SELF_TEST || MONITOR || FRAME_BENCHMARK) process.stdout.write(JSON.stringify(safe) + '\n');
   nativeController?.status(safe);
 }
@@ -47,7 +46,19 @@ function lockedWindow(options) {
     ...options.webPreferences, nodeIntegration: false, contextIsolation: true, webSecurity: true,
     devTools: false, spellcheck: false
   } });
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    // Preserve the existing media-download fallback without exposing a new
+    // navigable window or a generic native URL opener.
+    if (window === viewer) {
+      try {
+        const u = new URL(url);
+        if (u.protocol === 'https:' && !u.username && !u.password && !u.port &&
+          ['frommyarti.com', 'cloudfront.net', 'amazonaws.com'].some(host => u.hostname === host || u.hostname.endsWith('.' + host)))
+          window.webContents.downloadURL(url);
+      } catch {}
+    }
+    return { action: 'deny' };
+  });
   window.webContents.on('will-navigate', event => event.preventDefault());
   return window;
 }
@@ -76,7 +87,14 @@ ipcMain.on('player:frame', (event, value) => {
     const nativeIpcMs = now - value?.sentAt;
     const frame = { ...value, sentAt: now, nativeIpcMs: nativeIpcMs >= 0 && nativeIpcMs < 60000 ? nativeIpcMs : undefined };
     nativeController?.frame(frame); frameBenchmark?.frame(frame);
+    if (viewer && !viewer.isDestroyed() && cachedEntry) viewer.webContents.send('live:message', {
+      type: 'frame', jpeg: value.jpeg, sequence: value.sequence, sentAt: frame.sentAt, nativeIpcMs: frame.nativeIpcMs, synthetic: false
+    });
   }
+});
+ipcMain.on('live:frame-ack', (event, value) => {
+  if (senderIs(event, viewer, 'fromm://viewer/index.html') && cachedEntry && player && !player.isDestroyed() && Number.isSafeInteger(value?.sequence) && value.sequence > 0)
+    player.webContents.send('player:frame-ack', { sequence: value.sequence });
 });
 // Network bridge is restricted to three official Fromm API hosts. No generic native fetch API.
 ipcMain.handle('fromm:request', async (event, input) => {
@@ -129,8 +147,9 @@ ipcMain.handle('live:join', async (event, input) => {
     const entry = cachedEntry, serial = ++commandSerial;
     await ensurePlayer();
     if (cachedEntry !== entry || serial !== commandSerial) fail('JOIN_CANCELLED');
-    player.show(); player.focus();
-    player.webContents.send('player:command', { type: 'join', payload: entry.payload });
+    // Desktop shows video inline; the existing isolated Agora player supplies audio.
+    player.hide();
+    player.webContents.send('player:command', { type: 'join', payload: entry.payload, inlineVideo: true });
     return { ok: true };
   } catch (e) { return { ok: false, code: /^[A-Z_]{1,64}$/.test(e?.code) ? e.code : 'NATIVE_JOIN_FAILED' }; }
 });
@@ -147,20 +166,22 @@ ipcMain.handle('live:renew', event => {
 });
 function setupSession(partition) {
   const ses = session.fromPartition(partition, { cache: false }); // no persist: prefix; login session stays in memory
-  ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-  ses.setPermissionCheckHandler(() => false);
+  // Existing bulk media save uses Chromium's user-selected directory picker.
+  // Only our locked Viewer can obtain fileSystem access; Chromium's sensitive
+  // path restrictions still apply. Camera/microphone remain denied.
+  const permissionAllowed = (wc, permission) => viewer && wc === viewer.webContents &&
+    wc.getURL() === 'fromm://viewer/index.html' && ['fileSystem', 'clipboard-sanitized-write', 'fullscreen'].includes(permission);
+  ses.setPermissionRequestHandler((wc, permission, callback) => callback(!!permissionAllowed(wc, permission)));
+  ses.setPermissionCheckHandler((wc, permission) => !!permissionAllowed(wc, permission));
   ses.protocol.handle('fromm', request => {
     const u = new URL(request.url);
     const files = {
       'viewer/fetch-adapter.js': ['fetch-adapter.js', 'text/javascript'],
-      'viewer/live-adapter.js': ['live-adapter.js', 'text/javascript'],
+      'viewer/web-native-live.js': ['../ui/web-native-live.js', 'text/javascript'],
       'player/player.html': ['player.html', 'text/html']
     };
     if (u.host === 'viewer' && u.pathname === '/index.html') {
-      const baseline = fs.readFileSync(path.join(ROOT, 'vendor', 'index.html'));
-      if (crypto.createHash('sha256').update(baseline).digest('hex') !== BASELINE_HASH) return new Response('BASELINE_HASH_MISMATCH', { status: 409 });
-      const html = baseline.toString('utf8').replace('<head>', '<head><script src="fromm://viewer/fetch-adapter.js"></script>')
-        .replace('</body>', '<script src="fromm://viewer/live-adapter.js"></script></body>');
+      const html = fs.readFileSync(path.join(ROOT, 'ui', 'index.html'), 'utf8');
       return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
     }
     const item = files[u.host + u.pathname];
@@ -168,9 +189,18 @@ function setupSession(partition) {
     return new Response(fs.readFileSync(path.join(__dirname, item[0])), { headers: { 'content-type': item[1] + '; charset=utf-8', 'cache-control': 'no-store' } });
   });
   // Only CDN media transport for this private Viewer session, same as its companion CORS extension.
+  ses.webRequest.onBeforeSendHeaders({ urls: ['https://*.frommyarti.com/*'] }, (details, callback) => {
+    const headers = { ...details.requestHeaders };
+    headers.Origin = 'https://channel.frommyarti.com'; headers.Referer = 'https://channel.frommyarti.com/';
+    if (new URL(details.url).hostname === 'channel-contents.frommyarti.com') {
+      headers['User-Agent'] = 'Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
+      headers['X-Requested-With'] = 'com.knowmerce.fromm.fan';
+    }
+    callback({ requestHeaders: headers });
+  });
   ses.webRequest.onHeadersReceived({ urls: ['https://*.frommyarti.com/*', 'https://*.cloudfront.net/*', 'https://*.amazonaws.com/*'] }, (details, callback) => {
     const headers = { ...details.responseHeaders };
-    for (const k of Object.keys(headers)) if (k.toLowerCase() === 'access-control-allow-origin') delete headers[k];
+    for (const k of Object.keys(headers)) if (['access-control-allow-origin', 'cross-origin-resource-policy'].includes(k.toLowerCase())) delete headers[k];
     headers['Access-Control-Allow-Origin'] = ['fromm://viewer'];
     headers['Access-Control-Allow-Methods'] = ['GET, HEAD, OPTIONS'];
     headers['Access-Control-Allow-Headers'] = ['Authorization, Content-Type, Accept, uuid, channel-id, X-Requested-With'];
@@ -215,14 +245,14 @@ app.whenReady().then(async () => {
     } });
     setTimeout(() => app.exit(2), 25000);
   } else {
-    viewer = lockedWindow({ title: 'Fromm Viewer 1.06 · Native prototype', width: 1360, height: 960,
+    viewer = lockedWindow({ title: 'Fromm Viewer · Desktop preview', width: 1360, height: 960,
       show: !UI_SMOKE,
       webPreferences: { session: viewerSession, preload: path.join(__dirname, 'viewer-preload.cjs'), sandbox: true } });
     viewer.on('closed', () => { viewer = null; clearEntry(); if (player && !player.isDestroyed()) player.close(); });
     await viewer.loadURL('fromm://viewer/index.html');
     if (!UI_SMOKE) { viewer.show(); viewer.focus(); status({ stage: 'viewer-ready' }); }
     if (UI_SMOKE) {
-      const checks = await viewer.webContents.executeJavaScript(`(async () => ({ overlay: typeof frommDesktop === 'object' && document.querySelector('#viewerBuildLabel')?.textContent === '1.06 · Native 실험판' && connectAgoraLive.toString().includes('frommDesktop.join') && window.isSecureContext, joinCode: (await frommDesktop.join('synthetic-room')).code, apiCode: (await frommDesktop.request({url:'https://denied.invalid/'})).code, fetchOverlay: nativeViewerFetch.toString().includes('native code') === false }))()`);
+      const checks = await viewer.webContents.executeJavaScript(`(async () => ({ overlay: typeof frommDesktop === 'object' && connectAgoraLive.toString().includes('desktop') && window.isSecureContext && typeof FrommLiveMetrics === 'function', joinCode: (await frommDesktop.join('synthetic-room')).code, apiCode: (await frommDesktop.request({url:'https://denied.invalid/'})).code, fetchOverlay: nativeViewerFetch.toString().includes('native code') === false }))()`);
       const ok = checks.overlay && checks.joinCode === 'AUTHORIZED_ENTER_REQUIRED' && checks.apiCode === 'API_TARGET_DENIED';
       process.stdout.write(JSON.stringify({ stage: ok ? 'ui-smoke-passed' : 'ui-smoke-failed', checks }) + '\n');
       app.exit(ok ? 0 : 1);

@@ -4,13 +4,35 @@
   "private": true,
   "main": "src/main.cjs",
   "scripts": {
-    "start": "electron .",
+    "prepare-ui": "node scripts/prepare-ui.cjs",
+    "start": "npm run prepare-ui && electron .",
+    "desktop:build": "npm run prepare-ui && electron-builder --win portable --x64 --publish never",
     "self-test": "electron . --self-test",
     "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
-    "agora-electron-sdk": "4.6.2",
-    "electron": "44.6.0"
+    "agora-electron-sdk": "4.6.2"
+  },
+  "devDependencies": {
+    "electron": "44.6.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.fromm.viewer.desktop",
+    "productName": "Fromm Viewer",
+    "artifactName": "Fromm Viewer.exe",
+    "asar": true,
+    "asarUnpack": ["node_modules/agora-electron-sdk/build/**"],
+    "npmRebuild": false,
+    "beforePack": "scripts/verify-runtime.cjs",
+    "files": ["src/**", "ui/**", "test/frame-benchmark.html", "package.json", "extension-identity.json", "!**/*.log", "!**/*.dmp"],
+    "win": {
+      "target": [{"target": "portable", "arch": ["x64"]}],
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "requestExecutionLevel": "user"
+    }
   },
   "agora_electron": {
     "prebuilt": true,

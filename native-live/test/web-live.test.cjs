@@ -8,7 +8,7 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
   const listeners = new Map(), calls = [], diagnostics = [];
   let webJoins = 0;
   const state = { live: { room: { id: 'room', encryptionKey: 'x'.repeat(keyBytes), encryptionSalt: 'synthetic' }, tokenInfo: {}, currentLiveRoomId: 'room', entry: { channelId: 'channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
-  const window = { addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
+  const window = { frommDesktop: options.desktop, addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
     calls.push(message.value);
     queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
   } };
@@ -23,6 +23,20 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
 }
 test('web-compatible keys keep original Web playback path', async () => {
   for (const size of [32, 62]) { const h = setup(size); await h.context.connectAgoraLive(); assert.equal(h.webJoins(), 1); assert.equal(h.calls.length, 0); }
+});
+test('desktop reuses Native frame ACK path without extension or handing arbitrary credentials to join', async () => {
+  const calls = []; let receive;
+  const desktop = { nativeCall: async (method, params) => { calls.push({ method, params }); return { ok: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.8' }; },
+    onMessage: fn => { receive = fn; }, reset: async () => {}, renew: async () => ({ ok: true }) };
+  let image;
+  const document = { querySelector: () => null, getElementById: id => id === 'liveVideoGrid' ? { replaceChildren() {}, append: i => { image = i; } } : id === 'nativeLiveVideo' ? image : null,
+    createElement: () => ({ style: {}, isConnected: true }) };
+  const h = setup(32, 'Electron', { desktop, document });
+  await h.context.connectAgoraLive(); assert.equal(h.webJoins(), 0); assert.equal(h.calls.length, 0);
+  assert.deepEqual(Object.keys(calls.find(c => c.method === 'join').params), ['roomId']);
+  receive({ type: 'frame', sequence: 1, jpeg: 'data:image/jpeg;base64,AQ==' }); await image.onload();
+  assert.equal(calls.at(-1).method, 'frame-ack');
+  await h.context.stopLivePlayback(); assert.equal(calls.at(-1).method, 'leave');
 });
 test('RTC receive measurements stay separate from web display and arbitrary callback secrets are discarded', async () => {
   const h = setup(); await h.context.connectAgoraLive();

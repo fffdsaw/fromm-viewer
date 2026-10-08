@@ -2,3 +2,5 @@ node_modules/
 *.log
 *.dmp
 *.zip
+ui/
+dist/

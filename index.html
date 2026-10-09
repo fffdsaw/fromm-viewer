@@ -1292,6 +1292,7 @@ html.image-lightbox-open { overflow-y:hidden; }
 // List, selection, playback and request generations are independent of Replay.
 const channelVideoState = {
   channelId: "", pages: new Map(), loading: false, error: "", requestSeq: 0,
+  notice: "", loadingMessage: "", requestAbort: null,
   selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false,
 };
 
@@ -1330,15 +1331,57 @@ function stopChannelVideoPlayback() {
 function resetChannelVideos() {
   stopChannelVideoPlayback();
   channelVideoState.requestSeq++;
+  channelVideoState.requestAbort?.abort();
   channelVideoState.pages.clear();
   channelVideoState.channelId = "";
   channelVideoState.loading = false;
   channelVideoState.error = "";
+  channelVideoState.notice = "";
+}
+
+async function channelVideoListRequest(path, options, current, validate = value => value) {
+  const s = channelVideoState;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!current()) return null;
+    if (attempt) {
+      s.loadingMessage = "연결을 다시 확인하고 있습니다...";
+      const status = $("#channelLoadStatus");
+      if (status) status.textContent = s.loadingMessage;
+      await sleep(300 * attempt);
+      if (!current()) return null;
+    }
+    const controller = new AbortController();
+    s.requestAbort = controller;
+    let timer;
+    try {
+      const timeout = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          const error = new Error("응답이 늦어지고 있습니다. 다시 시도해주세요.");
+          error.status = 408;
+          reject(error);
+        }, 15000);
+      });
+      const response = await Promise.race([
+        frommApiRequest(path, {...options, signal: controller.signal}), timeout,
+      ]);
+      if (!current()) return null;
+      return validate(response);
+    } catch (e) {
+      if (!current()) return null;
+      // Permission/client errors need user action, not repeated requests.
+      const status = Number(e?.status || 0);
+      if (attempt === 2 || (status >= 400 && status < 500 && status !== 408 && status !== 429)) throw e;
+    } finally {
+      clearTimeout(timer);
+      if (s.requestAbort === controller) s.requestAbort = null;
+    }
+  }
 }
 
 async function channelVideoChannels(current) {
   if (state.live.channelsLoaded) return state.live.channels;
-  const response = await frommApiRequest("/channels", {base: FROMM_CHANNEL_API_BASE});
+  const response = await channelVideoListRequest("/channels", {base: FROMM_CHANNEL_API_BASE}, current);
   if (!current()) return [];
   const raw = response?.data?.channels || response?.channels || response?.result?.channels;
   if (!Array.isArray(raw)) throw new Error("구독 채널 목록 응답을 확인하지 못했습니다.");
@@ -1356,10 +1399,20 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
   const s = channelVideoState;
   if (s.loading && !refresh) return;
   const seq = ++s.requestSeq;
+  s.requestAbort?.abort();
   const sameSession = channelVideoSession();
   const current = () => seq === s.requestSeq && sameSession();
+  if (!sameSession()) {
+    s.loading = false;
+    s.error = "로그인 세션을 확인한 뒤 다시 시도해주세요.";
+    s.notice = "";
+    if (channelVideosActive()) renderLiveView();
+    return;
+  }
   s.loading = true;
   s.error = "";
+  s.notice = "";
+  s.loadingMessage = loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
   if (channelVideosActive()) renderLiveView();
   try {
     const channels = await channelVideoChannels(current);
@@ -1375,40 +1428,54 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
     if (page?.loaded && !loadMore) return;
     if (loadMore && page?.isLast) return;
     page ||= {posts: [], lastPost: null, loaded: false, isLast: false};
-    const query = {labelId: 0, channelId: channel.id, limit: 50};
-    if (loadMore && page.lastPost) {
-      query.postId = page.lastPost.id;
-      query.num = page.lastPost.num;
-      query.displayStartAt = page.lastPost.displayStartAt;
-    }
-    const response = await frommApiRequest("/media/posts", {
-      base: FROMM_CHANNEL_API_BASE, channelId: channel.id, query,
-    });
-    if (!current() || channel.id !== s.channelId) return;
-    const data = response?.data || response?.result || response;
-    if (!Array.isArray(data?.posts)) throw new Error("채널 영상 목록 응답을 확인하지 못했습니다.");
-    const raw = data.posts;
-    const cursor = raw.at(-1);
-    const repeated = cursor && page.lastPost && cursor.id === page.lastPost.id &&
-      cursor.num === page.lastPost.num && cursor.displayStartAt === page.lastPost.displayStartAt;
-    if (loadMore && repeated && data.isLast !== true) throw new Error("목록의 다음 페이지를 확인하지 못했습니다. 새로고침해주세요.");
-    const posts = new Map(page.posts.map(p => [String(p.id), p]));
-    for (const p of raw) {
-      if (p?.id != null && p.type === "video" && p.isVisible !== false) {
-        posts.set(String(p.id), {...p, _channelId: channel.id, _channelName: channel.channelName});
+    const initialCount = page.posts.length;
+    const cursorKey = post => post ? JSON.stringify([String(post.id), String(post.num), String(post.displayStartAt)]) : "";
+    const seen = new Set(page.lastPost ? [cursorKey(page.lastPost)] : []);
+    // A mixed page may contain only Replay/hidden/duplicate posts. Continue
+    // until the grid gains an upload, but bound the work for sparse feeds.
+    for (let scanned = 0; scanned < 5; scanned++) {
+      if (!current() || channel.id !== s.channelId) return;
+      const query = {labelId: 0, channelId: channel.id, limit: 50};
+      if (page.lastPost) {
+        query.postId = page.lastPost.id;
+        query.num = page.lastPost.num;
+        query.displayStartAt = page.lastPost.displayStartAt;
       }
+      const data = await channelVideoListRequest("/media/posts", {
+        base: FROMM_CHANNEL_API_BASE, channelId: channel.id, query,
+      }, current, response => {
+        const data = response?.data || response?.result || response;
+        if (!Array.isArray(data?.posts)) throw new Error("채널 영상 목록 응답을 확인하지 못했습니다.");
+        if (!data.posts.length && data.isLast === false) throw new Error("목록 응답이 잠시 비어 있습니다. 다시 시도해주세요.");
+        const cursor = data.posts.at(-1);
+        if (cursor && seen.has(cursorKey(cursor)) && data.isLast !== true) throw new Error("목록의 다음 페이지를 확인하지 못했습니다. 다시 시도해주세요.");
+        return data;
+      });
+      if (!current() || channel.id !== s.channelId) return;
+      const raw = data.posts;
+      const cursor = raw.at(-1);
+      const posts = new Map(page.posts.map(p => [String(p.id), p]));
+      for (const p of raw) {
+        if (p?.id != null && p.type === "video" && p.isVisible !== false) {
+          posts.set(String(p.id), {...p, _channelId: channel.id, _channelName: channel.channelName});
+        }
+      }
+      page.posts = [...posts.values()].sort((a, b) => Number(b.displayStartAt || 0) - Number(a.displayStartAt || 0));
+      // Commit only successful pages. Retry a failed page at its same cursor.
+      page.lastPost = cursor || page.lastPost;
+      page.isLast = data.isLast === true || raw.length === 0;
+      page.loaded = true;
+      s.pages.set(channel.id, page);
+      if (cursor) seen.add(cursorKey(cursor));
+      if (page.posts.length > initialCount || page.isLast) break;
     }
-    page.posts = [...posts.values()].sort((a, b) => Number(b.displayStartAt || 0) - Number(a.displayStartAt || 0));
-    // Advance with the last RAW post, including live_record/hidden entries.
-    // An empty uploaded-video grid does not mean the mixed feed is exhausted.
-    page.lastPost = cursor || page.lastPost;
-    page.isLast = data.isLast === true || raw.length === 0;
-    page.loaded = true;
-    s.pages.set(channel.id, page);
+    if (page.posts.length === initialCount) {
+      s.notice = page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 더 불러오기를 누르면 이어서 확인합니다.";
+    }
   } catch (e) {
     if (current()) s.error = safeErrorDetail(e?.message || "채널 영상을 불러오지 못했습니다.");
   } finally {
-    if (current()) {
+    if (seq === s.requestSeq) {
       s.loading = false;
       if (channelVideosActive()) renderLiveView();
     }
@@ -1420,8 +1487,10 @@ async function selectChannelVideos(channelId) {
   stopChannelVideoPlayback();
   const s = channelVideoState;
   s.requestSeq++;
+  s.requestAbort?.abort();
   s.loading = false;
   s.error = "";
+  s.notice = "";
   s.channelId = String(channelId);
   renderLiveView();
   await loadChannelVideos();
@@ -1450,8 +1519,9 @@ function renderChannelVideosView() {
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
-    if (!s.loading && s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast)) {
-      body += `<button id="channelLoadMore" class="btn replay-more" type="button">${s.error ? "다시 시도" : "더 불러오기"}</button>`;
+    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice)}</p>`;
+    if (s.loading || s.error || (s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast))) {
+      body += `<button id="channelLoadMore" class="btn replay-more" type="button" ${s.loading ? 'disabled aria-busy="true"' : ""}>${s.loading ? "불러오는 중..." : s.error ? "다시 시도" : "더 불러오기"}</button>`;
     }
   }
   $("#timeline").innerHTML = `<div class="live-shell replay-list-shell channel-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
@@ -2527,7 +2597,7 @@ async function frommApiJson(path, query=null){
 // ---------- v59 · Fromm Live ----------
 const AGORA_WEB_SDK_URL = "https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js";
 
-async function frommApiRequest(path,{method="GET",query=null,body=null,base=FROMM_API_BASE,channelId=""}={}){
+async function frommApiRequest(path,{method="GET",query=null,body=null,base=FROMM_API_BASE,channelId="",signal=null}={}){
   const auth = currentAuth();
   if(!auth.token || !auth.uuid){
     throw new Error("토큰과 Device ID를 먼저 연결해주세요.");
@@ -2556,7 +2626,8 @@ async function frommApiRequest(path,{method="GET",query=null,body=null,base=FROM
       method,
       headers,
       body: body === null ? undefined : JSON.stringify(body),
-      cache:"no-store"
+      cache:"no-store",
+      ...(signal ? {signal} : {})
     });
   }catch(e){
     throw friendlyNetworkError(e);

@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', 'test/direct-selection*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -38,6 +38,7 @@ jobs:
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
           node test/direct-selection.browser.cjs
+          node test/selection-gestures.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

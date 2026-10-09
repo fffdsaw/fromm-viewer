@@ -18,7 +18,8 @@ function setup(overrides = {}) {
   const calls = [], alerts = [];
   let auth = {token: 'synthetic-session', uuid: 'synthetic-device', accountKey: 'synthetic-account'};
   const state = {filter: 'live', room: null, live: {centerMode: 'channel', entry: {}, channels: [], channelsLoaded: false, replayPosts: [{id: 'existing-replay'}], replaySelected: {id: 'existing-player'}, replayPlaylistCache: new Map()}};
-  const context = vm.createContext({state, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl,
+  const context = vm.createContext({state, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
+    sleep: async () => {},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
     window: {addEventListener() {}, alert: message => alerts.push(message), crypto: webcrypto},
@@ -97,11 +98,113 @@ test('preferred existing channel selection is reused, per-channel pages stay sep
 });
 
 test('auth failure remains retryable and does not populate content', async () => {
-  const h = setup({frommApiRequest: async () => {throw new Error('HTTP 403');}});
+  let requests = 0;
+  const h = setup({frommApiRequest: async () => {requests++; throw Object.assign(new Error('HTTP 403'), {status: 403});}});
   await h.context.loadChannelVideos();
   assert.match(h.s.error, /403/);
   assert.equal(h.s.loading, false);
   assert.equal(h.s.pages.size, 0);
+  assert.equal(requests, 1);
+});
+
+test('one load-more skips Replay-only, hidden and duplicate-only pages until a new upload appears', async () => {
+  const h = setup(); await h.context.loadChannelVideos();
+  const cursors = [];
+  h.context.frommApiRequest = async (_api, options) => {
+    cursors.push(options.query.postId);
+    const posts = options.query.postId === 'r1' ? [{id: 'r2', type: 'live_record'}]
+      : options.query.postId === 'r2' ? [{id: 'v1', type: 'video', displayStartAt: 100}, {id: 'hidden', type: 'video', isVisible: false}, {id: 'r3', type: 'live_record'}]
+        : [{id: 'v2', type: 'video', displayStartAt: 50}];
+    return {data: {posts, isLast: false}};
+  };
+  await h.context.loadChannelVideos({loadMore: true});
+  assert.deepEqual(cursors, ['r1', 'r2', 'r3']);
+  assert.deepEqual(Array.from(h.s.pages.get('a').posts, p => p.id), ['v1', 'v2']);
+  assert.equal(h.s.error, ''); assert.equal(h.s.notice, ''); assert.equal(h.s.loading, false);
+});
+
+test('first load automatically passes a Replay-only page', async () => {
+  let pages = 0;
+  const h = setup({frommApiRequest: async api => api === '/channels' ? {data: {channels: [{id: 'a', isSubscribed: true}]}}
+    : {data: {posts: ++pages === 1 ? [{id: 'r1', type: 'live_record'}] : [{id: 'v', type: 'video'}], isLast: false}}});
+  await h.context.loadChannelVideos();
+  assert.equal(pages, 2); assert.equal(h.s.pages.get('a').posts[0].id, 'v');
+});
+
+test('sparse feeds stop at five successful pages and continue from the saved cursor', async () => {
+  let pages = 0;
+  const cursors = [];
+  const h = setup({frommApiRequest: async (api, options) => {
+    if (api === '/channels') return {data: {channels: [{id: 'a', isSubscribed: true}]}};
+    cursors.push(options.query.postId);
+    pages++;
+    return {data: {posts: pages <= 5 ? [{id: `r${pages}`, type: 'live_record'}] : [{id: 'v', type: 'video'}], isLast: false}};
+  }});
+  await h.context.loadChannelVideos();
+  assert.equal(pages, 5); assert.match(h.s.notice, /이어서 확인/); assert.equal(h.s.loading, false);
+  await h.context.loadChannelVideos({loadMore: true});
+  assert.equal(cursors.at(-1), 'r5'); assert.equal(pages, 6); assert.equal(h.s.notice, '');
+  assert.equal(h.s.pages.get('a').posts[0].id, 'v');
+});
+
+test('temporary network/503 failure retries the same page while preserving visible uploads', async () => {
+  for (const status of [0, 503]) {
+    const h = setup(); await h.context.loadChannelVideos();
+    const cursors = [];
+    h.context.frommApiRequest = async (_api, options) => {
+      cursors.push(options.query.postId);
+      if (cursors.length === 1) throw Object.assign(new Error('temporary network error'), {status});
+      return {data: {posts: [{id: 'v2', type: 'video'}], isLast: true}};
+    };
+    await h.context.loadChannelVideos({loadMore: true});
+    assert.deepEqual(cursors, ['r1', 'r1']); assert.equal(h.s.pages.get('a').posts.length, 2); assert.equal(h.s.error, '');
+  }
+});
+
+test('a failure after skipping a page keeps the successful cursor and retries the failed cursor', async () => {
+  const h = setup(); await h.context.loadChannelVideos();
+  let fail = true; const cursors = [];
+  h.context.frommApiRequest = async (_api, options) => {
+    cursors.push(options.query.postId);
+    if (options.query.postId === 'r1') return {data: {posts: [{id: 'r2', type: 'live_record'}], isLast: false}};
+    if (fail) throw Object.assign(new Error('HTTP 503'), {status: 503});
+    return {data: {posts: [{id: 'v2', type: 'video'}], isLast: true}};
+  };
+  await h.context.loadChannelVideos({loadMore: true});
+  assert.deepEqual(cursors, ['r1', 'r2', 'r2', 'r2']); assert.equal(h.s.pages.get('a').lastPost.id, 'r2');
+  assert.match(h.s.error, /503/); assert.equal(h.s.pages.get('a').posts.length, 1);
+  fail = false; await h.context.loadChannelVideos({loadMore: true});
+  assert.equal(cursors.at(-1), 'r2'); assert.equal(h.s.pages.get('a').posts.length, 2);
+});
+
+test('an empty nonterminal response retries without marking the feed complete', async () => {
+  const h = setup(); await h.context.loadChannelVideos();
+  let requests = 0;
+  h.context.frommApiRequest = async () => ({data: {posts: ++requests === 1 ? [] : [{id: 'v2', type: 'video'}], isLast: requests === 1 ? false : true}});
+  await h.context.loadChannelVideos({loadMore: true});
+  assert.equal(requests, 2); assert.equal(h.s.pages.get('a').posts.length, 2);
+  const h2 = setup(); await h2.context.loadChannelVideos();
+  h2.context.frommApiRequest = async () => ({data: {posts: [], isLast: false}});
+  await h2.context.loadChannelVideos({loadMore: true});
+  assert.equal(h2.s.pages.get('a').isLast, false); assert.equal(h2.s.pages.get('a').lastPost.id, 'r1'); assert.ok(h2.s.error);
+});
+
+test('terminal empty page reports completion, while a missing session releases the loading state', async () => {
+  const h = setup(); await h.context.loadChannelVideos();
+  h.context.frommApiRequest = async () => ({data: {posts: [], isLast: true}});
+  await h.context.loadChannelVideos({loadMore: true});
+  assert.equal(h.s.pages.get('a').isLast, true); assert.match(h.s.notice, /모두 확인/);
+  h.setAuth({token: '', uuid: ''}); await h.context.loadChannelVideos({refresh: true});
+  assert.equal(h.s.loading, false); assert.match(h.s.error, /로그인 세션/);
+});
+
+test('request timeout aborts and bounds retries, even if a transport ignores AbortSignal', async () => {
+  const signals = [];
+  const h = setup({setTimeout: callback => {queueMicrotask(callback); return 1;}, clearTimeout() {},
+    frommApiRequest: (_api, options) => {signals.push(options.signal); return new Promise(() => {});}});
+  await h.context.loadChannelVideos();
+  assert.equal(signals.length, 3); assert.ok(signals.every(signal => signal.aborted));
+  assert.equal(h.s.loading, false); assert.match(h.s.error, /응답이 늦어/); assert.equal(h.s.requestAbort, null);
 });
 
 test('logout discards late channel discovery and late media pages', async () => {
@@ -218,6 +321,10 @@ test('existing session request helper supplies authorization, stable UUID and ch
   assert.equal(request.options.headers.Authorization, 'Bearer synthetic-session');
   assert.equal(request.options.headers.uuid, 'synthetic-device'); assert.equal(request.options.headers['channel-id'], 'a');
   assert.match(request.url, /labelId=0&channelId=a&limit=50/);
+  assert.equal('signal' in request.options, false);
+  const controller = new AbortController();
+  await h.context.frommApiRequest('/media/posts', {signal: controller.signal});
+  assert.equal(request.options.signal, controller.signal);
   h.setAuth({token: '', uuid: ''});
   await assert.rejects(h.context.frommApiRequest('/channels'), /먼저 연결/);
 });

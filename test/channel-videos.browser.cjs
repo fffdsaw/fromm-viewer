@@ -18,6 +18,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       const page = await context.newPage();
       const errors = [], requests = [];
       let denyDetail = false;
+      let moreAttempts = 0, failMore = false;
       page.on('pageerror', e => errors.push(e.message));
       await page.addInitScript(() => {
         // Mock only the media engine, keeping the real Viewer UI/API/playlist logic.
@@ -52,7 +53,17 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
             const channel = url.searchParams.get('channelId');
             if (channel === 'b') return json({success: true, data: {posts: [], isLast: true}});
             if (url.searchParams.has('postId')) {
-              assert.equal(url.searchParams.get('postId'), 'replay-cursor');
+              const cursor = url.searchParams.get('postId');
+              if (cursor === 'replay-cursor') {
+                moreAttempts++;
+                if (moreAttempts === 1 || failMore) {
+                  await new Promise(resolve => setTimeout(resolve, 120));
+                  return json({success: false, message: 'HTTP 503'}, 503);
+                }
+                return json({success: true, data: {posts: [{id: 'replay-page-2', type: 'live_record', title: 'Channel에서 표시하지 않는 Replay'}], isLast: false}});
+              }
+              if (cursor === 'replay-page-2') return json({success: true, data: {posts: [upload('v1', '아티스트의 새로운 영상'), {id: 'hidden-page-3', type: 'video', isVisible: false}], isLast: false}});
+              assert.equal(cursor, 'hidden-page-3');
               return json({success: true, data: {posts: [upload('v3', '세 번째 업로드 영상')], isLast: true}});
             }
             return json({success: true, data: {posts: [upload('v1', '아티스트의 새로운 영상'), upload('v2', '긴 제목도 자연스럽게 표시되는 채널 업로드 영상'), {id: 'hidden', type: 'video', isVisible: false}, {id: 'replay-cursor', type: 'live_record', title: 'Replay 전용', num: 9, displayStartAt: 1791500000000}], isLast: false}});
@@ -79,8 +90,28 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
       if (output) {fs.mkdirSync(output, {recursive: true}); await page.screenshot({path: path.join(output, `channel-${mobile ? 'mobile' : 'desktop'}.png`), fullPage: true});}
       await page.locator('#channelLoadMore').click();
+      assert.equal(await page.locator('#channelLoadMore').isDisabled(), true);
+      assert.equal(await page.locator('#channelLoadMore').getAttribute('aria-busy'), 'true');
+      assert.equal(await page.locator('.channel-video-card').count(), 2);
+      if (output) await page.screenshot({path: path.join(output, `channel-loading-${mobile ? 'mobile' : 'desktop'}.png`), fullPage: true});
       await page.locator('[data-channel-video-play="v3"]').waitFor();
+      const moreCursors = requests.filter(r => r.headers && r.url.includes('/media/posts?') && new URL(r.url).searchParams.has('postId')).map(r => new URL(r.url).searchParams.get('postId'));
+      assert.deepEqual(moreCursors, ['replay-cursor', 'replay-cursor', 'replay-page-2', 'hidden-page-3']);
       assert.equal(await page.locator('#channelLoadMore').count(), 0);
+      // A persistent failure keeps existing cards and exposes a working retry.
+      await page.locator('#channelRefresh').click();
+      await page.waitForFunction(() => !channelVideoState.loading);
+      failMore = true;
+      await page.locator('#channelLoadMore').click();
+      await page.locator('.channel-list-shell [role="alert"]').waitFor();
+      assert.equal(await page.locator('.channel-video-card').count(), 2);
+      assert.equal(await page.locator('#channelLoadMore').textContent(), '다시 시도');
+      assert.equal(await page.locator('#channelLoadMore').isDisabled(), false);
+      if (output) await page.screenshot({path: path.join(output, `channel-retry-${mobile ? 'mobile' : 'desktop'}.png`), fullPage: true});
+      failMore = false;
+      await page.locator('#channelLoadMore').click();
+      await page.locator('[data-channel-video-play="v3"]').waitFor();
+      assert.equal(await page.locator('.channel-list-shell [role="alert"]').count(), 0);
       await page.locator('[data-channel-video-filter="b"]').click();
       await page.getByText('이 페이지에 업로드된 비디오가 없습니다.').waitFor();
       await page.locator('[data-channel-video-filter="a"]').click();
@@ -110,7 +141,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.ok(apiRequests.length > 0);
       assert.ok(apiRequests.every(r => r.headers.authorization === 'Bearer synthetic-session' && r.headers.uuid === 'synthetic-device' && ['a', 'b'].includes(r.headers['channel-id'])));
       assert.deepEqual(errors, []);
-      console.log(`${mobile ? 'Mobile 390px' : 'Desktop 1440px'}: tab order, grid, pagination, selection, playback wiring, 403, cleanup, Replay isolation, logout, headers PASS (mock service/media)`);
+      console.log(`${mobile ? 'Mobile 390px' : 'Desktop 1440px'}: tab order, grid, automatic sparse-page pagination, disabled loading button, 503 recovery/retry, selection, playback wiring, 403, cleanup, Replay isolation, logout, headers PASS (mock service/media)`);
       await context.close();
     }
   } finally {await browser.close();}

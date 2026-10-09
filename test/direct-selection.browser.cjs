@@ -18,6 +18,10 @@ async function shot(page, name) {
     fs.mkdirSync(output, {recursive: true}); await page.screenshot({path: path.join(output, name + '.png')});
   }
 }
+async function selectionSize(page) {
+  await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
+  return page.evaluate(() => state.selected.size);
+}
 (async () => {
   const browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? {channel: process.env.PLAYWRIGHT_CHANNEL} : {})});
   try {
@@ -73,14 +77,14 @@ async function shot(page, name) {
       await page.locator('.media-card img').first().waitFor();
       assert.equal(await page.locator('.card-footer-select,.chat-select-pill').count(), 0);
       await page.locator('.media-card img').first().click();
-      assert.equal(await page.evaluate(() => state.selected.size), 1);
+      assert.equal(await selectionSize(page), 1);
       await page.locator('.infinite-sentinel').waitFor({state: 'attached'});
       // Plain wheel scrolling must never select additional files.
       await page.mouse.wheel(0, 500000);
       await page.waitForFunction(() => !!document.querySelector('[data-message-id="m019"]'));
       assert.equal(await page.evaluate(() => state.selected.size), 1);
       await page.locator('[data-message-id="m019"] img').click({modifiers: ['Shift']});
-      assert.equal(await page.evaluate(() => state.selected.size), 281, 'range includes all items between endpoints after scrolling');
+      assert.equal(await selectionSize(page), 281, 'range includes all items between endpoints after scrolling');
       await page.evaluate(() => scrollTo(0, 0));
       await shot(page, `direct-selection-${mobile ? 'mobile' : 'desktop'}`);
       await page.locator('.media-card').first().focus();
@@ -92,6 +96,7 @@ async function shot(page, name) {
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       await page.locator('.media-card img').first().dblclick();
       assert.equal(await page.locator('#imageLightbox.open').count(), 1, 'double click preview preserved');
+      assert.equal(await selectionSize(page), 0, 'preview does not select');
       await page.locator('#lightboxClose').click();
       console.log(`${mobile ? 'Mobile' : 'Desktop'}: photo scroll/range/keyboard/preview PASS`);
       // Both media grouping and individual type tabs use the same interaction.
@@ -100,7 +105,7 @@ async function shot(page, name) {
         const selectable = page.locator('[data-download-selection-kind="media"]').first();
         await selectable.waitFor();
         await selectable.locator(filter === 'all' ? '.stats' : '.card-title').click();
-        assert.equal(await page.evaluate(() => state.selected.size), 1, filter);
+        assert.equal(await selectionSize(page), 1, filter);
         if (filter === 'all') {
           assert.equal(await page.locator('[data-message-id="text"] [data-download-selection-key]').count(), 0);
           assert.equal(await page.locator('[data-message-id="missing"] [data-download-selection-key]').count(), 0);
@@ -113,7 +118,8 @@ async function shot(page, name) {
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       assert.ok(await page.evaluate(() => window.singleDownloaded));
       await page.evaluate(() => {state.filter = 'video'; render();});
-      await page.locator('video').click({position: {x: 100, y: 100}});
+      const videoBox=await page.locator('#timeline video').boundingBox();
+      await page.locator('#timeline video').click({position: {x: 100, y: videoBox.height-20}});
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       console.log(`${mobile ? 'Mobile' : 'Desktop'}: media/chat/type selection and controls PASS`);
       await page.evaluate(mobile => {
@@ -135,6 +141,7 @@ async function shot(page, name) {
         const cards = page.locator(`[data-download-selection-kind="${kind}"]`);
         await cards.first().locator('img').click();
         await cards.nth(2).locator('img').click({modifiers: ['Shift']});
+        await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
         assert.equal(await cards.count(), kind === 'channel' ? 3 : 4);
         assert.equal(await page.locator('#selectedCount').textContent(), '선택 3개');
         assert.equal(await page.locator('#saveSelectedBtn').isVisible(), true);
@@ -162,6 +169,7 @@ async function shot(page, name) {
       await page.locator('[data-channel-video-filter="b"]').click();
       assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개', 'channel IDs isolate same post IDs');
       await page.locator('[data-download-selection-kind="channel"]').nth(2).locator('img').click({modifiers: ['Shift']});
+      await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
       assert.equal(await page.locator('#selectedCount').textContent(), '선택 1개', 'range anchor is scoped to channel');
       await page.evaluate(() => forgetSavedAuth());
       assert.equal(await page.evaluate(() => state.postSelected.size), 0, 'logout clears selected posts');

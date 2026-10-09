@@ -106,5 +106,6 @@ test('existing media save, Channel playback/download and LIVE entry sources are 
   }
   // The sole new branch delegates post selection; the media implementation below is identical.
   const delegate = /\r?\n  if\(state.filter==="live"\)\{\r?\n    await saveSelectedPosts\(\);\r?\n    return;\r?\n  \}/;
-  assert.equal(fn('saveSelectedDirect').replace(delegate, ''), fn('saveSelectedDirect', baseline));
+  const clickFlush = /\r?\n  flushDownloadClick\(\);downloadClickGesture=null;/;
+  assert.equal(fn('saveSelectedDirect').replace(delegate, '').replace(clickFlush, ''), fn('saveSelectedDirect', baseline));
 });

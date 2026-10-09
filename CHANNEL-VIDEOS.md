@@ -64,3 +64,24 @@ Windows에서는 `PLAYWRIGHT_CHANNEL=msedge`를 환경 변수로 지정할 수 �
 - 성공한 페이지의 커서만 저장한다. 중간 실패 때 기존 영상과 마지막 성공 지점을 유지하며 다시 시도 버튼을 제공한다. `isLast:false`인 빈 응답을 목록 끝으로 취급하지 않는다.
 - 기존 공통 API 함수는 선택적인 `signal`만 받도록 확장했다. 다른 호출은 예전처럼 신호 없이 동작한다. Replay 함수, Native LIVE, 채팅, 재생·다운로드 함수는 변경하지 않았다.
 - 추가 회귀 테스트는 여러 빈 페이지 자동 탐색, 처음 목록이 다시보기뿐인 경우, 5페이지 제한과 이어가기, 네트워크/503 회복, 중간 실패 커서 보존, 빈 비종료 응답, 종료 안내, 로그인 없음, timeout/abort를 포함한다. 데스크톱·모바일 mock 브라우저에서도 503 자동 회복, 불러오는 중 버튼 표시, 기존 카드 유지, 지속 실패 후 동일 지점 재시도를 확인했다.
+
+## Channel 플레이어 화면 높이 제한
+
+기준은 PR #12와 #13이 합쳐진 main `11d27784d8c0ef818e82d8eff90c91459e98c351`이다. 진행 중인 Native 진단 #10과 Electron draft #11은 별도 작업이며 이 변경에 포함하지 않는다.
+
+Channel 재생 화면에서만 `.main`을 `100dvh` 높이의 flex column으로 만든다. 실제 헤더, 탭, 채널 선택 toolbar, 영상 제목의 높이를 먼저 확보하고 남은 공간을 stage가 사용한다. 고정 높이 차감이나 `min-height:220px` 때문에 컨트롤이 화면 밖으로 내려가는 것을 막는다. Replay와 같은 `width/height:100%`, `max-height:100%`, `aspect-ratio:auto`, `object-fit:contain`을 사용하여 가로/세로 원본 영상을 자르거나 늘리지 않는다. 낮은 가로 화면에서는 여백을 줄여 컨트롤 공간을 확보한다. 목록으로 돌아오면 일반 스크롤 레이아웃으로 복귀한다.
+
+제품 변경은 `channelVideosStyle`의 CSS뿐이다. 모든 inline script가 기준 main과 바이트 단위로 같으며, Replay CSS/함수와 LIVE, 로그인, 목록/페이지 이동, 채널 선택, 재생/HLS, 다운로드 로직은 그대로다. 탭 순서는 `LIVE → Replay → Channel`을 유지한다.
+
+추가 브라우저 검증:
+
+```sh
+# Playwright와 ffmpeg가 설치된 환경
+node test/channel-player.browser.cjs
+```
+
+`PLAYWRIGHT_CHANNEL=msedge`, 별도 설치의 `NODE_PATH`, `CHANNEL_SCREENSHOT_DIR`를 사용할 수 있다. `FFMPEG_PATH`는 ffmpeg 실행 파일 경로를 지정한다. 테스트는 임시 폴더에 합성 MP4 두 개(640×360, 360×640)를 생성하고 실제 Channel 재생 경로로 디코딩한다. 서비스 API만 mock이며 실제 Fromm 계정/CDN은 사용하지 않는다. `CHANNEL_BASELINE_HTML`로 수정 전 HTML을 지정하면 크기 제한 assertion 없이 기존 overflow와 화면을 기록할 수 있다.
+
+Windows Edge에서 1920×980, 1440×900, 1366×768, 1280×600, 768×1024, 390×844, 360×640, 844×390, 650×600, 667×375, 740×360, 568×320의 가로/세로 영상 **24가지**와 재생 중 resize·헤더 높이 증가 **2가지**가 통과했다. 스크롤 위치 0, 플레이어/영상 하단이 뷰포트 안에 있음, 세로/가로 overflow 없음, 원본 videoWidth/videoHeight, 실제 재생 시간 증가, 일시정지/seek/재개, 다운로드 버튼 노출과 목록 복귀를 확인했다. 스크린샷에는 브라우저의 실제 재생 컨트롤이 포함되며 데스크톱·모바일 세로/가로 화면을 직접 검토했다. 기존 자동 테스트 48개와 Channel 기능 브라우저 검사도 통과했다.
+
+Channel 회귀 workflow에 별도 browser job을 추가해 기존 기능 검사와 이 MP4 레이아웃 검사를 실행하고 스크린샷을 artifact로 남긴다. 로컬 검증은 Windows Edge이며 CI의 Linux Chromium 결과는 해당 실행 결과를 따로 확인해야 한다. 실제 Fromm 로그인/CDN/HLS 재생·다운로드, Safari와 실제 LIVE는 이번 CSS 검증 범위에 포함하지 않는다.

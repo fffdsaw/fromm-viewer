@@ -1070,10 +1070,36 @@ html.image-lightbox-open { overflow-y:hidden; }
 .channel-video-play{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}
 .channel-video-play:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 .channel-video-card .replay-badge{pointer-events:none}
-.channel-player-stage{display:grid;place-items:center;min-height:220px;background:#000;border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px;overflow:hidden}
-.channel-player-stage video{display:block;width:100%;max-height:calc(100dvh - 240px);aspect-ratio:16/9;object-fit:contain;background:#000}
+/* Like Replay, fit the player below the actual header/toolbar heights. */
+.main:has(.channel-player){display:flex;flex-direction:column;height:100dvh;min-height:0;padding-bottom:12px}
+.main:has(.channel-player) > .viewer-header{flex:0 0 auto}
+.live-timeline:has(.channel-player),.channel-list-shell:has(.channel-player),.channel-list-shell:has(.channel-player) > .live-card,.channel-list-shell .replay-shell:has(.channel-player){display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+.channel-list-shell:has(.channel-player){padding-bottom:0}
+.channel-list-shell:has(.channel-player) .live-center-tabs,.channel-list-shell:has(.channel-player) .replay-toolbar,.channel-player > .replay-page-head{flex:0 0 auto}
+.channel-player{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden}
+.channel-player-stage{display:flex;align-items:center;justify-content:center;flex:1 1 0;min-height:0;background:#000;border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px;overflow:hidden}
+.channel-player-stage video{display:block;width:100%;height:100%;max-width:100%;max-height:100%;aspect-ratio:auto;object-fit:contain;background:#000}
 .channel-list-shell .replay-filter-strip{flex:1;min-width:0}
-@media(max-width:650px){.channel-list-shell .replay-filter-strip{flex-basis:100%}.channel-list-shell .replay-count{flex:1;margin-left:0}.channel-player .replay-page-copy{display:block}.channel-player .replay-page-title,.channel-player .replay-page-meta{display:block}.channel-player-stage video{max-height:65dvh}}
+@media(max-width:650px){.channel-list-shell .replay-filter-strip{flex-basis:100%}.channel-list-shell .replay-count{flex:1;margin-left:0}.channel-player .replay-page-copy{display:block}.channel-player .replay-page-title,.channel-player .replay-page-meta{display:block}}
+@media(max-height:500px){
+  .main:has(.channel-player) > .viewer-header{margin-bottom:6px}
+  .main:has(.channel-player) .topbar{min-height:0;padding:4px 8px}
+  .main:has(.channel-player) .toolbar{padding:4px 8px}
+  .main:has(.channel-player) .toolbar #counts{flex-basis:auto}
+  .channel-list-shell:has(.channel-player) .live-center-tabs{padding:6px 10px}
+  .channel-list-shell .replay-shell:has(.channel-player){padding:6px 10px}
+  .channel-list-shell:has(.channel-player) .replay-toolbar{margin-bottom:6px}
+  .channel-list-shell:has(.channel-player) .replay-filter-strip{flex-basis:0}
+  .channel-player > .replay-page-head{min-height:40px;padding:6px 10px}
+}
+@media(max-height:350px){
+  .main:has(.channel-player){padding-bottom:8px}
+  .main:has(.channel-player) .topbar{padding:2px 8px}
+  .channel-list-shell:has(.channel-player) .live-center-tabs{padding:3px 10px}
+  .channel-list-shell .replay-shell:has(.channel-player){padding:4px 10px}
+  .channel-list-shell:has(.channel-player) .replay-toolbar .btn{padding:6px 9px}
+  .channel-player .replay-page-copy{display:flex}
+}
 </style>
 </head>
 <body>

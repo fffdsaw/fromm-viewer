@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'test/channel-videos*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -18,3 +18,28 @@ jobs:
         run: node --test test/channel-videos.test.cjs native-live/test/*.test.cjs
       - name: Whitespace
         run: git -c core.whitespace=cr-at-eol diff --check HEAD^ HEAD
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser and local video fixtures
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Channel features and viewport layout
+        env:
+          CHANNEL_SCREENSHOT_DIR: screenshots
+        run: |
+          node test/channel-videos.browser.cjs
+          node test/channel-player.browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: channel-browser-screenshots
+          path: screenshots/
+          retention-days: 7

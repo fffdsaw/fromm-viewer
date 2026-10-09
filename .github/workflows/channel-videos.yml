@@ -1,0 +1,20 @@
+name: Channel videos regression
+on:
+  pull_request:
+    paths: ['index.html', 'test/channel-videos*.cjs', '.github/workflows/channel-videos.yml']
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Channel and existing Native LIVE contracts
+        run: node --test test/channel-videos.test.cjs native-live/test/*.test.cjs
+      - name: Whitespace
+        run: git -c core.whitespace=cr-at-eol diff --check HEAD^ HEAD

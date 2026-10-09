@@ -1079,6 +1079,20 @@ html.image-lightbox-open { overflow-y:hidden; }
 .channel-player{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden}
 .channel-player-stage{display:flex;align-items:center;justify-content:center;flex:1 1 0;min-height:0;background:#000;border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px;overflow:hidden}
 .channel-player-stage video{display:block;width:100%;height:100%;max-width:100%;max-height:100%;aspect-ratio:auto;object-fit:contain;background:#000}
+.channel-list-shell .live-center-tabs{padding:6px 12px;gap:6px}
+.channel-list-shell .live-center-tab{height:30px;padding:0 12px;font-size:12px}
+.channel-list-shell .replay-shell{padding:8px 12px 12px}
+.channel-list-shell .replay-toolbar{margin-bottom:8px;gap:6px}
+.channel-list-shell .replay-filter{height:28px;padding:0 10px;font-size:11px}
+.channel-list-shell #channelRefresh{padding:6px 10px;font-size:12px}
+.channel-video-play.replay-play{display:grid;width:40px;height:40px;padding:0;z-index:2}
+.download-selectable{cursor:pointer;user-select:none}
+.download-selectable img{-webkit-user-drag:none}
+.download-selectable.selected{outline:2px solid var(--accent);outline-offset:-2px}
+.download-selectable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.download-selectable.selected .card-body,.download-selectable.selected .replay-body{background:rgba(255,91,115,.1)}
+.media-card .card-body{padding-right:12px !important}
+.media-wrap.download-selectable{position:relative;border-radius:12px}
 .channel-list-shell .replay-filter-strip{flex:1;min-width:0}
 @media(max-width:650px){.channel-list-shell .replay-filter-strip{flex-basis:100%}.channel-list-shell .replay-count{flex:1;margin-left:0}.channel-player .replay-page-copy{display:block}.channel-player .replay-page-title,.channel-player .replay-page-meta{display:block}}
 @media(max-height:500px){
@@ -1540,8 +1554,8 @@ function renderChannelVideosView() {
   } else {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
       const thumb = replayThumb(p);
-      return `<article class="replay-card channel-video-card">
-        <div class="replay-thumb"><button class="channel-video-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생">${thumb ? `<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<span class="replay-play" aria-hidden="true">▶</span></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div></div>
+      return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
+        <div class="replay-thumb">${thumb ? `<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생">▶</button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
@@ -1555,6 +1569,7 @@ function renderChannelVideosView() {
     ${s.error ? `<p class="live-entry-note replay-error" role="alert">${esc(s.error)}</p>` : ""}${body}
   </div></div></div>`;
   bindLiveCenterTabs();
+  for (const card of document.querySelectorAll("[data-channel-video-card]")) bindDownloadSelection(card,"channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
   for (const btn of document.querySelectorAll("[data-channel-video-play]")) btn.onclick = () => playChannelVideo(btn.dataset.channelVideoPlay);
   for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
@@ -1562,6 +1577,7 @@ function renderChannelVideosView() {
   $("#channelRefresh")?.addEventListener("click", () => { stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); });
   $("#channelBackToList")?.addEventListener("click", () => { stopChannelVideoPlayback(); renderLiveView(); });
   $("#channelDownloadCurrent")?.addEventListener("click", e => downloadChannelVideo(selected, e.currentTarget));
+  updateSelectedCount();
   if (selected?._streamUrl && !s.playerError) {
     const seq = s.playSeq;
     attachChannelVideo(selected._streamUrl, $("#channelVideo"), seq).catch(e => {
@@ -1719,6 +1735,9 @@ const state = {
   prefetching: new Set(),
   roomCache: new Map(),
   selected: new Set(),
+  postSelected: new Set(),
+  selectionAnchor: null,
+  postBulkSaving: false,
   mediaSequence: new Map(),
   legacyMediaSequence: new Map(),
   typeMediaSequence: new Map(),
@@ -3101,7 +3120,8 @@ function syncLiveToolbarControls(){
   if(sort) sort.style.display = (!live && state.filter!=="all") ? "flex" : "none";
   for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){
     const el=$("#"+id);
-    if(el) el.style.display=live ? "none" : "";
+    const postList=live && ((state.live.centerMode==="replay" && !state.live.replaySelected) || (state.live.centerMode==="channel" && !channelVideoState.selected));
+    if(el) el.style.display=live && !postList ? "none" : "";
   }
   const counts=$("#counts");
   if(counts && live){
@@ -3112,6 +3132,7 @@ function syncLiveToolbarControls(){
       counts.textContent=isStreaming ? "LIVE" : state.live.entrances.length ? `방송 ${state.live.entrances.length}개` : "대기 중";
     }
   }
+  updateSelectedCount();
 }
 
 function liveCenterTabsHtml(){
@@ -3734,7 +3755,7 @@ function renderReplayView(){
     const thumb=replayThumb(p);
     const active=selected && String(selected.id)===String(p.id) && selected._channelId===p._channelId;
     return `<article class="replay-card ${active?"active":""}" data-replay-post="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" role="button" tabindex="0" aria-label="${esc(p.title || "LIVE Replay")} 재생">
-      <div class="replay-thumb">${thumb?`<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async" fetchpriority="low"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div><span class="replay-play">▶</span></div>
+      <div class="replay-thumb">${thumb?`<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async" fetchpriority="low"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생">▶</button></div>
       <div class="replay-body"><div class="replay-title">${esc(p.title || "LIVE Replay")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
     </article>`;
   }).join("")}</div>` : `<div class="replay-empty">${state.live.replayLoading?"Replay를 불러오는 중...":state.live.replayError?esc(state.live.replayError):"표시할 Replay가 없습니다."}</div>`;
@@ -3760,8 +3781,10 @@ function renderReplayView(){
 
     card.addEventListener("pointerenter",prefetch,{once:true,passive:true});
     card.addEventListener("focus",prefetch,{once:true});
-    card.addEventListener("click",play);
-    card.addEventListener("keydown",e=>{if(e.key==="Enter" || e.key===" "){e.preventDefault();play();}});
+    const post=posts.find(p=>String(p.id)===card.dataset.replayPost && String(p._channelId)===card.dataset.replayChannel);
+    bindDownloadSelection(card,"replay",post);
+    const playButton=card.querySelector(".replay-play");
+    playButton.addEventListener("click",e=>{e.stopPropagation();play();});
   }
   for(const btn of document.querySelectorAll("[data-replay-download]")){
     btn.addEventListener("click",e=>{
@@ -3772,6 +3795,7 @@ function renderReplayView(){
     btn.addEventListener("keydown",e=>e.stopPropagation());
   }
   $("#replayLoadMore")?.addEventListener("click",()=>loadReplayCenter({loadMore:true}));
+  updateSelectedCount();
 }
 
 function stopReplayPlayback(){
@@ -5199,6 +5223,8 @@ function resetUserScopedMemory(){
   state.roomCache.clear();
   state.chatCache.clear();
   state.selected.clear();
+  state.postSelected?.clear();
+  state.selectionAnchor=null;
   state.seenMessageKeys.clear();
   state.mediaSequence.clear();
   state.legacyMediaSequence.clear();
@@ -6048,6 +6074,7 @@ function selectRoom(i, btn){
   if($("#datePickerText")) $("#datePickerText").textContent = "날짜 선택";
 
   state.selected.clear();
+  state.selectionAnchor=null;
   updateSelectedCount();
 
   $$(".room").forEach(x=>x.classList.remove("active"));
@@ -6547,13 +6574,145 @@ function filteredMessages(){
   return [...list].sort((a,b)=>compareMessages(a,b,state.sortDirection));
 }
 
+function downloadSelectionScope(){
+  if(state.filter==="live"){
+    const kind=state.live.centerMode;
+    const items=kind==="channel" ? (channelVideoPage()?.posts || []) : kind==="replay" ? visibleReplayPosts() : [];
+    return {kind,items,context:`${kind}:${kind==="channel" ? channelVideoState.channelId : state.live.replayFilter}`};
+  }
+  return {kind:"media",items:filteredMessages().filter(m=>isArtist(m) && hasUsableMedia(m)),context:`media:${state.room?.hostChatRoomId || state.room?.id}:${state.filter}:${state.sortDirection}:${state.chatQuery}`};
+}
+
+function downloadSelectionKey(kind,item){
+  return kind==="media" ? String(item.messageId) : JSON.stringify([kind,String(item._channelId),String(item.id)]);
+}
+
+function downloadSelectionSet(kind){
+  return kind==="media" ? state.selected : state.postSelected;
+}
+
+function syncDownloadSelection(){
+  for(const el of document.querySelectorAll("[data-download-selection-key]")){
+    const checked=downloadSelectionSet(el.dataset.downloadSelectionKind).has(el.dataset.downloadSelectionKey);
+    el.classList.toggle("selected",checked);
+    el.setAttribute("aria-checked",String(checked));
+  }
+  updateSelectedCount();
+}
+
+function chooseDownloadItem(kind,item,event={}){
+  const scope=downloadSelectionScope();
+  if(scope.kind!==kind) return;
+  const key=downloadSelectionKey(kind,item), selected=downloadSelectionSet(kind);
+  const index=scope.items.findIndex(m=>downloadSelectionKey(kind,m)===key);
+  if(index<0) return;
+  const anchor=state.selectionAnchor;
+  const start=event.shiftKey && anchor?.context===scope.context
+    ? scope.items.findIndex(m=>downloadSelectionKey(kind,m)===anchor.key) : -1;
+  if(start>=0){
+    for(const m of scope.items.slice(Math.min(start,index),Math.max(start,index)+1)) selected.add(downloadSelectionKey(kind,m));
+  }else{
+    if(selected.has(key)) selected.delete(key); else selected.add(key);
+    state.selectionAnchor={context:scope.context,key};
+  }
+  syncDownloadSelection();
+}
+
+function bindDownloadSelection(el,kind,item){
+  if(!el) return;
+  el.classList.add("download-selectable");
+  el.dataset.downloadSelectionKind=kind;
+  el.dataset.downloadSelectionKey=downloadSelectionKey(kind,item);
+  el.setAttribute("role","checkbox");
+  el.setAttribute("tabindex","0");
+  el.setAttribute("aria-label",`${item.title || (kind==="media" ? baseName(item) : "영상")} 선택`);
+  const checked=downloadSelectionSet(kind).has(el.dataset.downloadSelectionKey);
+  el.classList.toggle("selected",checked);
+  el.setAttribute("aria-checked",String(checked));
+  el.addEventListener("click",e=>{
+    if(e.detail>1 || e.target.closest("a,button,input,video,audio,.reply-quote")) return;
+    chooseDownloadItem(kind,item,e);
+  });
+  el.addEventListener("keydown",e=>{
+    if(e.target!==el || !["Enter"," "].includes(e.key)) return;
+    e.preventDefault();
+    chooseDownloadItem(kind,item,e);
+  });
+}
+
+async function saveSelectedPosts(){
+  if(state.postBulkSaving || state.live.replayDownloading || channelVideoState.downloading) return;
+  const scope=downloadSelectionScope();
+  const items=scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p)));
+  if(!items.length){ window.alert("선택한 영상이 없습니다."); return; }
+  const sameSession=channelVideoSession(), generation=state.scanGeneration;
+  const current=()=>sameSession() && generation===state.scanGeneration && downloadSelectionScope().context===scope.context;
+  const button=$("#saveSelectedBtn"), oldText=button.textContent;
+  state.postBulkSaving=true;
+  channelVideoState.downloading=true;
+  state.live.replayDownloading=true;
+  button.disabled=true;
+  let directory,ok=0,skipped=0;
+  const failures=[];
+  try{
+    if(supportsDirectorySave()){
+      try{directory=await window.showDirectoryPicker();}
+      catch(e){if(e?.name==="AbortError") return; throw e;}
+    }
+    for(let i=0;i<items.length;i++){
+      if(!current()) break;
+      const post=items[i];
+      let sink;
+      button.textContent=`저장 ${i+1}/${items.length}`;
+      try{
+        const filename=replayDownloadFilename(post).replace(/\.ts$/,` (${String(post._channelId).replace(/[^\w-]/g,"_")}-${String(post.id).replace(/[^\w-]/g,"_")}).ts`);
+        if(directory){
+          try{await directory.getFileHandle(filename); skipped++; continue;}
+          catch(e){if(e?.name!=="NotFoundError") throw e;}
+        }
+        const detail=scope.kind==="channel" ? await fetchChannelVideoDetail(post) : await fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
+        if(!current()) break;
+        sink={filename,writable:null,chunks:directory ? null : []};
+        if(directory){
+          const handle=await directory.getFileHandle(filename,{create:true});
+          sink.writable=await handle.createWritable();
+        }
+        if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
+        await downloadReplayStream(detail._streamUrl || replayStreamUrl(detail),sink,(done,total)=>{
+          if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
+          button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(done/total*100)}%`;
+        });
+        ok++;
+        state.postSelected.delete(downloadSelectionKey(scope.kind,post));
+        syncDownloadSelection();
+        if(!directory && i+1<items.length) await sleep(450);
+      }catch(e){
+        try{await sink?.writable?.abort?.();}catch{}
+        failures.push(post.title || "영상");
+        if(!current()) break;
+      }
+    }
+    if(current()) window.alert(`저장 ${ok}개${skipped ? ` · 기존 파일 ${skipped}개 건너뜀` : ""}${failures.length ? ` · 실패 ${failures.length}개 (선택 유지)` : ""}`);
+  }catch(e){
+    if(current()) window.alert(`영상 저장 실패: ${safeErrorDetail(e?.message || e)}`);
+  }finally{
+    state.postBulkSaving=false;
+    channelVideoState.downloading=false;
+    state.live.replayDownloading=false;
+    button.disabled=false;
+    button.textContent=oldText;
+    syncDownloadSelection();
+  }
+}
+
 function updateSelectAllButton(){
   const btn = $("#selectAllBtn");
   if(!btn) return;
 
-  const scope = currentSelectableMedia();
+  const downloadScope=downloadSelectionScope();
+  const scope = downloadScope.kind==="media" ? currentSelectableMedia() : downloadScope.items;
   const allSelected = scope.length > 0 &&
-    scope.every(m=>state.selected.has(String(m.messageId)));
+    scope.every(m=>downloadSelectionSet(downloadScope.kind).has(downloadSelectionKey(downloadScope.kind,m)));
 
   btn.textContent = allSelected ? "전체해제" : "전체선택";
 }
@@ -6562,7 +6721,8 @@ function updateSelectedCount(){
   const el = $("#selectedCount");
   if(!el) return;
 
-  const n = state.selected.size;
+  const scope=downloadSelectionScope();
+  const n = scope.kind==="media" ? state.selected.size : scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p))).length;
   el.textContent = `선택 ${n.toLocaleString()}개`;
   el.classList.toggle("has-selection", n > 0);
   if(typeof updateSelectAllButton === "function") updateSelectAllButton();
@@ -7260,11 +7420,6 @@ function renderMediaCard(m){
       <div class="card-title">${esc(baseName(m))}</div>
       <div class="card-date">${esc(dateKey(m))} · ${esc(timeLabel(m))}</div>
 
-      <label class="card-footer-select" title="선택/해제">
-        <input class="card-select-input" type="checkbox" ${state.selected.has(id)?"checked":""}>
-        <span class="card-select-box" aria-hidden="true"></span>
-        <span class="card-select-text"></span>
-      </label>
     </div>
   `;
 
@@ -7277,13 +7432,7 @@ function renderMediaCard(m){
     };
   }
 
-  const cb = card.querySelector('input[type="checkbox"]');
-  cb.onchange = ()=>{
-    if(cb.checked) state.selected.add(id); else state.selected.delete(id);
-    card.classList.toggle("selected", cb.checked);
-    pulseSelectionControl(card);
-    updateSelectedCount();
-  };
+  bindDownloadSelection(card,"media",m);
 
   if(t==="image"){
     const img = card.querySelector(".thumb img");
@@ -7403,16 +7552,6 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        const isSelected = state.selected.has(String(m.messageId));
-        const checked = isSelected ? "checked" : "";
-        const selectedClass = isSelected ? " selected" : "";
-
-        html+=`<label class="chat-select-pill${selectedClass}" title="선택/해제">
-          <input class="card-select-input" type="checkbox"
-                 data-mid="${esc(String(m.messageId))}" ${checked}>
-          <span class="card-select-box" aria-hidden="true"></span>
-          <span class="card-select-text"></span>
-        </label>`;
         html+=`<a class="dl" href="${esc(proxyUrl(m,true))}">다운로드</a>`;
         html+=`<span class="stats">${esc(baseName(m))}</span>`;
       }
@@ -7471,30 +7610,13 @@ function renderMessage(m){
     }
   }
 
-  const cb=bubble.querySelector('input[type="checkbox"]');
-  if(cb) cb.onchange=()=>{
-    const id=String(m.messageId);
-
-    if(cb.checked) state.selected.add(id);
-    else state.selected.delete(id);
-
-    const pill = cb.closest(".chat-select-pill");
-    if(pill){
-      pill.classList.toggle("selected", cb.checked);
-      pill.classList.remove("select-pop");
-      void pill.offsetWidth;
-      pill.classList.add("select-pop");
-      setTimeout(()=>pill.classList.remove("select-pop"),240);
-    }
-
-    updateSelectedCount();
-  };
+  if(artist && hasUsableMedia(m)) bindDownloadSelection(bubble.querySelector(".media-wrap"),"media",m);
 
   // 전체 대화 탭의 이미지도 원본 URL -> blob 순서로 자동 복구.
   if(t==="image"){
     const chatImg = bubble.querySelector(".media-wrap img");
     if(chatImg){
-      chatImg.style.cursor = "zoom-in";
+      chatImg.style.cursor = "pointer";
 
       armResilientImage(
         chatImg,
@@ -8089,6 +8211,14 @@ function currentSelectableMedia(){
 }
 
 async function selectAllMedia(){
+  if(state.filter==="live"){
+    const scope=downloadSelectionScope(), selected=state.postSelected;
+    const allSelected=scope.items.length>0 && scope.items.every(p=>selected.has(downloadSelectionKey(scope.kind,p)));
+    for(const p of scope.items){const key=downloadSelectionKey(scope.kind,p); if(allSelected) selected.delete(key); else selected.add(key);}
+    state.selectionAnchor=null;
+    syncDownloadSelection();
+    return;
+  }
   // "전체선택" should cover the whole artist history, not just the currently
   // loaded 500-message slice.
   if(state.hasMoreMessages){
@@ -8112,6 +8242,7 @@ async function selectAllMedia(){
     scope.forEach(m=>state.selected.add(String(m.messageId)));
   }
 
+  state.selectionAnchor=null;
   updateSelectedCount();
   render();
 }
@@ -8900,6 +9031,10 @@ function selectedMediaForSave(){
 }
 
 async function saveSelectedDirect(){
+  if(state.filter==="live"){
+    await saveSelectedPosts();
+    return;
+  }
   // Desktop Chrome: use the File System Access API so the user chooses a
   // destination only once and every selected item is saved automatically.
   // This path also scans the chosen backup folder and skips existing files.
@@ -9095,6 +9230,7 @@ $("#scanBtn").onclick=async ()=>{
   }
 
   state.selected.clear();
+  state.selectionAnchor=null;
   updateSelectedCount();
 
   $("#scanState").textContent =

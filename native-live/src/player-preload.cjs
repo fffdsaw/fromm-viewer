@@ -2,11 +2,14 @@
 const { ipcRenderer } = require('electron');
 const { safeDiagnostic } = require('./contracts.cjs');
 const { FramePump } = require('./frame-pump.cjs');
+const { remoteStats, LatencyWindow } = require('./receive-metrics.cjs');
 // Some SDK exception paths use console.error without enableLogging checks.
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 let sdk, engine, handlers, active = false, joined = false, generation = 0;
 let framePump;
 let benchmarkDrawTimer;
+let metricsTimer, syntheticFrames = false, metricStarted = 0, captured = 0, counters = {};
+const pipeline = new LatencyWindow();
 const tiles = new Map(), diagnostics = [];
 function emit(value) {
   const safe = safeDiagnostic(value);
@@ -24,6 +27,8 @@ function checked(stage, call) {
 }
 function dispose() {
   framePump?.stop();
+  clearInterval(metricsTimer); metricsTimer = undefined; pipeline.reset();
+  captured = 0; counters = {}; syntheticFrames = false;
   clearInterval(benchmarkDrawTimer); benchmarkDrawTimer = undefined;
   generation++; active = false; joined = false;
   if (engine) {
@@ -35,6 +40,13 @@ function dispose() {
   document.getElementById('videos')?.replaceChildren();
 }
 function startInlineVideo() {
+  metricStarted = performance.now();
+  metricsTimer = setInterval(() => {
+    const now = performance.now();
+    emit({ stage: 'pipeline-performance', targetFps: 30, captureFps: Math.round(captured * 10000 / (now - metricStarted)) / 10,
+      ...pipeline.take(), ...counters, synthetic: syntheticFrames });
+    metricStarted = now; captured = 0; counters = {};
+  }, 5000);
   framePump ||= new FramePump({ fps: 30,
     now: () => performance.now(), setTimer: (callback, ms) => setInterval(callback, ms), clearTimer: timer => clearInterval(timer),
     capture: () => {
@@ -45,7 +57,11 @@ function startInlineVideo() {
       const jpeg = canvas.toDataURL('image/jpeg', 0.65);
       return jpeg.length < 800000 ? jpeg : null;
     },
-    send: value => ipcRenderer.send('player:frame', value),
+    send: value => { captured++; ipcRenderer.send('player:frame', { ...value, sentAt: performance.timeOrigin + performance.now(), synthetic: syntheticFrames }); },
+    onMetric: (name, value) => {
+      if (['ackWaitTicks', 'ackTimeouts', 'captureMisses'].includes(name)) counters[name] = (counters[name] || 0) + value;
+      else pipeline.add(name, value);
+    },
     onError: () => { emit({ stage: 'inline-frame-failed' }); framePump.stop(); }
   });
   framePump.start();
@@ -107,10 +123,19 @@ function start(payload, synthetic = false) {
         emit({ stage: visible ? 'render-canvas-visible' : 'render-canvas-waiting', width: canvas?.width || 0, height: canvas?.height || 0 });
       }, 2500);
     },
-    onUserOffline: (_connection, uid) => { if (valid()) { tiles.get(uid)?.remove(); tiles.delete(uid); } },
+    onUserOffline: (_connection, uid) => {
+      if (valid()) { if (tiles.keys().next().value === uid) emit({ stage: 'rtc-unavailable' }); tiles.get(uid)?.remove(); tiles.delete(uid); }
+    },
     onFirstRemoteVideoDecoded: (_connection, _uid, width, height) => { if (valid()) emit({ stage: 'video-decoded', width, height }); },
     onFirstRemoteVideoFrame: (_connection, _uid, width, height) => { if (valid()) emit({ stage: 'video-frame', width, height, mediaVerified: true }); },
     onFirstRemoteAudioDecoded: () => { if (valid()) emit({ stage: 'audio-frame', mediaVerified: false }); },
+    onRemoteVideoStats: (_connection, stats) => {
+      // Only the same first remote canvas used by the inline capture path.
+      if (valid() && tiles.keys().next().value === stats?.uid) emit(remoteStats(stats));
+    },
+    onRemoteAudioStats: (_connection, stats) => {
+      if (valid() && tiles.keys().next().value === stats?.uid) emit(remoteStats(stats, true));
+    },
     onTokenPrivilegeWillExpire: () => { if (valid()) emit({ stage: 'token-renew-needed' }); },
     onRequestToken: () => { if (valid()) emit({ stage: 'token-renew-needed' }); }
   };
@@ -129,7 +154,7 @@ ipcRenderer.on('player:command', (_event, command) => {
     else if (command.type === 'renew' && active) checked('token-renewed', () => engine.renewToken(command.token));
     else if (command.type === 'join') { start(command.payload); if (command.inlineVideo) startInlineVideo(); }
     else if (command.type === 'frame-benchmark') {
-      dispose(); active = true;
+      dispose(); active = true; syntheticFrames = true;
       const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 1280;
       document.getElementById('videos').append(canvas);
       const ctx = canvas.getContext('2d'), pixels = ctx.createImageData(720, 1280);

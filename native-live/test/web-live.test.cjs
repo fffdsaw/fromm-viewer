@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 function setup(keyBytes = 64, platform = 'Windows', options = {}) {
-  const listeners = new Map(), calls = [];
+  const listeners = new Map(), calls = [], diagnostics = [];
   let webJoins = 0;
   const state = { live: { room: { id: 'room', encryptionKey: 'x'.repeat(keyBytes), encryptionSalt: 'synthetic' }, tokenInfo: {}, currentLiveRoomId: 'room', entry: { channelId: 'channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
   const window = { addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
@@ -15,14 +15,23 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
   const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
     document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: options.requestAnimationFrame || (callback => callback()), cancelAnimationFrame: options.cancelAnimationFrame || (()=>{}),
     state, currentAuth: () => ({ token: 'synthetic-auth', uuid: 'synthetic-device' }), resolveAgoraJoinArgs: () => {},
-    decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic() {}, liveStatusText() {},
+    decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic: (event, value) => diagnostics.push({ event, ...value }), liveStatusText() {},
     liveEncryptionCandidates(room) { if (room.encryptionKey.length > 62) throw new Error('WEB_LIMIT'); return [{ mode: 'web' }]; },
     connectAgoraLive: async () => { webJoins++; }, stopLivePlayback: async () => { state.live.connectionSeq++; }, resumeLiveAudio() {}, renderLiveView() {} });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../../web-native-live.js'), 'utf8'), context);
-  return { context, state, calls, listeners, window, webJoins: () => webJoins };
+  return { context, state, calls, listeners, window, diagnostics, webJoins: () => webJoins };
 }
 test('web-compatible keys keep original Web playback path', async () => {
   for (const size of [32, 62]) { const h = setup(size); await h.context.connectAgoraLive(); assert.equal(h.webJoins(), 1); assert.equal(h.calls.length, 0); }
+});
+test('RTC receive measurements stay separate from web display and arbitrary callback secrets are discarded', async () => {
+  const h = setup(); await h.context.connectAgoraLive();
+  const send = value => h.listeners.get('message')({ source: h.window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { type: 'status', value } } });
+  send({ stage: 'rtc-video-stats', receivedWidth: 720, receivedHeight: 1280, decoderFps: 30, rendererFps: 30, receivedBitrateKbps: 1600, uid: 42, encryptionKey: 'DO_NOT_COPY', synthetic: false });
+  const m = h.window.FrommLiveMetrics();
+  assert.equal(m.sourceResolution, 'UNAVAILABLE'); assert.equal(m.rtc.decoderFps, 30); assert.equal(m.web, 'UNAVAILABLE');
+  assert.equal(JSON.stringify(h.diagnostics).includes('DO_NOT_COPY'), false); assert.equal('uid' in m.rtc, false);
+  await h.context.stopLivePlayback(); assert.equal(h.window.FrommLiveMetrics().rtc, 'UNAVAILABLE');
 });
 test('64-byte key stays unchanged; Native host receives login context rather than arbitrary RTC secrets', async () => {
   const h = setup();

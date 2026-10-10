@@ -66,10 +66,13 @@ async function shot(page, name) {
       });
       const photos = page.locator('.media-card img');
       await photos.first().waitFor();
+      assert.equal(await photos.first().evaluate(img => getComputedStyle(img).cursor), 'default');
+      assert.equal(await photos.first().evaluate(img => img.draggable), false);
       await photos.nth(2).click(); await settled(page);
       for (const index of [0, 2]) {
         const before = await selection(page);
         await photos.nth(index).dblclick(); await page.locator('#imageLightbox.open').waitFor();
+        assert.equal(await page.locator('#lightboxImage').evaluate(img => getComputedStyle(img).cursor), 'default');
         assert.deepEqual(await selection(page), before, 'unselected and selected previews keep selection');
         await page.locator('#lightboxClose').click();
       }
@@ -88,6 +91,7 @@ async function shot(page, name) {
       await page.locator('#lightboxClose').click();
       await page.evaluate(() => {state.filter = 'all'; syncLiveToolbarControls(); render(); scrollTo(0, 0);});
       const beforeChat = await selection(page);
+      assert.equal(await page.locator('.media-wrap img').first().evaluate(img => getComputedStyle(img).cursor), 'default');
       await page.locator('.media-wrap img').first().dblclick();
       assert.deepEqual(await selection(page), beforeChat, 'chat photo preview keeps selection');
       await page.locator('#lightboxClose').click();
@@ -98,6 +102,12 @@ async function shot(page, name) {
         await page.mouse.move(media.x+10,media.y+media.height-10,{steps:6});
         await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
         assert.equal((await selection(page)).length,1,'chat media can be selected from blank margin');
+        await page.keyboard.press('Escape');await page.mouse.up();
+        assert.deepEqual(await selection(page),beforeChat);
+        await page.mouse.move(media.x+30,media.y+30);await page.mouse.down();
+        await page.mouse.move(media.x+90,media.y+90,{steps:6});
+        await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
+        assert.equal((await selection(page)).length,1,'chat photo-origin drag selects');
         await page.keyboard.press('Escape');await page.mouse.up();
         assert.deepEqual(await selection(page),beforeChat);
       }
@@ -129,6 +139,27 @@ async function shot(page, name) {
         await page.evaluate(() => {state.filter = 'image'; state.selected.clear(); state.selectionAnchor = null; syncLiveToolbarControls(); render(); scrollTo(0, 0);});
         const cards = page.locator('.media-card'); await cards.nth(5).waitFor();
         const first = await cards.nth(0).boundingBox(), second = await cards.nth(1).boundingBox();
+        await page.evaluate(()=>{window.nativeImageDrags=0;document.addEventListener('dragstart',()=>window.nativeImageDrags++);});
+        const photoStart={x:first.x+30,y:first.y+30};
+        await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
+        assert.equal(await page.locator('.download-selection-box').count(),0,'photo press alone does not start drag');
+        await page.mouse.move(photoStart.x+2,photoStart.y+2);await page.mouse.up();await settled(page);
+        assert.equal((await selection(page)).length,1,'tiny movement still allows single click');
+        await page.evaluate(()=>{state.selected.clear();syncDownloadSelection();});
+        await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
+        await page.mouse.move(second.x+second.width-30,first.y+120,{steps:8});
+        await page.waitForFunction(()=>state.selected.size===2);
+        await shot(page,'photo-origin-region-desktop');await page.mouse.up();await settled(page);
+        assert.equal((await selection(page)).length,2,'drag release does not toggle the last photo');
+        assert.equal(await page.locator('#imageLightbox.open').count(),0,'photo drag does not open preview');
+        assert.equal(await page.evaluate(()=>window.nativeImageDrags),0,'photo drag is not native image dragging');
+        await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
+        await page.mouse.move(second.x+30,895,{steps:10});
+        await page.waitForFunction(()=>scrollY>700&&state.selected.size>=6&&state.infiniteRendered>16);
+        await shot(page,'photo-origin-auto-scroll-desktop');await page.mouse.up();
+        assert.equal(await page.locator('#imageLightbox.open').count(),0);
+        assert.equal(await page.evaluate(()=>window.nativeImageDrags),0);
+        await page.evaluate(()=>{scrollTo(0,0);state.selected.clear();syncDownloadSelection();});
         const start = {x: first.x + 10, y: first.y + first.height + 7};
         const end = {x: second.x + second.width - 10, y: first.y + 10};
         async function beginDrag(expected=2) {
@@ -189,6 +220,11 @@ async function shot(page, name) {
       for (const kind of ['channel', 'replay']) {
         if (kind === 'replay') await page.locator('[data-live-center-mode="replay"]').click();
         const cards = page.locator(`[data-download-selection-kind="${kind}"]`);
+        await cards.first().locator('img').waitFor({state:'visible'});
+        await page.waitForFunction(kind=>{
+          const img=document.querySelector(`[data-download-selection-kind="${kind}"] img`);
+          return img && getComputedStyle(img).cursor==='default';
+        },kind);
         await cards.nth(1).locator('img').click(); await settled(page);
         const before = await selection(page, true);
         if(!mobile){
@@ -198,6 +234,11 @@ async function shot(page, name) {
           assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,1,`${kind} marquee selection`);
           await page.keyboard.press('Escape');await page.mouse.up();
           assert.deepEqual(await selection(page,true),before,`${kind} marquee cancellation`);
+          await page.mouse.move(first.x+30,first.y+30);await page.mouse.down();
+          await page.mouse.move(first.x+90,first.y+90,{steps:5});
+          assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,1,`${kind} thumbnail-origin drag`);
+          await page.keyboard.press('Escape');await page.mouse.up();
+          assert.deepEqual(await selection(page,true),before);
         }
         await cards.first().locator('img').dblclick();
         await page.locator(kind === 'channel' ? '#channelVideo' : '#replayVideo').waitFor();
@@ -210,7 +251,7 @@ async function shot(page, name) {
       await settled(page);
       assert.equal((await selection(page)).length,0,'logout invalidates a pending single click');
       assert.deepEqual(errors, []);
-      console.log(`${mobile ? 'Mobile' : 'Desktop'}: image/chat/video/Channel/Replay double-click selection invariant, real MP4 preview, controls, drag/scroll/cancel PASS`);
+      console.log(`${mobile ? 'Mobile' : 'Desktop'}: default photo cursor, photo/card-origin drag and auto-scroll, double-click invariants, real MP4 preview, controls, drag/scroll/cancel PASS`);
       await context.close();
     }
   } finally {

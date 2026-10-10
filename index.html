@@ -132,10 +132,10 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .auth-card.collapsed #authFields { display: none; }
 .auth-compact { margin-top: 9px; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
 .auth-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: rgba(105, 213, 154, 0.12) 0px 0px 0px 3px; }
-.media-card .thumb img, .media-wrap img { cursor: zoom-in; }
+.media-card .thumb img, .media-wrap img { cursor: default; }
 .lightbox { position: fixed; inset: 0px; z-index: 1000; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.9); padding: 40px 56px 56px; }
 .lightbox.open { display: flex; }
-.lightbox img { max-width: 95vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 10px; box-shadow: rgba(0, 0, 0, 0.55) 0px 18px 60px; background: rgb(8, 10, 14); cursor: zoom-out; }
+.lightbox img { max-width: 95vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 10px; box-shadow: rgba(0, 0, 0, 0.55) 0px 18px 60px; background: rgb(8, 10, 14); cursor: default; }
 .lightbox-close { position: fixed; top: 16px; right: 22px; width: 44px; height: 44px; border: 0px; border-radius: 50%; background: rgba(255, 255, 255, 0.13); color: rgb(255, 255, 255); font-size: 31px; line-height: 1; cursor: pointer; }
 .lightbox-caption { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: min(80vw, 900px); color: rgb(217, 222, 232); background: rgba(0, 0, 0, 0.48); border-radius: 999px; padding: 7px 12px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .infinite-sentinel { pointer-events: none; }
@@ -246,7 +246,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .bubble.emoticon-only { background: transparent; border-color: transparent; box-shadow: none; padding: 4px 0px; }
 .bubble.emoticon-only .meta { margin: 0px 0px 5px 4px; }
 .emoticon-wrap { display: flex; align-items: center; justify-content: flex-start; min-width: 72px; min-height: 72px; }
-.emoticon-img { display: block; width: auto; height: auto; max-width: 160px; max-height: 160px; object-fit: contain; cursor: zoom-in; filter: none; }
+.emoticon-img { display: block; width: auto; height: auto; max-width: 160px; max-height: 160px; object-fit: contain; cursor: default; filter: none; }
 .emoticon-unavailable { max-width: 220px; padding: 8px 10px; border-radius: 9px; border: 1px dashed var(--line); background: rgb(21, 26, 34); color: rgb(155, 165, 180); font-size: 12px; line-height: 1.4; }
 .empty-text-note { color: rgb(119, 129, 145); font-size: 12px; font-style: italic; }
 .sidebar-toggle-btn span { display: block; width: 22px; height: 2.5px; border-radius: 2px; background: rgb(231, 235, 242); transform-origin: center center; transition: transform 0.22s, opacity 0.16s; }
@@ -1086,7 +1086,7 @@ html.image-lightbox-open { overflow-y:hidden; }
 .channel-list-shell .replay-filter{height:28px;padding:0 10px;font-size:11px}
 .channel-list-shell #channelRefresh{padding:6px 10px;font-size:12px}
 .channel-video-play.replay-play{display:grid;width:40px;height:40px;padding:0;z-index:2}
-.download-selectable{cursor:pointer;user-select:none}
+.download-selectable{cursor:default;user-select:none}
 .download-selectable img{-webkit-user-drag:none}
 .download-selectable.selected{outline:2px solid var(--accent);outline-offset:-2px}
 .download-selectable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
@@ -1094,7 +1094,7 @@ html.image-lightbox-open { overflow-y:hidden; }
 .media-card .card-body{padding-right:12px !important}
 .media-wrap.download-selectable{position:relative;border-radius:12px}
 .download-selection-box{position:fixed;z-index:999;pointer-events:none;border:1px solid var(--accent);background:rgba(255,91,115,.16)}
-body.download-marquee-active{user-select:none;cursor:crosshair}
+body.download-marquee-active{user-select:none;cursor:default}
 .lightbox video{display:none;width:min(95vw,1400px);height:80vh;height:80dvh;max-height:calc(100dvh - 110px);object-fit:contain;background:#000;border-radius:10px}
 .lightbox.video-preview #lightboxImage{display:none}
 .lightbox.video-preview video{display:block}
@@ -6676,6 +6676,7 @@ function openDownloadPreview(kind,item){
 function bindDownloadSelection(el,kind,item){
   if(!el) return;
   el.classList.add("download-selectable");
+  for(const img of el.querySelectorAll("img")) img.draggable=false;
   el.dataset.downloadSelectionKind=kind;
   el.dataset.downloadSelectionKey=downloadSelectionKey(kind,item);
   el.setAttribute("role","checkbox");
@@ -6685,7 +6686,8 @@ function bindDownloadSelection(el,kind,item){
   el.classList.toggle("selected",checked);
   el.setAttribute("aria-checked",String(checked));
   el.addEventListener("click",e=>{
-    if(performance.now()<downloadDragClickUntil || e.detail>1 || downloadSelectionControl(e)) return;
+    if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
+    if(e.detail>1 || downloadSelectionControl(e)) return;
     e.preventDefault();
     flushDownloadClick();
     const g={el,kind,item,event:{shiftKey:e.shiftKey},context:downloadSelectionContext(),generation:state.scanGeneration,applied:false};
@@ -6693,6 +6695,7 @@ function bindDownloadSelection(el,kind,item){
     g.timer=setTimeout(flushDownloadClick,280);
   });
   el.addEventListener("dblclick",e=>{
+    if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
     if(downloadSelectionControl(e)) return;
     e.preventDefault();e.stopPropagation();
     undoDownloadDoubleClick(el);
@@ -6713,23 +6716,24 @@ function initDownloadMarqueeSelection(){
   const finish=(restore=false)=>{
     if(!drag) return;
     cancelAnimationFrame(drag.frame);
-    if(restore && valid()){
+    if(restore && drag.moved && valid()){
       const selected=downloadSelectionSet(drag.kind);
       selected.clear();for(const key of drag.before) selected.add(key);
       state.selectionAnchor=drag.anchor;syncDownloadSelection();
     }
-    drag.box.remove();drag=null;
+    const moved=drag.moved;
+    drag.box?.remove();drag=null;
     document.body.classList.remove("download-marquee-active");
-    downloadDragClickUntil=performance.now()+100;
+    if(moved) downloadDragClickUntil=performance.now()+100;
   };
   const update=()=>{
     if(!valid()){finish();return;}
+    if(!drag.moved) return;
     const d=drag, x=d.x+scrollX, y=d.y+scrollY;
     const left=Math.min(d.startX,x),right=Math.max(d.startX,x),top=Math.min(d.startY,y),bottom=Math.max(d.startY,y);
     const visibleTop=Math.max(0,document.querySelector('.viewer-header')?.getBoundingClientRect().bottom || 0,d.surface.getBoundingClientRect().top);
     const drawTop=Math.max(top-scrollY,visibleTop),drawBottom=Math.min(bottom-scrollY,innerHeight);
     Object.assign(d.box.style,{left:`${left-scrollX}px`,top:`${drawTop}px`,width:`${right-left}px`,height:`${Math.max(0,drawBottom-drawTop)}px`});
-    if(!d.moved) return;
     const cards=[...d.surface.querySelectorAll('[data-download-selection-key]')];
     for(const card of cards) d.keys.add(card.dataset.downloadSelectionKey);
     const next=new Set(d.before);
@@ -6763,22 +6767,29 @@ function initDownloadMarqueeSelection(){
     if(downloadClickGesture && !downloadClickGesture.el.contains(e.target)) flushDownloadClick();
     if(e.button!==0 || e.pointerType!=="mouse" || $("#imageLightbox")?.classList.contains("open")) return;
     const surface=e.target.closest('.gallery,.replay-grid') || (state.filter==="all" ? e.target.closest('#timeline') : null);
-    if(!surface || e.target.closest('[data-download-selection-key],a,button,input,video,audio,.bubble,.date-separator')) return;
+    const card=e.target.closest('[data-download-selection-key]');
+    if(!surface || downloadSelectionControl(e) || (!card && e.target.closest('video,.bubble,.date-separator'))) return;
     const scope=downloadSelectionScope();if(!scope.items.length) return;
-    finish();flushDownloadClick();downloadClickGesture=null;
-    e.preventDefault();
-    const box=document.createElement('div');box.className='download-selection-box';document.body.appendChild(box);
-    drag={surface,box,kind:scope.kind,keys:new Set(scope.items.map(item=>downloadSelectionKey(scope.kind,item))),context:scope.context,generation:state.scanGeneration,before:new Set(downloadSelectionSet(scope.kind)),anchor:state.selectionAnchor,
+    if(card && card.dataset.downloadSelectionKind!==scope.kind) return;
+    finish();
+    if(!card){flushDownloadClick();downloadClickGesture=null;e.preventDefault();}
+    drag={surface,box:null,kind:scope.kind,keys:new Set(scope.items.map(item=>downloadSelectionKey(scope.kind,item))),context:scope.context,generation:state.scanGeneration,before:new Set(downloadSelectionSet(scope.kind)),anchor:state.selectionAnchor,
       additive:e.ctrlKey || e.metaKey || e.shiftKey,startX:e.clientX+scrollX,startY:e.clientY+scrollY,x:e.clientX,y:e.clientY,moved:false,pointerId:e.pointerId};
-    document.body.classList.add('download-marquee-active');update();drag.frame=requestAnimationFrame(frame);
+    drag.frame=requestAnimationFrame(frame);
   });
   window.addEventListener("pointermove",e=>{
     if(!drag || e.pointerId!==drag.pointerId) return;
     drag.x=e.clientX;drag.y=e.clientY;
-    if(Math.hypot(e.clientX+scrollX-drag.startX,e.clientY+scrollY-drag.startY)>5) drag.moved=true;
+    if(!drag.moved && Math.hypot(e.clientX+scrollX-drag.startX,e.clientY+scrollY-drag.startY)>5){
+      flushDownloadClick();downloadClickGesture=null;
+      drag.before=new Set(downloadSelectionSet(drag.kind));drag.anchor=state.selectionAnchor;
+      drag.moved=true;
+      drag.box=document.createElement('div');drag.box.className='download-selection-box';document.body.appendChild(drag.box);
+      document.body.classList.add('download-marquee-active');
+    }
     update();
   });
-  window.addEventListener("pointerup",e=>{if(drag && e.pointerId===drag.pointerId){update();finish();state.selectionAnchor=null;}});
+  window.addEventListener("pointerup",e=>{if(drag && e.pointerId===drag.pointerId){const moved=drag.moved;update();finish();if(moved) state.selectionAnchor=null;}});
   window.addEventListener("pointercancel",()=>finish(true));
   window.addEventListener("blur",()=>finish(true));
   document.addEventListener("keydown",e=>{if(drag && e.key==="Escape"){e.preventDefault();finish(true);}});
@@ -7773,7 +7784,7 @@ function renderMessage(m){
   if(t==="image"){
     const chatImg = bubble.querySelector(".media-wrap img");
     if(chatImg){
-      chatImg.style.cursor = "pointer";
+      chatImg.style.cursor = "default";
 
       armResilientImage(
         chatImg,

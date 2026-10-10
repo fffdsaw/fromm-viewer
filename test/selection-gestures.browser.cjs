@@ -101,13 +101,19 @@ async function shot(page, name) {
         await page.mouse.move(timeline.x+timeline.width-5,media.y+10);await page.mouse.down();
         await page.mouse.move(media.x+10,media.y+media.height-10,{steps:6});
         await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
-        assert.equal((await selection(page)).length,1,'chat media can be selected from blank margin');
+        const chatKey=await page.locator('.media-wrap').first().getAttribute('data-download-selection-key');
+        assert.deepEqual(await selection(page),[...new Set([...beforeChat,chatKey])].sort(),'chat blank-margin drag preserves other selections');
         await page.keyboard.press('Escape');await page.mouse.up();
         assert.deepEqual(await selection(page),beforeChat);
+        await page.evaluate(key=>{state.selected.add(key);syncDownloadSelection();},chatKey);
+        await page.mouse.move(media.x+30,media.y+30);await page.mouse.down();
+        await page.mouse.move(media.x+90,media.y+90,{steps:6});
+        assert.deepEqual(await selection(page),beforeChat.filter(key=>key!==chatKey),'selected chat media removes only itself');
+        await page.mouse.up();
         await page.mouse.move(media.x+30,media.y+30);await page.mouse.down();
         await page.mouse.move(media.x+90,media.y+90,{steps:6});
         await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
-        assert.equal((await selection(page)).length,1,'chat photo-origin drag selects');
+        assert.deepEqual(await selection(page),[...new Set([...beforeChat,chatKey])].sort(),'chat photo-origin drag preserves other selections');
         await page.keyboard.press('Escape');await page.mouse.up();
         assert.deepEqual(await selection(page),beforeChat);
       }
@@ -139,6 +145,37 @@ async function shot(page, name) {
         await page.evaluate(() => {state.filter = 'image'; state.selected.clear(); state.selectionAnchor = null; syncLiveToolbarControls(); render(); scrollTo(0, 0);});
         const cards = page.locator('.media-card'); await cards.nth(5).waitFor();
         const first = await cards.nth(0).boundingBox(), second = await cards.nth(1).boundingBox();
+        const firstEight=await cards.evaluateAll(items=>items.slice(0,8).map(card=>card.dataset.downloadSelectionKey));
+        await page.evaluate(keys=>{state.selected=new Set(keys);syncDownloadSelection();},firstEight);
+        await shot(page,'before-single-photo-deselect');
+        await page.mouse.move(first.x+80,first.y+80);await page.mouse.down();
+        await page.mouse.move(first.x+140,first.y+140,{steps:8});
+        assert.deepEqual(await selection(page),firstEight.slice(1).sort(),'8 selected -> deselect only the photo inside the rectangle');
+        await shot(page,'during-single-photo-deselect');
+        // Shrinking the rectangle restores selected items that leave it.
+        await page.mouse.move(second.x+100,first.y+140,{steps:6});
+        assert.deepEqual(await selection(page),firstEight.slice(2).sort(),'deselect the two overlapping photos only');
+        await page.mouse.move(first.x+140,first.y+140,{steps:6});
+        assert.deepEqual(await selection(page),firstEight.slice(1).sort(),'shrinking restores the second photo');
+        await page.mouse.up();await settled(page);
+        assert.deepEqual(await selection(page),firstEight.slice(1).sort(),'release keeps the other seven selected');
+        assert.equal(await page.locator('#imageLightbox.open').count(),0,'deselect drag does not open preview');
+        await shot(page,'after-single-photo-deselect');
+        // A second drag from the now-unselected photo adds it without clearing the seven.
+        await page.mouse.move(first.x+80,first.y+80);await page.mouse.down();
+        await page.mouse.move(first.x+140,first.y+140,{steps:6});await page.mouse.up();
+        assert.deepEqual(await selection(page),[...firstEight].sort(),'unselected photo drag adds without clearing others');
+        await page.keyboard.down('Control');
+        await page.mouse.move(first.x+80,first.y+80);await page.mouse.down();
+        await page.mouse.move(first.x+140,first.y+140,{steps:6});await page.mouse.up();await page.keyboard.up('Control');
+        assert.deepEqual(await selection(page),[...firstEight].sort(),'Ctrl drag from a selected photo still adds');
+        await page.evaluate(keys=>{state.selected=new Set(keys);syncDownloadSelection();},[firstEight[0],firstEight[7]]);
+        await page.mouse.move(first.x+80,first.y+80);await page.mouse.down();
+        await page.mouse.move(second.x+100,first.y+140,{steps:6});
+        assert.deepEqual(await selection(page),[firstEight[7]],'deselect mixed range does not select unselected neighbors');
+        await page.keyboard.press('Escape');await page.mouse.up();
+        assert.deepEqual(await selection(page),[firstEight[0],firstEight[7]].sort(),'Escape restores a deselect drag');
+        await page.evaluate(()=>{state.selected.clear();syncDownloadSelection();});
         await page.evaluate(()=>{window.nativeImageDrags=0;document.addEventListener('dragstart',()=>window.nativeImageDrags++);});
         const photoStart={x:first.x+30,y:first.y+30};
         await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
@@ -153,12 +190,27 @@ async function shot(page, name) {
         assert.equal((await selection(page)).length,2,'drag release does not toggle the last photo');
         assert.equal(await page.locator('#imageLightbox.open').count(),0,'photo drag does not open preview');
         assert.equal(await page.evaluate(()=>window.nativeImageDrags),0,'photo drag is not native image dragging');
+        await page.evaluate(()=>{state.selected.clear();syncDownloadSelection();});
         await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
         await page.mouse.move(second.x+30,895,{steps:10});
         await page.waitForFunction(()=>scrollY>700&&state.selected.size>=6&&state.infiniteRendered>16);
         await shot(page,'photo-origin-auto-scroll-desktop');await page.mouse.up();
         assert.equal(await page.locator('#imageLightbox.open').count(),0);
         assert.equal(await page.evaluate(()=>window.nativeImageDrags),0);
+        await page.evaluate(()=>scrollTo(0,0));
+        const beforeScrollRemove=await page.evaluate(()=>{
+          const keys=downloadSelectionScope().items.slice(0,40).map(item=>downloadSelectionKey('media',item));
+          state.selected=new Set(keys);syncDownloadSelection();return keys;
+        });
+        await page.mouse.move(photoStart.x,photoStart.y);await page.mouse.down();
+        await page.mouse.move(second.x+30,895,{steps:10});
+        await page.waitForFunction(()=>scrollY>700&&state.selected.size<32);
+        const duringScrollRemove=await selection(page);
+        assert.ok(duringScrollRemove.every(key=>beforeScrollRemove.includes(key)),'deselect auto-scroll cannot add neighbors');
+        assert.ok(duringScrollRemove.includes(firstEight[3]),'deselect auto-scroll preserves an outside column');
+        await shot(page,'deselect-auto-scroll-desktop');
+        await page.keyboard.press('Escape');await page.mouse.up();
+        assert.deepEqual(await selection(page),[...beforeScrollRemove].sort(),'Escape restores auto-scroll deselection');
         await page.evaluate(()=>{scrollTo(0,0);state.selected.clear();syncDownloadSelection();});
         const start = {x: first.x + 10, y: first.y + first.height + 7};
         const end = {x: second.x + second.width - 10, y: first.y + 10};
@@ -226,17 +278,24 @@ async function shot(page, name) {
           return img && getComputedStyle(img).cursor==='default';
         },kind);
         await cards.nth(1).locator('img').click(); await settled(page);
+        const cardsKey=await cards.nth(1).getAttribute('data-download-selection-key');
         const before = await selection(page, true);
         if(!mobile){
           const first=await cards.first().boundingBox();
           await page.mouse.move(first.x+first.width+7,first.y+10);await page.mouse.down();
           await page.mouse.move(first.x+20,first.y+first.height-10,{steps:5});
-          assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,1,`${kind} marquee selection`);
+          assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,2,`${kind} blank drag preserves selected second card`);
           await page.keyboard.press('Escape');await page.mouse.up();
           assert.deepEqual(await selection(page,true),before,`${kind} marquee cancellation`);
           await page.mouse.move(first.x+30,first.y+30);await page.mouse.down();
           await page.mouse.move(first.x+90,first.y+90,{steps:5});
-          assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,1,`${kind} thumbnail-origin drag`);
+          assert.equal((await selection(page,true)).filter(key=>key.startsWith(`["${kind}"`)).length,2,`${kind} unselected thumbnail drag adds`);
+          await page.keyboard.press('Escape');await page.mouse.up();
+          assert.deepEqual(await selection(page,true),before);
+          const second=await cards.nth(1).boundingBox();
+          await page.mouse.move(second.x+60,second.y+60);await page.mouse.down();
+          await page.mouse.move(second.x+120,second.y+120,{steps:5});
+          assert.deepEqual(await selection(page,true),before.filter(key=>key!==cardsKey),`${kind} selected thumbnail removes only itself`);
           await page.keyboard.press('Escape');await page.mouse.up();
           assert.deepEqual(await selection(page,true),before);
         }
@@ -251,7 +310,7 @@ async function shot(page, name) {
       await settled(page);
       assert.equal((await selection(page)).length,0,'logout invalidates a pending single click');
       assert.deepEqual(errors, []);
-      console.log(`${mobile ? 'Mobile' : 'Desktop'}: default photo cursor, photo/card-origin drag and auto-scroll, double-click invariants, real MP4 preview, controls, drag/scroll/cancel PASS`);
+      console.log(`${mobile ? 'Mobile' : 'Desktop'}: ${mobile ? 'touch scrolling and selection preserved' : '8 -> 7 local deselection, range shrink/mixed selection/Ctrl/cancel, add/remove auto-scroll, chat/Channel/Replay local deselection'}, photo/card drag, double-click invariants, real MP4 preview and controls PASS`);
       await context.close();
     }
   } finally {

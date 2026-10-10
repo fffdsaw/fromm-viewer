@@ -6735,14 +6735,12 @@ function initDownloadMarqueeSelection(){
     const drawTop=Math.max(top-scrollY,visibleTop),drawBottom=Math.min(bottom-scrollY,innerHeight);
     Object.assign(d.box.style,{left:`${left-scrollX}px`,top:`${drawTop}px`,width:`${right-left}px`,height:`${Math.max(0,drawBottom-drawTop)}px`});
     const cards=[...d.surface.querySelectorAll('[data-download-selection-key]')];
-    for(const card of cards) d.keys.add(card.dataset.downloadSelectionKey);
     const next=new Set(d.before);
-    if(!d.additive){
-      for(const key of d.keys) next.delete(key);
-    }
     for(const card of cards){
       const r=card.getBoundingClientRect();
-      if(r.right+scrollX>left && r.left+scrollX<right && r.bottom+scrollY>top && r.top+scrollY<bottom) next.add(card.dataset.downloadSelectionKey);
+      if(r.right+scrollX>left && r.left+scrollX<right && r.bottom+scrollY>top && r.top+scrollY<bottom){
+        if(d.remove) next.delete(card.dataset.downloadSelectionKey);else next.add(card.dataset.downloadSelectionKey);
+      }
     }
     const selected=downloadSelectionSet(d.kind);
     if(selected.size!==next.size || [...next].some(key=>!selected.has(key))){
@@ -6773,7 +6771,7 @@ function initDownloadMarqueeSelection(){
     if(card && card.dataset.downloadSelectionKind!==scope.kind) return;
     finish();
     if(!card){flushDownloadClick();downloadClickGesture=null;e.preventDefault();}
-    drag={surface,box:null,kind:scope.kind,keys:new Set(scope.items.map(item=>downloadSelectionKey(scope.kind,item))),context:scope.context,generation:state.scanGeneration,before:new Set(downloadSelectionSet(scope.kind)),anchor:state.selectionAnchor,
+    drag={surface,box:null,kind:scope.kind,startKey:card?.dataset.downloadSelectionKey,context:scope.context,generation:state.scanGeneration,before:new Set(downloadSelectionSet(scope.kind)),anchor:state.selectionAnchor,
       additive:e.ctrlKey || e.metaKey || e.shiftKey,startX:e.clientX+scrollX,startY:e.clientY+scrollY,x:e.clientX,y:e.clientY,moved:false,pointerId:e.pointerId};
     drag.frame=requestAnimationFrame(frame);
   });
@@ -6783,6 +6781,7 @@ function initDownloadMarqueeSelection(){
     if(!drag.moved && Math.hypot(e.clientX+scrollX-drag.startX,e.clientY+scrollY-drag.startY)>5){
       flushDownloadClick();downloadClickGesture=null;
       drag.before=new Set(downloadSelectionSet(drag.kind));drag.anchor=state.selectionAnchor;
+      drag.remove=!drag.additive && !!drag.startKey && drag.before.has(drag.startKey);
       drag.moved=true;
       drag.box=document.createElement('div');drag.box.className='download-selection-box';document.body.appendChild(drag.box);
       document.body.classList.add('download-marquee-active');

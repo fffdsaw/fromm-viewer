@@ -9638,6 +9638,16 @@ autoConnectSaved();
 
 
 <script src="web-native-live.js?v=1.08.3"></script>
-<script src="mobile-sync-test.js?v=1"></script>
+<script>
+(function () {
+  // The background-sync experiment belongs to mobile devices only.
+  // Desktop browsers neither download nor execute its code.
+  var isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  if (!isMobileDevice) return;
+  var mobileTest = document.createElement("script");
+  mobileTest.src = "mobile-sync-test.js?v=2";
+  document.body.appendChild(mobileTest);
+})();
+</script>
 </body>
 </html>

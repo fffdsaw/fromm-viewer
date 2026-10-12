@@ -46,16 +46,30 @@ test('all inline scripts parse; tab order is LIVE → Replay → Channel', () =>
   assert.deepEqual([...tabs.matchAll(/data-live-center-mode="([^"]+)"/g)].map(m => m[1]), ['live', 'replay', 'channel']);
 });
 
-test('Replay playback/download and Native 30fps/bridge sources remain unchanged', () => {
+test('Replay playback/download and Native frame transport/auth contracts remain unchanged', () => {
   const baseline = execFileSync('git', ['show', 'd4d9c2f:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
   const names = [...baseline.matchAll(/^(?:async )?function ((?:\w*Replay\w*)|(?:replay\w+)|(?:visibleReplayPosts)|(?:returnToReplayList))\(/gm)].map(m => m[1]);
   assert.ok(names.length > 30);
   // Only the Replay list renderer changes to support direct multi-selection.
   for (const name of names.filter(name => name !== 'renderReplayView')) assert.equal(fn(name), fn(name, baseline), name);
-  for (const file of ['web-native-live.js', 'native-live/src/frame-pump.cjs', 'native-live/src/player-preload.cjs', 'chrome_extension/native-background.js', 'chrome_extension/native-content.js']) {
+  for (const file of ['native-live/src/frame-pump.cjs', 'chrome_extension/native-background.js', 'chrome_extension/native-content.js']) {
     const bytes = execFileSync('git', ['show', `d4d9c2f:${file}`], {cwd: root});
     assert.equal(fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n'), bytes.toString('utf8').replace(/\r\n/g, '\n'), file);
   }
+  const native = fs.readFileSync(path.join(root, 'native-live/src/player-preload.cjs'), 'utf8');
+  const nativeBaseline = execFileSync('git', ['show', 'd4d9c2f:native-live/src/player-preload.cjs'], {cwd: root, encoding: 'utf8'});
+  // Hidden-window benchmarking and disposal may evolve; RTC identity, encryption,
+  // subscription/playout and the production JPEG/30fps capture path must survive.
+  for (const name of ['start', 'attachRemoteVideo', 'startInlineVideo']) {
+    assert.equal(fn(name, native).replace(/\r\n/g, '\n'), fn(name, nativeBaseline).replace(/\r\n/g, '\n'), name);
+  }
+  const web = fs.readFileSync(path.join(root, 'web-native-live.js'), 'utf8');
+  const webBaseline = execFileSync('git', ['show', 'd4d9c2f:web-native-live.js'], {cwd: root, encoding: 'utf8'});
+  // The background-capability handshake and audio-button behavior are covered
+  // by web-live.test.cjs. Keep the remaining auth/key/frame/ACK code identical.
+  const stableWeb = source => source.split(/\r?\n/).filter(line => !line.includes('if (!hello')
+    && !line.includes('resumeLiveAudio =') && !line.includes('// Agora Native playout')).join('\n');
+  assert.equal(stableWeb(web), stableWeb(webBaseline));
 });
 
 test('only subscribed channels and uploaded visible videos; raw cursor preserves mixed pages', async () => {

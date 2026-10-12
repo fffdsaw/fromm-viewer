@@ -1,12 +1,13 @@
 {
   "name": "fromm-native-live-prototype",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
     "self-test": "electron . --self-test",
-    "test": "node --test test/*.test.cjs"
+    "test": "node --test test/*.test.cjs",
+    "test:windows": "node test/run-background-check.cjs"
   },
   "dependencies": {
     "agora-electron-sdk": "4.6.2",

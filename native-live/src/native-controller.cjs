@@ -3,20 +3,33 @@ const { Decoder, encode } = require('./native-wire.cjs');
 const { enterEnvelope, token007, safeDiagnostic, fail } = require('./contracts.cjs');
 const { net } = require('electron');
 function createController({ join, leave, show, renew, quit, acknowledge, input = process.stdin, sendMessage }) {
-  let credentials = null, envelope = null, busy = Promise.resolve(), serial = 0;
+  let credentials = null, envelope = null, busy = Promise.resolve(), serial = 0, cancellation = 0, disconnected = false, activeRequest;
   const send = sendMessage || (value => process.stdout.write(encode(value, true)));
-  function clear() { serial++; credentials = null; if (envelope) { envelope.encryptionKey = ''; envelope.rtcToken = ''; envelope.encryptionKdfSalt.fill(0); } envelope = null; }
+  function clear() { serial++; activeRequest?.abort(); credentials = null; if (envelope) { envelope.encryptionKey = ''; envelope.rtcToken = ''; envelope.encryptionKdfSalt.fill(0); } envelope = null; }
+  async function cancellable(promise, signal) {
+    let abort;
+    const cancelled = new Promise((_, reject) => {
+      abort = () => reject(Object.assign(new Error('JOIN_CANCELLED'), { code: 'JOIN_CANCELLED' }));
+      if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true });
+    });
+    try { return await Promise.race([promise, cancelled]); }
+    finally { signal.removeEventListener('abort', abort); }
+  }
   async function request(suffix, body) {
     if (!credentials) fail('LOGIN_REQUIRED');
     const url = new URL(`https://channel-api.frommyarti.com/live/agora/rooms/${encodeURIComponent(credentials.roomId)}/${suffix}`);
     if (suffix === 'enter') url.searchParams.set('channelId', credentials.channelId);
-    const response = await net.fetch(url.toString(), { method: 'POST', redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(25000),
+    const requestAbort = activeRequest = new AbortController();
+    const signal = AbortSignal.any([requestAbort.signal, AbortSignal.timeout(25000)]);
+    try {
+    const response = await cancellable(net.fetch(url.toString(), { method: 'POST', redirect: 'error', credentials: 'omit', cache: 'no-store', signal,
       headers: { authorization: /^Bearer\s/i.test(credentials.authToken) ? credentials.authToken : `Bearer ${credentials.authToken}`,
         uuid: credentials.uuid, 'channel-id': credentials.channelId, 'content-type': 'application/json',
-        origin: 'https://channel.frommyarti.com', referer: 'https://channel.frommyarti.com/' }, body: JSON.stringify(body) });
-    const data = await response.json();
+        origin: 'https://channel.frommyarti.com', referer: 'https://channel.frommyarti.com/' }, body: JSON.stringify(body) }), signal);
+    const data = await cancellable(response.json(), signal);
     if (!response.ok || data?.success === false || data?.ok === false) fail('FROMM_ACCESS_DENIED');
     return data;
+    } finally { if (activeRequest === requestAbort) activeRequest = null; }
   }
   async function renewToken() {
     if (!credentials || !envelope) return;
@@ -41,30 +54,39 @@ function createController({ join, leave, show, renew, quit, acknowledge, input =
       if (envelope && Object.keys(message.params || {}).length === 1 && Number.isSafeInteger(message.params?.sequence) && message.params.sequence > 0) acknowledge?.(message.params.sequence);
       return;
     }
+    // Cancel an in-flight /enter immediately, without waiting for its network timeout.
+    if (message.method === 'leave') { cancellation++; clear(); }
+    const admission = cancellation;
     busy = busy.then(async () => {
+      if (disconnected) return;
       try {
-        if (message.method === 'hello') send({ id: message.id, ok: true, version: 2, inlineVideo: true, frameAck: true, targetFps: 30 });
-        else if (message.method === 'leave') { clear(); leave(); send({ id: message.id, ok: true }); }
-        else if (message.method === 'show') { show(); send({ id: message.id, ok: true }); }
+        if (message.method === 'hello') send({ id: message.id, ok: true, version: 3, toolVersion: '0.4.0', backgroundPlayer: true, inlineVideo: true, frameAck: true, targetFps: 30 });
+        else if (message.method === 'leave') { clear(); await leave(); send({ id: message.id, ok: true }); }
+        else if (message.method === 'show') { send(await show() ? { id: message.id, ok: true } : { id: message.id, ok: false, code: 'NATIVE_DEBUG_DISABLED' }); }
         else {
-          clear(); leave();
+          clear(); await leave();
+          if (disconnected || admission !== cancellation) fail('JOIN_CANCELLED');
           const p = message.params;
           if (!p || Object.keys(p).some(k => !['roomId', 'channelId', 'uuid', 'authToken'].includes(k))) fail('JOIN_INPUT_INVALID');
           for (const key of ['roomId', 'channelId', 'uuid', 'authToken']) if (typeof p[key] !== 'string' || !p[key] || p[key].length > (key === 'authToken' ? 16384 : 255) || /[\r\n]/.test(p[key])) fail('JOIN_INPUT_INVALID');
           credentials = { roomId: p.roomId, channelId: p.channelId, uuid: p.uuid, authToken: p.authToken };
+          const current = serial;
           const data = await request('enter', { role: 'subscriber' });
+          if (disconnected || current !== serial) fail('JOIN_CANCELLED');
           envelope = enterEnvelope(data, credentials.roomId);
           send({ type: 'status', value: { stage: 'enter-authorized', tokenPresent: true } });
-          await join(envelope);
+          await join(envelope, () => !disconnected && current === serial);
+          if (disconnected || current !== serial) fail('JOIN_CANCELLED');
           send({ id: message.id, ok: true });
         }
-      } catch (error) { clear(); leave(); send({ id: message.id, ok: false, code: /^[A-Z_]{1,64}$/.test(error?.code) ? error.code : 'NATIVE_FAILED' }); }
+      } catch (error) { clear(); await leave(); if (!disconnected) send({ id: message.id, ok: false, code: /^[A-Z_]{1,64}$/.test(error?.code) ? error.code : 'NATIVE_FAILED' }); }
       finally { if (message.params) message.params.authToken = ''; }
     });
   });
-  input.on('data', chunk => { try { decoder.push(chunk); } catch { clear(); leave(); quit(); } });
-  input.on('end', () => { clear(); leave(); quit(); });
-  input.on('error', () => { clear(); leave(); quit(); });
+  function disconnect() { if (disconnected) return; disconnected = true; cancellation++; clear(); Promise.resolve(leave()).finally(quit); }
+  input.on('data', chunk => { try { decoder.push(chunk); } catch { disconnect(); } });
+  input.on('end', disconnect);
+  input.on('error', disconnect);
   return {
     status(value) { send({ type: 'status', value: safeDiagnostic(value) }); if (value.stage === 'token-renew-needed') renewToken(); },
     frame(value) { if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }); }

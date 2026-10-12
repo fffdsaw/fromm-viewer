@@ -1,5 +1,7 @@
 name: Windows LIVE connection tool
 on:
+  pull_request:
+    paths: ['native-live/**', 'chrome_extension/**', 'web-native-live.js', '.github/workflows/native-live-windows.yml']
   push:
     branches: [main]
     paths: ['native-live/**', 'chrome_extension/**', 'web-native-live.js', '.github/workflows/native-live-windows.yml']
@@ -11,6 +13,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -21,28 +25,29 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node node_modules/electron/install.js
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify bundled official executable and addon
-        working-directory: native-live
-        run: |
-          node -e 'const fs=require("fs"),cp=require("child_process"),path=require("path");const exe=path.resolve("node_modules/electron/dist/electron.exe");for(const p of [exe,"node_modules/agora-electron-sdk/build/Release/agora_node_ext.node","node_modules/agora-electron-sdk/build/Release/agora_rtc_sdk.dll"])if(!fs.existsSync(p))throw Error("RUNTIME_MISSING");const r=cp.spawnSync(exe,[process.cwd(),"--self-test"],{encoding:"utf8",timeout:30000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("self-test-passed"))throw Error("NATIVE_SELF_TEST_FAILED");'
       - name: Test contracts and browser routing
-        run: node --test native-live/test/*.test.cjs
-      - name: Measure synthetic 720x1280 frame delivery
+        run: node --test native-live/test/*.test.cjs test/*.test.cjs
+      - name: Verify hidden Native SDK rendering, frame delivery and lifecycle
         working-directory: native-live
-        run: |
-          node -e 'const cp=require("child_process"),p=require("path");const r=cp.spawnSync(p.resolve("node_modules/electron/dist/electron.exe"),[process.cwd(),"--frame-benchmark"],{encoding:"utf8",timeout:25000,windowsHide:true});process.stdout.write(r.stdout||"");if(r.status!==0||!r.stdout.includes("frame-benchmark-passed"))throw Error("FRAME_BENCHMARK_FAILED");'
+        run: node test/run-background-check.cjs
       - name: Bundle the connection tool and extension
         shell: pwsh
         run: |
           Compress-Archive -Path native-live,chrome_extension,web-native-live.js -DestinationPath fromm-native-live-windows-x64.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fromm-native-live-windows-x64
+          path: fromm-native-live-windows-x64.zip
+          retention-days: 7
       - name: Publish Windows download
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view native-live-0.3.0 *> $null
+          gh release view native-live-0.4.0 *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create native-live-0.3.0 --target "$env:GITHUB_SHA" --title "Windows web LIVE connection" --notes "Extract the ZIP, run native-live/Install-Web-LIVE.cmd once, load chrome_extension in Chrome, then use LIVE on the Fromm Viewer website."
+            gh release create native-live-0.4.0 --target "$env:GITHUB_SHA" --title "Windows LIVE 0.4.0 - background Native player" --notes "Native LIVE now runs in a hidden background window. Extract into a fixed folder, close active LIVE tabs, run native-live/Install-Web-LIVE.cmd, reload the bundled extension 1.0.8, then Ctrl+F5 the Viewer. Existing 0.3.0 users must rerun the installer for the new folder. Developer reveal: FROMM_NATIVE_DEBUG=1 before starting the browser. Windows synthetic SDK rendering, JPEG/ACK and teardown checks run before publication; authenticated broadcasts require a separate live check."
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload native-live-0.3.0 fromm-native-live-windows-x64.zip --clobber
+          gh release upload native-live-0.4.0 fromm-native-live-windows-x64.zip --clobber

@@ -11,6 +11,7 @@ const FRAME_BENCHMARK = process.argv.includes('--frame-benchmark');
 const UI_SMOKE = process.argv.includes('--ui-smoke');
 const MONITOR = process.argv.includes('--monitor');
 const NATIVE_HOST = process.argv.includes('--fromm-native-bridge');
+const SHOW_NATIVE_PLAYER = process.argv.includes('--show-native-player') || process.env.FROMM_NATIVE_DEBUG === '1';
 let nativeController;
 let frameBenchmark;
 app.commandLine.appendSwitch('disable-logging');
@@ -21,6 +22,7 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 protocol.registerSchemesAsPrivileged([{ scheme: 'fromm', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 let viewer, player, playerReady, resolvePlayerReady, cachedEntry = null, pendingRenew = null;
+let playerStop, finishPlayerStop;
 let auth = '', authEpoch = 0, enterSerial = 0, commandSerial = 0;
 const statusHistory = [];
 function status(value) {
@@ -40,7 +42,21 @@ function clearEntry() {
 }
 function leavePlayer() {
   commandSerial++;
-  if (player && !player.isDestroyed()) player.webContents.send('player:command', { type: 'leave' });
+  if (playerStop) return playerStop;
+  if (!player || player.isDestroyed()) return Promise.resolve();
+  const window = player;
+  // Wait for dispose()/SDK release before destroying the hidden renderer.
+  playerStop = new Promise(resolve => {
+    const timer = setTimeout(() => { if (!window.isDestroyed()) window.destroy(); }, 1500);
+    finishPlayerStop = () => { clearTimeout(timer); playerStop = null; finishPlayerStop = null; resolve(); };
+  });
+  const stopping = playerStop;
+  window.webContents.send('player:command', { type: 'leave' });
+  return stopping;
+}
+function showPlayer() {
+  if (!SHOW_NATIVE_PLAYER || !player || player.isDestroyed()) return false;
+  player.show(); player.focus(); return true;
 }
 function lockedWindow(options) {
   const window = new BrowserWindow({ ...options, webPreferences: {
@@ -52,15 +68,39 @@ function lockedWindow(options) {
   return window;
 }
 async function ensurePlayer() {
+  if (playerStop) await playerStop;
   if (player && !player.isDestroyed()) return playerReady;
-  playerReady = new Promise(resolve => { resolvePlayerReady = resolve; });
-  player = lockedWindow({ title: 'Fromm Native LIVE', width: 1000, height: 820, show: !(SELF_TEST || FRAME_BENCHMARK),
+  let readyResolve;
+  const ready = playerReady = new Promise(resolve => { readyResolve = resolvePlayerReady = resolve; });
+  const window = player = lockedWindow({ title: 'Fromm Native LIVE', width: 1000, height: 820,
+    show: false, paintWhenInitiallyHidden: true, skipTaskbar: true,
     webPreferences: { session: session.fromPartition('fromm-native-player', { cache: false }), backgroundThrottling: false,
+      offscreen: !SHOW_NATIVE_PLAYER,
+      focusOnNavigation: false, autoplayPolicy: 'no-user-gesture-required',
       preload: path.join(__dirname, 'player-preload.cjs'), sandbox: false } });
-  player.on('closed', () => { player = null; commandSerial++; clearEntry(); status({ stage: 'left' }); });
-  player.webContents.on('render-process-gone', () => { clearEntry(); status({ stage: 'native-failed' }); });
-  await player.loadURL('fromm://player/player.html');
-  return Promise.race([playerReady, new Promise((_, reject) => setTimeout(() => reject(new Error('PLAYER_READY_TIMEOUT')), 10000))]);
+  window.webContents.setAudioMuted(false);
+  // A hidden normal HWND can still reduce Chromium rAF to 1fps on Windows.
+  // Offscreen keeps the compositor active without a visible/minimized window.
+  // Canvas -> JPEG -> FramePump/ACK remains the existing transport.
+  if (!SHOW_NATIVE_PLAYER) { window.webContents.setFrameRate(30); window.webContents.startPainting(); }
+  window.on('closed', () => {
+    if (player !== window) return;
+    const stopping = !!playerStop;
+    readyResolve(); // Cancel startup wait as well as a running player.
+    player = null; finishPlayerStop?.();
+    if (!stopping) { commandSerial++; clearEntry(); status({ stage: 'left' }); }
+  });
+  window.webContents.on('render-process-gone', () => {
+    if (player !== window) return;
+    clearEntry(); status({ stage: 'native-failed' }); window.destroy();
+  });
+  let timer;
+  try {
+    await window.loadURL('fromm://player/player.html');
+    await Promise.race([ready, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('PLAYER_READY_TIMEOUT')), 10000); })]);
+    if (window.isDestroyed() || player !== window) fail('JOIN_CANCELLED');
+  } catch (error) { if (!window.isDestroyed()) window.destroy(); throw error; }
+  finally { clearTimeout(timer); }
 }
 ipcMain.on('player:ready', event => {
   if (senderIs(event, player, 'fromm://player/player.html')) resolvePlayerReady?.();
@@ -68,6 +108,7 @@ ipcMain.on('player:ready', event => {
 ipcMain.on('player:status', (event, value) => {
   if (!senderIs(event, player, 'fromm://player/player.html')) return;
   status(value);
+  if (value?.stage === 'left' && playerStop) player.destroy();
   if (SELF_TEST && ['self-test-passed', 'self-test-failed'].includes(value?.stage)) setTimeout(() => app.exit(value.stage === 'self-test-passed' ? 0 : 1), 100);
 });
 ipcMain.on('player:frame', (event, value) => {
@@ -124,14 +165,14 @@ ipcMain.handle('live:join', async (event, input) => {
     const entry = cachedEntry, serial = ++commandSerial;
     await ensurePlayer();
     if (cachedEntry !== entry || serial !== commandSerial) fail('JOIN_CANCELLED');
-    player.show(); player.focus();
+    showPlayer();
     player.webContents.send('player:command', { type: 'join', payload: entry.payload });
     return { ok: true };
   } catch (e) { return { ok: false, code: /^[A-Z_]{1,64}$/.test(e?.code) ? e.code : 'NATIVE_JOIN_FAILED' }; }
 });
-ipcMain.handle('live:leave', event => { guardViewer(event); leavePlayer(); return { ok: true }; });
-ipcMain.handle('live:reset', event => { guardViewer(event); authEpoch++; enterSerial++; auth = ''; clearEntry(); leavePlayer(); return { ok: true }; });
-ipcMain.handle('live:show', event => { guardViewer(event); if (player && !player.isDestroyed()) { player.show(); player.focus(); } return { ok: true }; });
+ipcMain.handle('live:leave', async event => { guardViewer(event); await leavePlayer(); return { ok: true }; });
+ipcMain.handle('live:reset', async event => { guardViewer(event); authEpoch++; enterSerial++; auth = ''; clearEntry(); await leavePlayer(); return { ok: true }; });
+ipcMain.handle('live:show', event => { guardViewer(event); return showPlayer() ? { ok: true } : { ok: false, code: 'NATIVE_DEBUG_DISABLED' }; });
 ipcMain.handle('live:renew', event => {
   guardViewer(event);
   if (!cachedEntry || !pendingRenew || !player || player.isDestroyed()) return { ok: false, code: 'AUTHORIZED_RENEW_REQUIRED' };
@@ -181,7 +222,7 @@ app.whenReady().then(async () => {
   if (FRAME_BENCHMARK) {
     await ensurePlayer();
     frameBenchmark = await require('./frame-benchmark-main.cjs')({ app, BrowserWindow, ipcMain, session,
-      senderIs, player, root: ROOT, lockedWindow });
+      senderIs, player, root: ROOT, lockedWindow, stopPlayer: leavePlayer, ensurePlayer, getPlayer: () => player });
     return;
   }
   if (NATIVE_HOST) {
@@ -193,12 +234,16 @@ app.whenReady().then(async () => {
     const { encode } = require('./native-wire.cjs');
     nativeController = require('./native-controller.cjs').createController({
       input: pipe, sendMessage: value => pipe.write(encode(value)),
-      join: async payload => { await ensurePlayer(); player.show(); player.webContents.send('player:command', { type: 'join', payload, inlineVideo: true }); },
+      join: async (payload, current) => {
+        await ensurePlayer();
+        if (!current()) { await leavePlayer(); fail('JOIN_CANCELLED'); }
+        showPlayer(); player.webContents.send('player:command', { type: 'join', payload, inlineVideo: true });
+      },
       leave: leavePlayer,
       acknowledge: sequence => { if (player && !player.isDestroyed()) player.webContents.send('player:frame-ack', { sequence }); },
-      show: () => { if (player && !player.isDestroyed()) { player.show(); player.focus(); } },
+      show: showPlayer,
       renew: token => { if (player && !player.isDestroyed()) player.webContents.send('player:command', { type: 'renew', token }); },
-      quit: () => app.quit()
+      quit: async () => { await leavePlayer(); app.quit(); }
     });
     return;
   }
@@ -224,5 +269,5 @@ app.whenReady().then(async () => {
     }
   }
 }).catch(() => { status({ stage: 'startup-failed' }); app.exit(1); });
-app.on('window-all-closed', () => { clearEntry(); auth = ''; app.quit(); });
+app.on('window-all-closed', () => { clearEntry(); auth = ''; if (!NATIVE_HOST) app.quit(); });
 app.on('before-quit', () => { clearEntry(); auth = ''; });

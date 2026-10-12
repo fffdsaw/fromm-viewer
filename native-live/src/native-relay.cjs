@@ -12,11 +12,12 @@ const root = path.resolve(__dirname, '..');
 const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
 const pipeId = crypto.randomBytes(24).toString('hex');
 const pipeName = '\\\\.\\pipe\\fromm-native-' + pipeId;
-let child, socket;
+let child, socket, closing = false;
 const queue = [];
 const server = net.createServer(stream => {
   if (socket) { stream.destroy(); return; }
   socket = stream;
+  if (closing) { stream.end(); return; }
   const outward = new Decoder(value => process.stdout.write(encode(value)));
   stream.on('data', chunk => { try { outward.push(chunk); } catch { child?.kill(); process.exit(1); } });
   stream.on('error', () => { child?.kill(); process.exit(1); });
@@ -31,4 +32,11 @@ server.listen(pipeName, () => {
 });
 const inward = new Decoder(value => { if (socket) socket.write(encode(value)); else { if (queue.length > 8) process.exit(1); queue.push(value); } });
 process.stdin.on('data', chunk => { try { inward.push(chunk); } catch { child?.kill(); process.exit(1); } });
-process.stdin.on('end', () => { socket?.end(); child?.kill(); process.exit(0); });
+process.stdin.on('end', () => {
+  closing = true; queue.length = 0;
+  // EOF reaches the controller first so it can leave/release the Native SDK.
+  socket?.end();
+  const timer = setTimeout(() => { child?.kill(); process.exit(0); }, 3000);
+  child?.once('exit', () => clearTimeout(timer));
+  if (!child) process.exit(0);
+});

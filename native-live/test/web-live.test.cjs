@@ -10,7 +10,7 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
   const state = { live: { room: { id: 'room', encryptionKey: 'x'.repeat(keyBytes), encryptionSalt: 'synthetic' }, tokenInfo: {}, currentLiveRoomId: 'room', entry: { channelId: 'channel' }, connectionSeq: 0, requestSeq: 1, centerMode: 'live' }, filter: 'live', scanGeneration: 1 };
   const window = { addEventListener(type, callback) { listeners.set(type, callback); }, postMessage(message) {
     calls.push(message.value);
-    queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
+    queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, backgroundPlayer: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
   } };
   const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
     document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: options.requestAnimationFrame || (callback => callback()), cancelAnimationFrame: options.cancelAnimationFrame || (()=>{}),
@@ -39,8 +39,8 @@ test('mobile cannot accidentally launch Windows Native path', async () => {
   const h = setup(64, 'Android'); await assert.rejects(h.context.connectAgoraLive(), /Windows/); assert.equal(h.calls.length, 0);
 });
 test('older Native host or extension is rejected before submitting login credentials', async () => {
-  for (const hello of [{frameAck:false}, {extensionVersion:'1.0.6'}, {targetFps:10}]) {
-    const h = setup(64, 'Windows', { hello }); await assert.rejects(h.context.connectAgoraLive(), /0.3.0/);
+  for (const hello of [{backgroundPlayer:false}, {backgroundPlayer:undefined}, {frameAck:false}, {extensionVersion:'1.0.6'}, {targetFps:10}]) {
+    const h = setup(64, 'Windows', { hello }); await assert.rejects(h.context.connectAgoraLive(), /0.4.0/);
     assert.equal(h.calls.some(v => v.method === 'join'), false);
   }
 });
@@ -49,6 +49,12 @@ test('BFCache fix extension remains compatible with the current Native host', as
   const h = setup(64, 'Windows', { hello: { extensionVersion: '1.0.8' } });
   await h.context.connectAgoraLive();
   assert.equal(h.calls.some(v => v.method === 'join'), true);
+});
+
+test('resuming Native audio preserves background playback without requesting a visible window', async () => {
+  const h = setup(); await h.context.connectAgoraLive(); const requests = h.calls.length;
+  await h.context.resumeLiveAudio(); assert.equal(h.calls.length, requests);
+  assert.equal(h.calls.some(value => value.method === 'show'), false);
 });
 test('web acknowledges decoded frames only and ignores stale playback after leaving', async () => {
   let image;

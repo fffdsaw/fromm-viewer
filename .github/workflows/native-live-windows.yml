@@ -1,5 +1,7 @@
 name: Windows LIVE connection tool
 on:
+  pull_request:
+    paths: ['native-live/**', 'chrome_extension/**', 'web-native-live.js', '.github/workflows/native-live-windows.yml']
   push:
     branches: [main]
     paths: ['native-live/**', 'chrome_extension/**', 'web-native-live.js', '.github/workflows/native-live-windows.yml']
@@ -36,6 +38,7 @@ jobs:
         run: |
           Compress-Archive -Path native-live,chrome_extension,web-native-live.js -DestinationPath fromm-native-live-windows-x64.zip -CompressionLevel Optimal
       - name: Publish Windows download
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

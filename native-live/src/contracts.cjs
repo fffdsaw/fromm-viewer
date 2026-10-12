@@ -1,5 +1,6 @@
 'use strict';
 const { inflateSync } = require('node:zlib');
+const { RTC_FIELDS, PIPELINE_FIELDS } = require('./receive-metrics.cjs');
 const API_HOSTS = new Set(['api.frommyarti.com', 'account-api.frommyarti.com', 'channel-api.frommyarti.com']);
 function fail(code) { const e = new Error(code); e.code = code; throw e; }
 function apiRequest(input) {
@@ -85,7 +86,8 @@ function enterEnvelope(response, roomId, now = Date.now() / 1000) {
 }
 function safeDiagnostic(value) {
   const out = { stage: /^[a-z0-9-]{1,64}$/.test(value?.stage) ? value.stage : 'unknown' };
-  for (const k of ['code', 'keyBytes', 'saltBytes', 'channelBytes', 'accountBytes', 'width', 'height', 'elapsedMs']) {
+  for (const k of ['code', 'keyBytes', 'saltBytes', 'channelBytes', 'accountBytes', 'width', 'height', 'elapsedMs',
+    ...RTC_FIELDS, ...PIPELINE_FIELDS, 'targetFps', 'captureFps', 'ackWaitTicks', 'ackTimeouts', 'captureMisses']) {
     if (Number.isFinite(value?.[k])) out[k] = value[k];
   }
   for (const k of ['tokenPresent', 'mediaVerified', 'synthetic']) if (typeof value?.[k] === 'boolean') out[k] = value[k];

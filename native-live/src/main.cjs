@@ -71,7 +71,12 @@ ipcMain.on('player:status', (event, value) => {
   if (SELF_TEST && ['self-test-passed', 'self-test-failed'].includes(value?.stage)) setTimeout(() => app.exit(value.stage === 'self-test-passed' ? 0 : 1), 100);
 });
 ipcMain.on('player:frame', (event, value) => {
-  if (senderIs(event, player, 'fromm://player/player.html')) { nativeController?.frame(value); frameBenchmark?.frame(value); }
+  if (senderIs(event, player, 'fromm://player/player.html')) {
+    const now = performance.timeOrigin + performance.now();
+    const nativeIpcMs = now - value?.sentAt;
+    const frame = { ...value, sentAt: now, nativeIpcMs: nativeIpcMs >= 0 && nativeIpcMs < 60000 ? nativeIpcMs : undefined };
+    nativeController?.frame(frame); frameBenchmark?.frame(frame);
+  }
 });
 // Network bridge is restricted to three official Fromm API hosts. No generic native fetch API.
 ipcMain.handle('fromm:request', async (event, input) => {

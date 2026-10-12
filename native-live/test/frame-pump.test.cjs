@@ -40,3 +40,14 @@ test('missing/oversized canvas capture sends nothing and the next valid frame st
   const h = setup(async () => valid ? 'good-frame' : null); await h.pump.tick(); assert.equal(h.sent.length, 0);
   valid = true; await h.pump.tick(); assert.equal(h.sent.length, 1);
 });
+test('only matching ACK records RTT and a timeout records pressure without releasing a newer frame', async () => {
+  const h = setup(), metrics = [];
+  h.pump.onMetric = (name, value) => metrics.push([name, value]);
+  await h.pump.tick(); h.setTime(40); await h.pump.tick();
+  h.pump.acknowledge(999); assert.equal(metrics.some(([name]) => name === 'ackRoundTrip'), false);
+  h.pump.acknowledge(1); assert.deepEqual(metrics.at(-1), ['ackRoundTrip', 40]);
+  await h.pump.tick(); h.setTime(541); await h.pump.tick();
+  assert.ok(metrics.some(([name]) => name === 'ackTimeouts'));
+  assert.ok(metrics.some(([name]) => name === 'ackWaitTicks'));
+  h.pump.acknowledge(2); assert.equal(h.pump.pending.sequence, 3);
+});

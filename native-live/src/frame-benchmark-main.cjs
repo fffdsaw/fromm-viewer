@@ -46,5 +46,5 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   ipcMain.on('benchmark:metric', (event, value) => { if (senderIs(event, browser, 'fromm://benchmark/index.html') && Number.isFinite(value?.displayFps)) samples.push(value.displayFps); });
   await browser.loadURL('fromm://benchmark/index.html');
   setTimeout(() => app.exit(2), 18000);
-  return { frame(value) { captureMs += value.captureMs; flightTimes.set(value.sequence, performance.now()); host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence })); } };
+  return { frame(value) { captureMs += value.captureMs; flightTimes.set(value.sequence, performance.now()); host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence, sentAt: value.sentAt, nativeIpcMs: value.nativeIpcMs, synthetic: true })); } };
 };

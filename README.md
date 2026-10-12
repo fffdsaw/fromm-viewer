@@ -4,7 +4,7 @@ Fromm 대화와 사진·영상·음성을 브라우저에서 확인하고 저장
 
 **[Fromm Viewer 열기](https://fffdsaw.github.io/fromm-viewer/?v=1.08)**
 
-현재 배포 버전은 웹 **1.08**, 확장 프로그램 **1.0.8**, Windows LIVE 연결 도구 **0.3.0**입니다.
+현재 배포 버전은 웹 **1.08**, 확장 프로그램 **1.0.8**, Windows LIVE 연결 도구 **0.4.0**입니다.
 
 ## 처음 설치
 
@@ -14,7 +14,7 @@ Fromm 대화와 사진·영상·음성을 브라우저에서 확인하고 저장
 
 | 사용할 기능 | 다운로드 |
 | --- | --- |
-| Windows에서 LIVE까지 시청 | [확장 + Windows LIVE 연결 도구](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.3.0/fromm-native-live-windows-x64.zip) |
+| Windows에서 LIVE까지 시청 | [확장 + Windows LIVE 연결 도구](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.4.0/fromm-native-live-windows-x64.zip) |
 | 대화·미디어·Replay만 이용 | [같은 확장만 다운로드](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip) |
 
 두 다운로드의 `chrome_extension`은 같은 **1.0.8**입니다. LIVE 패키지를 받았다면 확장을 따로 다운로드하지 마세요. Windows LIVE 연결 도구는 Windows 64비트 PC의 Chrome 또는 Edge에서 사용할 수 있으며, 관리자 권한이나 별도 Node.js 설치는 필요하지 않습니다.
@@ -60,7 +60,9 @@ Windows에서 LIVE를 시청할 때만 필요한 단계입니다. 대화·미디
 - **확장 카드에 오류가 표시됨:** **오류** 버튼을 눌러 문구를 확인합니다. 버튼만 보고 정상이라고 판단하지 마세요. Fromm 확장이 하나만 켜져 있는지 확인하고, 오류를 공유할 때는 토큰·키·응답 본문을 제외한 오류 문구만 알려 주세요.
 - **LIVE 연결 도구가 없거나 구버전이라고 표시됨:** 최신 Windows LIVE 설치 파일을 사용해 `Install-Web-LIVE.cmd`를 실행하고, 함께 받은 확장 **1.0.8**을 로드한 뒤 웹을 **Ctrl+F5**로 새로고침합니다.
 
-웹 영상 전달은 **30fps를 목표**로 하며 방송 원본과 PC 성능에 따라 실제 프레임률은 달라질 수 있습니다. 별도 Native 프로토타입의 실제 방송 영상·소리 재생과 합성 영상의 약 30fps 전달은 확인했습니다. 웹·확장·연결 도구를 모두 연결한 실제 LIVE 재생은 다음 방송에서 추가 확인이 필요합니다. 자세한 구현과 검증 범위는 [웹 LIVE 안내](WEB-LIVE.md)를 참고해 주세요.
+Windows 도구 **0.4.0부터 별도 Native 창 없이 백그라운드에서 영상과 소리를 처리합니다.** 기존 사용자는 LIVE 탭을 닫고 새 ZIP을 압축 해제한 뒤 `Install-Web-LIVE.cmd`를 다시 실행하고, 확장 재로드와 Viewer Ctrl+F5를 진행해 주세요. 자동 업데이트는 제공하지 않습니다.
+
+웹 영상 전달은 **30fps를 목표**로 하며 방송 원본과 PC 성능에 따라 실제 프레임률은 달라질 수 있습니다. 숨김 Agora Canvas·JPEG·ACK와 Native 음성 검증 범위는 [웹 LIVE 안내](WEB-LIVE.md)에서 확인할 수 있습니다. 2026-10-12에는 시청 가능한 방송이 없어 업데이트 후 실제 Fromm LIVE 영상·소리·싱크는 미검증입니다.
 
 ## 사용 방법
 

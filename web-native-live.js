@@ -100,7 +100,7 @@
     await stopLivePlayback();
     if (requestSeq !== state.live.requestSeq || generation !== state.scanGeneration || state.filter !== 'live') return;
     const hello = await call('hello', {}, 4000);
-    if (!hello.frameAck || hello.targetFps !== 30 || !['1.0.7', '1.0.8'].includes(hello.extensionVersion)) throw new Error('30fps 재생에는 PC LIVE 도구 0.3.0과 최신 확장이 필요합니다. PC LIVE 설치로 업데이트해 주세요.');
+    if (!hello.backgroundPlayer || !hello.frameAck || hello.targetFps !== 30 || !['1.0.7', '1.0.8'].includes(hello.extensionVersion)) throw new Error('백그라운드 30fps 재생에는 PC LIVE 도구 0.4.0과 최신 확장이 필요합니다. PC LIVE 설치로 업데이트해 주세요.');
     const auth = currentAuth();
     const seq = ++state.live.connectionSeq; nativeSequence = seq; frames = 0;
     state.live.phase = 'native-join';
@@ -113,6 +113,7 @@
       liveStatusText('LIVE 연결 요청됨 · 영상 스트림 대기 중');
     } catch (error) { nativeSequence = 0; throw error; }
   };
-  resumeLiveAudio = () => nativeSequence ? call('show', {}, 3000) : originalAudio();
+  // Agora Native playout starts with join; browser autoplay does not govern it.
+  resumeLiveAudio = () => nativeSequence ? Promise.resolve() : originalAudio();
   window.addEventListener('pagehide', () => { if (nativeSequence) window.postMessage({ protocol: 'fromm-native-v1', direction: 'page', value: { id: ++id, method: 'leave' } }, location.origin); });
 })();

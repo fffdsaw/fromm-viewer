@@ -6,7 +6,7 @@ const { FramePump } = require('./frame-pump.cjs');
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 let sdk, engine, handlers, active = false, joined = false, generation = 0;
 let framePump;
-let benchmarkDrawTimer;
+let stopBenchmark;
 const tiles = new Map(), diagnostics = [];
 function emit(value) {
   const safe = safeDiagnostic(value);
@@ -24,7 +24,7 @@ function checked(stage, call) {
 }
 function dispose() {
   framePump?.stop();
-  clearInterval(benchmarkDrawTimer); benchmarkDrawTimer = undefined;
+  stopBenchmark?.(); stopBenchmark = undefined;
   generation++; active = false; joined = false;
   if (engine) {
     try { engine.unregisterEventHandler(handlers); } catch {}
@@ -57,6 +57,8 @@ function loadEngine(appId) {
   // Windows NUL device + LogLevelNone: no RTC argument log file.
   checked('initialized', () => engine.initialize({ appId, channelProfile: sdk.ChannelProfileType.ChannelProfileLiveBroadcasting,
     logConfig: { filePath: 'NUL', level: sdk.LogLevel.LogLevelNone } }));
+  // The SDK cache defaults to 15fps; match the existing 30fps JPEG/ACK pump.
+  sdk.AgoraEnv.AgoraRendererManager.setRenderingFps(30);
 }
 function attachRemoteVideo(uid, view, connection) {
   // Explicit remote source + callback connection avoids an unqualified cache
@@ -129,17 +131,16 @@ ipcRenderer.on('player:command', (_event, command) => {
     else if (command.type === 'renew' && active) checked('token-renewed', () => engine.renewToken(command.token));
     else if (command.type === 'join') { start(command.payload); if (command.inlineVideo) startInlineVideo(); }
     else if (command.type === 'frame-benchmark') {
-      dispose(); active = true;
-      const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 1280;
-      document.getElementById('videos').append(canvas);
-      const ctx = canvas.getContext('2d'), pixels = ctx.createImageData(720, 1280);
-      for (let y = 0; y < 1280; y++) for (let x = 0; x < 720; x++) {
-        const i = (y * 720 + x) * 4;
-        pixels.data[i] = (x * 7 + y * 3) % 256; pixels.data[i+1] = (x + y * 11) % 256; pixels.data[i+2] = (x * 3 + y * 5) % 256; pixels.data[i+3] = 255;
-      }
-      let tick = 0;
-      ctx.putImageData(pixels, 0, 0);
-      benchmarkDrawTimer = setInterval(() => { ctx.putImageData(pixels, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect((tick++ * 13) % 660, 200, 60, 880); }, 16);
+      dispose(); loadEngine('0'.repeat(32));
+      checked('video-enabled', () => engine.enableVideo());
+      checked('audio-enabled', () => engine.enableAudio());
+      checked('local-audio-disabled', () => engine.enableLocalAudio(false));
+      checked('local-video-disabled', () => engine.enableLocalVideo(false));
+      const view = document.createElement('div'); view.className = 'video'; document.getElementById('videos').append(view);
+      attachRemoteVideo(12345, view, { channelId: 'synthetic-room', localUid: 67890 });
+      stopBenchmark = require('./background-media-benchmark.cjs').startBackgroundMediaBenchmark({ sdk, engine, audioPath: command.audioPath, width: command.width, height: command.height,
+        sendMetric: value => ipcRenderer.send('benchmark:player-metric', value), onError: () => { dispose(); emit({ stage: 'frame-benchmark-failed', synthetic: true, mediaVerified: false }); } });
+      active = true;
       startInlineVideo();
     }
     else if (command.type === 'self-test') start(command.payload, true);

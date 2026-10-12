@@ -67,6 +67,7 @@ function checkRelay() {
 }
 async function main() {
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('WINDOWS_X64_REQUIRED');
+  require('../src/benchmark-size.cjs').benchmarkSize(process.argv);
   for (const file of [exe, 'node_modules/agora-electron-sdk/build/Release/agora_node_ext.node', 'node_modules/agora-electron-sdk/build/Release/agora_rtc_sdk.dll']) {
     if (!fs.existsSync(path.resolve(root, file))) throw new Error('RUNTIME_MISSING');
   }
@@ -76,7 +77,7 @@ async function main() {
   const loopback = process.argv.includes('--require-loopback') ? startLoopback() : null;
   try {
     if (loopback) await loopback.ready;
-    const frames = await run(['--frame-benchmark'], 65000);
+    const frames = await run(['--frame-benchmark', ...process.argv.filter(arg => arg.startsWith('--benchmark-size='))], 65000);
     if (!frames.some(v => v.stage === 'frame-benchmark-passed')) throw new Error('FRAME_BENCHMARK_FAILED');
     if (loopback) {
       const audio = (await loopback.complete).find(v => v.stage === 'audio-loopback-complete');

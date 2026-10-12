@@ -138,7 +138,7 @@ ipcRenderer.on('player:command', (_event, command) => {
       checked('local-video-disabled', () => engine.enableLocalVideo(false));
       const view = document.createElement('div'); view.className = 'video'; document.getElementById('videos').append(view);
       attachRemoteVideo(12345, view, { channelId: 'synthetic-room', localUid: 67890 });
-      stopBenchmark = require('./background-media-benchmark.cjs').startBackgroundMediaBenchmark({ sdk, engine, audioPath: command.audioPath,
+      stopBenchmark = require('./background-media-benchmark.cjs').startBackgroundMediaBenchmark({ sdk, engine, audioPath: command.audioPath, width: command.width, height: command.height,
         sendMetric: value => ipcRenderer.send('benchmark:player-metric', value), onError: () => { dispose(); emit({ stage: 'frame-benchmark-failed', synthetic: true, mediaVerified: false }); } });
       active = true;
       startInlineVideo();

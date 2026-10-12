@@ -29,7 +29,9 @@ jobs:
         run: node --test native-live/test/*.test.cjs test/*.test.cjs
       - name: Verify hidden Native SDK rendering, frame delivery and lifecycle
         working-directory: native-live
-        run: node test/run-background-check.cjs
+        # Hosted Windows uses software GPU/JPEG decode. Keep all 30fps/ACK/rAF
+        # gates with a smaller fixture; full 720x1280 and WASAPI run locally.
+        run: node test/run-background-check.cjs --benchmark-size=360x640
       - name: Bundle the connection tool and extension
         shell: pwsh
         run: |

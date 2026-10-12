@@ -12,7 +12,7 @@ window.addEventListener('message', event => {
       try {
         sampleCanvas ||= document.createElement('canvas'); sampleCanvas.width = sampleCanvas.height = 1;
         const context = sampleCanvas.getContext('2d', { willReadFrequently: true });
-        context.drawImage(image, 360, 8, 1, 1, 0, 0, 1, 1);
+        context.drawImage(image, image.naturalWidth / 2, image.naturalHeight / 160, 1, 1, 0, 0, 1, 1);
         const pixel = context.getImageData(0, 0, 1, 1).data[0];
         ipcRenderer.send('benchmark:decoded', { width: image.naturalWidth, height: image.naturalHeight, pixel });
       } catch { ipcRenderer.send('benchmark:decoded', { failed: true }); }

@@ -1,12 +1,14 @@
 'use strict';
 // Offline synthetic input exercises the same Agora RendererCache/WebGL canvas
 // and audio playout engine as LIVE. It never joins RTC or uses account data.
-function startBackgroundMediaBenchmark({ sdk, engine, audioPath, sendMetric, onError }) {
+function startBackgroundMediaBenchmark({ sdk, engine, audioPath, sendMetric, onError, width = 720, height = 1280 }) {
+  if (!((width === 720 && height === 1280) || (width === 360 && height === 640))) throw new Error('BENCHMARK_SIZE_INVALID');
   const caches = sdk.AgoraEnv.AgoraRendererManager.getRendererCaches();
   if (caches.length !== 1 || caches[0].cacheContext.sourceType !== sdk.VideoSourceType.VideoSourceRemote) throw new Error('BENCHMARK_RENDER_CACHE');
-  const cache = caches[0], width = 720, height = 1280;
+  const cache = caches[0];
   const yBuffer = Buffer.alloc(width * height), uBuffer = Buffer.alloc(width * height / 4, 128), vBuffer = Buffer.alloc(width * height / 4, 128);
   const base = Buffer.alloc(yBuffer.length);
+  const markerWidth = width / 12, markerTop = height * 5 / 32, markerBottom = height * 27 / 32, markerHeight = height / 80;
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) base[y * width + x] = 16 + (x * 7 + y * 3) % 220;
   Object.assign(cache.shareVideoFrame, { width, height, yStride: width, uStride: width / 2, vStride: width / 2,
     yBuffer, uBuffer, vBuffer, alphaBuffer: Buffer.alloc(0), rotation: 0 });
@@ -18,9 +20,9 @@ function startBackgroundMediaBenchmark({ sdk, engine, audioPath, sendMetric, onE
   // renderFrame(), color conversion and renderer selection remain in use.
   cache.fetchVideoFrame = () => {
     base.copy(yBuffer);
-    yBuffer.fill(16 + (frame * 73) % 220, 0, width * 16);
-    const left = (frame++ * 13) % (width - 60);
-    for (let y = 200; y < 1080; y++) yBuffer.fill(235, y * width + left, y * width + left + 60);
+    yBuffer.fill(16 + (frame * 73) % 220, 0, width * markerHeight);
+    const left = (frame++ * Math.round(width * 13 / 720)) % (width - markerWidth);
+    for (let y = markerTop; y < markerBottom; y++) yBuffer.fill(235, y * width + left, y * width + left + markerWidth);
     return { hasMoreFrame: false, needRender: true };
   };
   const render = cache.renderFrame.bind(cache);

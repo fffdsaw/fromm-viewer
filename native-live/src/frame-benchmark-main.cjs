@@ -3,6 +3,7 @@
 // Fromm requests, credentials or real broadcast media.
 const fs = require('node:fs'), path = require('node:path'), net = require('node:net'), crypto = require('node:crypto');
 const { Decoder, encode } = require('./native-wire.cjs');
+const { benchmarkSize } = require('./benchmark-size.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Longer than the 50s loopback probe, so silence proves teardown, not EOF.
 function testTone(seconds = 90) {
@@ -14,6 +15,7 @@ function testTone(seconds = 90) {
   return wav;
 }
 module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedWindow, stopPlayer, ensurePlayer, getPlayer }) => {
+  const { width, height } = benchmarkSize(process.argv);
   const id = crypto.randomBytes(24).toString('hex'), pipeName = '\\\\.\\pipe\\fromm-frame-bench-' + id;
   const audioDirectory = fs.mkdtempSync(path.join(app.getPath('temp'), 'fromm-benchmark-'));
   const audioPath = path.join(audioDirectory, 'synthetic-697hz.wav'); fs.writeFileSync(audioPath, testTone());
@@ -74,8 +76,11 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
     const audioAdvancedMs = audioPositions.length > 1 ? audioPositions.at(-1) - audioPositions[0] : 0;
     const audioPassed = playerSamples.length > 0 && playerSamples.every(v => v.audioStartCode === 0 && v.volumeCode === 0 && v.audioState === 710) && audioAdvancedMs >= 30000;
     const changingPixelFps = changedPixels * 1000 / Math.max(1, elapsedMs);
-    const passed = !error && !playerEverVisible && !backgroundThrottling && !audioMuted && visibleChecks >= 300 && displayFps >= 27 && rendererFps >= 27 && rafFps >= 27 && changingPixelFps >= 26 &&
-      received >= 945 && acknowledgements >= received - 1 && changedJpegs >= received * 0.86 && decodedFrames >= acknowledgements - 1 && invalidDecodedFrames === 0 &&
+    // SDK rendering and FramePump capture have independent clocks, so a
+    // healthy 28fps renderer/30fps pump may repeat a captured image. Keep the
+    // 30fps throughput gates and use pixel/JPEG changes to reject frozen input.
+    const passed = !error && !playerEverVisible && !backgroundThrottling && !audioMuted && visibleChecks >= 300 && displayFps >= 27 && rendererFps >= 27 && rafFps >= 27 && changingPixelFps >= 24 &&
+      received >= 945 && acknowledgements >= received - 1 && changedJpegs >= received * 0.80 && decodedFrames >= acknowledgements - 1 && invalidDecodedFrames === 0 &&
       audioPassed && Object.values(lifecycle).every(Boolean);
     process.stdout.write(JSON.stringify({ stage: passed ? 'frame-benchmark-passed' : 'frame-benchmark-failed', ...(error ? { error } : {}), targetFps: 30,
       displayFps: round(displayFps), minimumDisplayFps: displaySamples.length ? Math.min(...displaySamples) : 0, rendererFps: round(rendererFps), rafFps: round(rafFps),
@@ -83,7 +88,7 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
       changingPixelFps: round(changingPixelFps), invalidDecodedFrames, playerEverVisible, visibleChecks,
       playerBackgroundThrottling: backgroundThrottling, playerAudioMuted: audioMuted,
       averageFrameBytes: received ? Math.round(bytes / received) : 0, averageCaptureMs: round(captureMs / Math.max(1, received)), averageAckMs: round(ackMs / Math.max(1, acknowledgements)),
-      width: 720, height: 1280, elapsedMs, audioMixingPassed: audioPassed, audioAdvancedMs, audioSamples: audioPositions.length,
+      width, height, elapsedMs, audioMixingPassed: audioPassed, audioAdvancedMs, audioSamples: audioPositions.length,
       hardwareAudioVerified: false, lifecycle, synthetic: true, mediaVerified: false }) + '\n');
     host?.destroy(); consumer?.destroy(); server.close(); if (!browser.isDestroyed()) browser.destroy();
     try { fs.unlinkSync(audioPath); fs.rmdirSync(audioDirectory); } catch {}
@@ -99,10 +104,10 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
     if (message.method === 'hello') host.write(encode({ id: message.id, ok: true, backgroundPlayer: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7' }));
     else if (message.method === 'join' && !warmupTimer) {
       host.write(encode({ id: message.id, ok: true }));
-      player.webContents.send('player:command', { type: 'frame-benchmark', audioPath });
+      player.webContents.send('player:command', { type: 'frame-benchmark', audioPath, width, height });
       warmupTimer = setTimeout(() => {
         started = performance.now(); measuring = true;
-        process.stdout.write(JSON.stringify({ stage: 'frame-benchmark-measuring', durationMs: 35000, playerVisible: player.isVisible(), synthetic: true, mediaVerified: false }) + '\n');
+        process.stdout.write(JSON.stringify({ stage: 'frame-benchmark-measuring', durationMs: 35000, width, height, playerVisible: player.isVisible(), synthetic: true, mediaVerified: false }) + '\n');
         finishTimer = setTimeout(() => { void finish(); }, 35000);
       }, 3000);
     } else if (message.method === 'frame-ack') {
@@ -118,7 +123,7 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   ipcMain.on('benchmark:metric', (event, value) => { if (measuring && senderIs(event, browser, 'fromm://benchmark/index.html') && Number.isFinite(value?.displayFps)) displaySamples.push(value.displayFps); });
   ipcMain.on('benchmark:decoded', (event, value) => {
     if (!measuring || !senderIs(event, browser, 'fromm://benchmark/index.html')) return;
-    if (value?.width !== 720 || value?.height !== 1280 || !Number.isFinite(value?.pixel)) { invalidDecodedFrames++; return; }
+    if (value?.width !== width || value?.height !== height || !Number.isFinite(value?.pixel)) { invalidDecodedFrames++; return; }
     decodedFrames++; if (previousPixel !== undefined && value.pixel !== previousPixel) changedPixels++; previousPixel = value.pixel;
   });
   ipcMain.on('benchmark:player-metric', (event, value) => {

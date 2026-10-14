@@ -27,8 +27,8 @@ Windows, fresh installed browser profiles, actual OPFS files, synthetic throttle
 
 | Browser | Baseline trials (ms) | Updated trials (ms) | Median | Change |
 | --- | --- | --- | --- | --- |
-| Chrome 155.0.8059.39 | 3448, 3454, 3469 | 1088, 1091, 1098 | 3454 → 1091 ms | 3.17x throughput; 68.4% less time |
-| Edge 155.0.4283.45 | 3453, 3457, 3486 | 1090, 1080, 1093 | 3457 → 1090 ms | 3.17x throughput; 68.5% less time |
+| Chrome 155.0.8059.39 | 3486, 3459, 3456 | 1081, 1082, 1082 | 3459 → 1082 ms | 3.20x throughput; 68.7% less time |
+| Edge 155.0.4283.45 | 3465, 3490, 3451 | 1078, 1067, 1066 | 3465 → 1067 ms | 3.25x throughput; 69.2% less time |
 
 Response-header wait summed across files remained about 0.8–0.85 seconds; streamed file-write sums remained about 0.86–0.92 seconds. Those sums overlap in the updated pipeline and are not additive wall time. Empty-root scan time rounded to 0 ms; this benchmark does not measure a large existing archive scan. Observed active streams/writers rose from one to three. Application-held pending chunks rose from 64 KiB to 192 KiB; sampled JS heap stayed around 10 MB. These measurements exclude browser/network/OS buffers and are not whole-process memory bounds.
 
@@ -36,7 +36,7 @@ Response-header wait summed across files remained about 0.8–0.85 seconds; stre
 
 - 116 Node tests passed: new media regressions plus existing selection, Channel/Replay and Native 0.4.0 contracts. Cases include photos/videos/audio and mixed selection, picker cancel/denial, history failure/loading, legacy/nonempty duplicates, aborted empty entries, failed-only retry, 429, bounded concurrency, buffered XHR serialization, empty bodies, 256 MiB generated streaming, backpressure, reader/writable cleanup, and room/session changes in folder/mobile flows.
 - All four existing browser fixtures passed locally using installed Chrome/Edge: Channel features, 12 viewport local-video playback/layout, direct selection/mobile behavior and selection gestures.
-- New Chrome/Edge browser fixtures use trusted clicks, mock directory picker outcomes, and real OPFS writes. They verify picker-before-history with activation active even when the subsequent lookup exceeds five seconds, cancellation/permission outcomes, mixed names/bytes, completed duplicate skip, partial failures, and 72 MiB streamed saves.
+- All nine new Chrome/Edge browser cases passed. They use trusted clicks, mock directory picker outcomes, and real OPFS writes. They verify picker-before-history with activation active even when the subsequent lookup exceeds five seconds, cancellation/permission outcomes, mixed names/bytes, completed duplicate skip, partial failures, and 72 MiB streamed saves.
 - Native LIVE/helper/extension files are untouched; existing production login/request, LIVE, Replay, Channel and Native frame/audio/ACK contracts pass. These are regression evidence, not real broadcast evidence.
 - Real Fromm service downloads, actual signed URL expiry/rate-limit behavior, real broadcast playback and user-selected external-directory success are **UNCONFIRMED**. The new actual native picker screen/cancellation test is also **UNCONFIRMED**: Computer Use stopped because it could not determine the browser URL with enough confidence to enforce policy. No permission prompt was automated. Mock activation plus OPFS success must not be described as a completed native external-folder UX test.
 

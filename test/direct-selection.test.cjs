@@ -97,15 +97,23 @@ test('existing files are skipped without refetching; Replay forces fresh details
   await h.c.saveSelectedPosts(); assert.deepEqual(h.details, ['two', 'three']);
   assert.equal(h.state.postSelected.size, 1); assert.match(h.alerts[0], /기존 파일 1개/); unlocked(h);
 });
-test('existing media save, Channel playback/download and LIVE entry sources are preserved', () => {
+test('Channel playback/download and LIVE entry sources are preserved; media save retains direct dispatch', () => {
   const baseline = execFileSync('git', ['show', 'd876793:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
-  for (const name of ['selectedMediaForSave', 'stableSelectedMediaForSave', 'saveSelectedToFolder',
-    'downloadChannelVideo', 'fetchChannelVideoDetail', 'attachChannelVideo', 'playChannelVideo',
+  for (const name of ['downloadChannelVideo', 'fetchChannelVideoDetail', 'attachChannelVideo', 'playChannelVideo',
     'fetchLiveEntrances', 'refreshLiveStatus', 'connectAgoraLive']) {
     assert.equal(fn(name), fn(name, baseline), name);
   }
-  // The sole new branch delegates post selection; the media implementation below is identical.
+  // Media preparation now guards the mobile session as well as folder saves.
+  // Preserve the exact desktop delegation and distinct post-selection branch;
+  // media-bulk-save.test.cjs exercises the changed preparation and mobile flow.
+  const direct = fn('saveSelectedDirect');
   const delegate = /\r?\n  if\(state.filter==="live"\)\{\r?\n    await saveSelectedPosts\(\);\r?\n    return;\r?\n  \}/;
-  const clickFlush = /\r?\n  flushDownloadClick\(\);downloadClickGesture=null;/;
-  assert.equal(fn('saveSelectedDirect').replace(delegate, '').replace(clickFlush, ''), fn('saveSelectedDirect', baseline));
+  const folder = /\r?\n  if\(supportsDirectorySave\(\)\)\{\r?\n    await saveSelectedToFolder\(\);\r?\n    return;\r?\n  \}/;
+  assert.match(direct, delegate);
+  assert.equal(direct.match(folder)?.[0], fn('saveSelectedDirect', baseline).match(folder)?.[0]);
+  assert.ok(direct.indexOf('flushDownloadClick();downloadClickGesture=null;') < direct.indexOf('await saveSelectedPosts();'));
+  assert.ok(direct.indexOf('await saveSelectedPosts();') < direct.indexOf('await saveSelectedToFolder();'));
+  assert.match(direct, /if\(state\.mediaBulkSaving \|\| state\.postBulkSaving\) return;/);
+  assert.match(direct, /await stableSelectedMediaForSave\(selected,current\)/);
+  assert.match(direct, /await saveSelectedToDownloads\(items,current\)/);
 });

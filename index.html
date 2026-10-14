@@ -418,7 +418,8 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .date-year-option.selected.has-chat::after, .date-month-option.selected.has-chat::after { background: rgb(159, 208, 255); }
 .live-shell { width: min(1180px, 100%); margin: 0px auto; padding: 18px 18px 54px; }
 .live-card { border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(rgba(28, 31, 38, 0.98), rgba(20, 22, 28, 0.98)); box-shadow: rgba(0, 0, 0, 0.22) 0px 18px 50px; overflow: hidden; }
-.live-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.live-head { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.live-head .live-badge { flex-shrink: 0; }
 .live-badge { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; background: rgba(255, 73, 93, 0.13); color: rgb(255, 125, 139); border: 1px solid rgba(255, 93, 112, 0.22); }
 .live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentcolor; box-shadow: rgba(255, 125, 139, 0.45) 0px 0px 0px 0px; animation: 1.8s ease 0s infinite normal none running livePulse; }
 .live-badge.off { background: rgba(255, 255, 255, 0.05); color: var(--muted); border-color: var(--line); }
@@ -428,9 +429,11 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
   70% { box-shadow: rgba(255, 125, 139, 0) 0px 0px 0px 8px; }
   100% { box-shadow: rgba(255, 125, 139, 0) 0px 0px 0px 0px; }
 }
-.live-head-text { min-width: 0px; flex: 1 1 0%; }
-.live-title { font-size: 16px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.live-sub { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.live-head-text { display: flex; align-items: baseline; gap: 12px; min-width: 0px; flex: 1 1 0%; }
+.live-title { flex: 0 1 auto; min-width: 0; max-width: 50%; font-size: 16px; line-height: 1.4; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-head-text:has(.live-sub[hidden]) .live-title { max-width: 100%; }
+.live-sub { flex: 0 1 auto; min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-pip-btn { flex: 0 0 auto; padding: 0 10px; }
 .live-head-actions { display: flex; gap: 8px; align-items: center; }
 .live-mini-btn { height: 34px; padding: 0px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, 0.04); color: var(--text); cursor: pointer; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; }
 .live-mini-btn:hover { background: rgba(255, 255, 255, 0.08); }
@@ -453,7 +456,10 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 @media (max-width: 700px) {
 .live-shell { padding: 10px 8px 36px; }
 .live-card { border-radius: 16px; }
-.live-head { align-items: flex-start; flex-wrap: wrap; }
+.live-head { gap: 8px; padding: 8px 10px; }
+.live-head-text { flex-wrap: wrap; gap: 2px 8px; }
+.live-title { max-width: 100%; }
+.live-sub { flex-basis: 100%; }
 .live-head-actions { width: 100%; }
 .live-stage { aspect-ratio: 1.2 / 1; max-height: none; }
 .live-stage-empty { padding: 18px 14px; }
@@ -3279,8 +3285,8 @@ function renderLiveView(){
         <div class="live-head">
           ${streaming ? `<span class="live-badge">${mockStreaming?"TEST":"LIVE"}</span>` : ""}
           <div class="live-head-text">
-            <div class="live-title">${esc(title)}</div>
-            <div class="live-sub"${sub ? "" : " hidden"}>${esc(sub)}</div>
+            <div class="live-title" title="${esc(title)}">${esc(title)}</div>
+            <div class="live-sub" title="${esc(sub)}"${sub ? "" : " hidden"}>${esc(sub)}</div>
           </div>
         </div>
         <div id="liveEntrances" class="live-entry-form" aria-live="polite"></div>
@@ -4774,9 +4780,10 @@ function renderLiveEntrances(){
   const card=el.closest(".live-card");
   const title=card?.querySelector(".live-title");
   const sub=card?.querySelector(".live-sub");
-  if(title) title.textContent=heading.title;
+  if(title){ title.textContent=heading.title; title.title=heading.title; }
   if(sub){
     sub.textContent=heading.sub;
+    sub.title=heading.sub;
     sub.hidden=!heading.sub;
   }
   const onlyCurrentBroadcast=!!live.config?.isStreaming && live.entrances.length===1 &&
@@ -9638,6 +9645,7 @@ autoConnectSaved();
 
 
 <script src="web-native-live.js?v=1.08.3"></script>
+<script src="web-live-pip.js?v=1"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

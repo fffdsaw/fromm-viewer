@@ -8955,7 +8955,10 @@ async function saveOneMediaItem(m, root,onProgress=null,current=()=>true){
     });
     assertMediaSaveCurrent(current);
     if(!r.ok){
-      const error=new Error(await responseErrorReason(r));
+      // Do not wait for a slow error body before stopping new batch requests.
+      const error=new Error(r.status===429
+        ? "HTTP 429 · 요청 제한으로 중단했습니다. 잠시 후 다시 시도해주세요."
+        : await responseErrorReason(r));
       error.status=r.status;
       throw error;
     }

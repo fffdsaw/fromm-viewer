@@ -395,6 +395,32 @@ test('rate limiting stops new jobs after the bounded in-flight group and retains
   assert.equal(result.ok + result.failures.length, 12);
 });
 
+test('HTTP 429 response stops scheduling promptly without waiting for its stalled error body', async () => {
+  const h = setup({types: Array(12).fill('image')});
+  const original = h.context.fetchMediaResponse;
+  let errorReads = 0, responseCancels = 0;
+  h.context.fetchMediaResponse = async (...args) => {
+    if (args[0] !== h.media[0].fixtureUrl) return original(...args);
+    h.metrics.fetches++;
+    return {ok: false, status: 429, statusText: 'Too Many Requests',
+      body: {async cancel() {responseCancels++;}},
+      text() {errorReads++; return new Promise(() => {});}};
+  };
+  let timer;
+  const promptly = promise => Promise.race([promise,
+    new Promise((_, reject) => {timer = setTimeout(() => reject(new Error('HTTP 429 waited for response body')), 500);})]);
+  try {
+    await assert.rejects(promptly(h.context.saveOneMediaItem(h.media[0], h.root)), error => error.status === 429);
+    clearTimeout(timer);
+    assert.equal(errorReads, 0); assert.equal(responseCancels, 1); assert.equal(h.records.length, 0);
+    const before = h.metrics.fetches;
+    const result = await promptly(h.context.runMediaSaveBatch(h.media, h.root, h.button));
+    assert.ok(h.metrics.fetches - before <= 3);
+    assert.equal(errorReads, 0); assert.equal(responseCancels, 2);
+    assert.equal(result.ok + result.failures.length, 12); assert.ok(result.failures.length >= 9);
+  } finally {clearTimeout(timer);}
+});
+
 test('companion XHR fallback buffers only one file until its writable closes', async () => {
   let held = 0, maxHeld = 0, fallbackRequests = 0;
   const h = setup({types: Array(9).fill('video'), afterClose: () => {held--;}});

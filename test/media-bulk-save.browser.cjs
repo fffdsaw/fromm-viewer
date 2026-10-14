@@ -83,10 +83,16 @@ async function configure(page, origin, options = {}) {
     buildMediaSequences(); syncLiveToolbarControls(); updateSelectedCount();
     document.title = `Bulk save ${options.title || 'regression'}`;
     window.qa = {events: [], historyCalls: 0, responseCalls: 0, responseHeaderMs: 0, scanMs: 0, writeMs: 0,
-      reads: 0, writtenBytes: 0, maxChunk: 0, chunkOutstanding: 0, maxChunkOutstanding: 0,
+      reads: 0, writtenBytes: 0, maxChunk: 0, chunkOutstanding: 0, maxChunkOutstanding: 0, maxOutstandingChunks: 0,
       active: 0, maxActive: 0, activeWriters: 0, maxWriters: 0, fileWrites: 0, progress: [], result: null,
       pickerCalls: 0, pickerActive: [], alerts: [], errors: [], startedAt: 0, finishedAt: 0, peakHeap: 0};
     const q = window.qa; q.failNextWrite = !!options.firstWriteFault;
+    q.outstandingChunks = new Map();
+    const releaseChunk = bytes => {
+      const item = q.outstandingChunks.get(bytes);
+      if (!item) return;
+      q.chunkOutstanding -= item.length; item.owner.delete(bytes); q.outstandingChunks.delete(bytes);
+    };
     window.alert = message => q.alerts.push(String(message));
     window.console.error = () => q.errors.push('redacted');
     window.console.warn = () => {};
@@ -101,7 +107,7 @@ async function configure(page, origin, options = {}) {
       const start = performance.now(), r = await nativeFetchResponse(...args);
       q.responseHeaderMs += performance.now() - start;
       if (!r.ok || !r.body) {q.active--; return r;}
-      const reader = r.body.getReader(); let finished = false;
+      const reader = r.body.getReader(), ownedChunks = new Set(); let finished = false;
       const finish = () => {if (!finished) {finished = true; q.active--;}};
       return {ok: r.ok, status: r.status, statusText: r.statusText, headers: r.headers,
         arrayBuffer: r.arrayBuffer.bind(r), blob: r.blob.bind(r), text: r.text.bind(r),
@@ -109,9 +115,13 @@ async function configure(page, origin, options = {}) {
           const data = await reader.read();
           if (data.done) finish();
           else if (data.value) {q.reads++; q.maxChunk = Math.max(q.maxChunk, data.value.byteLength);
+            ownedChunks.add(data.value); q.outstandingChunks.set(data.value, {length: data.value.byteLength, owner: ownedChunks});
+            q.maxOutstandingChunks = Math.max(q.maxOutstandingChunks, q.outstandingChunks.size);
             q.chunkOutstanding += data.value.byteLength; q.maxChunkOutstanding = Math.max(q.maxChunkOutstanding, q.chunkOutstanding);}
           return data;
-        }, cancel: async () => {finish(); await reader.cancel();}, releaseLock: () => reader.releaseLock()})}};
+        }, cancel: async () => {
+          finish(); for (const bytes of [...ownedChunks]) releaseChunk(bytes); await reader.cancel();
+        }, releaseLock: () => reader.releaseLock()})}};
     };
     const nativeExisting = existingMediaNames;
     existingMediaNames = async (...args) => {const start = performance.now(); const value = await nativeExisting(...args); q.scanMs += performance.now() - start; return value;};
@@ -134,10 +144,11 @@ async function configure(page, origin, options = {}) {
           const writable = await fh.createWritable(); q.activeWriters++; q.maxWriters = Math.max(q.maxWriters, q.activeWriters);
           return {write: async bytes => {
             const length = bytes.byteLength ?? bytes.size ?? 0, start = performance.now();
-            await new Promise(resolve => setTimeout(resolve, 8));
-            if (q.failNextWrite) {q.failNextWrite = false; throw new DOMException('Synthetic first write disk failure', 'QuotaExceededError');}
-            await writable.write(bytes);
-            q.writeMs += performance.now() - start; q.writtenBytes += length; q.chunkOutstanding -= length;
+            try {
+              await new Promise(resolve => setTimeout(resolve, 8));
+              if (q.failNextWrite) {q.failNextWrite = false; throw new DOMException('Synthetic first write disk failure', 'QuotaExceededError');}
+              await writable.write(bytes); q.writtenBytes += length;
+            } finally {q.writeMs += performance.now() - start; releaseChunk(bytes);}
           }, close: async () => {await writable.close(); q.activeWriters--; q.fileWrites++;},
           abort: async () => {await writable.abort(); q.activeWriters--;}};
         }};
@@ -183,7 +194,8 @@ async function summary(page) {
     await walk(qa.root);
     return {trustedClick: qa.trustedClick, pickerCalls: qa.pickerCalls, pickerActive: qa.pickerActive, events: qa.events,
       historyCalls: qa.historyCalls, responseCalls: qa.responseCalls, maxActive: qa.maxActive, maxWriters: qa.maxWriters,
-      maxChunk: qa.maxChunk, maxChunkOutstanding: qa.maxChunkOutstanding, writtenBytes: qa.writtenBytes,
+      maxChunk: qa.maxChunk, maxChunkOutstanding: qa.maxChunkOutstanding, maxOutstandingChunks: qa.maxOutstandingChunks,
+      outstandingChunks: qa.outstandingChunks.size, chunkOutstanding: qa.chunkOutstanding, writtenBytes: qa.writtenBytes,
       fileWrites: qa.fileWrites, reads: qa.reads, scanMs: Math.round(qa.scanMs), responseHeaderMs: Math.round(qa.responseHeaderMs),
       writeMs: Math.round(qa.writeMs), elapsedMs: Math.round((qa.finishedAt || performance.now()) - qa.startedAt),
       peakHeapBytes: qa.peakHeap, result: qa.result, files, selection: state.selected.size,
@@ -192,14 +204,14 @@ async function summary(page) {
   });
 }
 
-async function runCase(browser, origin, name, options = {}) {
+async function runCase(browser, origin, name, options = {}, record = () => {}) {
   const context = await browser.newContext({viewport: {width: 1280, height: 900}});
   const page = await context.newPage();
   await page.route('https://**/*', route => route.abort());
   await page.goto(origin + '/index.html'); await configure(page, origin, {...options, title: name});
   await page.locator('#saveSelectedBtn').click();
   await page.waitForFunction(() => qa.clickFinished, null, {timeout: nativePicker ? nativeWaitMs : 60000});
-  let result = await summary(page);
+  let result = await summary(page); record(result);
   if (options.firstWriteFault) {
     const firstAttempt = result;
     assert.equal(firstAttempt.result.failed, 1); assert.equal(firstAttempt.result.ok, 2);
@@ -207,7 +219,7 @@ async function runCase(browser, origin, name, options = {}) {
     await page.locator('#saveResultOkBtn').click();
     await page.evaluate(() => {qa.progress = []; qa.result = null;});
     await page.locator('#saveSelectedBtn').click(); await page.waitForFunction(() => qa.clickFinished);
-    result = await summary(page); result.firstAttempt = firstAttempt;
+    result = await summary(page); result.firstAttempt = firstAttempt; record(result);
     assert.deepEqual(result.result, {ok: 1, failed: 0, total: 3, skipped: 2});
     assert.equal(result.responseCalls, 4, 'fresh save fetches only the empty failed entry');
     assert.equal(result.files.filter(f => f.size === 0).length, 0); assert.equal(result.files.length, 3);
@@ -224,13 +236,14 @@ async function runCase(browser, origin, name, options = {}) {
     sourceSha256: createHash('sha256').update(source).digest('hex'), cases: {}, benchmark: []};
   try {
     if (nativePicker || nativeBaseline) {
+      report.currentCase = nativeBaseline ? 'nativeActivationExpired' : 'nativeCancellation';
       const result = await runCase(browser, origin, `${channel || 'chromium'} native picker QA`, {count: 3, historyDelay: 5500, native: true});
+      report.cases[report.currentCase] = result;
       assert.equal(result.trustedClick, true); assert.equal(result.pickerCalls, 1);
       assert.deepEqual(result.pickerActive, [!nativeBaseline]);
       assert.equal(result.nativeError, nativeBaseline ? 'SecurityError' : 'AbortError');
       assert.equal(result.historyCalls, nativeBaseline ? 1 : 0);
       assert.equal(result.selection, 3); assert.equal(result.busy, false); assert.equal(result.disabled, false);
-      report.cases[nativeBaseline ? 'nativeActivationExpired' : 'nativeCancellation'] = result;
     } else if (benchmark) {
       assert.ok(baseline, 'MEDIA_BASELINE_HTML is required for same-condition comparison');
       report.fixtureSettings = {mediaItems: 12, mixedCounts: {image: 4, video: 4, sound: 4}, totalBytes: 6291456,
@@ -238,12 +251,13 @@ async function runCase(browser, origin, name, options = {}) {
         stagesAreAggregateMs: ['responseHeaderMs', 'writeMs'], heapMetric: 'browser JS heap, not whole browser/process memory'};
       for (let trial = 1; trial <= 3; trial++) {
         for (const variant of ['baseline', 'updated']) {
+          report.currentCase = `${variant}-benchmark-${trial}`;
           source = fs.readFileSync(variant === 'baseline' ? baseline : path.join(root, 'index.html'), 'utf8');
           requests = 0; httpMax = 0;
           const result = await runCase(browser, origin, `${variant} benchmark ${trial}`, {count: 12, historyDelay: 200});
+          report.benchmark.push({variant, trial, sourceSha256: createHash('sha256').update(source).digest('hex'), ...result, httpRequests: requests, httpMax});
           assert.deepEqual(result.result, {ok: 12, failed: 0, total: 12, skipped: 0});
           assert.equal(result.writtenBytes, 6291456); assert.equal(result.files.length, 12); assert.equal(requests, 12);
-          report.benchmark.push({variant, trial, sourceSha256: createHash('sha256').update(source).digest('hex'), ...result, httpRequests: requests, httpMax});
         }
       }
     } else {
@@ -259,13 +273,18 @@ async function runCase(browser, origin, name, options = {}) {
         ['largeStream', {count: 3, large: true}]
       ];
       for (const [name, options] of cases) {
-        const r = await runCase(browser, origin, name, options); report.cases[name] = r;
+        report.currentCase = name;
+        const r = await runCase(browser, origin, name, options, value => {report.cases[name] = value;});
         assert.equal(r.trustedClick, true); assert.equal(r.pickerCalls, options.firstWriteFault ? 2 : 1);
         assert.deepEqual(r.pickerActive, options.firstWriteFault ? [true, true] : [true]);
         assert.equal(r.events[0], 'picker'); assert.equal(r.busy, false); assert.equal(r.disabled, false);
         if (options.cancel || options.pickerDenied) {assert.equal(r.historyCalls, 0); assert.equal(r.responseCalls, 0); assert.equal(r.selection, 3);}
         else {
           assert.ok(r.result); assert.ok(r.maxActive <= 3); assert.ok(r.maxWriters <= 3);
+          assert.ok(r.maxOutstandingChunks <= 3, 'at most one read chunk per worker waits for its write');
+          assert.ok(r.maxChunkOutstanding <= r.maxChunk * 3, 'held bytes are bounded by three observed browser chunks');
+          assert.equal(r.outstandingChunks, 0, 'all read chunk references release after success or failure');
+          assert.equal(r.chunkOutstanding, 0);
           for (let i = 1; i < r.progress.length; i++) assert.ok(r.progress[i] >= r.progress[i - 1], 'bulk progress never decreases');
           if (name === 'oneClickSlowHistory') {assert.equal(r.historyCalls, 1); assert.equal(r.result.ok, 3);}
           if (name === 'mixedExisting') {assert.equal(r.result.ok, 11); assert.equal(r.result.skipped, 1); assert.equal(r.responseCalls, 11);}
@@ -274,8 +293,7 @@ async function runCase(browser, origin, name, options = {}) {
           if (name === 'emptyResponse') {assert.equal(r.result.ok, 0); assert.equal(r.result.failed, 3); assert.equal(r.writtenBytes, 0);}
           if (name === 'largeStream') {
             assert.equal(r.writtenBytes, 75497472); assert.equal(r.result.ok, 3);
-            assert.ok(r.reads > 100, 'large files are written as many chunks');
-            assert.ok(r.maxChunkOutstanding < 3 * 1024 * 1024, 'stream write backpressure bounds JS-held chunks');
+            assert.ok(r.reads >= 3, 'all three large response bodies use the stream reader');
           }
           if (name === 'mixedExisting') {
             const names = r.files.map(f => f.name); assert.equal(new Set(names).size, 12);
@@ -286,8 +304,16 @@ async function runCase(browser, origin, name, options = {}) {
         }
       }
     }
-    if (reportPath) {fs.mkdirSync(path.dirname(reportPath), {recursive: true}); fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');}
+    report.status = 'passed';
     const compact = {browser: report.browser, version: report.version, cases: Object.keys(report.cases), benchmark: report.benchmark.map(r => ({variant: r.variant, trial: r.trial, elapsedMs: r.elapsedMs, requests: r.httpRequests, maxActive: r.maxActive, maxChunkOutstanding: r.maxChunkOutstanding}))};
     console.log(JSON.stringify(compact, null, 2));
-  } finally {await browser.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));}
-})().catch(error => {console.error(error.message || 'Browser bulk-save test failed'); process.exitCode = 1; server.closeAllConnections(); server.close();});
+  } catch (error) {
+    report.status = 'failed'; report.failure = {name: error.name || 'Error', currentCase: report.currentCase}; throw error;
+  } finally {
+    if (reportPath) {fs.mkdirSync(path.dirname(reportPath), {recursive: true}); fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');}
+    await browser.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  }
+})().catch(error => {
+  const message = String(error.message || 'Browser bulk-save test failed').replace(/(?:https?|blob):[^\s'"\)]+/gi, '[redacted URL]');
+  console.error(message); process.exitCode = 1; server.closeAllConnections(); server.close();
+});

@@ -5,7 +5,7 @@ Open PRs inspected: #10 (Native diagnostics), #11 (Electron prototype), #20 (LIV
 
 ## Cause and behavior
 
-`saveSelectedToFolder` previously awaited full message history before calling `showDirectoryPicker`. Long preparation exhausts transient user activation; the picker throws and the old handler silently returns. A second click can succeed because history is already loaded. A trusted Chrome click with a synthetic 5.5-second history lookup reproduced a real native API `SecurityError`, inactive activation, zero media requests and preserved selection.
+`saveSelectedToFolder` previously awaited full message history before calling `showDirectoryPicker`. Long preparation exhausts transient user activation; the picker throws and the old handler silently returns. A second click can succeed because history is already loaded. Trusted Chrome/Edge clicks with a synthetic 5.5-second history lookup reproduced real native API `SecurityError`, inactive activation, zero media requests and preserved selection.
 
 The folder picker now starts with `{mode:"readwrite"}` in the original click stack, before any await or history lookup. A selected-ID snapshot survives selection changes while the picker/preparation runs. Cancellation preserves selection and previous retry data, starts no history/media request, and unlocks controls. Other picker/permission failures are shown with sanitized details. A room/account/generation change stops further work and prevents stale results.
 
@@ -15,7 +15,7 @@ Preparation still loads full history for the existing filename rules. It waits f
 
 Ordinary chat photos/videos/audio resolve their original URL directly from message data. This path has no per-item media-detail or signed-URL API to cache. Existing room/history caching and message-ID dedup remain; no persistent URL or full-file Blob cache was added. Channel/Replay use separate detail/HLS download paths and are unchanged.
 
-The previous folder loop ran one file at a time and waited another 80 ms after each file. Folder saves and failed-only retries now use at most three workers. They retain streamed writes with per-file backpressure and completed-item aggregate progress. HTTP 429 stops new scheduling; already-started work is bounded and unscheduled items remain in the failed-only retry list. Retry requests write permission in its click stack. No automatic aggressive retries or entitlement changes were added.
+The previous folder loop ran one file at a time and waited another 80 ms after each file. Folder saves and failed-only retries now use at most three workers. They retain streamed writes with per-file backpressure and completed-item aggregate progress. HTTP 429 stops new scheduling immediately without waiting for its error body; already-started work is bounded and unscheduled items remain in the failed-only retry list. Retry requests write permission in its click stack. No automatic aggressive retries or entitlement changes were added.
 
 The extension-compatible XHR fallback buffers a whole response. Its single slot is held until disk commit/abort, so parallel folder workers cannot buffer several XHR files simultaneously. This still buffers one complete file; it does not make XHR streaming. Reader cancellation/release and writable abort handle fetch/write/session failures. Empty bodies cannot be reported as successful saves.
 
@@ -27,14 +27,14 @@ Windows, fresh installed browser profiles, actual OPFS files, synthetic throttle
 
 | Browser | Baseline trials (ms) | Updated trials (ms) | Median | Change |
 | --- | --- | --- | --- | --- |
-| Chrome 155.0.8059.39 | 3486, 3459, 3456 | 1081, 1082, 1082 | 3459 → 1082 ms | 3.20x throughput; 68.7% less time |
-| Edge 155.0.4283.45 | 3465, 3490, 3451 | 1078, 1067, 1066 | 3465 → 1067 ms | 3.25x throughput; 69.2% less time |
+| Chrome 155.0.8059.39 | 3474, 3457, 3459 | 1092, 1085, 1093 | 3459 → 1092 ms | 3.17x throughput; 68.4% less time |
+| Edge 155.0.4283.45 | 3497, 3473, 3451 | 1092, 1097, 1096 | 3473 → 1096 ms | 3.17x throughput; 68.4% less time |
 
 Response-header wait summed across files remained about 0.8–0.85 seconds; streamed file-write sums remained about 0.86–0.92 seconds. Those sums overlap in the updated pipeline and are not additive wall time. Empty-root scan time rounded to 0 ms; this benchmark does not measure a large existing archive scan. Observed active streams/writers rose from one to three. Application-held pending chunks rose from 64 KiB to 192 KiB; sampled JS heap stayed around 10 MB. These measurements exclude browser/network/OS buffers and are not whole-process memory bounds.
 
 ## Validation and limits
 
-- 116 Node tests passed: new media regressions plus existing selection, Channel/Replay and Native 0.4.0 contracts. Cases include photos/videos/audio and mixed selection, picker cancel/denial, history failure/loading, legacy/nonempty duplicates, aborted empty entries, failed-only retry, 429, bounded concurrency, buffered XHR serialization, empty bodies, 256 MiB generated streaming, backpressure, reader/writable cleanup, and room/session changes in folder/mobile flows.
+- 117 Node tests passed: new media regressions plus existing selection, Channel/Replay and Native 0.4.0 contracts. Cases include photos/videos/audio and mixed selection, picker cancel/denial, history failure/loading, legacy/nonempty duplicates, aborted empty entries, failed-only retry, 429, bounded concurrency, buffered XHR serialization, empty bodies, 256 MiB generated streaming, backpressure, reader/writable cleanup, and room/session changes in folder/mobile flows.
 - All four existing browser fixtures passed locally using installed Chrome/Edge: Channel features, 12 viewport local-video playback/layout, direct selection/mobile behavior and selection gestures.
 - All nine new Chrome/Edge browser cases passed. They use trusted clicks, mock directory picker outcomes, and real OPFS writes. They verify picker-before-history with activation active even when the subsequent lookup exceeds five seconds, cancellation/permission outcomes, mixed names/bytes, completed duplicate skip, partial failures, and 72 MiB streamed saves.
 - Native LIVE/helper/extension files are untouched; existing production login/request, LIVE, Replay, Channel and Native frame/audio/ACK contracts pass. These are regression evidence, not real broadcast evidence.

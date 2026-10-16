@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {probe} = require('../web-live-chat-probe.js');
+const {probe, messageStore, applyMessages} = require('../web-live-chat-probe.js');
 const token = 'synthetic-chat-token';
 const roomId = 'synthetic-live-room';
 const room = {success: true, data: {liveChatRoom: {isFrozen: false, isBanned: false, muteExpiresAt: null}}};
@@ -75,4 +75,51 @@ test('abort and stale state before a request send nothing', async () => {
     const h = harness(); await assert.rejects(probe({...h.args, ...context}), error => error.code === 'cancelled');
     assert.equal(h.calls.length, 0);
   }
+});
+
+const comment = (id, createdAt = 1) => ({messageId: id, content: 'fixture content ' + id, nickname: 'fixture name', createdAt, userId: 'private-user-id'});
+test('comment batches deduplicate IDs and apply deletions before late arrivals', () => {
+  const store = messageStore();
+  assert.equal(applyMessages(store, [comment('a'), comment('a')], []).addedCount, 1);
+  assert.equal(store.items.size, 1);
+  applyMessages(store, [comment('a'), comment('b', 2)], ['a']);
+  assert.deepEqual([...store.items.keys()], ['b']);
+  applyMessages(store, [comment('a')], []); assert.equal(store.items.size, 1);
+  assert.equal(JSON.stringify([...store.items.values()]).includes('private-user-id'), false);
+});
+test('comment storage is bounded, retains newest timestamps and ignores evicted duplicates', () => {
+  const store = messageStore(), batch = Array.from({length: 250}, (_, index) => comment('m' + index, index)).reverse();
+  assert.equal(applyMessages(store, batch, []).addedCount, 250);
+  assert.equal(store.items.size, 100); assert.equal(Math.min(...[...store.items.values()].map(item => item.createdAt)), 150);
+  assert.equal(applyMessages(store, batch, []).addedCount, 0); assert.equal(store.items.size, 100);
+  applyMessages(store, [], Array.from({length: 700}, (_, index) => 'd' + index)); assert.equal(store.deleted.size, 500);
+});
+test('unknown comment field types are counted without inventing rendered content', () => {
+  const store = messageStore();
+  const result = applyMessages(store, [{id: 'wrong', content: 'not the official model'}, {...comment('a'), createdAt: 'bad'}], []);
+  assert.equal(result.invalidCount, 2); assert.equal(store.items.size, 0);
+});
+test('a long read stream continues cursors and retains only bounded sanitized sample metadata', async () => {
+  const responses = [room, ...Array.from({length: 10}, (_, index) => ({success: true, data: {
+    messages: [comment('private-' + index, index)], deletedMessages: [], cursor: 1792140000000 + index
+  }}))];
+  const h = harness(responses), pages = [];
+  const result = await probe({...h.args, sampleLimit: 10, onPage: page => pages.push(page)});
+  assert.equal(h.calls.length, 11); assert.equal(pages.length, 10); assert.equal(result.samples.length, 8);
+  assert.doesNotMatch(JSON.stringify(result), /private|fixture|179214/);
+  assert.equal(new URL(h.calls.at(-1).url).searchParams.get('cursor'), '1792140000008');
+});
+test('ban policy refresh ends an active read stream before more messages are fetched', async () => {
+  const empty = {success: true, data: {messages: [], deletedMessages: [], cursor: 1}};
+  const banned = {success: true, data: {liveChatRoom: {isFrozen: false, isBanned: true, muteExpiresAt: null}}};
+  const h = harness([room, ...Array(15).fill(empty), banned]);
+  const result = await probe({...h.args, sampleLimit: Infinity});
+  assert.equal(result.status, 'banned'); assert.equal(h.calls.length, 17);
+  assert.ok(h.calls.at(-1).url.includes('/live-chat/rooms/'));
+});
+test('stop during the interval cannot start another cursor request or deliver late messages', async () => {
+  const h = harness(), owner = new AbortController(); let pages = 0;
+  await assert.rejects(probe({...h.args, sampleLimit: Infinity, signal: owner.signal,
+    onPage: () => {pages++;}, wait: async () => owner.abort()}), error => error.code === 'cancelled');
+  assert.equal(pages, 1); assert.equal(h.calls.length, 2);
 });

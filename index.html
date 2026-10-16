@@ -1125,6 +1125,11 @@ body.download-marquee-active{user-select:none;cursor:default}
   .channel-list-shell:has(.channel-player) .replay-toolbar .btn{padding:6px 9px}
   .channel-player .replay-page-copy{display:flex}
 }
+/* Channel playback uses Replay's title + video layout; list tools return on Back. */
+.channel-list-shell:has(.channel-player) > .live-card{border:0;border-radius:0;background:none;box-shadow:none}
+.channel-list-shell:has(.channel-player) .live-center-tabs,
+.channel-list-shell:has(.channel-player) .replay-toolbar{display:none}
+.channel-list-shell .replay-shell:has(> .channel-player){padding:0}
 </style>
 </head>
 <body>

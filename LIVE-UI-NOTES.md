@@ -1,7 +1,7 @@
 # LIVE header and video PiP
 
 Base: main `9057c02393610c67a2da86ff4df1321997910164`.
-Branch: `codex/live-header-video-pip`. This request explicitly leaves the PR unmerged and the deployed site unchanged.
+Branch: `codex/live-header-video-pip`. On 2026-10-16 the user explicitly approved merging PR #20 and deploying it. The branch now incorporates main `43e73695ac230503728febc1f7acd86418734565`, including the separate media bulk-save fixes.
 
 ## Behavior
 
@@ -32,7 +32,7 @@ No chat endpoint was guessed, no real comment was sent, and no fake messages, su
 
 The regression suite includes original login/request, Replay/download, Channel, selection, Native protocol and lifecycle checks. The new tests exercise compact headings, long text, narrow screens, video-only Document PiP, source preservation, decoded JPEG ACKs and stale window requests.
 
-Local Node checks: 92 passed. All four existing browser fixtures passed, including local MP4 decoding at 12 viewport sizes. Forty tracked Native helper, extension and adapter files match the original main Git blobs and SHA256 hashes. At 1440x900 in the same installed Chrome test, header height fell from 74.618px to 50.889px and stage height increased from 604.049px to 627.778px. Installed Chrome and Edge opened actual Document PiP windows using synthetic JPEGs; only an image was present and the original source/ACK route remained active.
+Local Node checks: 134 passed after integrating the latest main and media bulk-save fixes (the initial UI-only check had 92). All four existing browser fixtures passed, including local MP4 decoding at 12 viewport sizes. Forty tracked Native helper, extension and adapter files match the original main Git blobs and SHA256 hashes. At 1440x900 in the same installed Chrome test, header height fell from 74.618px to 50.889px and stage height increased from 604.049px to 627.778px. Installed Chrome and Edge opened actual Document PiP windows using synthetic JPEGs; only an image was present and the original source/ACK route remained active.
 
 Browser fixtures intercept network requests and use synthetic 720x1280 JPEG frames with the actual unchanged Native web adapter. They do not authenticate or connect to a real Fromm RTC broadcast and do not play Native audio.
 
@@ -40,4 +40,4 @@ No authenticated Viewer tab was exposed through the available browser connection
 
 ## Resume
 
-The working copy and root `work/RESUME.md` preserve the implementation, checks, PR and CI state. Remaining live-account work is the real broadcast/PiP check and the separately scoped comments verification above. Do not merge this branch under the current user instruction.
+The working copy and root `work/RESUME.md` preserve the implementation, checks, PR and CI state. After final checks and CI, merge PR #20 and verify the Pages deployment and public header/PiP assets. Remaining live-account work is the real broadcast/PiP check and the separately scoped comments verification above.

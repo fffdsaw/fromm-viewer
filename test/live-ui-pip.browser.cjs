@@ -105,7 +105,7 @@ async function sendFrame(page, sequence) {
       type: 'frame', sequence, jpeg: canvas.toDataURL('image/jpeg', 0.85)
     }}, location.origin);
   }, sequence);
-  await page.waitForFunction(sequence => nativeFixtureAcks.includes(sequence), sequence);
+  await page.waitForFunction(sequence => nativeFixtureAcks.includes(sequence), sequence, {polling: 25});
 }
 
 (async () => {
@@ -115,6 +115,15 @@ async function sendFrame(page, sequence) {
       const fixture = await openFixture(browser, viewport), {context, page, errors, externalRequests} = fixture;
       assert.deepEqual(await page.locator('[data-live-center-mode]').allTextContents(), ['LIVE', 'Replay', 'Channel']);
       await measure(page, 'live-' + viewport.width + 'x' + viewport.height);
+      if (!baseline && viewport.width === 1440) {
+        const before = await page.locator('.live-spinner').evaluate(el => getComputedStyle(el).transform);
+        await page.waitForTimeout(180);
+        const after = await page.locator('.live-spinner').evaluate(el => ({transform: getComputedStyle(el).transform,
+          animations: el.getAnimations().map(animation => animation.playState)}));
+        assert.notEqual(before, after.transform, 'LIVE connection spinner actually rotates over time');
+        assert.deepEqual(after.animations, ['running']);
+        reports.push({label: 'live-spinner', rotating: true, before, after: after.transform});
+      }
       await page.evaluate(() => {
         state.live.room.title = '아주 긴 방송 제목을 줄이지 않고 정보를 보존하는 LIVE 화면입니다 '.repeat(8);
         state.live.entrances[0].artiName = 'SONG HA YOUNG 아주 긴 아티스트 이름 '.repeat(8);
@@ -130,8 +139,87 @@ async function sendFrame(page, sequence) {
       await context.close();
     }
     if (!baseline) {
+      const {context, page, errors} = await openFixture(browser, {width: 1440, height: 900}, true);
+      await page.evaluate(async () => {
+        setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account');
+        resolveAgoraJoinArgs = () => {};
+        state.live.room.encryptionKey = 'x'.repeat(64); state.live.room.encryptionSalt = 'synthetic';
+        await connectAgoraLive();
+      });
+      await sendFrame(page, 1);
+      await page.evaluate(() => document.addEventListener('enterpictureinpicture', event => {
+        window.pipFixtureDimensions = {width: event.pictureInPictureWindow.width, height: event.pictureInPictureWindow.height};
+      }, true));
+      await page.locator('#livePipBtn').click();
+      await page.waitForFunction(() => document.pictureInPictureElement?.id === 'livePipVideo');
+      const pip = await page.evaluate(() => {
+        const video = document.pictureInPictureElement;
+        window.pipFixtureTrack = video.srcObject.getVideoTracks()[0];
+        return {width: video.videoWidth, height: video.videoHeight, muted: video.muted,
+          audioTracks: video.srcObject.getAudioTracks().length, trackCount: video.srcObject.getTracks().length,
+          sourcePreserved: document.getElementById('nativeLiveVideo').parentElement.id === 'liveVideoGrid',
+          documentWindow: !!window.documentPictureInPicture?.window};
+      });
+      assert.deepEqual(pip, {width: 640, height: 360, muted: true, audioTracks: 0, trackCount: 1,
+        sourcePreserved: true, documentWindow: false});
+      const windowDimensions = await page.evaluate(() => pipFixtureDimensions);
+      assert.ok(Math.abs(windowDimensions.width / windowDimensions.height - 16 / 9) < 0.04, 'actual PiP window uses landscape video aspect');
+      await sendFrame(page, 2);
+      const before = await page.locator('#livePipVideo').evaluate(video => video.getVideoPlaybackQuality().totalVideoFrames);
+      const coveringTab = await context.newPage(); await coveringTab.goto('about:blank'); await coveringTab.bringToFront();
+      const openerHidden = await page.evaluate(() => document.visibilityState === 'hidden');
+      const openerFocused = await page.evaluate(() => document.hasFocus());
+      let openerWindowState = 'not-measured';
+      let windowSession, openerWindowId;
+      if (process.env.PLAYWRIGHT_HEADLESS === 'false') {
+        windowSession = await context.newCDPSession(page);
+        openerWindowId = (await windowSession.send('Browser.getWindowForTarget')).windowId;
+        await windowSession.send('Browser.setWindowBounds', {windowId: openerWindowId, bounds: {windowState: 'minimized'}});
+        openerWindowState = (await windowSession.send('Browser.getWindowBounds', {windowId: openerWindowId})).bounds.windowState;
+        assert.equal(openerWindowState, 'minimized', 'isolated test browser opener is actually minimized');
+      }
+      // Chromium can keep a document with active video PiP "visible". Freeze
+      // opener rAF explicitly so capture cannot accidentally depend on it.
+      await page.evaluate(() => { window.requestAnimationFrame = () => 0; });
+      for (let sequence = 3; sequence <= 18; sequence++) await sendFrame(page, sequence);
+      await page.waitForFunction(before => document.getElementById('livePipVideo').getVideoPlaybackQuality().totalVideoFrames >= before + 5, before, {polling: 50});
+      const after = await page.locator('#livePipVideo').evaluate(video => video.getVideoPlaybackQuality().totalVideoFrames);
+      if (windowSession) {
+        await windowSession.send('Browser.setWindowBounds', {windowId: openerWindowId, bounds: {windowState: 'normal'}});
+        await windowSession.detach();
+      }
+      await coveringTab.close(); await page.bringToFront();
+      const pixels = await page.locator('#livePipVideo').evaluate(video => {
+        // Element screenshots show the browser's "playing in PiP" placeholder.
+        // Sample the real decoded stream; this is not an OS-window screenshot.
+        const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 360;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0);
+        return {left: [...ctx.getImageData(10, 180, 1, 1).data], center: [...ctx.getImageData(320, 180, 1, 1).data], png: canvas.toDataURL('image/png')};
+      });
+      assert.ok(pixels.left.slice(0, 3).every(value => value < 3), 'portrait source is letterboxed');
+      assert.ok(pixels.center.slice(0, 3).some(value => value > 30), 'actual decoded PiP stream contains video pixels');
+      if (output) fs.writeFileSync(path.join(output, 'synthetic-captured-video-' + (channel || 'chromium') + '.png'), Buffer.from(pixels.png.split(',')[1], 'base64'));
+      await page.evaluate(() => document.exitPictureInPicture());
+      await page.waitForFunction(() => !document.getElementById('livePipVideo'));
+      assert.equal(await page.evaluate(() => pipFixtureTrack.readyState), 'ended');
+      await sendFrame(page, 19);
+      await page.locator('#livePipBtn').click();
+      await page.waitForFunction(() => !!document.pictureInPictureElement);
+      await page.evaluate(async () => { await stopLivePlayback(); });
+      await page.waitForFunction(() => !document.pictureInPictureElement && !document.getElementById('livePipVideo'));
+      assert.deepEqual(errors, []);
+      reports.push({label: 'native-video-pip', synthetic: true, actualBrowserVideoPip: true, ...pip,
+        apiWindowDimensions: windowDimensions, decodedPixels: {left: pixels.left, center: pixels.center},
+        openerHidden, openerFocused, openerWindowState, openerAnimationFrameFrozen: true,
+        framesPresentedWithOpenerRafFrozen: after - before, acks: await page.evaluate(() => nativeFixtureAcks.length),
+        closeStopsCaptureTrack: true, stopClosesPip: true, authenticatedMedia: false});
+      await context.close();
+    }
+    if (!baseline) {
       const {context, page, errors, externalRequests} = await openFixture(browser, {width: 1440, height: 900}, true);
       await page.evaluate(async () => {
+        // Retain the original Document PiP path when canvas/video PiP is unavailable.
+        HTMLCanvasElement.prototype.captureStream = undefined;
         // Authoritative identity resolution is covered separately; only the Native
         // JPEG/ACK transport and PiP lifecycle are exercised by this fixture.
         setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account');
@@ -197,8 +285,8 @@ async function sendFrame(page, sequence) {
       await context.close();
     }
     if (output) fs.writeFileSync(path.join(output, `${baseline ? 'before-' : ''}live-ui-pip-${channel || 'chromium'}.json`), JSON.stringify(reports, null, 2));
-    console.log(JSON.stringify({checks: 'LIVE layout / JPEG Document PiP', browser: channel || 'chromium', baseline,
+    console.log(JSON.stringify({checks: 'LIVE layout / rotating spinner / JPEG video PiP and Document fallback', browser: channel || 'chromium', baseline,
       viewports: reports.filter(r => /^live-\d/.test(r.label)).map(r => ({label: r.label, headerHeight: r.head.height, stageHeight: r.stage.height})),
-      pip: reports.find(r => r.label === 'native-document-pip')}, null, 2));
+      videoPip: reports.find(r => r.label === 'native-video-pip'), pip: reports.find(r => r.label === 'native-document-pip')}, null, 2));
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

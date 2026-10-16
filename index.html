@@ -447,7 +447,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .live-stage-empty { position: absolute; inset: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 34px 22px; text-align: center; }
 .live-stage-empty .big { font-size: 17px; font-weight: 750; }
 .live-stage-empty .small { color: var(--muted); font-size: 12px; line-height: 1.6; max-width: 520px; }
-.live-spinner { width: 24px; height: 24px; border-radius: 50%; border-width: 2px; border-style: solid; border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.14) rgba(255, 255, 255, 0.14); border-image: none; animation: 0.8s linear 0s infinite normal none running spin; margin-bottom: 5px; }
+.live-spinner { width: 24px; height: 24px; border-radius: 50%; border-width: 2px; border-style: solid; border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.14) rgba(255, 255, 255, 0.14); border-image: none; animation: 0.8s linear 0s infinite normal none running ui-spin; margin-bottom: 5px; }
 .live-foot { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .live-foot[hidden] { display: none; }
 .live-foot .status { flex: 1 1 0%; min-width: 0px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1684,7 +1684,7 @@ async function attachChannelVideo(url, video, seq) {
 
 async function downloadChannelVideo(post, button) {
   const s = channelVideoState;
-  if (!post || s.downloading) return;
+  if (!post || s.downloading || state.postBulkSaving || state.live.replayDownloading) return;
   s.downloading = true;
   const seq = s.requestSeq;
   const sameSession = channelVideoSession();
@@ -4071,8 +4071,38 @@ function replayDownloadFilename(post){
   return `${date ? `${date} ` : ""}${title}.ts`;
 }
 
+function postDownloadNames(post){
+  const base=replayDownloadFilename(post);
+  const peers=[...(state.live.replayPosts || [])];
+  for(const page of channelVideoState.pages.values()) peers.push(...(page.posts || []));
+  peers.push(post);
+  const key=replayPostKey(post);
+  const identities=new Set(peers.filter(p=>replayDownloadFilename(p).toLowerCase()===base.toLowerCase()).map(p=>replayPostKey(p)));
+  // Only real title collisions need a short, stable suffix. Individual and bulk
+  // saves consult the same loaded posts, including when a player is open.
+  let filename=base;
+  if(identities.size>1){
+    let hash=0xcbf29ce484222325n;
+    for(const char of key) hash=BigInt.asUintN(64,(hash ^ BigInt(char.codePointAt(0)))*0x100000001b3n);
+    filename=base.replace(/\.ts$/, ' - '+hash.toString(16).padStart(16,'0')+'.ts');
+  }
+  const legacy=base.replace(/\.ts$/, ' ('+String(post._channelId).replace(/[^\w-]/g,'_')+'-'+String(post.id).replace(/[^\w-]/g,'_')+').ts');
+  return {filename,legacy};
+}
+
+async function existingPostDownload(directory,names){
+  for(const name of new Set([names.filename,names.legacy])){
+    try{
+      const handle=await directory.getFileHandle(name);
+      // A failed/cancelled first write can leave an empty file. Retry it.
+      if((await handle.getFile()).size>0) return true;
+    }catch(e){if(e?.name!=="NotFoundError") throw e;}
+  }
+  return false;
+}
+
 async function createReplayDownloadSink(post){
-  const filename=replayDownloadFilename(post);
+  const filename=postDownloadNames(post).filename;
   if(typeof window.showSaveFilePicker==="function"){
     try{
       const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{
@@ -4204,7 +4234,7 @@ function prewarmReplayRuntime(){
 }
 
 async function downloadReplayPost(post,button){
-  if(state.live.replayDownloading || !post) return;
+  if(state.postBulkSaving || channelVideoState.downloading || state.live.replayDownloading || !post) return;
   state.live.replayDownloading=true;
 
   const originalText=button?.textContent || "";
@@ -6829,10 +6859,14 @@ async function saveSelectedPosts(){
       let sink;
       button.textContent=`저장 ${i+1}/${items.length}`;
       try{
-        const filename=replayDownloadFilename(post).replace(/\.ts$/,` (${String(post._channelId).replace(/[^\w-]/g,"_")}-${String(post.id).replace(/[^\w-]/g,"_")}).ts`);
-        if(directory){
-          try{await directory.getFileHandle(filename); skipped++; continue;}
-          catch(e){if(e?.name!=="NotFoundError") throw e;}
+        const names=postDownloadNames(post), filename=names.filename;
+        const exists=directory && await existingPostDownload(directory,names);
+        if(!current()) break;
+        if(exists){
+          skipped++;
+          state.postSelected.delete(downloadSelectionKey(scope.kind,post));
+          syncDownloadSelection();
+          continue;
         }
         const detail=scope.kind==="channel" ? await fetchChannelVideoDetail(post) : await fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
         if(!current()) break;
@@ -9721,7 +9755,7 @@ autoConnectSaved();
 
 
 <script src="web-native-live.js?v=1.08.3"></script>
-<script src="web-live-pip.js?v=1"></script>
+<script src="web-live-pip.js?v=2"></script>
 <script src="web-live-chat-probe.js?v=2"></script>
 <script>
 (function () {

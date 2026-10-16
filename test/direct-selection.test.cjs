@@ -17,11 +17,11 @@ function setup(kind = 'channel') {
   const selected = new Set(items.map(p => JSON.stringify([kind, p._channelId, p.id])));
   const alerts = [], details = [], writes = [], aborted = [], files = new Set();
   let session = true, contextName = `${kind}:a`;
-  const state = {postSelected: selected, scanGeneration: 1, postBulkSaving: false, live: {replayDownloading: false}};
-  const channelVideoState = {downloading: false};
+  const state = {postSelected: selected, scanGeneration: 1, postBulkSaving: false, live: {replayDownloading: false, replayPosts: kind === 'replay' ? items : []}};
+  const channelVideoState = {downloading: false, pages: new Map([['artist-a', {posts: kind === 'channel' ? items : []}]])};
   const directory = {async getFileHandle(name, options) {
     if (!options?.create && !files.has(name)) throw Object.assign(new Error('missing'), {name: 'NotFoundError'});
-    return {async createWritable() {return {async abort() {aborted.push(name);}};}};
+    return {async getFile() {return {size: files.has(name) ? 4 : 0};}, async createWritable() {return {async abort() {aborted.push(name);}};}};
   }};
   const c = vm.createContext({state, channelVideoState, Set, String, Math,
     window: {showDirectoryPicker: async () => directory, alert: message => alerts.push(message)},
@@ -37,7 +37,7 @@ function setup(kind = 'channel') {
     },
     downloadReplayStream: async (url, sink, progress) => {progress(1, 1); writes.push(url); files.add(sink.filename); sink.writable = null;}
   });
-  for (const name of ['downloadSelectionKey', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
+  for (const name of ['replayPostKey', 'postDownloadNames', 'existingPostDownload', 'downloadSelectionKey', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
   return {c, items, state, channelVideoState, button, alerts, details, writes, aborted, files,
     expire: () => {session = false;}, changeScope: () => {contextName = 'another';}};
 }
@@ -52,6 +52,15 @@ test('folder cancellation preserves every selection and makes no detail/download
   await h.c.saveSelectedPosts();
   assert.equal(h.state.postSelected.size, 3); assert.equal(h.details.length, 0);
   assert.equal(h.writes.length, 0); assert.equal(h.alerts.length, 0); unlocked(h);
+});
+test('Replay single-save ignores a click while a Channel or bulk save is active', async () => {
+  for (const busy of ['channel', 'bulk']) {
+    const h = setup('replay'); vm.runInContext(fn('downloadReplayPost'), h.c);
+    if (busy === 'channel') h.channelVideoState.downloading = true;
+    else h.state.postBulkSaving = true;
+    await h.c.downloadReplayPost(h.items[0]); assert.equal(h.state.live.replayDownloading, false);
+    assert.equal(h.details.length, 0); assert.equal(h.writes.length, 0);
+  }
 });
 test('denied destination preserves selections and releases controls', async () => {
   const h = setup(); h.c.window.showDirectoryPicker = async () => {throw new Error('permission denied');};
@@ -73,7 +82,7 @@ test('partial write failure aborts its writable and retains failed file for retr
     if (url === 'two') throw new Error('disk full'); progress(1, 1); h.writes.push(url); sink.writable = null;
   };
   await h.c.saveSelectedPosts();
-  assert.deepEqual(h.aborted, ['two (artist-a-two).ts']); assert.equal(h.state.postSelected.size, 1); unlocked(h);
+  assert.deepEqual(h.aborted, ['two.ts']); assert.equal(h.state.postSelected.size, 1); unlocked(h);
 });
 test('same-title retry keeps each post filename stable after successful selections disappear', async () => {
   const h = setup(), original = h.c.fetchChannelVideoDetail;
@@ -82,7 +91,7 @@ test('same-title retry keeps each post filename stable after successful selectio
   await h.c.saveSelectedPosts(); assert.equal(h.files.size, 2);
   h.c.fetchChannelVideoDetail = original;
   await h.c.saveSelectedPosts(); assert.equal(h.files.size, 3);
-  assert.ok(h.files.has('same (artist-a-two).ts')); assert.equal(h.state.postSelected.size, 0); unlocked(h);
+  assert.ok(h.files.has(h.c.postDownloadNames(h.items[1]).filename)); assert.equal(h.state.postSelected.size, 0); unlocked(h);
 });
 for (const reason of ['session', 'scope']) test(`changed ${reason} during detail fetch prevents writing and next requests`, async () => {
   const h = setup(); h.c.fetchChannelVideoDetail = async p => {
@@ -95,11 +104,56 @@ for (const reason of ['session', 'scope']) test(`changed ${reason} during detail
 test('existing files are skipped without refetching; Replay forces fresh details for remaining files', async () => {
   const h = setup('replay'); h.files.add('one (artist-a-one).ts');
   await h.c.saveSelectedPosts(); assert.deepEqual(h.details, ['two', 'three']);
-  assert.equal(h.state.postSelected.size, 1); assert.match(h.alerts[0], /기존 파일 1개/); unlocked(h);
+  assert.equal(h.state.postSelected.size, 0); assert.match(h.alerts[0], /기존 파일 1개/); unlocked(h);
+});
+test('individual-style base names and legacy bulk names both skip before network access', async () => {
+  const h = setup('replay'); h.files.add('one.ts'); h.files.add('two (artist-a-two).ts');
+  await h.c.saveSelectedPosts(); assert.deepEqual(h.details, ['three']);
+  assert.match(h.alerts[0], /기존 파일 2개/); assert.equal(h.state.postSelected.size, 0); unlocked(h);
+});
+test('single-save picker and bulk save share clean names, including genuine same-title collisions', async () => {
+  const h = setup('replay');
+  assert.equal(h.c.postDownloadNames(h.items[0]).filename, 'one.ts');
+  h.items[1].title = 'one';
+  const names = h.items.map(post => h.c.postDownloadNames(post).filename);
+  assert.equal(new Set(names).size, 3); assert.ok(names.every(name => !name.includes('(')));
+  let suggested;
+  h.c.window.showSaveFilePicker = async options => {suggested = options.suggestedName; return {createWritable: async () => ({})};};
+  vm.runInContext(fn('createReplayDownloadSink'), h.c);
+  const sink = await h.c.createReplayDownloadSink(h.items[0]);
+  assert.equal(suggested, names[0]); assert.equal(sink.filename, names[0]);
+  await h.c.saveSelectedPosts(); assert.deepEqual([...h.files], names); unlocked(h);
+});
+test('empty leftover files are downloaded again instead of incorrectly skipped', async () => {
+  const h = setup('replay');
+  h.c.window.showDirectoryPicker = async () => ({async getFileHandle(name, options) {
+    if (options?.create) return {createWritable: async () => ({abort: async () => {}})};
+    if (name === 'one.ts') return {getFile: async () => ({size: 0})};
+    throw Object.assign(new Error('missing'), {name: 'NotFoundError'});
+  }});
+  await h.c.saveSelectedPosts(); assert.deepEqual(h.details, ['one', 'two', 'three']);
+  assert.equal(h.state.postSelected.size, 0); unlocked(h);
+});
+test('account change during existing-file inspection cannot clear selection or request details', async () => {
+  const h = setup('replay');
+  h.c.window.showDirectoryPicker = async () => ({getFileHandle: async () => ({getFile: async () => {h.expire(); return {size: 4};}})});
+  await h.c.saveSelectedPosts(); assert.equal(h.state.postSelected.size, 3);
+  assert.equal(h.details.length, 0); assert.equal(h.writes.length, 0); assert.equal(h.alerts.length, 0); unlocked(h);
+});
+test('an empty leftover file is retried and permission errors never trigger an overwrite', async () => {
+  const h = setup('replay'); let inspected = 0;
+  h.c.window.showDirectoryPicker = async () => ({async getFileHandle(name, options) {
+    if (options?.create) return {createWritable: async () => ({abort: async () => {}})};
+    if (name === 'one.ts') {inspected++; return {getFile: async () => ({size: 0})};}
+    throw Object.assign(new Error('denied'), {name: 'NotAllowedError'});
+  }});
+  await h.c.saveSelectedPosts(); assert.equal(inspected, 1);
+  // Legacy-name inspection is denied, so stop conservatively before any detail.
+  assert.equal(h.details.length, 0); assert.equal(h.writes.length, 0); unlocked(h);
 });
 test('Channel playback/download and LIVE entry sources are preserved; media save retains direct dispatch', () => {
   const baseline = execFileSync('git', ['show', 'd876793:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
-  for (const name of ['downloadChannelVideo', 'fetchChannelVideoDetail', 'attachChannelVideo', 'playChannelVideo',
+  for (const name of ['fetchChannelVideoDetail', 'attachChannelVideo', 'playChannelVideo',
     'fetchLiveEntrances', 'refreshLiveStatus', 'connectAgoraLive']) {
     assert.equal(fn(name), fn(name, baseline), name);
   }

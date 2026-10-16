@@ -1,5 +1,7 @@
 # LIVE header and video PiP
 
+2026-10-16 follow-up: Native JPEG now prefers landscape browser video PiP via canvas frames; the original Document PiP path remains a compatibility fallback. See [Replay/save/spinner/PiP follow-up](REPLAY-SAVE-PIP-FIXES.md). The original PR #20 notes below describe its earlier image-only Document PiP implementation.
+
 Base: main `9057c02393610c67a2da86ff4df1321997910164`.
 Branch: `codex/live-header-video-pip`. On 2026-10-16 the user explicitly approved merging PR #20 and deploying it. The branch now incorporates main `43e73695ac230503728febc1f7acd86418734565`, including the separate media bulk-save fixes.
 

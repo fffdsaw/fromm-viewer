@@ -133,9 +133,15 @@ async function selectionSize(page) {
         state.live.replayPosts = [...posts('replay', 'a'), {...posts('replay', 'b')[0]}]; state.live.replayFilter = 'all';
         renderLiveView();
         window.writes = [];
+        window.savedPostFiles = new Map();
         window.showDirectoryPicker = mobile ? undefined : async () => ({getFileHandle: async (name, options) => {
-          if (!options?.create) throw new DOMException('missing', 'NotFoundError');
-          return {createWritable: async () => ({write: async bytes => window.writes.push({name, bytes: [...bytes]}), close: async () => {}, abort: async () => {}})};
+          if (!options?.create && !savedPostFiles.has(name)) throw new DOMException('missing', 'NotFoundError');
+          return {getFile: async () => ({size: savedPostFiles.get(name)?.length || 0}),
+            createWritable: async () => {
+              const output = [];
+              return {write: async bytes => {output.push(...bytes); window.writes.push({name, bytes: [...bytes]});},
+                close: async () => {savedPostFiles.set(name, output);}, abort: async () => {}};
+            }};
         }});
       }, mobile);
       for (const kind of ['channel', 'replay']) {
@@ -159,6 +165,17 @@ async function selectionSize(page) {
           assert.equal(writes.length, 3);
           assert.equal(new Set(writes.map(w => w.name)).size, 3, 'same-title posts do not overwrite one another');
           assert.ok(writes.every(w => JSON.stringify(w.bytes) === '[1,2,3,4]'));
+          assert.ok(writes.every(w => !w.name.includes('(')), 'new names omit legacy UUID parentheses');
+          await page.evaluate(kind => {
+            downloadSelectionScope().items.slice(0, 3).forEach(post => state.postSelected.add(downloadSelectionKey(kind, post)));
+            syncDownloadSelection();
+          }, kind);
+          const beforeSkip = details.length;
+          await page.locator('#saveSelectedBtn').click();
+          await page.waitForFunction(() => !state.postBulkSaving);
+          assert.equal(details.length, beforeSkip, 'existing files skip before any authorized detail request');
+          assert.equal(await page.evaluate(() => writes.length), 0, 'repeated folder save writes no duplicate bytes');
+          assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개');
         }
         await cards.first().locator('button.replay-play').click();
         await page.locator(kind === 'channel' ? '#channelVideo' : '#replayVideo').waitFor();

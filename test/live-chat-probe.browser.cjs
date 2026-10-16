@@ -84,11 +84,11 @@ const root = path.resolve(__dirname, '..');
       });
       await page.waitForFunction(() => !document.querySelector('#livePipBtn').disabled);
       await page.locator('#livePipBtn').click();
-      await page.waitForFunction(() => documentPictureInPicture.window?.document.querySelector('img')?.naturalWidth > 0);
-      assert.deepEqual(await page.evaluate(() => [...documentPictureInPicture.window.document.body.children].map(element => element.tagName)), ['IMG']);
-      assert.equal(await page.evaluate(() => documentPictureInPicture.window.document.querySelectorAll('.live-comments-overlay,input,button').length), 0);
+      await page.waitForFunction(() => document.pictureInPictureElement?.id === 'livePipVideo');
+      assert.equal(await page.evaluate(() => document.pictureInPictureElement.tagName), 'VIDEO');
+      assert.equal(await page.evaluate(() => document.pictureInPictureElement.querySelectorAll('.live-comments-overlay,input,button').length), 0);
       assert.equal(await page.locator('.live-comment-row').count(), 1, 'comments remain on the normal stage');
-      await page.evaluate(() => documentPictureInPicture.window.close());
+      await page.evaluate(() => document.exitPictureInPicture());
       const fit = await page.evaluate(() => {
         const panel = document.querySelector('#liveChatProbeStatus').getBoundingClientRect();
         const input = document.querySelector('#liveChatProbeStatus input').getBoundingClientRect();

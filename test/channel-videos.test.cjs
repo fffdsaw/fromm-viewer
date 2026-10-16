@@ -45,13 +45,24 @@ test('all inline scripts parse; tab order is LIVE → Replay → Channel', () =>
   const tabs = fn('liveCenterTabsHtml');
   assert.deepEqual([...tabs.matchAll(/data-live-center-mode="([^"]+)"/g)].map(m => m[1]), ['live', 'replay', 'channel']);
 });
+test('Channel single-save ignores a click during Replay or bulk save', async () => {
+  for (const busy of ['replay', 'bulk']) {
+    let picked = 0;
+    const h = setup({createReplayDownloadSink: async () => {picked++;}});
+    if (busy === 'replay') h.state.live.replayDownloading = true;
+    else h.state.postBulkSaving = true;
+    await h.context.downloadChannelVideo({id: 'one', _channelId: 'a'});
+    assert.equal(h.s.downloading, false); assert.equal(picked, 0);
+  }
+});
 
 test('Replay playback/download and Native frame transport/auth contracts remain unchanged', () => {
   const baseline = execFileSync('git', ['show', 'd4d9c2f:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
   const names = [...baseline.matchAll(/^(?:async )?function ((?:\w*Replay\w*)|(?:replay\w+)|(?:visibleReplayPosts)|(?:returnToReplayList))\(/gm)].map(m => m[1]);
   assert.ok(names.length > 30);
-  // Only the Replay list renderer changes to support direct multi-selection.
-  for (const name of names.filter(name => name !== 'renderReplayView')) assert.equal(fn(name), fn(name, baseline), name);
+  // List selection and the shared save-name / cross-tab download guard evolve;
+  // stream fetching/decryption and playback remain unchanged.
+  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
   for (const file of ['native-live/src/frame-pump.cjs', 'chrome_extension/native-background.js', 'chrome_extension/native-content.js']) {
     const bytes = execFileSync('git', ['show', `d4d9c2f:${file}`], {cwd: root});
     assert.equal(fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n'), bytes.toString('utf8').replace(/\r\n/g, '\n'), file);

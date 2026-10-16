@@ -7,25 +7,41 @@ const vm = require('node:vm');
 const code = fs.readFileSync(path.join(__dirname, '..', 'web-live-pip.js'), 'utf8');
 const jpeg = 'data:image/jpeg;base64,AQ==';
 function element(tag) {
-  return {tagName: tag.toUpperCase(), children: [], listeners: new Map(), attributes: {}, src: '', textContent: '',
+  return {tagName: tag.toUpperCase(), children: [], listeners: new Map(), attributes: {}, style: {}, src: '', textContent: '',
     append(child) {this.children.push(child); child.parentElement = this;},
     replaceChildren(...children) {this.children = []; children.forEach(child => this.append(child));},
     addEventListener(type, callback) {this.listeners.set(type, callback);},
+    removeEventListener(type) {this.listeners.delete(type);},
+    remove() {if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this);},
     setAttribute(key, value) {this.attributes[key] = value;},
     contains(child) {return this.children.includes(child);}};
 }
-function setup({supported = true, secure = true, topLevel = true, loaded = true, src = jpeg} = {}) {
+function setup({supported = true, secure = true, topLevel = true, loaded = true, src = jpeg, videoPip = false} = {}) {
   const timeline = element('div'), head = element('div'), grid = element('div'), image = element('img');
   image.id = 'nativeLiveVideo'; image.src = src; image.naturalWidth = loaded ? 720 : 0;
+  image.naturalHeight = loaded ? 1280 : 0; image.complete = loaded;
   grid.append(image);
   const listeners = new Map(), windows = [], requests = [];
-  let observer, resolver, rejecter, webVideo = null, renders = 0, stops = 0;
+  let observer, resolver, rejecter, webVideo = null, renders = 0, stops = 0, pipVideo, track, captures = 0;
   timeline.querySelector = selector => selector === '.live-head' ? head : null;
-  const document = {pictureInPictureEnabled: true, pictureInPictureElement: null,
+  const document = {pictureInPictureEnabled: true, pictureInPictureElement: null, body: element('body'),
     getElementById(id) {return id === 'timeline' ? timeline : id === 'nativeLiveVideo' ? grid.children.find(e => e.id === id) :
       id === 'liveVideoGrid' ? grid : id === 'livePipBtn' ? head.children.find(e => e.id === id) : null;},
     querySelector: () => webVideo,
-    createElement: element,
+    createElement(tag) {
+      const el = element(tag);
+      if (tag === 'canvas' && videoPip) {
+        track = {readyState: 'live', requestFrame() {captures++;}, stop() {this.readyState = 'ended';}};
+        el.captureStream = () => ({getTracks: () => [track], getVideoTracks: () => [track]});
+        el.getContext = () => ({fillRect() {}, drawImage() {}});
+      }
+      if (tag === 'video' && videoPip) {
+        pipVideo = el; el.pause = () => {};
+        el.play = async () => {queueMicrotask(() => el.listeners.get('loadeddata')?.());};
+        el.requestPictureInPicture = () => new Promise((resolve, reject) => {resolver = resolve; rejecter = reject;});
+      }
+      return el;
+    },
     exitPictureInPicture: async () => {document.pictureInPictureElement = null;}};
   const window = {isSecureContext: secure, addEventListener(type, callback) {listeners.set(type, callback);}};
   window.top = topLevel ? window : {};
@@ -34,7 +50,8 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
     return new Promise((resolve, reject) => {resolver = resolve; rejecter = reject;});
   }};
   const state = {filter: 'live', live: {client: {}, centerMode: 'live', connectionSeq: 1, currentLiveRoomId: 'room'}};
-  const context = vm.createContext({window, document, state, WeakMap,
+  const context = vm.createContext({window, document, state, WeakMap, setTimeout, clearTimeout,
+    ...(videoPip ? {HTMLVideoElement: {prototype: {requestPictureInPicture() {}}}, HTMLCanvasElement: {prototype: {captureStream() {}}}} : {}),
     MutationObserver: class {constructor(callback) {observer = callback;} observe() {}},
     renderLiveView: () => {renders++;}, stopLivePlayback: () => {state.live.client = null; state.live.connectionSeq++; stops++; return Promise.resolve();}});
   vm.runInContext(code, context);
@@ -49,6 +66,8 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
     assign: () => observer([{type: 'attributes', target: image}]),
     click: () => document.getElementById('livePipBtn').listeners.get('click')(),
     finish: () => {const win = makeWindow(); resolver(win); return win;}, reject: error => rejecter(error),
+    finishVideo: () => {document.pictureInPictureElement = pipVideo; resolver();},
+    video: () => pipVideo, track: () => track, captures: () => captures,
     load: () => timeline.listeners.get('load')({target: image}), pagehide: () => listeners.get('pagehide')(),
     setWebVideo(value) {grid.replaceChildren(); webVideo = value; observer();},
     counts: () => ({renders, stops})};
@@ -148,4 +167,38 @@ for (const transition of ['room', 'source']) test('pending Web video PiP is disc
   if (transition === 'room') h.state.live.currentLiveRoomId = 'other';
   if (transition === 'source') h.setWebVideo({...video});
   finish(); await opening; assert.equal(h.document.pictureInPictureElement, null);
+});
+
+test('Native canvas video PiP captures only decoded JPEGs, is silent and disposes its own stream', async () => {
+  const h = setup({videoPip: true}), opening = h.click();
+  await new Promise(setImmediate); h.finishVideo(); await opening;
+  assert.equal(h.requests.length, 0, 'standard video PiP replaces the separate document window');
+  assert.equal(h.video().muted, true); assert.equal(h.captures(), 1);
+  h.image.src = 'data:image/jpeg;base64,Ag=='; h.image.complete = false; h.assign();
+  assert.equal(h.captures(), 1, 'source mutation must not draw an undecoded JPEG');
+  h.image.complete = true; h.load(); assert.equal(h.captures(), 2);
+  await h.click(); await new Promise(setImmediate);
+  assert.equal(h.document.pictureInPictureElement, null); assert.equal(h.track().readyState, 'ended');
+  assert.equal(h.video().srcObject, null); assert.equal(h.grid.children[0], h.image);
+});
+
+for (const transition of ['stop', 'render', 'sequence', 'room', 'filter', 'source']) test('late Native video PiP request closes after ' + transition, async () => {
+  const h = setup({videoPip: true}), opening = h.click();
+  await new Promise(setImmediate);
+  if (transition === 'stop') await h.context.stopLivePlayback();
+  if (transition === 'render') h.context.renderLiveView();
+  if (transition === 'sequence') h.state.live.connectionSeq++;
+  if (transition === 'room') h.state.live.currentLiveRoomId = 'other';
+  if (transition === 'filter') h.state.filter = 'all';
+  if (transition === 'source') h.grid.replaceChildren();
+  h.finishVideo(); await opening; await new Promise(setImmediate);
+  assert.equal(h.document.pictureInPictureElement, null); assert.equal(h.track().readyState, 'ended');
+});
+
+test('rejected Native video PiP cleans up capture without raw error details or changing Native playback', async () => {
+  const h = setup({videoPip: true}), opening = h.click();
+  await new Promise(setImmediate); h.reject(new Error('private fixture value')); await opening;
+  assert.equal(h.track().readyState, 'ended'); assert.equal(h.video().srcObject, null);
+  assert.equal(h.grid.children[0], h.image); assert.equal(h.button().disabled, false);
+  assert.doesNotMatch(h.button().title, /private/);
 });

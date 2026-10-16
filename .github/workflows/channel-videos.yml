@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'web-live-pip.js', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -37,6 +37,7 @@ jobs:
         run: |
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
+          node test/replay-player.browser.cjs
           node test/direct-selection.browser.cjs
           node test/selection-gestures.browser.cjs
           node test/live-ui-pip.browser.cjs

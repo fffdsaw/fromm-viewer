@@ -965,6 +965,24 @@ html.image-lightbox-open { overflow-y:hidden; }
   background:#000;
 }
 
+/* Replay playback stays in the viewport; Back restores normal list scrolling. */
+html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
+.main:has(> .live-timeline > .replay-player-page){display:flex;flex-direction:column;height:100dvh;min-height:0;padding-bottom:12px}
+.main:has(> .live-timeline > .replay-player-page) > .viewer-header{flex:0 0 auto;margin-bottom:8px}
+.live-timeline:has(> .replay-player-page){flex:1 1 0;min-height:0!important}
+.live-timeline > .replay-player-page{flex:1 1 0;height:auto}
+@media(max-height:500px){
+  .main:has(> .live-timeline > .replay-player-page) > .viewer-header{margin-bottom:6px}
+  .main:has(> .live-timeline > .replay-player-page) .topbar{min-height:0;padding:4px 8px}
+  .main:has(> .live-timeline > .replay-player-page) .toolbar{padding:4px 8px}
+  .main:has(> .live-timeline > .replay-player-page) .toolbar #counts{flex-basis:auto}
+  .replay-player-page > .replay-page-head{min-height:40px;padding:6px 10px}
+}
+@media(max-height:350px){
+  .main:has(> .live-timeline > .replay-player-page){padding-bottom:8px}
+  .main:has(> .live-timeline > .replay-player-page) .topbar{padding:2px 8px}
+}
+
 /* Replay thumbnail download progress */
 .replay-download{
   transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;

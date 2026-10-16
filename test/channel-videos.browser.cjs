@@ -38,6 +38,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
         const url = new URL(route.request().url());
         const json = (body, status = 200) => route.fulfill({status, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify(body)});
         if (url.hostname === 'viewer.test') {
+          if (url.pathname.endsWith('/web-live-pip.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-pip.js'), 'utf8')});
           if (url.pathname.endsWith('/web-native-live.js')) return route.fulfill({contentType: 'text/javascript', body: adapter});
           return route.fulfill({contentType: 'text/html', body: html});
         }

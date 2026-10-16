@@ -44,6 +44,7 @@ async function selectionSize(page) {
         const url = new URL(route.request().url());
         const json = data => route.fulfill({contentType: 'application/json', body: JSON.stringify({success: true, data})});
         if (url.hostname === 'viewer.test') {
+          if (url.pathname.endsWith('/web-live-pip.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-pip.js'), 'utf8')});
           if (url.pathname.endsWith('.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-native-live.js'))});
           return route.fulfill({contentType: 'text/html', body: html});
         }

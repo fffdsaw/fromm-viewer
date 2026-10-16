@@ -31,6 +31,8 @@ async function measure(page, label) {
     return {viewport: {width: innerWidth, height: innerHeight}, scrollY,
       scrollHeight: document.documentElement.scrollHeight, scrollWidth: document.documentElement.scrollWidth,
       player: rect('.channel-player'), video: rect('#channelVideo'), head: rect('.channel-player .replay-page-head'),
+      timeline: rect('#timeline'),
+      listToolsHidden: [...document.querySelectorAll('.channel-list-shell .live-center-tabs,.channel-list-shell .replay-toolbar')].every(el => getComputedStyle(el).display === 'none'),
       intrinsic: {width: video.videoWidth, height: video.videoHeight}, objectFit: style.objectFit,
       controls: video.controls, currentTime: video.currentTime, paused: video.paused};
   });
@@ -44,6 +46,9 @@ async function measure(page, label) {
     assert.equal(geometry.scrollY, 0, `${label}: no scroll needed on open/resize`);
     assert.ok(geometry.video.top >= geometry.head.bottom - 1, `${label}: video below title`);
     assert.ok(geometry.player.bottom <= geometry.viewport.height - 8, `${label}: player bottom inside viewport`);
+    assert.ok(geometry.player.bottom >= geometry.viewport.height - 14, `${label}: player fills remaining viewport`);
+    assert.ok(Math.abs(geometry.player.left - geometry.timeline.left) <= 1, `${label}: no nested player gutter`);
+    assert.equal(geometry.listToolsHidden, true, `${label}: playback hides list-only tabs and filters`);
     assert.ok(geometry.video.bottom <= geometry.viewport.height - 8, `${label}: native controls inside viewport`);
     assert.ok(geometry.video.height >= 60, `${label}: visible video/control area`);
     assert.ok(geometry.scrollHeight <= geometry.viewport.height + 1, `${label}: no vertical overflow`);
@@ -123,6 +128,8 @@ async function measure(page, label) {
         }
         await page.locator('#channelBackToList').click();
         assert.equal(await page.locator('.channel-video-card').count(), 2);
+        assert.equal(await page.locator('.live-center-tabs').isVisible(), true, 'Back restores LIVE → Replay → Channel tabs');
+        assert.equal(await page.locator('.replay-toolbar').isVisible(), true, 'Back restores channel filters/count/refresh');
         assert.equal(await page.locator('.main').evaluate(e => getComputedStyle(e).display), 'block', 'list returns to its ordinary scrolling layout');
       }
       assert.deepEqual(errors, []);

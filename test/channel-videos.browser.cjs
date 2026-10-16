@@ -130,6 +130,9 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       await page.locator('[data-channel-video-play="v1"]').click();
       await page.locator('.channel-player .replay-error').waitFor();
       assert.equal(await page.locator('#channelVideo').count(), 0);
+      assert.equal(await page.locator('.live-center-tabs').isVisible(), false, 'player keeps only Back/title/video');
+      await page.locator('#channelBackToList').click();
+      assert.equal(await page.locator('.live-center-tabs').isVisible(), true, 'error Back restores tab navigation');
       await page.locator('[data-live-center-mode="replay"]').click();
       await page.getByText('Replay 전용', {exact: true}).waitFor();
       assert.equal(await page.getByText('아티스트의 새로운 영상', {exact: true}).count(), 0);

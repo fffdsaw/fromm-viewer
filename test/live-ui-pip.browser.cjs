@@ -37,7 +37,7 @@ async function openFixture(browser, viewport, nativeWindowViewport = false) {
   await page.route('**/*', route => {
     const url = new URL(route.request().url());
     if (url.hostname === 'localhost') {
-      if (['/web-native-live.js', '/web-live-pip.js'].includes(url.pathname)) {
+      if (['/web-native-live.js', '/web-live-pip.js', '/web-live-chat-probe.js'].includes(url.pathname)) {
         return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, path.basename(url.pathname)), 'utf8')});
       }
       if (url.pathname === '/index.html') return route.fulfill({contentType: 'text/html', body: html});

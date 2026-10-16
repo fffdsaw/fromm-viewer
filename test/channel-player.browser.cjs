@@ -75,6 +75,7 @@ async function measure(page, label) {
         const json = data => route.fulfill({contentType: 'application/json', body: JSON.stringify({success: true, data})});
         if (url.hostname === 'viewer.test') {
           if (url.pathname.endsWith('.mp4')) return route.fulfill({contentType: 'video/mp4', body: fs.readFileSync(path.join(fixtures, path.basename(url.pathname)))});
+          if (url.pathname.endsWith('/web-live-chat-probe.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-chat-probe.js'), 'utf8')});
           if (url.pathname.endsWith('/web-live-pip.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-pip.js'), 'utf8')});
           if (url.pathname.endsWith('.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-native-live.js'))});
           return route.fulfill({contentType: 'text/html', body: html});

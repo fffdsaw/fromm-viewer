@@ -36,7 +36,7 @@ Local Node checks: 134 passed after integrating the latest main and media bulk-s
 
 Browser fixtures intercept network requests and use synthetic 720x1280 JPEG frames with the actual unchanged Native web adapter. They do not authenticate or connect to a real Fromm RTC broadcast and do not play Native audio.
 
-No authenticated Viewer tab was exposed through the available browser connection. Real Fromm broadcast video/audio, actual chat permissions, current server chat support and live PiP performance are **UNCONFIRMED**.
+No authenticated Viewer tab was exposed through the available browser connection. On 2026-10-16 the user ran the deployed chat probe in their normal account and supplied successful room/message GET results and three received message objects. Chat read transport and nonempty receipt are now confirmed for that session; see LIVE-CHAT-CHECK.md. Real Fromm broadcast video/audio, live PiP performance, the new overlay's real-account presentation and sending remain **UNCONFIRMED**.
 
 ## Resume
 

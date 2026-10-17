@@ -15,7 +15,7 @@ const root = path.resolve(__dirname, '..');
       await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {value: {
         writeText: async text => { window.probeCopied = text; }
       }}));
-      let slow = false, messagePages = 0;
+      let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0;
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === 'localhost') {
@@ -25,12 +25,26 @@ const root = path.resolve(__dirname, '..');
         if (url.hostname === 'live-chat-api.frommyarti.com') {
           requests.push({path: url.pathname, method: route.request().method(), headers: route.request().headers()});
           if (slow) await new Promise(resolve => setTimeout(resolve, 200));
+          if (route.request().method() === 'POST') {
+            postCount++;
+            assert.equal(url.pathname, '/live-chat/messages/normal');
+            const body = route.request().postDataJSON();
+            assert.deepEqual(Object.keys(body).sort(), ['chatToken', 'content', 'liveChatRoomId']);
+            assert.equal(body.liveChatRoomId, 'synthetic-room'); assert.equal(body.chatToken, 'synthetic-chat-token');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            if (postMode === 'network') return route.abort();
+            try { return await route.fulfill({status: postMode === 'denied' ? 403 : 200, contentType: 'text/xml',
+              headers: {'access-control-allow-origin': '*'}, body: postMode === 'denied' ? 'private-error-body' :
+                '<SendMessageResponse><SendMessageResult><MessageId>synthetic-echo-id</MessageId></SendMessageResult></SendMessageResponse>'}); }
+            catch { return; }
+          }
           const first = {messageId: 'private-id-A', content: '<img src=x onerror="window.chatXss=1">', nickname: 'private nickname A', createdAt: 100};
           const second = {messageId: 'private-id-B', content: 'private-comment-text-B', nickname: 'private nickname B', createdAt: 200};
           const data = url.pathname.startsWith('/live-chat/rooms/')
-            ? {liveChatRoom: {isFrozen: false, isBanned: false, muteExpiresAt: null}}
+            ? {liveChatRoom: {isFrozen: frozen, isBanned: false, muteExpiresAt: null}}
             : (++messagePages < 3 ? {messages: [first], deletedMessages: [], cursor: 1792140000000 + messagePages}
               : {messages: [second], deletedMessages: ['private-id-A'], cursor: 1792140000000 + messagePages});
+          if (echo && data.messages) data.messages.push({messageId: 'synthetic-echo-id', nickname: 'synthetic sender', content: '합성 전송 댓글', createdAt: 300});
           try { return await route.fulfill({contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({success: true, data})}); }
           catch { return; }
         }
@@ -71,8 +85,35 @@ const root = path.resolve(__dirname, '..');
       const copied = await page.evaluate(() => window.probeCopied);
       assert.equal(JSON.parse(copied).status, 'messages-received');
       assert.doesNotMatch(copied, /synthetic|private|Bearer|1792140000000|http[s]?:/);
-      assert.equal(await page.locator('#liveChatProbeStatus input:not(:disabled), #liveChatProbeStatus textarea').count(), 0);
-      assert.equal(await page.locator('#liveChatProbeStatus input').isDisabled(), true);
+      assert.equal(postCount, 0, 'opening/reading comments never posts anything');
+      const input = page.locator('.live-comment-input'), send = page.locator('.live-comment-send');
+      await page.waitForFunction(() => !document.querySelector('.live-comment-input').disabled);
+      await input.fill('합성 전송 댓글');
+      await input.dispatchEvent('compositionstart'); await input.press('Enter');
+      assert.equal(postCount, 0, 'Korean IME confirmation cannot submit');
+      await input.dispatchEvent('compositionend');
+      await send.click();
+      // Submit events while the same request is pending must not duplicate the POST.
+      await page.locator('.live-comment-form').dispatchEvent('submit');
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'accepted');
+      assert.equal(postCount, 1); assert.equal(await input.inputValue(), '');
+      assert.equal(await page.locator('.live-comment-row').count(), 1, 'ACK does not insert a fake own comment');
+      echo = true;
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'delivered');
+      assert.equal(await page.locator('.live-comment-row').count(), 2, 'only a real GET echo adds the sent row');
+      await page.locator('#liveChatProbeStatus button').first().click();
+      assert.doesNotMatch(await page.evaluate(() => window.probeCopied), /synthetic|private|합성|messageId|chatToken"\s*:|Bearer/);
+      postMode = 'denied'; await input.fill('합성 거절 댓글'); await input.press('Enter');
+      await page.waitForFunction(() => FrommChatProbe()?.send?.httpStatus === 403);
+      assert.equal(await input.inputValue(), '합성 거절 댓글'); assert.equal(postCount, 2);
+      postMode = 'network'; await input.fill('합성 불확실 댓글'); await send.click();
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-unconfirmed');
+      assert.equal(await input.inputValue(), '합성 불확실 댓글'); assert.equal(await send.isDisabled(), true);
+      await page.waitForTimeout(300); assert.equal(postCount, 3, 'unknown delivery never automatically retries');
+      await input.fill('다른 합성 댓글'); frozen = true; await send.click();
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-frozen');
+      assert.equal(postCount, 3, 'a fresh frozen policy prevents posting even after an earlier allowed poll');
+      frozen = false; postMode = 'ack';
       await page.evaluate(async () => {
         const canvas = document.createElement('canvas'); canvas.width = 360; canvas.height = 640;
         const drawing = canvas.getContext('2d'); drawing.fillStyle = '#253b58'; drawing.fillRect(0, 0, 360, 640);
@@ -87,7 +128,7 @@ const root = path.resolve(__dirname, '..');
       await page.waitForFunction(() => document.pictureInPictureElement?.id === 'livePipVideo');
       assert.equal(await page.evaluate(() => document.pictureInPictureElement.tagName), 'VIDEO');
       assert.equal(await page.evaluate(() => document.pictureInPictureElement.querySelectorAll('.live-comments-overlay,input,button').length), 0);
-      assert.equal(await page.locator('.live-comment-row').count(), 1, 'comments remain on the normal stage');
+      assert.equal(await page.locator('.live-comment-row').count(), 2, 'comments remain on the normal stage');
       await page.evaluate(() => document.exitPictureInPicture());
       const fit = await page.evaluate(() => {
         const panel = document.querySelector('#liveChatProbeStatus').getBoundingClientRect();
@@ -102,8 +143,26 @@ const root = path.resolve(__dirname, '..');
         fs.mkdirSync(process.env.LIVE_SCREENSHOT_DIR, {recursive: true});
         await page.screenshot({path: path.join(process.env.LIVE_SCREENSHOT_DIR, 'live-comments-' + width + '.png')});
       }
-      await page.locator('#liveChatProbeStatus button').last().click();
+      await page.getByRole('button', {name: '닫기', exact: true}).click();
       assert.equal(await page.locator('#liveChatProbeStatus').count(), 0);
+      await prepare(); await page.locator('#liveChatProbeBtn').click();
+      await page.waitForFunction(() => !document.querySelector('.live-comment-input').disabled);
+      const beforeClose = postCount;
+      await input.fill('중단된 합성 전송'); await send.click();
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'sending');
+      // Wait for the mock service to observe the POST before dismissing its response.
+      for (let check = 0; check < 20 && postCount === beforeClose; check++) await page.waitForTimeout(20);
+      assert.equal(postCount, beforeClose + 1);
+      await page.getByRole('button', {name: '닫기', exact: true}).click();
+      await page.waitForTimeout(250); assert.equal(await page.evaluate(() => FrommChatProbe()), null);
+      await page.locator('#liveChatProbeBtn').click();
+      await page.waitForFunction(() => !document.querySelector('.live-comment-input').disabled);
+      await input.fill('중단된 합성 전송'); assert.equal(await send.isDisabled(), true, 'dismissal cannot hide the uncertain-delivery duplicate guard');
+      const beforeStale = postCount; slow = true;
+      await input.fill('전환된 계정의 합성 입력'); await send.click();
+      await page.evaluate(() => {state.live.liveChat = {chatToken: 'synthetic-new-account-token'};});
+      await page.waitForTimeout(300); assert.equal(postCount, beforeStale, 'account change during the fresh policy check prevents the POST');
+      await page.evaluate(() => stopLivePlayback()); slow = false;
       await prepare(); slow = true;
       await page.locator('#liveChatProbeBtn').click();
       await page.evaluate(() => stopLivePlayback());
@@ -111,7 +170,7 @@ const root = path.resolve(__dirname, '..');
       assert.equal(await page.locator('#liveChatProbeStatus').count(), 0);
       assert.equal(await page.evaluate(() => FrommChatProbe()), null);
       assert.deepEqual(errors, []);
-      console.log(width + 'px: explicit read-only chat probe, missing/provider guards, safe copy, layout and stop cancellation PASS (synthetic)');
+      console.log(width + 'px: explicit chat read/send, IME, single POST, ACK/echo, deny/unknown/frozen, safe copy, video-only PiP, layout and stop cancellation PASS (synthetic)');
       await context.close();
     }
   } finally { await browser.close(); }

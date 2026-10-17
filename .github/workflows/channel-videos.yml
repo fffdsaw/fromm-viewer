@@ -34,6 +34,7 @@ jobs:
       - name: Channel features and viewport layout
         env:
           CHANNEL_SCREENSHOT_DIR: screenshots
+          LIVE_SCREENSHOT_DIR: screenshots
         run: |
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
@@ -42,6 +43,7 @@ jobs:
           node test/selection-gestures.browser.cjs
           node test/live-ui-pip.browser.cjs
           node test/live-chat-probe.browser.cjs
+          node test/live-chat-probe-extension.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

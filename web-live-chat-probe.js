@@ -5,6 +5,14 @@
     constructor(code, httpStatus = 0, shape = null) { super(code); this.code = code; this.httpStatus = httpStatus; this.shape = shape; }
   }
   const type = value => value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+  function roomPolicy(room, code = 'unknown-room-response') {
+    const shape = {room: type(room), frozen: type(room?.isFrozen), banned: type(room?.isBanned), mute: type(room?.muteExpiresAt)};
+    if (!room || typeof room !== 'object' || Array.isArray(room) || typeof room.isFrozen !== 'boolean' ||
+        (room.isBanned != null && typeof room.isBanned !== 'boolean')) throw new ProbeError(code, 0, shape);
+    // Official Moshi adapter defaults omitted nullable fields to null. The domain
+    // mapper bans only Boolean.TRUE; the repository treats non-null expiry as muted.
+    return {frozen: room.isFrozen, banned: room.isBanned === true, mutePresent: room.muteExpiresAt != null};
+  }
   const pause = (ms, signal) => new Promise((resolve, reject) => {
     const abort = () => { clearTimeout(timer); reject(new ProbeError('cancelled')); };
     const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
@@ -41,7 +49,8 @@
       assertCurrent();
       const owner = new AbortController(), relay = () => owner.abort();
       signal?.addEventListener('abort', relay, {once: true});
-      const timer = setTimeout(() => owner.abort(), 8000);
+      let expired = false;
+      const timer = setTimeout(() => { expired = true; owner.abort(); }, 8000);
       try {
         if (options.method === 'POST') posted = true;
         const response = await fetcher(origin + path, {...options, credentials: 'omit', redirect: 'error', cache: 'no-store',
@@ -49,7 +58,8 @@
         assertCurrent();
         if (!response.ok) {
           // 5xx may happen after a write; do not invite a duplicate retry.
-          throw new ProbeError(posted && response.status >= 500 ? 'send-unconfirmed' : 'http-error', response.status);
+          throw new ProbeError(posted && response.status >= 500 ? 'send-unconfirmed' : 'http-error', response.status,
+            {stage: posted ? 'post-response' : 'policy-response', postStarted: posted});
         }
         if (Number(response.headers.get('content-length')) > 16384) throw new ProbeError(posted ? 'send-unconfirmed' : 'response-too-large');
         const text = await response.text(); assertCurrent();
@@ -57,25 +67,31 @@
         return text;
       } catch (error) {
         if (error instanceof ProbeError && error.code !== 'cancelled') throw error;
-        throw new ProbeError(posted ? 'send-unconfirmed' : signal?.aborted || !current() ? 'cancelled' : 'send-policy-unavailable');
+        throw new ProbeError(posted ? 'send-unconfirmed' : signal?.aborted || !current() ? 'cancelled' : 'send-policy-unavailable', 0,
+          {stage: posted ? 'post-request' : 'policy-request', postStarted: posted, reason: expired ? 'timeout' : owner.signal.aborted ? 'cancelled' : 'network-error'});
       } finally { clearTimeout(timer); signal?.removeEventListener('abort', relay); }
     }
     // Never infer permission to write from successful reading. Recheck every submission.
     const policyText = await request('/live-chat/rooms/' + encodeURIComponent(roomId), {method: 'GET', headers: {Accept: 'application/json'}});
     let envelope;
-    try { envelope = JSON.parse(policyText); } catch { throw new ProbeError('send-policy-unavailable'); }
-    const room = envelope?.success === true && envelope?.data?.liveChatRoom;
-    if (!room || typeof room.isFrozen !== 'boolean' || typeof room.isBanned !== 'boolean' ||
-        !Object.hasOwn(room, 'muteExpiresAt')) throw new ProbeError('send-policy-unavailable');
-    if (room.isBanned) throw new ProbeError('send-banned');
-    if (room.isFrozen) throw new ProbeError('send-frozen');
-    // The app treats any non-null mute expiry as muted; don't clear it locally.
-    if (room.muteExpiresAt !== null) throw new ProbeError('send-muted');
+    try { envelope = JSON.parse(policyText); } catch { throw new ProbeError('send-policy-unavailable', 0, {stage: 'policy-json', postStarted: false}); }
+    if (envelope?.success !== true) throw new ProbeError('send-policy-unavailable', 0,
+      {stage: 'policy-envelope', postStarted: false, success: type(envelope?.success), data: type(envelope?.data)});
+    let policy;
+    try { policy = roomPolicy(envelope?.data?.liveChatRoom, 'send-policy-unavailable'); }
+    catch (error) {
+      if (error instanceof ProbeError) error.shape = {stage: 'policy-schema', postStarted: false, ...error.shape};
+      throw error;
+    }
+    if (policy.banned) throw new ProbeError('send-banned');
+    if (policy.frozen) throw new ProbeError('send-frozen');
+    if (policy.mutePresent) throw new ProbeError('send-muted');
     const text = await request('/live-chat/messages/normal', {method: 'POST', headers: {Accept: 'application/xml', 'Content-Type': 'application/json'},
       body: JSON.stringify({liveChatRoomId: roomId, content, chatToken: token})});
     return {messageId: parseSendAck(text)};
   }
-  async function probe({roomId, token, signal, current = () => true, fetcher = fetch, wait = pause, sampleLimit = 2, onPage = () => {}}) {
+  async function probe({roomId, token, signal, current = () => true, fetcher = fetch, wait = pause,
+    now = () => performance.now(), sampleLimit = 2, onPage = () => {}}) {
     if (typeof roomId !== 'string' || !roomId || roomId.length > 256 ||
         typeof token !== 'string' || !token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) {
       throw new ProbeError('missing-chat-context');
@@ -113,23 +129,22 @@
     const id = encodeURIComponent(roomId);
     async function readPolicy() {
     const room = (await get('/live-chat/rooms/' + id)).liveChatRoom;
-    if (!room || typeof room.isFrozen !== 'boolean' ||
-        (room.isBanned !== null && typeof room.isBanned !== 'boolean')) throw new ProbeError('unknown-room-response', 0,
-          {room: type(room), frozen: type(room?.isFrozen), banned: type(room?.isBanned)});
-    return {frozen: room.isFrozen, banned: room.isBanned,
-      mutePresent: room.muteExpiresAt !== null && room.muteExpiresAt !== undefined};
+    return roomPolicy(room);
     }
     let policy = await readPolicy();
     if (policy.banned) return {status: 'banned', policy, samples: []};
     let cursor = Date.now();
     const samples = [];
-    let received = false;
+    let received = false, nextPollAt = now(), policyCheckedAt = now();
     for (let index = 0; index < sampleLimit; index++) {
-      if (index) { await wait(2000, signal); assertCurrent(); }
-      if (index && index % 15 === 0) {
+      if (index) { const delay = Math.max(0, nextPollAt - now()); if (delay) await wait(delay, signal); assertCurrent(); }
+      const cycleStarted = now();
+      if (index && cycleStarted - policyCheckedAt >= 30000) {
         policy = await readPolicy();
+        policyCheckedAt = now();
         if (policy.banned) return {status: 'banned', policy, samples};
       }
+      const requestStarted = now();
       const data = await get('/live-chat/' + id + '/messages', cursor);
       if (!Array.isArray(data.messages) || !Array.isArray(data.deletedMessages) ||
           data.messages.some(message => !message || typeof message !== 'object' || Array.isArray(message)) ||
@@ -139,12 +154,14 @@
           {messages: type(data.messages), firstMessage: type(data.messages?.[0]), deletedMessages: type(data.deletedMessages), cursor: type(data.cursor)});
       }
       samples.push({messageCount: data.messages.length, deletedCount: data.deletedMessages.length,
-        cursorPresent: data.cursor !== null});
+        cursorPresent: data.cursor !== null, requestMs: Math.max(0, Math.round(now() - requestStarted))});
       if (samples.length > 8) samples.shift();
       received ||= data.messages.length > 0;
       if (data.cursor !== null) cursor = data.cursor;
       assertCurrent();
       onPage({policy, samples: samples.map(sample => ({...sample})), messages: data.messages, deletedMessages: data.deletedMessages});
+      // At most one poll per second; don't add a full interval after a slow response.
+      nextPollAt = requestStarted + 1000;
     }
     return {status: received ? 'messages-received' : 'connected-no-messages', policy, samples};
   }
@@ -179,11 +196,12 @@
   const timeline = document.getElementById('timeline');
   if (!timeline) return;
   const style = document.createElement('style');
-  style.textContent = '.live-comments-overlay{--live-comments-max:48%}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
+  style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}.live-comment-new{animation:live-comment-enter .12s ease-out both}@keyframes live-comment-enter{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.live-comment-new{animation:none}}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
   let uncertainAttempt = null, activeAttempt = null;
+  let followLatest = true, renderedIds = new Set();
   const sendLabels = {
     'sending': '댓글 전송 중…',
     'accepted': '서버 접수됨 · 댓글 표시를 기다립니다',
@@ -220,6 +238,7 @@
     if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
     sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
     controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
+    followLatest = true; renderedIds = new Set();
   }
   function sync() {
     const head = timeline.querySelector('.live-head');
@@ -278,7 +297,8 @@
     } catch (error) {
       if (sendController !== owner || !context.current()) return;
       const status = error instanceof ProbeError && sendLabels[error.code] ? error.code : 'send-policy-unavailable';
-      report.send = {status, ...(error instanceof ProbeError && error.httpStatus ? {httpStatus: error.httpStatus} : {})};
+      report.send = {status, ...(error instanceof ProbeError && error.httpStatus ? {httpStatus: error.httpStatus} : {}),
+        ...(error instanceof ProbeError && error.shape ? {diagnostic: error.shape} : {})};
       if (status === 'send-unconfirmed') uncertainAttempt = activeAttempt;
       if (status === 'send-banned') report.policy.banned = true;
       if (status === 'send-frozen') report.policy.frozen = true;
@@ -297,13 +317,21 @@
     if (!panel) {
       panel = document.createElement('div'); panel.id = 'liveChatProbeStatus';
       panel.className = 'live-comments-overlay';
-      panel.style.cssText = 'position:absolute;left:50%;width:min(100%,560px);transform:translateX(-50%);bottom:0;z-index:5;max-height:var(--live-comments-max);padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.76));color:#fff;font-size:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+      panel.style.cssText = 'position:absolute;left:0;width:min(100%,560px);bottom:0;z-index:5;max-height:var(--live-comments-max);padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.76));color:#fff;font-size:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+      const scroll = document.createElement('div'); scroll.className = 'live-comments-scroll';
+      scroll.style.cssText = 'position:relative;display:flex;min-height:0;flex:1 1 auto;overflow:visible';
       const list = document.createElement('div'); list.className = 'live-comments-list';
-      list.setAttribute('aria-label', 'LIVE 댓글'); list.style.cssText = 'min-height:0;overflow:auto;display:flex;flex-direction:column;gap:7px;pointer-events:auto;text-shadow:0 1px 3px #000';
+      list.tabIndex = 0;
+      list.setAttribute('aria-label', 'LIVE 댓글'); list.style.cssText = 'flex:1;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:7px;pointer-events:auto;text-shadow:0 1px 3px #000';
+      const latest = document.createElement('button'); latest.className = 'live-comments-latest'; latest.type = 'button';
+      latest.textContent = '↓'; latest.title = '최신 댓글로 이동'; latest.setAttribute('aria-label', '최신 댓글로 이동'); latest.hidden = true;
+      list.addEventListener('scroll', () => { followLatest = list.scrollHeight - list.clientHeight - list.scrollTop < 12; latest.hidden = followLatest; }, {passive: true});
+      latest.addEventListener('click', () => { followLatest = true; list.scrollTop = list.scrollHeight; latest.hidden = true; });
+      scroll.append(list, latest);
       const controls = document.createElement('div'); controls.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;pointer-events:auto';
       const text = document.createElement('span'); text.className = 'live-chat-probe-text';
       text.style.cssText = 'flex:1;min-width:0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'; text.setAttribute('role', 'status');
-      const copy = document.createElement('button'); copy.className = 'live-mini-btn'; copy.textContent = '진단 복사'; copy.type = 'button';
+      const copy = document.createElement('button'); copy.className = 'live-mini-btn live-comment-copy'; copy.textContent = '진단 복사'; copy.type = 'button';
       copy.addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(JSON.stringify(report, null, 2)); copy.textContent = '복사됨'; }
         catch { copy.textContent = '복사 실패'; }
@@ -330,19 +358,21 @@
         form.requestSubmit();
       });
       form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
-      form.append(input, send); controls.append(text, copy, dismiss); panel.append(list, controls, form, sendStatus); stage.append(panel);
+      form.append(input, send); controls.append(text, copy, dismiss); panel.append(scroll, controls, form, sendStatus); stage.append(panel);
     }
     if (renderedVersion !== comments.version) {
       const list = panel.querySelector('.live-comments-list');
-      const follow = list.scrollHeight - list.clientHeight - list.scrollTop < 36;
-      const rows = [...comments.items.values()].sort((a, b) => a.createdAt - b.createdAt).slice(-30).map(message => {
+      const entries = [...comments.items].sort((a, b) => a[1].createdAt - b[1].createdAt).slice(-30);
+      let arriving = 0;
+      const rows = entries.map(([id, message]) => {
         const row = document.createElement('div'); row.className = 'live-comment-row'; row.style.cssText = 'display:flex;gap:10px;flex:0 0 auto;line-height:1.5';
+        if (!renderedIds.has(id)) { row.classList.add('live-comment-new'); row.style.animationDelay = Math.min(arriving++ * 40, 160) + 'ms'; }
         const name = document.createElement('strong'); name.style.cssText = 'flex:0 0 28%;max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis';
         name.textContent = message.nickname; name.title = message.nickname;
         const content = document.createElement('span'); content.style.cssText = 'min-width:0;white-space:pre-wrap;overflow-wrap:anywhere'; content.textContent = message.content;
         row.append(name, content); return row;
       });
-      list.replaceChildren(...rows); if (follow) list.scrollTop = list.scrollHeight;
+      list.replaceChildren(...rows); renderedIds = new Set(entries.map(([id]) => id));
       renderedVersion = comments.version;
     }
     const baseLabel = controller && report.status === 'connected-no-messages' ? '새 댓글을 기다리고 있습니다' :
@@ -352,14 +382,17 @@
     const text = panel.querySelector('.live-chat-probe-text');
     if (text.textContent !== label) { text.textContent = label; text.title = label; }
     updateComposer(panel);
+    const list = panel.querySelector('.live-comments-list');
+    if (followLatest) list.scrollTop = list.scrollHeight;
+    panel.querySelector('.live-comments-latest').hidden = followLatest;
   }
   async function run() {
     if (controller) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); sync(); return; }
     if (!isLive() || !state.live.config?.isStreaming || state.live.config?.mock) return;
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
-    comments = messageStore(); renderedVersion = -1;
-    report = {probeVersion: 3, mode: 'interactive-comments', status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
+    comments = messageStore(); renderedVersion = -1; followLatest = true; renderedIds = new Set();
+    report = {probeVersion: 4, mode: 'interactive-comments', pollIntervalMs: 1000, status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
       chatTokenPresent: typeof token === 'string' && !!token, liveChatErrorPresent: !!live.liveChatError,
       provider: typeof live.chatProvider === 'string' && live.chatProvider.toLowerCase() === 'fromm' ? 'fromm' : live.chatProvider ? 'other' : 'missing'};
     if (live.entry?.kind !== 'channel' || typeof roomId !== 'string' || !roomId) {

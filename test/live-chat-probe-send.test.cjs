@@ -32,13 +32,30 @@ test('missing context or blank, control, oversized text cannot make any request'
     const h = harness(); await assert.rejects(sendNormalComment({...h.args, ...patch})); assert.equal(h.calls.length, 0);
   }
 });
-test('frozen, banned, any mute expiry and incomplete permission schema prevent a POST', async () => {
+test('APK-nullable fields may be omitted or null; the fresh frozen flag is still required', async () => {
+  for (const room of [{isFrozen: false}, {isFrozen: false, isBanned: false}, {isFrozen: false, isBanned: null},
+    {isFrozen: false, muteExpiresAt: null}, {...policy, isBanned: null}]) {
+    const h = harness({room}); const result = await sendNormalComment(h.args);
+    assert.equal(result.messageId, 'synthetic-message-id'); assert.equal(h.calls.length, 2);
+  }
+});
+test('frozen, banned, any mute expiry and unknown required policy types prevent a POST', async () => {
   for (const [room, code] of [[{...policy, isFrozen: true}, 'send-frozen'], [{...policy, isBanned: true}, 'send-banned'],
-    [{...policy, muteExpiresAt: '2000-01-01T00:00:00Z'}, 'send-muted'], [{...policy, isBanned: null}, 'send-policy-unavailable'],
-    [{isFrozen: false, isBanned: false}, 'send-policy-unavailable'], [null, 'send-policy-unavailable']]) {
+    [{...policy, muteExpiresAt: '2000-01-01T00:00:00Z'}, 'send-muted'], [{isFrozen: true}, 'send-frozen'],
+    [{isFrozen: false, isBanned: true}, 'send-banned'], [{isFrozen: false, muteExpiresAt: false}, 'send-muted'],
+    [{isFrozen: 'false'}, 'send-policy-unavailable'], [{...policy, isBanned: 'false'}, 'send-policy-unavailable'],
+    [{isBanned: false}, 'send-policy-unavailable'], [null, 'send-policy-unavailable']]) {
     const h = harness({room}); await assert.rejects(sendNormalComment(h.args), error => error.code === code);
     assert.equal(h.calls.length, 1);
   }
+});
+test('policy schema diagnostics contain only field types, stage and POST presence', async () => {
+  const h = harness({room: {isFrozen: 'private-value', isBanned: 'private-value', muteExpiresAt: 'private-date'}});
+  await assert.rejects(sendNormalComment(h.args), error => {
+    assert.deepEqual(error.shape, {stage: 'policy-schema', postStarted: false, room: 'object', frozen: 'string', banned: 'string', mute: 'string'});
+    assert.doesNotMatch(JSON.stringify(error), /private|synthetic/); return true;
+  });
+  assert.equal(h.calls.length, 1);
 });
 test('stale session or abort before the fresh check sends nothing; invalidation during GET never posts', async () => {
   for (const patch of [{current: () => false}, {signal: AbortSignal.abort()}]) {
@@ -53,7 +70,8 @@ test('stale session or abort before the fresh check sends nothing; invalidation 
 test('policy transport failure is safe to distinguish from a POST outcome that is unknown', async () => {
   for (const failAt of [1, 2]) {
     const h = harness({failAt});
-    await assert.rejects(sendNormalComment(h.args), error => error.code === (failAt === 1 ? 'send-policy-unavailable' : 'send-unconfirmed') && !JSON.stringify(error).includes('private'));
+    await assert.rejects(sendNormalComment(h.args), error => error.code === (failAt === 1 ? 'send-policy-unavailable' : 'send-unconfirmed') &&
+      error.shape.stage === (failAt === 1 ? 'policy-request' : 'post-request') && error.shape.postStarted === (failAt === 2) && !JSON.stringify(error).includes('private'));
     assert.equal(h.calls.length, failAt);
   }
 });

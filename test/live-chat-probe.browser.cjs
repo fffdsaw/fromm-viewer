@@ -15,7 +15,7 @@ const root = path.resolve(__dirname, '..');
       await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {value: {
         writeText: async text => { window.probeCopied = text; }
       }}));
-      let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0;
+      let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0, policyMode = 'full', burst = 0;
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === 'localhost') {
@@ -41,10 +41,12 @@ const root = path.resolve(__dirname, '..');
           const first = {messageId: 'private-id-A', content: '<img src=x onerror="window.chatXss=1">', nickname: 'private nickname A', createdAt: 100};
           const second = {messageId: 'private-id-B', content: 'private-comment-text-B', nickname: 'private nickname B', createdAt: 200};
           const data = url.pathname.startsWith('/live-chat/rooms/')
-            ? {liveChatRoom: {isFrozen: frozen, isBanned: false, muteExpiresAt: null}}
+            ? {liveChatRoom: policyMode === 'full' ? {isFrozen: frozen, isBanned: false, muteExpiresAt: null} : {isFrozen: policyMode === 'malformed' ? 'private-bad-type' : frozen}}
             : (++messagePages < 3 ? {messages: [first], deletedMessages: [], cursor: 1792140000000 + messagePages}
               : {messages: [second], deletedMessages: ['private-id-A'], cursor: 1792140000000 + messagePages});
           if (echo && data.messages) data.messages.push({messageId: 'synthetic-echo-id', nickname: 'synthetic sender', content: '합성 전송 댓글', createdAt: 300});
+          if (burst && data.messages) data.messages.push(...Array.from({length: burst === 1 ? 40 : 41}, (_, index) =>
+            ({messageId: 'synthetic-burst-' + index, nickname: 'synthetic reader', content: 'synthetic row ' + index, createdAt: 400 + index})));
           try { return await route.fulfill({contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({success: true, data})}); }
           catch { return; }
         }
@@ -81,13 +83,14 @@ const root = path.resolve(__dirname, '..');
       assert.equal(await page.evaluate(() => window.chatXss || 0), 0);
       assert.equal(await page.locator('.live-comments-list img, .live-comments-list script').count(), 0);
       assert.ok(requests.every(request => request.headers.authorization === 'Bearer synthetic-chat-token'));
-      await page.locator('#liveChatProbeStatus button').first().click();
+      await page.locator('.live-comment-copy').click();
       const copied = await page.evaluate(() => window.probeCopied);
       assert.equal(JSON.parse(copied).status, 'messages-received');
       assert.doesNotMatch(copied, /synthetic|private|Bearer|1792140000000|http[s]?:/);
       assert.equal(postCount, 0, 'opening/reading comments never posts anything');
       const input = page.locator('.live-comment-input'), send = page.locator('.live-comment-send');
       await page.waitForFunction(() => !document.querySelector('.live-comment-input').disabled);
+      policyMode = 'omitted'; // Cached read allows writing, fresh send response omits nullable fields like the APK permits.
       await input.fill('합성 전송 댓글');
       await input.dispatchEvent('compositionstart'); await input.press('Enter');
       assert.equal(postCount, 0, 'Korean IME confirmation cannot submit');
@@ -101,8 +104,17 @@ const root = path.resolve(__dirname, '..');
       echo = true;
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'delivered');
       assert.equal(await page.locator('.live-comment-row').count(), 2, 'only a real GET echo adds the sent row');
-      await page.locator('#liveChatProbeStatus button').first().click();
+      await page.locator('.live-comment-copy').click();
       assert.doesNotMatch(await page.evaluate(() => window.probeCopied), /synthetic|private|합성|messageId|chatToken"\s*:|Bearer/);
+      policyMode = 'malformed'; await input.fill('합성 권한형식 오류'); await send.click();
+      await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-policy-unavailable');
+      assert.equal(postCount, 1); assert.equal(await input.inputValue(), '합성 권한형식 오류');
+      await page.locator('.live-comment-copy').click();
+      const schemaCopy = await page.evaluate(() => window.probeCopied);
+      assert.equal(JSON.parse(schemaCopy).send.diagnostic.stage, 'policy-schema');
+      assert.equal(JSON.parse(schemaCopy).send.diagnostic.postStarted, false);
+      assert.doesNotMatch(schemaCopy, /private|synthetic|합성|Bearer/);
+      policyMode = 'omitted';
       postMode = 'denied'; await input.fill('합성 거절 댓글'); await input.press('Enter');
       await page.waitForFunction(() => FrommChatProbe()?.send?.httpStatus === 403);
       assert.equal(await input.inputValue(), '합성 거절 댓글'); assert.equal(postCount, 2);
@@ -134,15 +146,35 @@ const root = path.resolve(__dirname, '..');
         const panel = document.querySelector('#liveChatProbeStatus').getBoundingClientRect();
         const input = document.querySelector('#liveChatProbeStatus input').getBoundingClientRect();
         const stage = document.querySelector('.live-stage').getBoundingClientRect();
-        return {left: panel.left, right: panel.right, width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
+        return {left: panel.left, stageLeft: stage.left, right: panel.right, width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
           stageBottom: stage.bottom, inputBottom: input.bottom, listHeight: document.querySelector('.live-comments-list').getBoundingClientRect().height};
       });
       assert.ok(fit.left >= 0 && fit.right <= fit.width + 1 && fit.scrollWidth <= fit.width, 'diagnostic fits viewport');
+      assert.ok(Math.abs(fit.left - fit.stageLeft) < 1, 'comments align with the video lower left');
       assert.ok(fit.inputBottom <= fit.stageBottom + 1 && fit.listHeight > 0, 'comments/input stay inside video');
+      burst = 1;
+      await page.waitForFunction(() => document.querySelectorAll('.live-comment-row').length === 30);
+      await page.waitForFunction(() => {const list = document.querySelector('.live-comments-list'); return list.scrollHeight - list.clientHeight - list.scrollTop < 2;});
+      const list = page.locator('.live-comments-list');
+      await list.focus(); await list.press('Home');
+      await page.waitForFunction(() => !document.querySelector('.live-comments-latest').hidden);
+      burst = 2;
+      await page.waitForFunction(() => document.querySelector('.live-comments-list').textContent.includes('synthetic row 40'));
+      assert.ok(await list.evaluate(element => element.scrollTop < 2), 'new comments preserve the reader position above latest');
+      const circle = await page.locator('.live-comments-latest').evaluate(element => {
+        const css = getComputedStyle(element); return {width: css.width, height: css.height, radius: css.borderRadius};
+      });
+      assert.deepEqual(circle, {width: '28px', height: '28px', radius: '50%'});
+      assert.equal(await list.evaluate(element => getComputedStyle(element).scrollbarWidth), 'none');
+      await page.getByRole('button', {name: '최신 댓글로 이동', exact: true}).focus();
       if (process.env.LIVE_SCREENSHOT_DIR) {
         fs.mkdirSync(process.env.LIVE_SCREENSHOT_DIR, {recursive: true});
         await page.screenshot({path: path.join(process.env.LIVE_SCREENSHOT_DIR, 'live-comments-' + width + '.png')});
       }
+      await page.getByRole('button', {name: '최신 댓글로 이동', exact: true}).click();
+      await page.waitForFunction(() => document.querySelector('.live-comments-latest').hidden);
+      assert.ok(await list.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop < 2));
+      burst = 0;
       await page.getByRole('button', {name: '닫기', exact: true}).click();
       assert.equal(await page.locator('#liveChatProbeStatus').count(), 0);
       await prepare(); await page.locator('#liveChatProbeBtn').click();

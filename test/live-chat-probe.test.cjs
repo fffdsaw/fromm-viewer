@@ -37,6 +37,13 @@ test('an authorized empty response is distinct from receipt of actual messages',
   const h = harness([room, empty, empty]), result = await probe(h.args);
   assert.equal(result.status, 'connected-no-messages'); assert.equal(result.samples.length, 2);
 });
+test('read policy uses the same official nullable defaults as sending', async () => {
+  for (const liveChatRoom of [{isFrozen: false}, {isFrozen: false, isBanned: null, muteExpiresAt: null}]) {
+    const h = harness([{success: true, data: {liveChatRoom}}, messages, messages]);
+    const result = await probe(h.args);
+    assert.deepEqual(result.policy, {frozen: false, banned: false, mutePresent: false});
+  }
+});
 test('missing or malformed context sends no request and never substitutes another token', async () => {
   for (const patch of [{token: ''}, {token: null}, {token: 'bad\nsecret'}, {token: 'x'.repeat(16385)}, {roomId: ''}, {roomId: null}]) {
     const h = harness(); await assert.rejects(probe({...h.args, ...patch}), error => error.code === 'missing-chat-context');
@@ -112,10 +119,36 @@ test('a long read stream continues cursors and retains only bounded sanitized sa
 test('ban policy refresh ends an active read stream before more messages are fetched', async () => {
   const empty = {success: true, data: {messages: [], deletedMessages: [], cursor: 1}};
   const banned = {success: true, data: {liveChatRoom: {isFrozen: false, isBanned: true, muteExpiresAt: null}}};
-  const h = harness([room, ...Array(15).fill(empty), banned]);
-  const result = await probe({...h.args, sampleLimit: Infinity});
-  assert.equal(result.status, 'banned'); assert.equal(h.calls.length, 17);
+  const h = harness([room, ...Array(30).fill(empty), banned]); let clock = 0;
+  const result = await probe({...h.args, sampleLimit: Infinity, now: () => clock, wait: async ms => {clock += ms;}});
+  assert.equal(result.status, 'banned'); assert.equal(h.calls.length, 32);
   assert.ok(h.calls.at(-1).url.includes('/live-chat/rooms/'));
+});
+test('poll cadence subtracts response time, never overlaps requests and adds no delay to a slow response', async () => {
+  const empty = {success: true, data: {messages: [], deletedMessages: [], cursor: 1}};
+  for (const latency of [300, 1500]) {
+    const h = harness([room, empty, empty, empty]); let clock = 0, active = 0;
+    const starts = [], waits = [];
+    await probe({...h.args, sampleLimit: 3, now: () => clock, wait: async ms => {waits.push(ms); clock += ms;}, fetcher: async (url, options) => {
+      assert.equal(active++, 0);
+      if (!url.includes('/rooms/')) starts.push(clock);
+      const response = await h.args.fetcher(url, options); clock += latency; active--; return response;
+    }});
+    assert.deepEqual(starts.slice(1).map((start, index) => start - starts[index]), [Math.max(1000, latency), Math.max(1000, latency)]);
+    assert.deepEqual(waits, latency < 1000 ? [1000 - latency, 1000 - latency] : []);
+  }
+});
+test('a slower periodic policy refresh cannot bunch successive message requests', async () => {
+  const empty = {success: true, data: {messages: [], deletedMessages: [], cursor: 1}};
+  const h = harness([room, empty, room, empty, empty]); let clock = 0, jumped = false;
+  const starts = [];
+  await probe({...h.args, sampleLimit: 3, now: () => clock, wait: async ms => {
+    clock += ms; if (!jumped) {clock += 30000; jumped = true;}
+  }, fetcher: async (url, options) => {
+    const isPolicy = url.includes('/rooms/'); if (!isPolicy) starts.push(clock);
+    const response = await h.args.fetcher(url, options); clock += isPolicy ? 800 : 100; return response;
+  }});
+  assert.equal(starts.length, 3); assert.equal(starts[2] - starts[1], 1000);
 });
 test('stop during the interval cannot start another cursor request or deliver late messages', async () => {
   const h = harness(), owner = new AbortController(); let pages = 0;

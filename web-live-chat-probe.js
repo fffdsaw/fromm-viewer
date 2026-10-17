@@ -1,4 +1,4 @@
-// Opt-in, read-only LIVE comments. No account/RTC token substitution or sends.
+// Opt-in LIVE comments. Only explicit user submissions use the separate chat token.
 (() => {
   const origin = 'https://live-chat-api.frommyarti.com';
   class ProbeError extends Error {
@@ -10,6 +10,71 @@
     const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
     if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, {once: true});
   });
+  // A local input bound, not a claim about the provider's maximum length.
+  const inputLimit = 500;
+  function parseSendAck(text) {
+    // The official Android client reads SQS XML, not a JSON success envelope.
+    // Accept only the bounded, plain SQS response grammar. Never process DTDs/entities.
+    if (typeof text !== 'string' || text.length > 16384) throw new ProbeError('send-unconfirmed');
+    const atom = '[A-Za-z0-9_-]{1,256}';
+    const fields = '(?:<(?:MD5OfMessageBody|MD5OfMessageAttributes|MD5OfMessageSystemAttributes)>[a-fA-F0-9]{32}</(?:MD5OfMessageBody|MD5OfMessageAttributes|MD5OfMessageSystemAttributes)>\\s*|<SequenceNumber>[0-9]{1,128}</SequenceNumber>\\s*)*';
+    const expression = new RegExp('^\\s*(?:<\\?xml\\s+version=["\\\']1\\.0["\\\'](?:\\s+encoding=["\\\']UTF-8["\\\'])?\\s*\\?>\\s*)?' +
+      '<SendMessageResponse(?:\\s+xmlns=["\\\']https?:\\/\\/queue\\.amazonaws\\.com\\/doc\\/2012-11-05\\/["\\\'])?\\s*>\\s*' +
+      '<SendMessageResult>\\s*' + fields + '<MessageId>(' + atom + ')</MessageId>\\s*' + fields + '</SendMessageResult>\\s*' +
+      '(?:<ResponseMetadata>\\s*<RequestId>' + atom + '</RequestId>\\s*</ResponseMetadata>\\s*)?</SendMessageResponse>\\s*$');
+    const match = expression.exec(text);
+    if (!match) throw new ProbeError('send-unconfirmed');
+    // Matching field names must agree, even for nonessential checksum fields.
+    for (const field of text.matchAll(/<(MD5Of\w+)>[^<]*<\/(MD5Of\w+)>/g)) {
+      if (field[1] !== field[2]) throw new ProbeError('send-unconfirmed');
+    }
+    return match[1];
+  }
+  async function sendNormalComment({roomId, token, content, signal, current = () => true, fetcher = fetch}) {
+    if (typeof roomId !== 'string' || !roomId || roomId.length > 256 ||
+        typeof token !== 'string' || !token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) throw new ProbeError('missing-chat-context');
+    if (typeof content !== 'string' || !content.trim() || content.length > inputLimit ||
+        /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(content)) throw new ProbeError('invalid-comment');
+    const assertCurrent = () => { if (!current() || signal?.aborted) throw new ProbeError('cancelled'); };
+    let posted = false;
+    async function request(path, options) {
+      assertCurrent();
+      const owner = new AbortController(), relay = () => owner.abort();
+      signal?.addEventListener('abort', relay, {once: true});
+      const timer = setTimeout(() => owner.abort(), 8000);
+      try {
+        if (options.method === 'POST') posted = true;
+        const response = await fetcher(origin + path, {...options, credentials: 'omit', redirect: 'error', cache: 'no-store',
+          signal: owner.signal, headers: {Authorization: 'Bearer ' + token, ...options.headers}});
+        assertCurrent();
+        if (!response.ok) {
+          // 5xx may happen after a write; do not invite a duplicate retry.
+          throw new ProbeError(posted && response.status >= 500 ? 'send-unconfirmed' : 'http-error', response.status);
+        }
+        if (Number(response.headers.get('content-length')) > 16384) throw new ProbeError(posted ? 'send-unconfirmed' : 'response-too-large');
+        const text = await response.text(); assertCurrent();
+        if (text.length > 16384) throw new ProbeError(posted ? 'send-unconfirmed' : 'response-too-large');
+        return text;
+      } catch (error) {
+        if (error instanceof ProbeError && error.code !== 'cancelled') throw error;
+        throw new ProbeError(posted ? 'send-unconfirmed' : signal?.aborted || !current() ? 'cancelled' : 'send-policy-unavailable');
+      } finally { clearTimeout(timer); signal?.removeEventListener('abort', relay); }
+    }
+    // Never infer permission to write from successful reading. Recheck every submission.
+    const policyText = await request('/live-chat/rooms/' + encodeURIComponent(roomId), {method: 'GET', headers: {Accept: 'application/json'}});
+    let envelope;
+    try { envelope = JSON.parse(policyText); } catch { throw new ProbeError('send-policy-unavailable'); }
+    const room = envelope?.success === true && envelope?.data?.liveChatRoom;
+    if (!room || typeof room.isFrozen !== 'boolean' || typeof room.isBanned !== 'boolean' ||
+        !Object.hasOwn(room, 'muteExpiresAt')) throw new ProbeError('send-policy-unavailable');
+    if (room.isBanned) throw new ProbeError('send-banned');
+    if (room.isFrozen) throw new ProbeError('send-frozen');
+    // The app treats any non-null mute expiry as muted; don't clear it locally.
+    if (room.muteExpiresAt !== null) throw new ProbeError('send-muted');
+    const text = await request('/live-chat/messages/normal', {method: 'POST', headers: {Accept: 'application/xml', 'Content-Type': 'application/json'},
+      body: JSON.stringify({liveChatRoomId: roomId, content, chatToken: token})});
+    return {messageId: parseSendAck(text)};
+  }
   async function probe({roomId, token, signal, current = () => true, fetcher = fetch, wait = pause, sampleLimit = 2, onPage = () => {}}) {
     if (typeof roomId !== 'string' || !roomId || roomId.length > 256 ||
         typeof token !== 'string' || !token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) {
@@ -110,13 +175,28 @@
     }
     return {invalidCount, addedCount};
   }
-  if (typeof module !== 'undefined' && module.exports) { module.exports = {probe, ProbeError, messageStore, applyMessages}; return; }
+  if (typeof module !== 'undefined' && module.exports) { module.exports = {probe, ProbeError, messageStore, applyMessages, sendNormalComment, parseSendAck, inputLimit}; return; }
   const timeline = document.getElementById('timeline');
   if (!timeline) return;
   const style = document.createElement('style');
   style.textContent = '.live-comments-overlay{--live-comments-max:48%}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
+  let sendController = null, session = null, composing = false, ackId = null;
+  let uncertainAttempt = null, activeAttempt = null;
+  const sendLabels = {
+    'sending': '댓글 전송 중…',
+    'accepted': '서버 접수됨 · 댓글 표시를 기다립니다',
+    'delivered': '보낸 댓글이 수신 목록에 표시됐습니다',
+    'send-unconfirmed': '전송 결과를 확인하지 못했습니다. 댓글 목록을 확인하세요. 같은 내용은 다시 보내지 않습니다.',
+    'send-policy-unavailable': '전송 권한을 확인하지 못했습니다. 잠시 후 직접 다시 눌러 주세요.',
+    'send-banned': '현재 계정은 댓글 전송이 제한되어 있습니다.',
+    'send-frozen': '방송에서 댓글 전송을 잠시 중지했습니다.',
+    'send-muted': '현재 계정의 댓글 전송이 일시 제한되어 있습니다.',
+    'invalid-comment': '공백을 제외한 댓글을 500자 이내로 입력해 주세요.',
+    'http-error': '댓글 전송 요청이 거절됐습니다.',
+    'cancelled': '댓글 전송을 취소했습니다.'
+  };
   const labels = {
     'checking': '댓글 수신 확인 중…',
     'missing-chat-context': '현재 입장 응답에 채팅 토큰이 없습니다. 재생은 그대로 유지합니다.',
@@ -136,7 +216,11 @@
     'response-too-large': '채팅 응답이 점검 크기 제한을 초과했습니다.'
   };
   const isLive = () => state.filter === 'live' && state.live.centerMode === 'live';
-  function cancel() { controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1; }
+  function cancel() {
+    if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
+    sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
+    controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
+  }
   function sync() {
     const head = timeline.querySelector('.live-head');
     if (!head || !isLive()) return;
@@ -144,13 +228,67 @@
     if (!button) {
       button = document.createElement('button'); button.id = 'liveChatProbeBtn';
       button.className = 'live-mini-btn'; button.type = 'button';
-      button.title = '영상 아래쪽에 실제 LIVE 댓글을 표시합니다. 현재는 댓글 보기만 지원합니다.';
+      button.title = '영상 아래쪽에서 실제 LIVE 댓글을 보고 직접 입력해 보냅니다.';
       button.addEventListener('click', run); head.append(button);
     }
     const label = controller ? '댓글 숨기기' : '댓글 보기';
     if (button.textContent !== label) button.textContent = label;
     button.setAttribute('aria-pressed', String(!!controller));
     button.disabled = !state.live.config?.isStreaming || !!state.live.config?.mock;
+  }
+  function writeBlock() {
+    if (!session?.current() || !['messages-received', 'connected-no-messages'].includes(report?.status)) return '댓글 수신 연결 후 입력할 수 있습니다';
+    if (report.policy?.banned !== false) return sendLabels['send-banned'];
+    if (report.policy?.frozen !== false) return sendLabels['send-frozen'];
+    if (report.policy?.mutePresent !== false) return sendLabels['send-muted'];
+    return '';
+  }
+  function uncertainDraft(content) {
+    return uncertainAttempt && session && uncertainAttempt.roomId === session.roomId &&
+      uncertainAttempt.token === session.token && uncertainAttempt.sequence === session.sequence && uncertainAttempt.content === content.trim();
+  }
+  function updateComposer(panel) {
+    const input = panel.querySelector('.live-comment-input'), button = panel.querySelector('.live-comment-send');
+    if (!input || !button) return;
+    const block = writeBlock();
+    input.disabled = !!block || !!sendController;
+    input.placeholder = block || '댓글 입력 (최대 500자)';
+    button.disabled = input.disabled || composing || !input.value.trim() || uncertainDraft(input.value);
+    button.textContent = sendController ? '전송 중' : '전송';
+    const status = panel.querySelector('.live-comment-send-status');
+    const result = report?.send;
+    const message = uncertainDraft(input.value) ? sendLabels['send-unconfirmed'] : result ? (sendLabels[result.status] || sendLabels['send-policy-unavailable']) +
+      (result.httpStatus ? ' (HTTP ' + result.httpStatus + ')' : '') : block;
+    if (status.textContent !== message) status.textContent = message;
+    status.hidden = !message;
+  }
+  async function submitComment(input) {
+    if (sendController || composing || writeBlock() || uncertainDraft(input.value)) return;
+    const context = session, content = input.value.trim();
+    if (!content) return;
+    const owner = sendController = new AbortController();
+    activeAttempt = {roomId: context.roomId, token: context.token, sequence: context.sequence, content};
+    report.send = {status: 'sending'}; ackId = null; show();
+    try {
+      const result = await sendNormalComment({...context, content, signal: owner.signal});
+      if (sendController !== owner || !context.current()) return;
+      ackId = result.messageId;
+      report.send = {status: comments.seen.has(ackId) ? 'delivered' : 'accepted'};
+      input.value = '';
+    } catch (error) {
+      if (sendController !== owner || !context.current()) return;
+      const status = error instanceof ProbeError && sendLabels[error.code] ? error.code : 'send-policy-unavailable';
+      report.send = {status, ...(error instanceof ProbeError && error.httpStatus ? {httpStatus: error.httpStatus} : {})};
+      if (status === 'send-unconfirmed') uncertainAttempt = activeAttempt;
+      if (status === 'send-banned') report.policy.banned = true;
+      if (status === 'send-frozen') report.policy.frozen = true;
+      if (status === 'send-muted') report.policy.mutePresent = true;
+    } finally {
+      if (sendController === owner) {
+        if (!context.current() && activeAttempt) uncertainAttempt = activeAttempt;
+        sendController = null; activeAttempt = null; show();
+      }
+    }
   }
   function show() {
     const stage = timeline.querySelector('.live-stage');
@@ -172,10 +310,27 @@
       });
       const dismiss = document.createElement('button'); dismiss.className = 'live-mini-btn'; dismiss.textContent = '닫기'; dismiss.type = 'button';
       dismiss.addEventListener('click', () => { cancel(); panel.remove(); sync(); });
+      const form = document.createElement('form'); form.className = 'live-comment-form';
+      form.style.cssText = 'display:flex;gap:6px;flex-shrink:0;pointer-events:auto';
       const input = document.createElement('input'); input.type = 'text'; input.disabled = true;
-      input.placeholder = '현재는 댓글 보기만 지원합니다'; input.setAttribute('aria-label', '댓글 전송은 아직 지원되지 않습니다');
-      input.style.cssText = 'width:100%;min-width:0;box-sizing:border-box;height:34px;border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:0 12px;background:rgba(40,43,50,.82);color:#b8bec7;flex-shrink:0';
-      controls.append(text, copy, dismiss); panel.append(list, controls, input); stage.append(panel);
+      input.className = 'live-comment-input'; input.maxLength = inputLimit; input.autocomplete = 'off';
+      input.setAttribute('aria-label', 'LIVE 댓글 입력'); input.enterKeyHint = 'send';
+      input.style.cssText = 'flex:1;min-width:0;box-sizing:border-box;height:34px;border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:0 12px;background:rgba(40,43,50,.82);color:#fff';
+      const send = document.createElement('button'); send.type = 'submit'; send.className = 'live-mini-btn live-comment-send'; send.textContent = '전송';
+      const sendStatus = document.createElement('span'); sendStatus.className = 'live-comment-send-status';
+      sendStatus.id = 'liveCommentSendStatus'; sendStatus.setAttribute('role', 'status');
+      sendStatus.style.cssText = 'line-height:1.4;flex-shrink:0;overflow-wrap:anywhere';
+      input.setAttribute('aria-describedby', sendStatus.id);
+      input.addEventListener('input', () => updateComposer(panel));
+      input.addEventListener('compositionstart', () => { composing = true; updateComposer(panel); });
+      input.addEventListener('compositionend', () => { composing = false; updateComposer(panel); });
+      input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' || composing || event.isComposing || event.keyCode === 229) return;
+        event.preventDefault();
+        form.requestSubmit();
+      });
+      form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
+      form.append(input, send); controls.append(text, copy, dismiss); panel.append(list, controls, form, sendStatus); stage.append(panel);
     }
     if (renderedVersion !== comments.version) {
       const list = panel.querySelector('.live-comments-list');
@@ -196,6 +351,7 @@
       (report.httpStatus ? ' (HTTP ' + report.httpStatus + ')' : '');
     const text = panel.querySelector('.live-chat-probe-text');
     if (text.textContent !== label) { text.textContent = label; text.title = label; }
+    updateComposer(panel);
   }
   async function run() {
     if (controller) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); sync(); return; }
@@ -203,7 +359,7 @@
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
     comments = messageStore(); renderedVersion = -1;
-    report = {probeVersion: 2, mode: 'read-only-comments', status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
+    report = {probeVersion: 3, mode: 'interactive-comments', status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
       chatTokenPresent: typeof token === 'string' && !!token, liveChatErrorPresent: !!live.liveChatError,
       provider: typeof live.chatProvider === 'string' && live.chatProvider.toLowerCase() === 'fromm' ? 'fromm' : live.chatProvider ? 'other' : 'missing'};
     if (live.entry?.kind !== 'channel' || typeof roomId !== 'string' || !roomId) {
@@ -212,18 +368,20 @@
     if (typeof token !== 'string' || !token) { report.status = 'missing-chat-context'; show(); return; }
     if (report.provider !== 'fromm') { report.status = 'unsupported-provider'; show(); return; }
     const owner = controller = new AbortController();
-    const current = () => controller === owner && isLive() && generation === state.scanGeneration &&
+    const current = () => controller === owner && isLive() && state.live === live && live.config?.isStreaming && !live.config?.mock && generation === state.scanGeneration &&
       sequence === live.connectionSeq && roomId === live.currentLiveRoomId && token === live.liveChat?.chatToken;
+    const fetcher = typeof nativeViewerFetch === 'function' ? nativeViewerFetch : fetch;
+    session = {roomId, token, sequence, current, fetcher};
     sync(); show();
     try {
       // Keep the separate chat token out of the localhost account/API proxy.
-      const fetcher = typeof nativeViewerFetch === 'function' ? nativeViewerFetch : fetch;
       const result = await probe({roomId, token, signal: owner.signal, current, fetcher, sampleLimit: Infinity, onPage: page => {
         if (!current()) return;
         const updated = applyMessages(comments, page.messages, page.deletedMessages);
         report.receivedCount += updated.addedCount; report.invalidMessageCount += updated.invalidCount;
         Object.assign(report, {policy: page.policy, samples: page.samples,
           status: comments.items.size ? 'messages-received' : updated.invalidCount ? 'unrenderable-messages' : 'connected-no-messages'});
+        if (ackId && comments.seen.has(ackId) && report.send?.status === 'accepted') report.send.status = 'delivered';
         if (updated.invalidCount) {
           const invalid = page.messages[0];
           report.messageShape = {messageId: type(invalid?.messageId), content: type(invalid?.content), nickname: type(invalid?.nickname), createdAt: type(invalid?.createdAt)};

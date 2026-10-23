@@ -1368,7 +1368,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 const channelVideoState = {
   channelId: "", pages: new Map(), loading: false, error: "", requestSeq: 0,
   notice: "", loadingMessage: "", requestAbort: null,
-  selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false,
+  selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0,
 };
 
 function channelVideosActive() {
@@ -1409,6 +1409,7 @@ function resetChannelVideos() {
   channelVideoState.requestAbort?.abort();
   channelVideoState.pages.clear();
   channelVideoState.channelId = "";
+  channelVideoState.listScrollY = 0;
   channelVideoState.loading = false;
   channelVideoState.error = "";
   channelVideoState.notice = "";
@@ -1610,7 +1611,7 @@ function renderChannelVideosView() {
   for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
   $("#channelLoadMore")?.addEventListener("click", () => loadChannelVideos({loadMore: !!channelVideoPage()?.loaded}));
   $("#channelRefresh")?.addEventListener("click", () => { stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); });
-  $("#channelBackToList")?.addEventListener("click", () => { stopChannelVideoPlayback(); renderLiveView(); });
+  $("#channelBackToList")?.addEventListener("click", returnToChannelList);
   $("#channelDownloadCurrent")?.addEventListener("click", e => downloadChannelVideo(selected, e.currentTarget));
   updateSelectedCount();
   if (selected?._streamUrl && !s.playerError) {
@@ -1637,12 +1638,37 @@ async function fetchChannelVideoDetail(post) {
   return {...post, ...detail, _channelId: post._channelId, _channelName: post._channelName, _streamUrl: replayStreamUrl(detail)};
 }
 
-async function playChannelVideo(postId) {
+function channelHistoryUrl(postId, channelId) {
+  const url = new URL(location.href);
+  url.hash = `channel=${encodeURIComponent(String(channelId))}:${encodeURIComponent(String(postId))}`;
+  return url.toString();
+}
+
+function returnToChannelList() {
+  if (history.state?.frommChannel) {
+    history.back();
+    return;
+  }
+  const restoreY = channelVideoState.listScrollY || 0;
+  stopChannelVideoPlayback();
+  renderLiveView();
+  requestAnimationFrame(() => window.scrollTo({top: restoreY, behavior: "auto"}));
+}
+
+async function playChannelVideo(postId, {pushHistory = true} = {}) {
   const s = channelVideoState;
   const post = channelVideoPage()?.posts.find(p => String(p.id) === String(postId));
   if (!post) return;
   stopChannelVideoPlayback();
   const seq = s.playSeq;
+  if (pushHistory) {
+    s.listScrollY = window.scrollY;
+    history.pushState(
+      {frommChannel: true, postId: String(postId), channelId: String(post._channelId)},
+      "",
+      channelHistoryUrl(postId, post._channelId)
+    );
+  }
   s.selected = {...post};
   renderLiveView();
   try {
@@ -9712,6 +9738,30 @@ window.addEventListener("popstate",event=>{
   if(route?.frommReplay && state.filter==="live" && state.live.centerMode==="replay"){
     playReplay(route.postId,route.channelId,{pushHistory:false}).catch(()=>{});
     return;
+  }
+  if(route?.frommChannel && channelVideosActive()){
+    if(String(channelVideoState.channelId)!==String(route.channelId)){
+      // An earlier Channel filter may be restored by browser Forward.
+      selectChannelVideos(route.channelId).then(()=>{
+        if(history.state?.frommChannel &&
+          String(history.state.postId)===String(route.postId) &&
+          String(history.state.channelId)===String(route.channelId) &&
+          channelVideosActive()){
+          playChannelVideo(route.postId,{pushHistory:false}).catch(()=>{});
+        }
+      }).catch(()=>{});
+    }else{
+      playChannelVideo(route.postId,{pushHistory:false}).catch(()=>{});
+    }
+    return;
+  }
+  if(channelVideoState.selected){
+    const restoreY=channelVideoState.listScrollY || 0;
+    stopChannelVideoPlayback();
+    if(channelVideosActive()){
+      renderLiveView();
+      requestAnimationFrame(()=>window.scrollTo({top:restoreY,behavior:"auto"}));
+    }
   }
   if(state.live.replaySelected){
     const restoreY=state.live.replayListScrollY || 0;

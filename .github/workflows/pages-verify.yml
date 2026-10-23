@@ -1,0 +1,52 @@
+name: Verify GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', '.github/workflows/pages-verify.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm Pages deployment and the actual public HTML match this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'JS'
+          const {readFileSync} = require('node:fs');
+          const {createHash} = require('node:crypto');
+          const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+          const expected = hash(readFileSync('index.html'));
+          const url = `https://fffdsaw.github.io/fromm-viewer/?deployment=${process.env.GITHUB_SHA}`;
+          (async () => {
+            let observed = 'not fetched';
+            for (let attempt = 0; attempt < 60; attempt++) {
+              try {
+                const runsResponse = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/actions/runs?head_sha=${process.env.GITHUB_SHA}&per_page=30`, {
+                  headers: {authorization: `Bearer ${process.env.GH_TOKEN}`, accept: 'application/vnd.github+json'},
+                  signal: AbortSignal.timeout(15000),
+                });
+                if (!runsResponse.ok) throw new Error(`Actions API HTTP ${runsResponse.status}`);
+                const runs = await runsResponse.json();
+                const pages = runs.workflow_runs.find(run => run.name === 'pages build and deployment');
+                if (pages?.status === 'completed' && pages.conclusion !== 'success') throw new Error(`Pages deployment ${pages.conclusion}`);
+                const response = await fetch(url, {headers: {'cache-control': 'no-cache'}, signal: AbortSignal.timeout(15000)});
+                observed = response.ok ? hash(Buffer.from(await response.arrayBuffer())) : `HTTP ${response.status}`;
+                if (pages?.conclusion === 'success' && observed === expected) {
+                  console.log(`Verified commit: ${process.env.GITHUB_SHA}\nDeployment: ${pages.html_url}\nPublic URL: ${url}\nHTML SHA-256: ${observed} (exact match)`);
+                  return;
+                }
+                console.log(`Waiting: Pages ${pages?.status || 'pending'}, public HTML ${observed === expected ? 'matches' : 'not updated'}`);
+              } catch (error) {console.log(`Verification attempt: ${error.message}`);}
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+            throw new Error(`Public Pages verification timed out. Expected ${expected}; observed ${observed}`);
+          })().catch(error => {console.error(error); process.exitCode = 1;});
+          JS

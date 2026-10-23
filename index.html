@@ -1368,8 +1368,12 @@ body.download-marquee-active{user-select:none;cursor:default}
 const channelVideoState = {
   channelId: "", pages: new Map(), loading: false, error: "", requestSeq: 0,
   notice: "", loadingMessage: "", requestAbort: null,
-  selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0,
+  selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0, historyListId: "",
 };
+
+// Only entries created in this document have a known list predecessor.
+const channelHistoryLists = new Set();
+let channelHistoryNavigation = 0;
 
 function channelVideosActive() {
   return state.filter === "live" && state.live.centerMode === "channel";
@@ -1404,6 +1408,9 @@ function stopChannelVideoPlayback() {
 }
 
 function resetChannelVideos() {
+  channelHistoryNavigation++;
+  channelHistoryLists.clear();
+  channelVideoState.historyListId = "";
   stopChannelVideoPlayback();
   channelVideoState.requestSeq++;
   channelVideoState.requestAbort?.abort();
@@ -1558,7 +1565,8 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
   }
 }
 
-async function selectChannelVideos(channelId) {
+async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
+  if (!restoreHistory) channelHistoryNavigation++;
   if (!state.live.channels.some(c => c.id === String(channelId))) return;
   stopChannelVideoPlayback();
   const s = channelVideoState;
@@ -1638,37 +1646,95 @@ async function fetchChannelVideoDetail(post) {
   return {...post, ...detail, _channelId: post._channelId, _channelName: post._channelName, _streamUrl: replayStreamUrl(detail)};
 }
 
-function channelHistoryUrl(postId, channelId) {
+function channelHistoryUrl(postId = null, channelId = "") {
   const url = new URL(location.href);
-  url.hash = `channel=${encodeURIComponent(String(channelId))}:${encodeURIComponent(String(postId))}`;
+  url.hash = postId == null ? "" : `channel=${encodeURIComponent(String(channelId))}:${encodeURIComponent(String(postId))}`;
   return url.toString();
 }
 
+function replaceChannelListHistory() {
+  const s = channelVideoState;
+  const listId = window.crypto.randomUUID();
+  channelHistoryLists.add(listId);
+  s.historyListId = listId;
+  history.replaceState(
+    {frommChannelList: true, channelId: s.channelId, listScrollY: s.listScrollY, listId},
+    "", channelHistoryUrl()
+  );
+}
+
 function returnToChannelList() {
-  if (history.state?.frommChannel) {
+  channelHistoryNavigation++;
+  const s = channelVideoState;
+  const route = history.state;
+  if (route?.frommChannel && route.listId === s.historyListId && channelHistoryLists.has(route.listId)) {
     history.back();
     return;
   }
-  const restoreY = channelVideoState.listScrollY || 0;
+  // Reloaded/legacy states do not prove there is a list behind this entry.
+  // Keep this fallback inside Viewer instead of navigating to Chrome's home tab.
+  replaceChannelListHistory();
+  const restoreY = s.listScrollY || 0;
   stopChannelVideoPlayback();
   renderLiveView();
-  requestAnimationFrame(() => window.scrollTo({top: restoreY, behavior: "auto"}));
+  requestAnimationFrame(() => { if (!s.selected) window.scrollTo({top: restoreY, behavior: "auto"}); });
+}
+
+async function restoreChannelHistory(route) {
+  const navigation = ++channelHistoryNavigation;
+  const s = channelVideoState;
+  stopChannelVideoPlayback();
+  const current = () => {
+    const now = history.state;
+    return navigation === channelHistoryNavigation && state.filter === "live" &&
+      !!now?.frommChannel === !!route.frommChannel &&
+      !!now?.frommChannelList === !!route.frommChannelList &&
+      now?.listId === route.listId && String(now?.channelId) === String(route.channelId) &&
+      String(now?.postId) === String(route.postId);
+  };
+  if (!current()) return;
+  if (!channelVideosActive()) await setLiveCenterMode("channel");
+  if (!current() || !channelVideosActive()) return;
+  if (String(s.channelId) !== String(route.channelId)) {
+    await selectChannelVideos(route.channelId, {restoreHistory: true});
+  } else if (!channelVideoPage()?.loaded) {
+    await loadChannelVideos();
+  }
+  if (!current() || !channelVideosActive() || String(s.channelId) !== String(route.channelId)) return;
+  s.listScrollY = Number(route.listScrollY) || 0;
+  s.historyListId = channelHistoryLists.has(route.listId) ? route.listId : "";
+  if (route.frommChannel) {
+    await playChannelVideo(route.postId, {pushHistory: false});
+  } else {
+    renderLiveView();
+    requestAnimationFrame(() => {
+      if (current() && !s.selected) window.scrollTo({top: s.listScrollY, behavior: "auto"});
+    });
+  }
 }
 
 async function playChannelVideo(postId, {pushHistory = true} = {}) {
   const s = channelVideoState;
   const post = channelVideoPage()?.posts.find(p => String(p.id) === String(postId));
   if (!post) return;
+  if (pushHistory) {
+    channelHistoryNavigation++;
+    const route = history.state;
+    const replacePlayer = !!s.selected && route?.frommChannel &&
+      route.listId === s.historyListId && channelHistoryLists.has(route.listId);
+    if (!replacePlayer) {
+      s.listScrollY = window.scrollY;
+      // Seed the actual list synchronously in the user's play gesture. Never
+      // inherit a player/Replay route or create history after the detail fetch.
+      replaceChannelListHistory();
+    }
+    const player = {frommChannel: true, postId: String(postId), channelId: String(post._channelId),
+      listId: s.historyListId, listScrollY: s.listScrollY};
+    if (replacePlayer) history.replaceState(player, "", channelHistoryUrl(postId, post._channelId));
+    else history.pushState(player, "", channelHistoryUrl(postId, post._channelId));
+  }
   stopChannelVideoPlayback();
   const seq = s.playSeq;
-  if (pushHistory) {
-    s.listScrollY = window.scrollY;
-    history.pushState(
-      {frommChannel: true, postId: String(postId), channelId: String(post._channelId)},
-      "",
-      channelHistoryUrl(postId, post._channelId)
-    );
-  }
   s.selected = {...post};
   renderLiveView();
   try {
@@ -9735,24 +9801,13 @@ document.addEventListener("keydown",(e)=>{
 
 window.addEventListener("popstate",event=>{
   const route=event.state;
-  if(route?.frommReplay && state.filter==="live" && state.live.centerMode==="replay"){
-    playReplay(route.postId,route.channelId,{pushHistory:false}).catch(()=>{});
+  if((route?.frommChannel || route?.frommChannelList) && state.filter==="live"){
+    restoreChannelHistory(route).catch(()=>{});
     return;
   }
-  if(route?.frommChannel && channelVideosActive()){
-    if(String(channelVideoState.channelId)!==String(route.channelId)){
-      // An earlier Channel filter may be restored by browser Forward.
-      selectChannelVideos(route.channelId).then(()=>{
-        if(history.state?.frommChannel &&
-          String(history.state.postId)===String(route.postId) &&
-          String(history.state.channelId)===String(route.channelId) &&
-          channelVideosActive()){
-          playChannelVideo(route.postId,{pushHistory:false}).catch(()=>{});
-        }
-      }).catch(()=>{});
-    }else{
-      playChannelVideo(route.postId,{pushHistory:false}).catch(()=>{});
-    }
+  channelHistoryNavigation++;
+  if(route?.frommReplay && state.filter==="live" && state.live.centerMode==="replay"){
+    playReplay(route.postId,route.channelId,{pushHistory:false}).catch(()=>{});
     return;
   }
   if(channelVideoState.selected){

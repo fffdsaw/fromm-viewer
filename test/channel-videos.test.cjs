@@ -21,6 +21,10 @@ function setup(overrides = {}) {
   const historyCalls = [];
   const history = {
     state: null,
+    replaceState(route, _title, url) {
+      this.state = route;
+      historyCalls.push({route, url, replace: true});
+    },
     pushState(route, _title, url) {
       this.state = route;
       historyCalls.push({route, url});
@@ -58,11 +62,12 @@ test('Channel player creates same-document history, while restoration never push
   const h = setup();
   await h.context.loadChannelVideos();
   await h.context.playChannelVideo('v1');
-  assert.equal(h.historyCalls.length, 1);
+  assert.equal(h.historyCalls.length, 2);
+  assert.equal(h.historyCalls[0].route.frommChannelList, true);
   assert.equal(h.history.state.frommChannel, true);
   assert.equal(h.history.state.postId, 'v1');
   assert.equal(h.history.state.channelId, 'a');
-  assert.equal(new URL(h.historyCalls[0].url).hash, '#channel=a:v1');
+  assert.equal(new URL(h.historyCalls[1].url).hash, '#channel=a:v1');
   assert.equal(h.s.listScrollY, 172);
   h.context.returnToChannelList();
   assert.equal(h.historyCalls.at(-1).back, true);

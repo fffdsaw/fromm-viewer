@@ -194,6 +194,12 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       await page.locator('[data-live-center-mode="replay"]').click();
       await page.getByText('Replay 전용', {exact: true}).waitFor();
       assert.equal(await page.getByText('아티스트의 새로운 영상', {exact: true}).count(), 0);
+      await page.locator('[data-replay-post="replay-cursor"] .replay-play').click();
+      await page.locator('#replayBackToList').waitFor();
+      await back(page);
+      await page.waitForFunction(() => state.live.replaySelected === null);
+      assert.equal(await page.evaluate(() => state.live.centerMode), 'replay', 'Channel history must not hijack Replay Back');
+      await page.locator('[data-replay-post="replay-cursor"]').waitFor();
       await page.locator('[data-live-center-mode="live"]').click();
       assert.equal(await page.locator('[data-live-center-mode="live"].active').count(), 1);
       await page.locator('[data-live-center-mode="channel"]').click();

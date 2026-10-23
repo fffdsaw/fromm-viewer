@@ -86,6 +86,21 @@ test('Back invalidates a pending video detail response', async () => {
   finish(); await pending;
   assert.equal(h.s.selected, null);
 });
+test('leaving Channel removes its list marker so Replay Back keeps the Replay list', async () => {
+  const h = setup();
+  await h.context.playChannelVideo('v1');
+  h.history.back(); await tick();
+  h.context.stopLivePlayback = async () => {};
+  h.context.loadReplayCenter = async () => {};
+  vm.runInContext(html.match(/^async function setLiveCenterMode\([^]*?^}/m)[0], h.context);
+  await h.context.setLiveCenterMode('replay');
+  assert.equal(h.history.state, null);
+  h.history.pushState({frommReplay: true}, '', 'https://viewer.test/#replay=a:r1');
+  h.state.live.replaySelected = {id: 'r1'};
+  h.history.back(); await tick();
+  assert.equal(h.state.live.centerMode, 'replay');
+  assert.equal(h.state.live.replaySelected, null);
+});
 test('Forward restores the Channel tab/filter and rapid Back cancels delayed restoration', async () => {
   const h = setup();
   await h.context.playChannelVideo('v1');

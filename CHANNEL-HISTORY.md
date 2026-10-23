@@ -23,6 +23,8 @@ before pushing a player in the same user gesture. Subsequent player opens
 replace that player. Only a list relationship created in the current document
 allows the in-page button to call Back; legacy/restored states use an in-page
 list fallback. Popstate restores Channel and checks the navigation generation.
+Leaving Channel clears its marker on the current entry so a subsequent Replay
+player's Back still reaches the Replay list.
 
 ## What the automated checks cover
 

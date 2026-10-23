@@ -1654,13 +1654,20 @@ function channelHistoryUrl(postId = null, channelId = "") {
 
 function replaceChannelListHistory() {
   const s = channelVideoState;
-  const listId = window.crypto.randomUUID();
+  const listId = window.crypto?.randomUUID?.() || `channel-list-${Date.now()}-${Math.random()}`;
   channelHistoryLists.add(listId);
   s.historyListId = listId;
   history.replaceState(
     {frommChannelList: true, channelId: s.channelId, listScrollY: s.listScrollY, listId},
     "", channelHistoryUrl()
   );
+}
+
+function leaveChannelHistory() {
+  channelHistoryNavigation++;
+  if (history.state?.frommChannel || history.state?.frommChannelList) {
+    history.replaceState(null, "", channelHistoryUrl());
+  }
 }
 
 function returnToChannelList() {
@@ -3309,6 +3316,7 @@ function restoreArtistHeaderAfterLive(){
 
 async function setLiveCenterMode(mode){
   mode=["replay","channel"].includes(mode) ? mode : "live";
+  if(mode!=="channel") leaveChannelHistory();
   if(state.live.centerMode===mode){
     if(mode==="replay" && !state.live.channelsLoaded) await loadReplayCenter();
     if(mode==="channel" && !channelVideoPage()?.loaded) await loadChannelVideos();
@@ -8438,6 +8446,7 @@ async function scrollToOriginalMessage(messageId){
 }
 
 async function setFilter(f, options={}){
+  if(f!=="live") leaveChannelHistory();
   const was = state.filter;
   const autoTop = options.autoTop !== false;
 

@@ -123,7 +123,18 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.equal(await page.evaluate(() => state.live.replaySelected), null);
       assert.ok(requests.some(r => r.media && r.url.includes('upload_original.m3u8') && r.url.includes('Policy=synthetic') && !r.url.includes('CloudFront-')));
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      // Browser Back/Forward must stay inside Viewer and restore the Channel list/player.
+      assert.equal(await page.evaluate(() => history.state?.frommChannel), true);
+      assert.match(page.url(), /#channel=a:v1$/);
+      await page.goBack();
+      await page.locator('[data-channel-video-play="v1"]').waitFor();
+      assert.equal(await page.locator('#channelVideo').count(), 0);
+      assert.equal(await page.evaluate(() => channelVideoState.hls), null);
+      await page.goForward();
+      await page.locator('#channelVideo').waitFor();
+      await page.waitForFunction(() => channelVideoState.hls !== null);
       await page.locator('#channelBackToList').click();
+      await page.locator('[data-channel-video-play="v1"]').waitFor();
       assert.equal(await page.evaluate(() => channelVideoState.hls), null);
       assert.equal(await page.evaluate(() => channelVideoState.blobUrls.length), 0);
       denyDetail = true;
@@ -132,6 +143,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.equal(await page.locator('#channelVideo').count(), 0);
       assert.equal(await page.locator('.live-center-tabs').isVisible(), false, 'player keeps only Back/title/video');
       await page.locator('#channelBackToList').click();
+      await page.locator('[data-channel-video-play="v1"]').waitFor();
       assert.equal(await page.locator('.live-center-tabs').isVisible(), true, 'error Back restores tab navigation');
       await page.locator('[data-live-center-mode="replay"]').click();
       await page.getByText('Replay 전용', {exact: true}).waitFor();

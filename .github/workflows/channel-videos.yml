@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'web-live-pip.js', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -30,7 +30,7 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.62.1
           npx playwright install --with-deps chromium
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg xvfb xdotool
       - name: Channel features and viewport layout
         env:
           CHANNEL_SCREENSHOT_DIR: screenshots
@@ -44,6 +44,8 @@ jobs:
           node test/live-ui-pip.browser.cjs
           node test/live-chat-probe.browser.cjs
           node test/live-chat-probe-extension.browser.cjs
+      - name: Chromium browser Back and Forward (desktop UI, mobile viewport emulation)
+        run: xvfb-run -a env CHANNEL_HISTORY_UI=1 node test/channel-videos.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

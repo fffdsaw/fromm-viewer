@@ -18,11 +18,20 @@ function setup(overrides = {}) {
   const calls = [], alerts = [];
   let auth = {token: 'synthetic-session', uuid: 'synthetic-device', accountKey: 'synthetic-account'};
   const state = {filter: 'live', room: null, live: {centerMode: 'channel', entry: {}, channels: [], channelsLoaded: false, replayPosts: [{id: 'existing-replay'}], replaySelected: {id: 'existing-player'}, replayPlaylistCache: new Map()}};
-  const context = vm.createContext({state, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
+  const historyCalls = [];
+  const history = {
+    state: null,
+    pushState(route, _title, url) {
+      this.state = route;
+      historyCalls.push({route, url});
+    },
+    back() {historyCalls.push({back: true});},
+  };
+  const context = vm.createContext({state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
     sleep: async () => {},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
-    window: {addEventListener() {}, alert: message => alerts.push(message), crypto: webcrypto},
+    window: {addEventListener() {}, alert: message => alerts.push(message), crypto: webcrypto, scrollY: 172, scrollTo() {}},
     $: () => null, currentAuth: () => auth, renderLiveView() {}, safeErrorDetail: value => String(value),
     FROMM_CHANNEL_API_BASE: 'https://channel-api.frommyarti.com',
     replayChannelName: c => c.channelName || c.name || 'Artist', normalizeMediaUrl: value => value,
@@ -36,7 +45,7 @@ function setup(overrides = {}) {
   for (const name of ['replayStreamUrl', 'replayAuthParams', 'replaySignedUrl', 'replayCanonicalStreamUrl', 'rewriteReplayMediaPlaylist', 'parseReplayDownloadPlaylist', 'replayDownloadIv']) vm.runInContext(fn(name), context);
   vm.runInContext(channelScript, context);
   const s = vm.runInContext('channelVideoState', context);
-  return {context, s, state, calls, alerts, setAuth: value => {auth = value;}};
+  return {context, s, state, calls, alerts, history, historyCalls, setAuth: value => {auth = value;}};
 }
 const deferred = () => {let resolve; const promise = new Promise(r => {resolve = r;}); return {resolve, promise};};
 
@@ -45,6 +54,23 @@ test('all inline scripts parse; tab order is LIVE → Replay → Channel', () =>
   const tabs = fn('liveCenterTabsHtml');
   assert.deepEqual([...tabs.matchAll(/data-live-center-mode="([^"]+)"/g)].map(m => m[1]), ['live', 'replay', 'channel']);
 });
+test('Channel player creates same-document history, while restoration never pushes a duplicate', async () => {
+  const h = setup();
+  await h.context.loadChannelVideos();
+  await h.context.playChannelVideo('v1');
+  assert.equal(h.historyCalls.length, 1);
+  assert.equal(h.history.state.frommChannel, true);
+  assert.equal(h.history.state.postId, 'v1');
+  assert.equal(h.history.state.channelId, 'a');
+  assert.equal(new URL(h.historyCalls[0].url).hash, '#channel=a:v1');
+  assert.equal(h.s.listScrollY, 172);
+  h.context.returnToChannelList();
+  assert.equal(h.historyCalls.at(-1).back, true);
+  const previousCount = h.historyCalls.length;
+  await h.context.playChannelVideo('v1', {pushHistory: false});
+  assert.equal(h.historyCalls.length, previousCount);
+});
+
 test('Channel single-save ignores a click during Replay or bulk save', async () => {
   for (const busy of ['replay', 'bulk']) {
     let picked = 0;

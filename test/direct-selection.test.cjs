@@ -153,10 +153,16 @@ test('an empty leftover file is retried and permission errors never trigger an o
 });
 test('Channel playback/download and LIVE entry sources are preserved; media save retains direct dispatch', () => {
   const baseline = execFileSync('git', ['show', 'd876793:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
-  for (const name of ['fetchChannelVideoDetail', 'attachChannelVideo', 'playChannelVideo',
+  for (const name of ['fetchChannelVideoDetail', 'attachChannelVideo',
     'fetchLiveEntrances', 'refreshLiveStatus', 'connectAgoraLive']) {
     assert.equal(fn(name), fn(name, baseline), name);
   }
+  // Channel player gains browser history routing, without changing its
+  // authorized detail request, session validation or stale-result guard.
+  const channelPlayer = fn('playChannelVideo');
+  assert.match(channelPlayer, /history\.pushState\(/);
+  assert.match(channelPlayer, /await fetchChannelVideoDetail\(post\)/);
+  assert.match(channelPlayer, /if \(seq !== s\.playSeq \|\| !channelVideosActive\(\)\) return;/);
   // Media preparation now guards the mobile session as well as folder saves.
   // Preserve the exact desktop delegation and distinct post-selection branch;
   // media-bulk-save.test.cjs exercises the changed preparation and mobile flow.

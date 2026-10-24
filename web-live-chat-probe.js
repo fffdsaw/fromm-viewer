@@ -196,7 +196,7 @@
   const timeline = document.getElementById('timeline');
   if (!timeline) return;
   const style = document.createElement('style');
-  style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain;overflow-anchor:none}.live-comment-row{flex-shrink:0}.live-comments-unread{position:absolute;right:0;bottom:30px;white-space:nowrap;font-size:11px;background:#15171bd9;border-radius:10px;padding:2px 6px}.live-comments-unread:empty{display:none}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
+  style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-chat-probe-text{display:-webkit-box}.live-chat-probe-text[hidden]{display:none}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain;overflow-anchor:none}.live-comment-row{flex-shrink:0}.live-comments-unread{position:absolute;right:0;bottom:30px;white-space:nowrap;font-size:11px;background:#15171bd9;border-radius:10px;padding:2px 6px}.live-comments-unread:empty{display:none}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
@@ -276,7 +276,7 @@
     button.textContent = sendController ? '전송 중' : '전송';
     const status = panel.querySelector('.live-comment-send-status');
     const result = report?.send;
-    const message = uncertainDraft(input.value) ? sendLabels['send-unconfirmed'] : result ? (sendLabels[result.status] || sendLabels['send-policy-unavailable']) +
+    const message = uncertainDraft(input.value) ? sendLabels['send-unconfirmed'] : ['accepted', 'delivered'].includes(result?.status) ? '' : result ? (sendLabels[result.status] || sendLabels['send-policy-unavailable']) +
       (result.httpStatus ? ' (HTTP ' + result.httpStatus + ')' : '') : block;
     if (status.textContent !== message) status.textContent = message;
     status.hidden = !message;
@@ -352,16 +352,14 @@
       resize.observe(list);
       latest.addEventListener('click', () => { followLatest = true; unreadCount = 0; unread.textContent = ''; list.scrollTop = list.scrollHeight; latest.hidden = true; });
       scroll.append(list, latest);
-      const controls = document.createElement('div'); controls.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;pointer-events:auto';
+      const controls = document.createElement('div'); controls.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0;pointer-events:auto';
       const text = document.createElement('span'); text.className = 'live-chat-probe-text';
-      text.style.cssText = 'flex:1;min-width:0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'; text.setAttribute('role', 'status');
+      text.style.cssText = 'flex:1;min-width:0;line-height:1.5;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'; text.setAttribute('role', 'status');
       const copy = document.createElement('button'); copy.className = 'live-mini-btn live-comment-copy'; copy.textContent = '진단 복사'; copy.type = 'button';
       copy.addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(JSON.stringify(report, null, 2)); copy.textContent = '복사됨'; }
         catch { copy.textContent = '복사 실패'; }
       });
-      const dismiss = document.createElement('button'); dismiss.className = 'live-mini-btn'; dismiss.textContent = '닫기'; dismiss.type = 'button';
-      dismiss.addEventListener('click', () => { cancel(); panel.remove(); sync(); });
       const form = document.createElement('form'); form.className = 'live-comment-form';
       form.style.cssText = 'display:flex;gap:6px;flex-shrink:0;pointer-events:auto';
       const input = document.createElement('input'); input.type = 'text'; input.disabled = true;
@@ -382,7 +380,7 @@
         form.requestSubmit();
       });
       form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
-      form.append(input, send); controls.append(text, copy, dismiss); panel.append(scroll, controls, form, sendStatus); stage.append(panel);
+      form.append(input, send); controls.append(text, copy); panel.append(scroll, controls, form, sendStatus); stage.append(panel);
     }
     const list = panel.querySelector('.live-comments-list');
     const wasFollowing = followLatest;
@@ -416,12 +414,11 @@
       if (!wasFollowing) unreadCount += arriving;
       renderedVersion = comments.version;
     }
-    const baseLabel = controller && report.status === 'connected-no-messages' ? '새 댓글을 기다리고 있습니다' :
-      controller && report.status === 'messages-received' ? '댓글 수신 중' : labels[report.status] || labels['network-error'];
-    const label = baseLabel + (report.receivedCount ? ' · ' + report.receivedCount + '개' : '') +
-      (report.httpStatus ? ' (HTTP ' + report.httpStatus + ')' : '');
+    const label = ['messages-received', 'connected-no-messages'].includes(report.status) ? '' :
+      (labels[report.status] || labels['network-error']) + (report.httpStatus ? ' (HTTP ' + report.httpStatus + ')' : '');
     const text = panel.querySelector('.live-chat-probe-text');
     if (text.textContent !== label) { text.textContent = label; text.title = label; }
+    text.hidden = !label;
     updateComposer(panel);
     if (wasFollowing) list.scrollTop = list.scrollHeight;
     else {

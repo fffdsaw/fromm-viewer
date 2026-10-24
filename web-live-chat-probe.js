@@ -201,7 +201,7 @@
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
   let uncertainAttempt = null, activeAttempt = null;
-  let followLatest = true, unreadCount = 0;
+  let followLatest = true, unreadCount = 0, lastDiagnostic = '';
   const sendLabels = {
     'sending': '댓글 전송 중…',
     'accepted': '서버 접수됨 · 댓글 표시를 기다립니다',
@@ -219,13 +219,13 @@
     'checking': '댓글 수신 확인 중…',
     'missing-chat-context': '현재 입장 응답에 채팅 토큰이 없습니다. 재생은 그대로 유지합니다.',
     'unsupported-room': '일반 LIVE의 정상 채팅 입장 정보가 있을 때 확인할 수 있습니다.',
-    'unsupported-provider': '현재 입장 응답의 채팅 제공자를 확인해야 합니다. 진단을 복사해 알려주세요.',
+    'unsupported-provider': '현재 입장 응답의 채팅 제공자를 확인해야 합니다. 개발자 도구 콘솔에서 오류를 확인할 수 있습니다.',
     'messages-received': '공식 댓글 수신 확인됨',
     'connected-no-messages': '채팅 읽기 연결 확인 · 점검 중 새 댓글은 없었습니다.',
-    'unrenderable-messages': '댓글은 수신됐지만 표시 형식을 확인해야 합니다. 진단을 복사해 알려주세요.',
+    'unrenderable-messages': '댓글은 수신됐지만 표시 형식을 확인해야 합니다. 개발자 도구 콘솔에서 오류를 확인할 수 있습니다.',
     'banned': '현재 계정의 채팅 이용이 제한되어 수신 확인을 중단했습니다.',
-    'http-error': '채팅 서버가 요청을 거절했습니다. 진단을 복사해 알려주세요.',
-    'network-error': '채팅 서버에 연결하지 못했습니다. 진단을 복사해 알려주세요.',
+    'http-error': '채팅 서버가 요청을 거절했습니다. 개발자 도구 콘솔에서 오류를 확인할 수 있습니다.',
+    'network-error': '채팅 서버에 연결하지 못했습니다. 개발자 도구 콘솔에서 오류를 확인할 수 있습니다.',
     'timeout': '채팅 확인 시간이 초과되었습니다.',
     'api-rejected': '채팅 API가 성공 응답을 반환하지 않았습니다.',
     'unknown-response': '채팅 응답 형식을 확인하지 못했습니다.',
@@ -238,7 +238,7 @@
     if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
     sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
     controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
-    followLatest = true; unreadCount = 0;
+    followLatest = true; unreadCount = 0; lastDiagnostic = '';
   }
   function sync() {
     const head = timeline.querySelector('.live-head');
@@ -310,9 +310,26 @@
       }
     }
   }
+  function logDiagnostic() {
+    // Only locally constructed codes, HTTP statuses and field types. Never log
+    // requests, raw exceptions, tokens, room/message IDs or comment contents.
+    const diagnostic = {};
+    if (!['checking', 'messages-received', 'connected-no-messages'].includes(report.status)) {
+      diagnostic.receive = {status: report.status, ...(report.httpStatus ? {httpStatus: report.httpStatus} : {}),
+        ...(report.responseShape ? {shape: report.responseShape} : {})};
+    }
+    if (report.invalidMessageCount) diagnostic.messageShape = report.messageShape;
+    if (report.send && !['sending', 'accepted', 'delivered', 'cancelled'].includes(report.send.status)) {
+      diagnostic.send = report.send;
+    }
+    const key = Object.keys(diagnostic).length ? JSON.stringify(diagnostic) : '';
+    if (key && key !== lastDiagnostic) console.warn('[Fromm LIVE comments]', JSON.parse(key));
+    lastDiagnostic = key;
+  }
   function show() {
     const stage = timeline.querySelector('.live-stage');
     if (!stage || !report) return;
+    logDiagnostic();
     let panel = document.getElementById('liveChatProbeStatus');
     if (!panel) {
       panel = document.createElement('div'); panel.id = 'liveChatProbeStatus';
@@ -352,14 +369,8 @@
       resize.observe(list);
       latest.addEventListener('click', () => { followLatest = true; unreadCount = 0; unread.textContent = ''; list.scrollTop = list.scrollHeight; latest.hidden = true; });
       scroll.append(list, latest);
-      const controls = document.createElement('div'); controls.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0;pointer-events:auto';
       const text = document.createElement('span'); text.className = 'live-chat-probe-text';
-      text.style.cssText = 'flex:1;min-width:0;line-height:1.5;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'; text.setAttribute('role', 'status');
-      const copy = document.createElement('button'); copy.className = 'live-mini-btn live-comment-copy'; copy.textContent = '진단 복사'; copy.type = 'button';
-      copy.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(JSON.stringify(report, null, 2)); copy.textContent = '복사됨'; }
-        catch { copy.textContent = '복사 실패'; }
-      });
+      text.style.cssText = 'min-width:0;line-height:1.5;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'; text.setAttribute('role', 'status');
       const form = document.createElement('form'); form.className = 'live-comment-form';
       form.style.cssText = 'display:flex;gap:6px;flex-shrink:0;pointer-events:auto';
       const input = document.createElement('input'); input.type = 'text'; input.disabled = true;
@@ -380,7 +391,7 @@
         form.requestSubmit();
       });
       form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
-      form.append(input, send); controls.append(text, copy); panel.append(scroll, controls, form, sendStatus); stage.append(panel);
+      form.append(input, send); panel.append(scroll, text, form, sendStatus); stage.append(panel);
     }
     const list = panel.querySelector('.live-comments-list');
     const wasFollowing = followLatest;
@@ -434,7 +445,7 @@
     if (!isLive() || !state.live.config?.isStreaming || state.live.config?.mock) return;
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
-    comments = messageStore(); renderedVersion = -1; followLatest = true; unreadCount = 0;
+    comments = messageStore(); renderedVersion = -1; followLatest = true; unreadCount = 0; lastDiagnostic = '';
     report = {probeVersion: 4, mode: 'interactive-comments', pollIntervalMs: 1000, status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
       chatTokenPresent: typeof token === 'string' && !!token, liveChatErrorPresent: !!live.liveChatError,
       provider: typeof live.chatProvider === 'string' && live.chatProvider.toLowerCase() === 'fromm' ? 'fromm' : live.chatProvider ? 'other' : 'missing'};

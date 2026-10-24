@@ -12,9 +12,14 @@ const root = path.resolve(__dirname, '..');
       const context = await browser.newContext({viewport: {width, height: 900}});
       const page = await context.newPage(), requests = [], errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {value: {
-        writeText: async text => { window.probeCopied = text; }
-      }}));
+      await page.addInitScript(() => {
+        window.chatDiagnostics = [];
+        const warn = console.warn.bind(console);
+        console.warn = (...args) => {
+          if (args[0] === '[Fromm LIVE comments]') window.chatDiagnostics.push(JSON.stringify(args[1]));
+          warn(...args);
+        };
+      });
       let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0, policyMode = 'full', burst = 0, extraMessages = [], deletedIds = [];
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
@@ -84,8 +89,8 @@ const root = path.resolve(__dirname, '..');
       assert.equal(await page.evaluate(() => window.chatXss || 0), 0);
       assert.equal(await page.locator('.live-comments-list img, .live-comments-list script').count(), 0);
       assert.ok(requests.every(request => request.headers.authorization === 'Bearer synthetic-chat-token'));
-      await page.locator('.live-comment-copy').click();
-      const copied = await page.evaluate(() => window.probeCopied);
+      assert.equal(await page.locator('.live-comment-copy').count(), 0, 'diagnostic copy button is removed');
+      const copied = await page.evaluate(() => JSON.stringify(FrommChatProbe()));
       assert.equal(JSON.parse(copied).status, 'messages-received');
       assert.doesNotMatch(copied, /synthetic|private|Bearer|1792140000000|http[s]?:/);
       assert.equal(postCount, 0, 'opening/reading comments never posts anything');
@@ -109,16 +114,23 @@ const root = path.resolve(__dirname, '..');
       assert.equal(await page.locator('.live-comment-send-status').isVisible(), false, 'delivered success line is hidden');
       assert.equal(await page.locator('.live-chat-probe-text').isVisible(), false, 'normal receive status/count is hidden');
       assert.equal(await page.getByRole('button', {name: '닫기', exact: true}).count(), 0, 'header hide button is the single visibility control');
-      await page.locator('.live-comment-copy').click();
-      assert.doesNotMatch(await page.evaluate(() => window.probeCopied), /synthetic|private|합성|messageId|chatToken"\s*:|Bearer/);
+      assert.doesNotMatch(await page.evaluate(() => JSON.stringify(FrommChatProbe())), /synthetic|private|합성|messageId|chatToken"\s*:|Bearer/);
+      const beforeErrorLogs = await page.evaluate(() => window.chatDiagnostics.length);
       policyMode = 'malformed'; await input.fill('합성 권한형식 오류'); await send.click();
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-policy-unavailable');
       assert.equal(postCount, 1); assert.equal(await input.inputValue(), '합성 권한형식 오류');
-      await page.locator('.live-comment-copy').click();
-      const schemaCopy = await page.evaluate(() => window.probeCopied);
+      const schemaCopy = await page.evaluate(() => JSON.stringify(FrommChatProbe()));
       assert.equal(JSON.parse(schemaCopy).send.diagnostic.stage, 'policy-schema');
       assert.equal(JSON.parse(schemaCopy).send.diagnostic.postStarted, false);
       assert.doesNotMatch(schemaCopy, /private|synthetic|합성|Bearer/);
+      assert.equal(await page.evaluate(() => window.chatDiagnostics.length), beforeErrorLogs + 1, 'one diagnostic is emitted for a send error');
+      const logged = await page.evaluate(() => JSON.parse(window.chatDiagnostics.at(-1)));
+      assert.equal(logged.send.status, 'send-policy-unavailable');
+      assert.equal(logged.send.diagnostic.stage, 'policy-schema');
+      assert.equal(logged.send.diagnostic.postStarted, false);
+      assert.doesNotMatch(await page.evaluate(() => window.chatDiagnostics.join(' ')), /private|synthetic|합성|Bearer|chatToken|messageId|https?:/);
+      await input.fill('합성 권한형식 오류 수정');
+      assert.equal(await page.evaluate(() => window.chatDiagnostics.length), beforeErrorLogs + 1, 'composer updates do not repeat the same diagnostic');
       policyMode = 'omitted';
       postMode = 'denied'; await input.fill('합성 거절 댓글'); await input.press('Enter');
       await page.waitForFunction(() => FrommChatProbe()?.send?.httpStatus === 403);
@@ -267,7 +279,7 @@ const root = path.resolve(__dirname, '..');
       assert.equal(await page.locator('#liveChatProbeStatus').count(), 0);
       assert.equal(await page.evaluate(() => FrommChatProbe()), null);
       assert.deepEqual(errors, []);
-      console.log(width + 'px: explicit chat read/send, IME, single POST, ACK/echo, deny/unknown/frozen, safe copy, video-only PiP, layout and stop cancellation PASS (synthetic)');
+      console.log(width + 'px: explicit chat read/send, IME, single POST, ACK/echo, deny/unknown/frozen, safe console diagnostics, video-only PiP, layout and stop cancellation PASS (synthetic)');
       await context.close();
     }
   } finally { await browser.close(); }

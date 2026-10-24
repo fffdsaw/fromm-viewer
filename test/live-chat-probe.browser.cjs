@@ -15,7 +15,7 @@ const root = path.resolve(__dirname, '..');
       await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {value: {
         writeText: async text => { window.probeCopied = text; }
       }}));
-      let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0, policyMode = 'full', burst = 0;
+      let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0, policyMode = 'full', burst = 0, extraMessages = [], deletedIds = [];
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === 'localhost') {
@@ -45,8 +45,9 @@ const root = path.resolve(__dirname, '..');
             : (++messagePages < 3 ? {messages: [first], deletedMessages: [], cursor: 1792140000000 + messagePages}
               : {messages: [second], deletedMessages: ['private-id-A'], cursor: 1792140000000 + messagePages});
           if (echo && data.messages) data.messages.push({messageId: 'synthetic-echo-id', nickname: 'synthetic sender', content: '합성 전송 댓글', createdAt: 300});
-          if (burst && data.messages) data.messages.push(...Array.from({length: burst === 1 ? 40 : 41}, (_, index) =>
+          if (burst && data.messages) data.messages.push(...Array.from({length: 39 + burst}, (_, index) =>
             ({messageId: 'synthetic-burst-' + index, nickname: 'synthetic reader', content: 'synthetic row ' + index, createdAt: 400 + index})));
+          if (data.messages) { data.messages.push(...extraMessages); data.deletedMessages.push(...deletedIds); }
           try { return await route.fulfill({contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({success: true, data})}); }
           catch { return; }
         }
@@ -153,14 +154,32 @@ const root = path.resolve(__dirname, '..');
       assert.ok(Math.abs(fit.left - fit.stageLeft) < 1, 'comments align with the video lower left');
       assert.ok(fit.inputBottom <= fit.stageBottom + 1 && fit.listHeight > 0, 'comments/input stay inside video');
       burst = 1;
-      await page.waitForFunction(() => document.querySelectorAll('.live-comment-row').length === 30);
+      await page.waitForFunction(() => document.querySelectorAll('.live-comment-row').length === 42);
       await page.waitForFunction(() => {const list = document.querySelector('.live-comments-list'); return list.scrollHeight - list.clientHeight - list.scrollTop < 2;});
+      await page.evaluate(() => {window.stableCommentRow = document.querySelector('.live-comment-row');});
       const list = page.locator('.live-comments-list');
       await list.focus(); await list.press('Home');
       await page.waitForFunction(() => !document.querySelector('.live-comments-latest').hidden);
       burst = 2;
       await page.waitForFunction(() => document.querySelector('.live-comments-list').textContent.includes('synthetic row 40'));
       assert.ok(await list.evaluate(element => element.scrollTop < 2), 'new comments preserve the reader position above latest');
+      assert.ok(await page.evaluate(() => window.stableCommentRow === document.querySelector('.live-comment-row')), 'unchanged rows keep their DOM identity');
+      assert.ok(await page.locator('.live-comments-unread').innerText(), 'paused reader sees new comment count');
+      const firstBounds = await list.evaluate(element => {
+        const row = element.firstElementChild; return {top: row.getBoundingClientRect().top, listTop: element.getBoundingClientRect().top};
+      });
+      assert.ok(Math.abs(firstBounds.top - firstBounds.listTop) < 1, 'first retained comment is fully reachable');
+      // A long multiline row must wrap and retain its complete height.
+      extraMessages = [{messageId: 'long-row', nickname: '긴 이름', content: ('긴댓글'.repeat(60) + '\n').repeat(8), createdAt: 1000}];
+      await page.waitForFunction(() => !!document.querySelector('[data-message-id="long-row"]'));
+      assert.ok(await list.evaluate(element => element.scrollTop < 2), 'long incoming row does not move paused reader');
+      const longFit = await page.locator('[data-message-id="long-row"]').evaluate(row => ({
+        row: row.clientHeight, content: row.lastChild.scrollHeight, width: row.lastChild.clientWidth, contentWidth: row.lastChild.scrollWidth
+      }));
+      assert.ok(longFit.row >= longFit.content - 1 && longFit.width >= longFit.contentWidth - 1, 'multiline content has no clipping');
+      await page.setViewportSize({width: width === 1440 ? 1100 : 390, height: 720});
+      assert.ok(await list.evaluate(element => element.scrollTop < 2), 'paused viewport resize preserves the top');
+      await page.setViewportSize({width, height: 900});
       const circle = await page.locator('.live-comments-latest').evaluate(element => {
         const css = getComputedStyle(element); return {width: css.width, height: css.height, radius: css.borderRadius};
       });
@@ -174,7 +193,48 @@ const root = path.resolve(__dirname, '..');
       await page.getByRole('button', {name: '최신 댓글로 이동', exact: true}).click();
       await page.waitForFunction(() => document.querySelector('.live-comments-latest').hidden);
       assert.ok(await list.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop < 2));
-      burst = 0;
+      // Scrolling back to the bottom (without the button) resumes following.
+      await list.evaluate(element => {element.scrollTop = 0;});
+      await page.waitForFunction(() => !document.querySelector('.live-comments-latest').hidden);
+      await list.evaluate(element => {element.scrollTop = element.scrollHeight;});
+      await page.waitForFunction(() => document.querySelector('.live-comments-latest').hidden);
+      burst = 3;
+      await page.waitForFunction(() => !!document.querySelector('[data-message-id="synthetic-burst-41"]'));
+      await page.waitForFunction(() => {const el = document.querySelector('.live-comments-list');return el.scrollHeight - el.clientHeight - el.scrollTop < 2;});
+      // Pause in the middle, then evict older rows with a large batch. The
+      // surviving visible row must stay at the same pixel offset.
+      await list.evaluate(element => {
+        const row = element.querySelector('[data-message-id="synthetic-burst-25"]');
+        element.scrollTop += row.getBoundingClientRect().top - element.getBoundingClientRect().top + 3;
+      });
+      await page.waitForFunction(() => !document.querySelector('.live-comments-latest').hidden);
+      const anchorOffset = await page.locator('[data-message-id="synthetic-burst-25"]').evaluate(row => row.getBoundingClientRect().top - row.parentElement.getBoundingClientRect().top);
+      burst = 80;
+      await page.waitForFunction(() => !!document.querySelector('[data-message-id="synthetic-burst-118"]'));
+      const retainedOffset = await page.locator('[data-message-id="synthetic-burst-25"]').evaluate(row => row.getBoundingClientRect().top - row.parentElement.getBoundingClientRect().top);
+      assert.ok(Math.abs(retainedOffset - anchorOffset) <= 1, 'eviction above the viewport preserves the surviving visible anchor');
+      const ids = await page.locator('.live-comment-row').evaluateAll(rows => rows.map(row => row.dataset.messageId));
+      assert.equal(new Set(ids).size, ids.length, 'burst and duplicate polls do not duplicate rows');
+      assert.deepEqual(ids.filter(id => id.startsWith('synthetic-burst-')).map(id => Number(id.split('-').at(-1))), Array.from({length: 99}, (_, i) => i + 20), 'retained comments stay ordered');
+      deletedIds = ['synthetic-burst-20'];
+      extraMessages.push({messageId: 'synthetic-burst-21', nickname: 'edited', content: '수정된 댓글\n'.repeat(12), createdAt: 421});
+      await page.waitForFunction(() => document.querySelector('[data-message-id="synthetic-burst-21"]')?.textContent.includes('수정된 댓글'));
+      assert.equal(await page.locator('[data-message-id="synthetic-burst-20"]').count(), 0);
+      const editedOffset = await page.locator('[data-message-id="synthetic-burst-25"]').evaluate(row => row.getBoundingClientRect().top - row.parentElement.getBoundingClientRect().top);
+      assert.ok(Math.abs(editedOffset - anchorOffset) <= 1, 'deletion and multiline edit above the reader preserve its position');
+      await page.setViewportSize({width: width === 1440 ? 1000 : 390, height: 720});
+      await page.waitForTimeout(100); // ResizeObserver delivery after layout, not a network readiness wait.
+      const resizedOffset = await page.locator('[data-message-id="synthetic-burst-25"]').evaluate(row => row.getBoundingClientRect().top - row.parentElement.getBoundingClientRect().top);
+      assert.ok(Math.abs(resizedOffset - editedOffset) <= 1, 'resize keeps the visible row anchored');
+      await page.setViewportSize({width, height: 900});
+      burst = 110;
+      await page.waitForFunction(() => !!document.querySelector('[data-message-id="synthetic-burst-148"]'));
+      // Row 25 is beyond the retained window: only server-received latest 100
+      // remain. Start another session below to verify cancellation as before.
+      assert.equal(await page.locator('.live-comment-row').count(), 100, 'retention remains bounded and every retained row is available');
+      assert.equal(await page.locator('[data-message-id="synthetic-burst-25"]').count(), 0, 'evicted history is not fabricated');
+      assert.ok(Number.isFinite(anchorOffset));
+      burst = 0; extraMessages = []; deletedIds = [];
       await page.getByRole('button', {name: '닫기', exact: true}).click();
       assert.equal(await page.locator('#liveChatProbeStatus').count(), 0);
       await prepare(); await page.locator('#liveChatProbeBtn').click();

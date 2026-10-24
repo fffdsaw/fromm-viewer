@@ -2,7 +2,7 @@ name: Verify GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['index.html', '.github/workflows/pages-verify.yml']
+    paths: ['index.html', 'web-live-chat-probe.js', '.github/workflows/pages-verify.yml']
 permissions:
   contents: read
   actions: read
@@ -24,6 +24,7 @@ jobs:
           const {createHash} = require('node:crypto');
           const hash = bytes => createHash('sha256').update(bytes).digest('hex');
           const expected = hash(readFileSync('index.html'));
+          const expectedComments = hash(readFileSync('web-live-chat-probe.js'));
           const url = `https://fffdsaw.github.io/fromm-viewer/?deployment=${process.env.GITHUB_SHA}`;
           (async () => {
             let observed = 'not fetched';
@@ -39,8 +40,10 @@ jobs:
                 if (pages?.status === 'completed' && pages.conclusion !== 'success') throw new Error(`Pages deployment ${pages.conclusion}`);
                 const response = await fetch(url, {headers: {'cache-control': 'no-cache'}, signal: AbortSignal.timeout(15000)});
                 observed = response.ok ? hash(Buffer.from(await response.arrayBuffer())) : `HTTP ${response.status}`;
-                if (pages?.conclusion === 'success' && observed === expected) {
-                  console.log(`Verified commit: ${process.env.GITHUB_SHA}\nDeployment: ${pages.html_url}\nPublic URL: ${url}\nHTML SHA-256: ${observed} (exact match)`);
+                const commentsResponse = await fetch(`https://fffdsaw.github.io/fromm-viewer/web-live-chat-probe.js?deployment=${process.env.GITHUB_SHA}`, {headers: {'cache-control': 'no-cache'}, signal: AbortSignal.timeout(15000)});
+                const commentsMatch = commentsResponse.ok && hash(Buffer.from(await commentsResponse.arrayBuffer())) === expectedComments;
+                if (pages?.conclusion === 'success' && observed === expected && commentsMatch) {
+                  console.log(`Verified commit: ${process.env.GITHUB_SHA}\nDeployment: ${pages.html_url}\nPublic URL: ${url}\nHTML SHA-256: ${observed} (exact match)\nComments JS SHA-256: ${expectedComments} (exact match)`);
                   return;
                 }
                 console.log(`Waiting: Pages ${pages?.status || 'pending'}, public HTML ${observed === expected ? 'matches' : 'not updated'}`);

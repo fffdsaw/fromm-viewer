@@ -196,12 +196,12 @@
   const timeline = document.getElementById('timeline');
   if (!timeline) return;
   const style = document.createElement('style');
-  style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}.live-comment-new{animation:live-comment-enter .12s ease-out both}@keyframes live-comment-enter{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.live-comment-new{animation:none}}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
+  style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain;overflow-anchor:none}.live-comment-row{flex-shrink:0}.live-comments-unread{position:absolute;right:0;bottom:30px;white-space:nowrap;font-size:11px;background:#15171bd9;border-radius:10px;padding:2px 6px}.live-comments-unread:empty{display:none}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
   let uncertainAttempt = null, activeAttempt = null;
-  let followLatest = true, renderedIds = new Set();
+  let followLatest = true, unreadCount = 0;
   const sendLabels = {
     'sending': '댓글 전송 중…',
     'accepted': '서버 접수됨 · 댓글 표시를 기다립니다',
@@ -238,7 +238,7 @@
     if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
     sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
     controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
-    followLatest = true; renderedIds = new Set();
+    followLatest = true; unreadCount = 0;
   }
   function sync() {
     const head = timeline.querySelector('.live-head');
@@ -317,16 +317,40 @@
     if (!panel) {
       panel = document.createElement('div'); panel.id = 'liveChatProbeStatus';
       panel.className = 'live-comments-overlay';
-      panel.style.cssText = 'position:absolute;left:0;width:min(100%,560px);bottom:0;z-index:5;max-height:var(--live-comments-max);padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.76));color:#fff;font-size:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+      panel.style.cssText = 'position:absolute;left:0;width:min(100%,560px);bottom:0;z-index:5;height:var(--live-comments-max);box-sizing:border-box;max-height:100%;padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.76));color:#fff;font-size:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none';
       const scroll = document.createElement('div'); scroll.className = 'live-comments-scroll';
       scroll.style.cssText = 'position:relative;display:flex;min-height:0;flex:1 1 auto;overflow:visible';
       const list = document.createElement('div'); list.className = 'live-comments-list';
       list.tabIndex = 0;
       list.setAttribute('aria-label', 'LIVE 댓글'); list.style.cssText = 'flex:1;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:7px;pointer-events:auto;text-shadow:0 1px 3px #000';
       const latest = document.createElement('button'); latest.className = 'live-comments-latest'; latest.type = 'button';
-      latest.textContent = '↓'; latest.title = '최신 댓글로 이동'; latest.setAttribute('aria-label', '최신 댓글로 이동'); latest.hidden = true;
-      list.addEventListener('scroll', () => { followLatest = list.scrollHeight - list.clientHeight - list.scrollTop < 12; latest.hidden = followLatest; }, {passive: true});
-      latest.addEventListener('click', () => { followLatest = true; list.scrollTop = list.scrollHeight; latest.hidden = true; });
+      latest.textContent = '↓';
+      const unread = document.createElement('span'); unread.className = 'live-comments-unread'; latest.append(unread);
+      latest.title = '최신 댓글로 이동'; latest.setAttribute('aria-label', '최신 댓글로 이동'); latest.hidden = true;
+      let resizeAnchor = null;
+      panel.rememberScrollAnchor = () => {
+        const top = list.getBoundingClientRect().top;
+        const row = [...list.children].find(row => row.getBoundingClientRect().bottom > top);
+        resizeAnchor = row ? {row, offset: row.getBoundingClientRect().top - top} : null;
+      };
+      list.addEventListener('scroll', () => {
+        followLatest = list.scrollHeight - list.clientHeight - list.scrollTop <= 2;
+        if (followLatest) unreadCount = 0;
+        latest.hidden = followLatest; unread.textContent = unreadCount ? '+' + unreadCount : '';
+        panel.rememberScrollAnchor();
+      }, {passive: true});
+      // A resize changes the viewport, not the reader's intent. Keep the bottom
+      // pinned only while following; paused readers retain their scroll offset.
+      const resize = new ResizeObserver(() => {
+        if (!panel.isConnected) { resize.disconnect(); return; }
+        if (followLatest) list.scrollTop = list.scrollHeight;
+        else if (resizeAnchor?.row.isConnected) {
+          list.scrollTop += resizeAnchor.row.getBoundingClientRect().top - list.getBoundingClientRect().top - resizeAnchor.offset;
+        }
+        panel.rememberScrollAnchor();
+      });
+      resize.observe(list);
+      latest.addEventListener('click', () => { followLatest = true; unreadCount = 0; unread.textContent = ''; list.scrollTop = list.scrollHeight; latest.hidden = true; });
       scroll.append(list, latest);
       const controls = document.createElement('div'); controls.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;pointer-events:auto';
       const text = document.createElement('span'); text.className = 'live-chat-probe-text';
@@ -360,19 +384,36 @@
       form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
       form.append(input, send); controls.append(text, copy, dismiss); panel.append(scroll, controls, form, sendStatus); stage.append(panel);
     }
+    const list = panel.querySelector('.live-comments-list');
+    const wasFollowing = followLatest;
+    const oldTop = list.scrollTop;
+    // Capture visible row offsets before removals/edits. When retention evicts
+    // the first visible row, the next surviving visible row is the anchor.
+    const top = list.getBoundingClientRect().top;
+    const anchors = [...list.children].filter(row => row.getBoundingClientRect().bottom > top)
+      .map(row => ({row, offset: row.getBoundingClientRect().top - top}));
     if (renderedVersion !== comments.version) {
-      const list = panel.querySelector('.live-comments-list');
-      const entries = [...comments.items].sort((a, b) => a[1].createdAt - b[1].createdAt).slice(-30);
+      const entries = [...comments.items].sort((a, b) => a[1].createdAt - b[1].createdAt);
+      const rows = new Map([...list.children].map(row => [row.dataset.messageId, row]));
       let arriving = 0;
-      const rows = entries.map(([id, message]) => {
-        const row = document.createElement('div'); row.className = 'live-comment-row'; row.style.cssText = 'display:flex;gap:10px;flex:0 0 auto;line-height:1.5';
-        if (!renderedIds.has(id)) { row.classList.add('live-comment-new'); row.style.animationDelay = Math.min(arriving++ * 40, 160) + 'ms'; }
-        const name = document.createElement('strong'); name.style.cssText = 'flex:0 0 28%;max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis';
-        name.textContent = message.nickname; name.title = message.nickname;
-        const content = document.createElement('span'); content.style.cssText = 'min-width:0;white-space:pre-wrap;overflow-wrap:anywhere'; content.textContent = message.content;
-        row.append(name, content); return row;
-      });
-      list.replaceChildren(...rows); renderedIds = new Set(entries.map(([id]) => id));
+      for (const [id, row] of rows) if (!comments.items.has(id)) row.remove();
+      let previous = null;
+      for (const [id, message] of entries) {
+        let row = rows.get(id);
+        if (!row) {
+          row = document.createElement('div'); row.className = 'live-comment-row'; row.dataset.messageId = id;
+          row.style.cssText = 'display:flex;gap:10px;flex:0 0 auto;line-height:1.5';
+          const name = document.createElement('strong'); name.style.cssText = 'flex:0 0 28%;max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis';
+          const content = document.createElement('span'); content.style.cssText = 'min-width:0;white-space:pre-wrap;overflow-wrap:anywhere';
+          row.append(name, content); arriving++;
+        }
+        if (row.firstChild.textContent !== message.nickname) { row.firstChild.textContent = message.nickname; row.firstChild.title = message.nickname; }
+        if (row.lastChild.textContent !== message.content) row.lastChild.textContent = message.content;
+        const next = previous ? previous.nextSibling : list.firstChild;
+        if (next !== row) list.insertBefore(row, next);
+        previous = row;
+      }
+      if (!wasFollowing) unreadCount += arriving;
       renderedVersion = comments.version;
     }
     const baseLabel = controller && report.status === 'connected-no-messages' ? '새 댓글을 기다리고 있습니다' :
@@ -382,16 +423,21 @@
     const text = panel.querySelector('.live-chat-probe-text');
     if (text.textContent !== label) { text.textContent = label; text.title = label; }
     updateComposer(panel);
-    const list = panel.querySelector('.live-comments-list');
-    if (followLatest) list.scrollTop = list.scrollHeight;
-    panel.querySelector('.live-comments-latest').hidden = followLatest;
+    if (wasFollowing) list.scrollTop = list.scrollHeight;
+    else {
+      const anchor = anchors.find(({row}) => row.isConnected);
+      list.scrollTop = anchor ? oldTop + anchor.row.getBoundingClientRect().top - list.getBoundingClientRect().top - anchor.offset : oldTop;
+    }
+    panel.querySelector('.live-comments-latest').hidden = wasFollowing;
+    panel.querySelector('.live-comments-unread').textContent = unreadCount ? '+' + unreadCount : '';
+    panel.rememberScrollAnchor();
   }
   async function run() {
     if (controller) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); sync(); return; }
     if (!isLive() || !state.live.config?.isStreaming || state.live.config?.mock) return;
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
-    comments = messageStore(); renderedVersion = -1; followLatest = true; renderedIds = new Set();
+    comments = messageStore(); renderedVersion = -1; followLatest = true; unreadCount = 0;
     report = {probeVersion: 4, mode: 'interactive-comments', pollIntervalMs: 1000, status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
       chatTokenPresent: typeof token === 'string' && !!token, liveChatErrorPresent: !!live.liveChatError,
       provider: typeof live.chatProvider === 'string' && live.chatProvider.toLowerCase() === 'fromm' ? 'fromm' : live.chatProvider ? 'other' : 'missing'};

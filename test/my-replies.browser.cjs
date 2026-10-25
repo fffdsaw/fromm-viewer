@@ -73,16 +73,14 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.locator('#datePickerBtn').click();
    await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();});
    const day=d=>page.locator(`.date-day[data-date="2026-10-${d}"]`);
-   assert.equal(await day('23').getAttribute('class').then(x=>x.includes('has-my-reply')),true);
-   assert.equal(await day('25').getAttribute('class').then(x=>x.includes('has-my-reply')),true);
-   assert.equal(await day('20').getAttribute('class').then(x=>x.includes('has-my-reply')),false,'original date is not the received reply date');
-   assert.equal(await day('22').getAttribute('class').then(x=>x.includes('has-my-reply')),false);
+   assert.equal(await page.locator('.has-my-reply,.date-legend').count(),0);
    const dotColor=loc=>loc.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-   assert.equal(await dotColor(day('23')),'rgb(255, 143, 168)');assert.equal(await dotColor(day('22')),'rgb(74, 163, 255)');
-   await page.evaluate(()=>setSelectedDate('2026-10-23'));assert.equal(await dotColor(day('23')),'rgb(255, 143, 168)','selected days retain pink');
-   await page.locator('#dateCalendarTitle').click();assert.equal(await page.locator('.date-year-option.has-my-reply').innerText(),'2026');
-   await page.locator('.date-year-option.has-my-reply').click();assert.equal(await page.locator('.date-month-option.has-my-reply').innerText(),'10월');
-   await page.locator('.date-month-option.has-my-reply').click();
+   assert.equal(await dotColor(day('23')),'rgb(74, 163, 255)');assert.equal(await dotColor(day('22')),'rgb(74, 163, 255)');
+   assert.equal(await day('23').getAttribute('aria-label'),'2026-10-23, 대화 있음');
+   await page.evaluate(()=>setSelectedDate('2026-10-23'));assert.equal(await dotColor(day('23')),'rgb(159, 208, 255)');
+   await page.locator('#dateCalendarTitle').click();assert.equal(await page.locator('.has-my-reply').count(),0);
+   await page.getByRole('button',{name:'2026',exact:true}).click();assert.equal(await page.locator('.has-my-reply').count(),0);
+   await page.getByRole('button',{name:'10월',exact:true}).click();
    // Narrower/shorter viewports keep the larger search/calendar panel scrollable.
    await page.setViewportSize({width:width===1440?800:360,height:640});
    await page.waitForTimeout(100);
@@ -99,6 +97,20 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    assert.equal(await page.locator('.msg').count(),messages.length,'context mode retains surrounding conversation');
    assert.equal(await page.locator('#chatMatchPosition').innerText(),'1 / 2');
    assert.equal(await page.locator('#chatMatchPrev').isDisabled(),true);
+   // All message target states stay inside the rounded bubble's paint box.
+   const highlightStyles=await page.evaluate(()=>{
+    const message=document.querySelector('[data-message-id="ordinary"]'), bubble=message.querySelector('.bubble');
+    const before=bubble.getBoundingClientRect(), values=[];
+    for(const name of ['chat-match-active','date-target-flash','reply-target-flash']){
+     message.classList.add(name);const style=getComputedStyle(bubble), box=bubble.getBoundingClientRect();
+     values.push({outline:style.outlineStyle,shadow:style.boxShadow,transform:style.transform,width:box.width-before.width,height:box.height-before.height});
+     message.classList.remove(name);
+    }
+    return values;
+   });
+   for(const style of highlightStyles){assert.equal(style.outline,'none');assert.match(style.shadow,/inset/);assert.equal(style.transform,'none');assert.equal(style.width,0);assert.equal(style.height,0);}
+   if(process.env.REPLY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.REPLY_SCREENSHOT_DIR,`reply-focus-${width}.png`)});
+
    await page.evaluate(()=>{window.contextNode=document.querySelector('[data-message-id="ordinary"]');});
    await page.locator('#chatMatchNext').click();
    await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
@@ -115,6 +127,12 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.waitForFunction(()=>state.chatQuery==='하나');assert.equal(await page.locator('.msg').count(),1);
    assert.equal(await page.locator('#chatSearchCount').innerText(),'1개');
    await page.locator('#chatSearchClear').click();assert.equal(await page.locator('.msg').count(),2);
+   await page.locator('#chatSearchInput').fill('원문');await page.waitForFunction(()=>state.chatQuery==='원문');
+   const quoteMarkColor=await page.locator('.reply-content mark').first().evaluate(el=>getComputedStyle(el).backgroundColor);
+   assert.equal(quoteMarkColor,'rgba(255, 143, 168, 0.22)');
+   assert.equal(await page.locator('.reply-content mark').first().evaluate(el=>getComputedStyle(el).boxDecorationBreak),'clone');
+   await page.locator('#chatSearchClear').click();
+
    await page.locator('#datePickerBtn').click();
    await day('25').click();await page.waitForFunction(()=>document.querySelector('[data-message-id="my-image-reply"]')?.classList.contains('date-target-flash'));
    assert.equal(await page.locator('.msg').count(),2,'date navigation retains the personal filter');
@@ -125,6 +143,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('일반 대화');
    await page.waitForFunction(()=>state.chatQuery==='일반 대화');
    const searchTotal=await page.evaluate(()=>chatMatches().length);assert.ok(searchTotal>1);
+   assert.equal(await page.locator('.text mark').first().evaluate(el=>getComputedStyle(el).backgroundColor),quoteMarkColor);
    await page.locator('#chatContextBtn').click();await page.waitForFunction(()=>state.chatMatchKey==='ordinary');
    assert.equal(await page.locator('.msg').count(),messages.length);
    await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='other-reply');
@@ -162,6 +181,22 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
 
    assert.equal(await page.locator('#chatToolsBtn svg.magnifier-icon circle').count(),1);
    if(process.env.REPLY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.REPLY_SCREENSHOT_DIR,`reply-context-${width}.png`)});
+   // Ordinary date jumps account for the complete header, including its title row.
+   await page.evaluate(()=>{state.onlyMyReplies=false;state.chatContext=false;state.chatQuery='';state.chatMatchKey='';render();});
+   for(const height of [1000,500]){
+    await page.setViewportSize({width,height});await page.evaluate(()=>jumpToDate('2026-01-02'));
+    await page.waitForTimeout(150);
+    const position=await page.evaluate(()=>{
+     const header=document.querySelector('.viewer-header'), sticky=getComputedStyle(header).position==='sticky';
+     const date=document.querySelector('.date-sep[data-date="2026-01-02"]');
+     const first=firstMessageOnDate('2026-01-02'), message=document.querySelector(`[data-message-id="${first.messageId}"]`);
+     return {inset:sticky?header.getBoundingClientRect().bottom:0,date:date.getBoundingClientRect().top,first:message.getBoundingClientRect().top,height:innerHeight};
+    });
+    assert.ok(position.date>=position.inset+6 && position.date<=position.inset+24,JSON.stringify(position));
+    assert.ok(position.first>position.date && position.first<position.height-20,JSON.stringify(position));
+    if(process.env.REPLY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.REPLY_SCREENSHOT_DIR,`date-position-${width}-${height}.png`)});
+   }
+   await page.setViewportSize({width,height:1000});
    await page.evaluate(()=>{state.chatMessages=window.smallHistory;state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey='';render();});
    await page.locator('#chatToolsBtn').click();await page.locator('#myRepliesBtn').click();
    await page.locator('#rooms .room').last().evaluate(el=>el.click());
@@ -192,7 +227,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    assert.equal(await page.evaluate(()=>state.onlyMyReplies),false);
    assert.deepEqual(dialogs,[]);assert.deepEqual(errors,[]);
    assert.ok(requests.every(r=>r.method==='GET'));
-   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar day/month/year/color, date/original jumps, context arrows/list toggle/3000-message bounded jumps, SVG icon, media, room/account/reset/failure/retry/late logout PASS`);
+   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar general markers only, consistent inset focus/word marks, date/header/short-screen alignment, date/original jumps, context arrows/list toggle/3000-message bounded jumps, SVG icon, media, room/account/reset/failure/retry/late logout PASS`);
    await context.close();
   }
  }finally{await browser.close();}

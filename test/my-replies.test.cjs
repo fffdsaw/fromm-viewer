@@ -51,10 +51,11 @@ test('filter and text search share the personal reply predicate without indexing
  c.state.chatQuery='fan-a';assert.equal(c.filteredMessages().length,0);
  c.state.chatQuery='';c.state.onlyMyReplies=false;assert.equal(c.filteredMessages().length,3);
 });
-test('calendar marks the date the reply arrived, ignores search, and scopes year/month markers',()=>{
+test('calendar keeps general conversation dates and has no personal reply markers',()=>{
  const c=setup();c.state.chatMessages=[reply('mine','fan-a'),reply('other','fan-b',{createdAt:'2026-10-24T05:00:00Z'}),reply('original','fan-a',{userType:'fan',createdAt:'2026-09-01T05:00:00Z'})];
  c.state.chatQuery='no match';const a=c.calendarActivityInfo();
- assert.equal(a.dates.size,3);assert.deepEqual(Array.from(a.replyDates),['2026-10-25']);assert.deepEqual(Array.from(a.replyMonths),['2026-10']);assert.deepEqual(Array.from(a.replyYears),[2026]);
+ assert.equal(a.dates.size,3);assert.equal(a.replyDates,undefined);assert.equal(a.replyMonths,undefined);assert.equal(a.replyYears,undefined);
+ c.replyIdentity.id='';assert.equal(c.calendarActivityInfo().dates.size,3);c.replyIdentity.id='fan-a';
  c.state.onlyMyReplies=true;assert.equal(c.firstMessageOnDate('2026-10-24'),null);assert.equal(c.firstMessageOnDate('2026-10-25').messageId,'mine');
 });
 test('profile lookup coalesces GETs, does not infer UUID on failure, and retries explicitly',async()=>{

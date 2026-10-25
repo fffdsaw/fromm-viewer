@@ -1089,6 +1089,18 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
   }
 }
 
+/* Personal reply markers share the existing calendar dot; pink takes precedence. */
+.chat-tools-panel{max-height:calc(100dvh - var(--my-reply-panel-top, 200px) - 12px);overflow-y:auto;overscroll-behavior:contain}
+.my-replies-btn{margin:0 0 6px;width:100%;justify-content:center}
+.my-replies-btn.active{border-color:#ff8fa8;color:#ffb2c3;background:#ff8fa81a}
+.my-reply-status{font-size:12px;line-height:1.5;color:var(--muted);margin:0 0 10px;overflow-wrap:anywhere}
+.chat-tools-btn.reply-filter-active{color:#ff9eb6;border-color:#ff8fa8}
+.reply-quote.reply-mine{border-left-color:#ff8fa8}
+.reply-mine .reply-label{color:#ffabc0}
+.date-day.has-my-reply::after,.date-day.selected.has-my-reply::after,.date-month-option.has-my-reply::after,.date-month-option.selected.has-my-reply::after,.date-year-option.has-my-reply::after,.date-year-option.selected.has-my-reply::after{background:#ff8fa8}
+.date-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:#67adff}
+.date-legend .my-reply-legend{color:#ff8fa8}
+
 /* Read-only vote cards, list and accessible result dialog. */
 .vote-chat-card h3{font-size:17px;line-height:1.5;margin:12px 0;overflow-wrap:anywhere}
 .vote-bubble{min-width:min(280px,70vw)}
@@ -1310,6 +1322,10 @@ body.download-marquee-active{user-select:none;cursor:default}
         <div id="chatToolsPanel" class="chat-tools-panel" aria-hidden="true">
           <div class="chat-tools-title">전체 대화 찾기</div>
 
+          <button id="myRepliesBtn" class="btn my-replies-btn" type="button" aria-pressed="false">내 글에 온 답장만</button>
+          <p id="myReplyStatus" class="my-reply-status" role="status" aria-live="polite"></p>
+          <button id="myReplyRetry" class="btn" type="button" hidden>본인 정보 다시 확인</button>
+
           <div class="chat-tools-label">채팅 검색</div>
           <div class="chat-tools-row">
             <input id="chatSearchInput" type="search"
@@ -1345,6 +1361,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 
             <div id="dateCalendarGrid" class="date-calendar-grid"></div>
 
+            <div class="date-legend"><span>● 대화</span><span class="my-reply-legend">● 내 글에 온 답장</span></div>
             <div class="date-calendar-foot">
               <button id="dateTodayBtn" class="date-calendar-link" type="button">오늘</button>
             </div>
@@ -1894,6 +1911,7 @@ const state = {
   filter: "all",
   sortDirection: "desc",
   chatQuery: "",
+  onlyMyReplies: false,
   // Restore the previous visual batch size; gallery work is sliced across frames.
   chunkSize: 120,
   initialChunks: 2,
@@ -2550,6 +2568,7 @@ function normalizeAccountKey(value){
 }
 
 function setActiveAuth(token="",uuid="",accountKey=""){
+  if(activeAuth.token!==String(token || "").trim() || activeAuth.uuid!==String(uuid || "").trim() || activeAuth.accountKey!==normalizeAccountKey(accountKey)) resetReplyIdentity();
   activeAuth = {
     token:String(token || "").trim(),
     uuid:String(uuid || "").trim(),
@@ -5631,6 +5650,7 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  resetReplyIdentity();
   resetVoteView();
   resetChannelVideos();
   state.scanGeneration++;
@@ -6488,6 +6508,8 @@ function selectRoom(i, btn){
   syncHeaderLiveIndicator();
 
   state.chatQuery = "";
+  state.onlyMyReplies = false;
+  syncMyReplyTools();
   state.selectedDate = "";
   state.calendarMonth = null;
 
@@ -6517,6 +6539,7 @@ function selectRoom(i, btn){
   }
 
   restoreFullChatCache();
+  ensureReplyIdentity();
   state.chatAutoTopPending = true;
 
   startLivePolling();
@@ -6772,6 +6795,112 @@ function looksLikeIdOnly(s){
   return /^[0-9a-f]{8}-[0-9a-f-]{20,}$/i.test(v) || /^[A-Za-z0-9_-]{24,}$/.test(v);
 }
 
+// Identity stays in memory for one authenticated session; never infer it from a
+// device UUID, nickname, message text, or the presence of a quote.
+const replyIdentity = {context:null, id:"", status:"idle", owner:null, promise:null};
+function replyUserId(value){
+  if(typeof value === "string") return value.length <= 256 && value.trim() ? value : "";
+  return Number.isSafeInteger(value) && value >= 0 ? String(value) : "";
+}
+function replyAuthContext(){
+  const auth=currentAuth();
+  return {token:auth.token,uuid:auth.uuid,account:auth.accountKey};
+}
+function replyAuthCurrent(context){
+  const auth=currentAuth();
+  return !!context && !!auth.token && !!auth.uuid && context.token===auth.token && context.uuid===auth.uuid && context.account===auth.accountKey;
+}
+function currentReplyUserId(){
+  return replyIdentity.status === "ready" && replyAuthCurrent(replyIdentity.context) ? replyIdentity.id : "";
+}
+function isReplyToMe(message){
+  const id=currentReplyUserId();
+  return !!id && isArtist(message) && getQuotedMessage(message)?.userId === id;
+}
+function resetReplyIdentity(){
+  replyIdentity.owner?.abort();
+  Object.assign(replyIdentity,{context:null,id:"",status:"idle",owner:null,promise:null});
+  state.onlyMyReplies=false;
+  // Remove personal markers immediately, including during account transitions.
+  document.querySelectorAll(".reply-mine").forEach(el=>{
+    el.classList.remove("reply-mine");
+    const label=el.querySelector(".reply-label");
+    if(label) label.textContent="아티가 답장했어요! ♥";
+  });
+  document.querySelectorAll(".has-my-reply").forEach(el=>{
+    el.classList.remove("has-my-reply");
+    const label=el.dataset.date ? `${el.dataset.date}${el.classList.contains("has-chat") ? ", 대화 있음" : ""}` : el.textContent;
+    el.setAttribute("aria-label",label);el.title=label;
+  });
+  syncMyReplyTools();
+}
+function syncMyReplyTools(){
+  const button=$("#myRepliesBtn"), status=$("#myReplyStatus"), retry=$("#myReplyRetry");
+  if(!button || !status || !retry) return;
+  button.setAttribute("aria-pressed",String(state.onlyMyReplies));
+  button.classList.toggle("active",state.onlyMyReplies);
+  $("#chatToolsBtn")?.classList.toggle("reply-filter-active",state.onlyMyReplies);
+  const ready=!!currentReplyUserId();
+  retry.hidden=replyIdentity.status !== "error";
+  status.textContent=replyIdentity.status === "loading" ? "본인 답장을 확인하는 중…" :
+    replyIdentity.status === "error" ? "본인 정보를 확인하지 못했습니다. 일반 대화는 계속 볼 수 있습니다." :
+    ready ? "불러온 대화에서 확인된 답장만 표시합니다." : "아티스트를 선택하면 본인 답장을 확인합니다.";
+}
+function syncVisibleReplyLabels(){
+  const messages=new Map(state.chatMessages.map(m=>[String(m.messageId || m.id || ""),m]));
+  document.querySelectorAll("#timeline .msg").forEach(el=>{
+    const message=messages.get(el.dataset.messageId), quote=el.querySelector(".reply-quote");
+    if(!message || !quote) return;
+    const mine=isReplyToMe(message);
+    quote.classList.toggle("reply-mine",mine);
+    quote.querySelector(".reply-label").textContent=isArtist(message) ?
+      (mine ? "아티가 내 글에 답장했어요! ♥" : "아티가 답장했어요! ♥") : "내가 답장한 메시지";
+  });
+}
+async function ensureReplyIdentity({retry=false}={}){
+  if(currentReplyUserId()) return true;
+  if(replyAuthCurrent(replyIdentity.context)){
+    if(replyIdentity.promise) return replyIdentity.promise;
+    if(replyIdentity.status === "error" && !retry) return false;
+  }else if(replyIdentity.context) resetReplyIdentity();
+  const context=replyAuthContext();
+  if(!context.token || !context.uuid) return false;
+  const owner=new AbortController();
+  Object.assign(replyIdentity,{context,id:"",status:"loading",owner});
+  syncMyReplyTools();
+  const current=()=>replyIdentity.owner===owner && replyAuthCurrent(context);
+  const timer=setTimeout(()=>owner.abort(),12000);
+  const promise=(async()=>{
+    try{
+      const payload=await frommApiRequest("/v2/user/fan/profile",{method:"GET",signal:owner.signal});
+      if(!current()) return false;
+      const data=payload?.data ?? payload, id=replyUserId(data?.profile?.id);
+      if(!id) throw new Error("PROFILE_ID_MISSING");
+      replyIdentity.id=id;replyIdentity.status="ready";
+      return true;
+    }catch{
+      if(current()){replyIdentity.id="";replyIdentity.status="error";}
+      return false;
+    }finally{
+      clearTimeout(timer);
+      if(replyIdentity.owner===owner){
+        replyIdentity.owner=null;replyIdentity.promise=null;
+        syncMyReplyTools();renderDateCalendar();
+        if(state.filter === "all" && state.onlyMyReplies) render();
+        else syncVisibleReplyLabels();
+      }
+    }
+  })();
+  replyIdentity.promise=promise;
+  return promise;
+}
+async function setOnlyMyReplies(enabled){
+  state.onlyMyReplies=!!enabled;
+  state.chatAutoTopPending=true;
+  syncMyReplyTools();render();
+  if(enabled) await ensureReplyIdentity();
+}
+
 function normalizeQuotedValue(value){
   if(value == null) return null;
 
@@ -6828,7 +6957,7 @@ function normalizeQuotedValue(value){
   );
 
   if(!messageId && !content) return null;
-  return {messageId,content,type};
+  return {messageId,content,type,userId:replyUserId(value.userId)};
 }
 
 function getQuotedMessage(m){
@@ -6844,7 +6973,17 @@ function getQuotedMessage(m){
 
   for(const candidate of candidates){
     const q = normalizeQuotedValue(candidate);
-    if(q && (q.content || q.messageId)) return q;
+    if(q && (q.content || q.messageId)){
+      // Embedded display payloads may omit the author. Supplement only when
+      // the canonical quote identifies exactly the same original message.
+      if(!q.userId && q.messageId){
+        for(const other of candidates){
+          const match=normalizeQuotedValue(other);
+          if(match?.messageId===q.messageId && match.userId){q.userId=match.userId;break;}
+        }
+      }
+      return q;
+    }
   }
 
   // Some builds expose mention detail as a nested object.
@@ -6909,12 +7048,25 @@ function highlightText(text, query){
   }).join("");
 }
 
+function fitChatToolsPanel(){
+  const panel=$("#chatToolsPanel"), button=$("#chatToolsBtn");
+  if(!panel || !button) return;
+  panel.style.setProperty("--my-reply-panel-top",`${Math.max(0,button.getBoundingClientRect().bottom+8)}px`);
+  // The toolbar can wrap the search button onto a row near the left edge.
+  // Clamp the popup inside the viewport while retaining its existing anchor.
+  panel.style.right="0px";
+  const box=panel.getBoundingClientRect(), width=document.documentElement.clientWidth;
+  const shift=Math.max(8-box.left,0)-Math.max(box.right-(width-8),0);
+  panel.style.right=`${-shift}px`;
+}
+
 function openChatToolsPanel(){
   const panel = $("#chatToolsPanel");
   const btn = $("#chatToolsBtn");
   if(!panel || !btn) return;
 
   panel.classList.add("open");
+  fitChatToolsPanel();
   panel.setAttribute("aria-hidden","false");
   btn.classList.add("active");
 }
@@ -6961,7 +7113,10 @@ function updateChatSearchCount(){
     return;
   }
 
-  const n = state.chatMessages.filter(m=>chatMessageMatches(m,q)).length;
+  if(state.onlyMyReplies && !currentReplyUserId()){
+    count.textContent=replyIdentity.status === "error" ? "확인 불가" : "확인 중…";return;
+  }
+  const n = filteredMessages().length;
   count.textContent = `${n.toLocaleString()}개`;
 }
 
@@ -6970,6 +7125,7 @@ function filteredMessages(){
     const q = state.chatQuery.trim();
 
     const source = state.chatMessages.filter(m=>{
+      if(state.onlyMyReplies && !isReplyToMe(m)) return false;
       if(normType(m.type) !== "text") return true;
 
       const s = specialTextState(m);
@@ -7309,6 +7465,11 @@ function renderCountsOnly(){
     return;
   }
 
+  if(state.filter === "all" && state.onlyMyReplies){
+    $("#counts").textContent=currentReplyUserId() ? `내 글에 온 답장 ${filteredMessages().length.toLocaleString()}개` :
+      replyIdentity.status === "error" ? "내 답장 확인 불가" : "내 답장 확인 중…";
+    updateSelectedCount();return;
+  }
   const media = state.messages.filter(m=>isArtist(m)&&isMedia(m));
   const image = media.filter(m=>normType(m.type)==="image").length;
   const video = media.filter(m=>normType(m.type)==="video").length;
@@ -7542,7 +7703,9 @@ function renderFullConversation(version){
 
   if(!list.length){
     tl.innerHTML = `<div class="empty">${
-      state.chatQuery.trim() ? "검색 결과가 없습니다." : "대화가 없습니다."
+      state.onlyMyReplies && !currentReplyUserId() ?
+        (replyIdentity.status === "error" ? "본인 정보를 확인하지 못했습니다. 검색·날짜 창에서 다시 확인해 주세요." : "본인 답장을 확인하는 중…") :
+      state.chatQuery.trim() ? "검색 결과가 없습니다." : state.onlyMyReplies ? "불러온 대화에 내 글에 온 답장이 없습니다." : "대화가 없습니다."
     }</div>`;
     return;
   }
@@ -7565,6 +7728,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  syncMyReplyTools();
   if(state.filter === "vote"){updateChatSearchCount();renderVoteList();return;}
   renderCountsOnly();
   updateChatSearchCount();
@@ -8092,10 +8256,11 @@ function renderMessage(m){
 
   const quoted = getQuotedMessage(m);
   if(quoted){
-    const label = artist ? "아티가 답장했어요! ♥" : "내가 답장한 메시지";
+    const mine = isReplyToMe(m);
+    const label = artist ? (mine ? "아티가 내 글에 답장했어요! ♥" : "아티가 답장했어요! ♥") : "내가 답장한 메시지";
     const preview = quotedPreview(quoted);
 
-    html += `<div class="reply-quote" data-quoted-id="${esc(quoted.messageId || "")}">
+    html += `<div class="reply-quote${mine ? " reply-mine" : ""}" data-quoted-id="${esc(quoted.messageId || "")}">
       <div class="reply-label">${esc(label)}</div>
       <div class="reply-content">${highlightText(preview, state.filter==="all" ? state.chatQuery : "")}</div>
     </div>`;
@@ -8327,7 +8492,10 @@ function calendarActivityInfo(){
     months.add(`${m[1]}-${m[2]}`);
   }
 
-  return {dates:new Set(dates),years,months};
+  const replyDates=new Set(state.chatMessages.filter(isReplyToMe).map(m=>localDateKeyFromISO(m.createdAt)).filter(Boolean));
+  const replyMonths=new Set([...replyDates].map(key=>key.slice(0,7)));
+  const replyYears=new Set([...replyDates].map(key=>Number(key.slice(0,4))));
+  return {dates:new Set(dates),years,months,replyDates,replyMonths,replyYears};
 }
 
 function setCalendarMode(mode){
@@ -8380,8 +8548,9 @@ function renderDateCalendar(){
       if(selected && selected.getFullYear() === y){
         btn.classList.add("selected");
       }
-      if(activity.years.has(y)){
-        btn.classList.add("has-chat");
+      if(activity.years.has(y)) btn.classList.add("has-chat");
+      if(activity.replyYears.has(y)){
+        btn.classList.add("has-my-reply");btn.setAttribute("aria-label",`${y}년, 내 글에 온 답장 있음`);
       }
 
       btn.onclick = ()=>{
@@ -8420,8 +8589,9 @@ function renderDateCalendar(){
       }
 
       const monthKey = `${year}-${pad2(m+1)}`;
-      if(activity.months.has(monthKey)){
-        btn.classList.add("has-chat");
+      if(activity.months.has(monthKey)) btn.classList.add("has-chat");
+      if(activity.replyMonths.has(monthKey)){
+        btn.classList.add("has-my-reply");btn.setAttribute("aria-label",`${m+1}월, 내 글에 온 답장 있음`);
       }
 
       btn.onclick = ()=>{
@@ -8458,6 +8628,9 @@ function renderDateCalendar(){
     if(key === state.selectedDate) btn.classList.add("selected");
     if(key === todayKey) btn.classList.add("today");
     if(activity.dates.has(key)) btn.classList.add("has-chat");
+    if(activity.replyDates.has(key)) btn.classList.add("has-my-reply");
+    btn.setAttribute("aria-label",`${key}${activity.replyDates.has(key) ? ", 내 글에 온 답장 있음" : activity.dates.has(key) ? ", 대화 있음" : ""}`);
+    btn.title=btn.getAttribute("aria-label");
 
     btn.onclick = ()=>{
       setSelectedDate(key);
@@ -8484,7 +8657,7 @@ function localDateKeyFromISO(value){
 
 function firstMessageOnDate(targetDate){
   return state.chatMessages
-    .filter(m=>localDateKeyFromISO(m.createdAt) === targetDate)
+    .filter(m=>localDateKeyFromISO(m.createdAt) === targetDate && (!state.onlyMyReplies || isReplyToMe(m)))
     .sort((a,b)=>compareMessages(a,b,"asc"))[0] || null;
 }
 
@@ -8501,13 +8674,7 @@ function renderChatStartingAtDate(targetDate){
   state.chatQuery = "";
   if($("#chatSearchInput")) $("#chatSearchInput").value = "";
 
-  const list = [...state.chatMessages]
-    .filter(m=>{
-      if(normType(m.type) !== "text") return true;
-      const s = specialTextState(m);
-      return !s || s.kind !== "hidden-empty";
-    })
-    .sort((a,b)=>compareMessages(a,b,"asc"));
+  const list = filteredMessages();
 
   const targetIndex = list.findIndex(
     m=>localDateKeyFromISO(m.createdAt) === targetDate
@@ -8587,6 +8754,7 @@ function scrollElementBelowToolbar(el, behavior="smooth"){
 
 async function jumpToDate(targetDate){
   if(!targetDate) return;
+  const generation=state.scanGeneration;
 
   if(state.filter !== "all"){
     state.chatQuery = "";
@@ -8601,11 +8769,16 @@ async function jumpToDate(targetDate){
   try{
     btn.textContent = "준비 중...";
     await ensureFullChatHistory();
+    if(state.onlyMyReplies) await ensureReplyIdentity();
+    if(generation !== state.scanGeneration) return;
+    if(state.onlyMyReplies && !currentReplyUserId()){
+      alert("본인 정보를 확인하지 못해 답장 날짜로 이동할 수 없습니다. 검색·날짜 창에서 다시 확인해 주세요.");return;
+    }
 
     const firstMessage = firstMessageOnDate(targetDate);
 
     if(!firstMessage){
-      alert(`${targetDate} 날짜의 대화를 찾지 못했습니다.`);
+      alert(state.onlyMyReplies ? `${targetDate} 날짜에 확인된 내 답장이 없습니다.` : `${targetDate} 날짜의 대화를 찾지 못했습니다.`);
       return;
     }
 
@@ -8668,6 +8841,10 @@ async function jumpToDate(targetDate){
 }
 async function scrollToOriginalMessage(messageId){
   if(!messageId) return;
+  const generation=state.scanGeneration;
+  state.onlyMyReplies=false;state.chatQuery="";
+  if($("#chatSearchInput")) $("#chatSearchInput").value="";
+  syncMyReplyTools();
 
   if(state.filter !== "all"){
     state.chatQuery = "";
@@ -8677,11 +8854,14 @@ async function scrollToOriginalMessage(messageId){
 
   await ensureFullChatHistory();
 
+  if(generation !== state.scanGeneration) return;
   const targetMsg = state.chatMessages.find(
     m=>String(m.messageId || m.id || "") === String(messageId)
   );
 
-  if(!targetMsg) return;
+  if(!targetMsg){
+    render();alert("불러온 대화에 원문이 없습니다. 서버에서 제공하지 않는 원문은 표시할 수 없습니다.");return;
+  }
 
   state.chatAutoTopPending = false;
   render();
@@ -8709,6 +8889,7 @@ async function setFilter(f, options={}){
   invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
+  if(f === "all") state.onlyMyReplies=false;
   const autoTop = options.autoTop !== false;
 
   if(was === "live" && f !== "live"){
@@ -9961,6 +10142,9 @@ $("#chatSearchClear").onclick=()=>{
   $("#chatSearchInput").focus();
 };
 
+$("#myRepliesBtn").onclick=()=>setOnlyMyReplies(!state.onlyMyReplies);
+$("#myReplyRetry").onclick=()=>ensureReplyIdentity({retry:true});
+
 $("#datePickerBtn").onclick=(e)=>{
   e.stopPropagation();
   toggleDateCalendar();
@@ -10116,6 +10300,7 @@ updateChatSearchCount();
 
 
 window.addEventListener("resize",()=>{
+  fitChatToolsPanel();
   if(state.live.replaySelected){
     fitReplayPlayerViewport({scrollIntoPlace:false});
   }
@@ -10123,6 +10308,7 @@ window.addEventListener("resize",()=>{
 
 if(window.visualViewport){
   window.visualViewport.addEventListener("resize",()=>{
+    fitChatToolsPanel();
     if(state.live.replaySelected){
       fitReplayPlayerViewport({scrollIntoPlace:false});
     }

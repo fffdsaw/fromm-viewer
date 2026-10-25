@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
 function source(name){const m=html.match(new RegExp('^(?:async )?function '+name+'\\([^]*?^}', 'm'));assert.ok(m,name);return m[0];}
 const c=vm.createContext({Date,Map,Number,String,Array,Set,isHttpMediaUrl:value=>/^https?:\/\//.test(value)});
-for(const name of ['esc','voteId','voteText','voteStatusLabel','voteDateLabel','votePercent','voteResultsVisible','voteArtistPick','voteSearchText','voteMessageMarkup','voteDetailMarkup']){
+for(const name of ['esc','voteId','voteOptionId','voteArtistBadge','voteArtistNotice','voteSelectionDiagnostic','voteText','voteStatusLabel','voteDateLabel','votePercent','voteResultsVisible','voteArtistPick','voteSearchText','voteMessageMarkup','voteDetailMarkup']){
  // Some short pure functions are deliberately single-line.
  const m=html.match(new RegExp('^function '+name+'\\([^\\n]*\\}\\r?$', 'm'));
  vm.runInContext(m ? m[0] : source(name),c);
@@ -26,15 +26,19 @@ test('fan results remain concealed until ended or an existing participation is p
  assert.equal(c.voteResultsVisible({status:'ongoing',myPickOptionId:1}),true);
  for(const status of ['scheduled','deleted','unknown']) assert.equal(c.voteResultsVisible({status,myPickOptionId:1}),false);
 });
-test('artist pick requires ended public result, a matching id and no explicit nonparticipation',()=>{
+test('artist pick follows official ended/public/matching-id predicate without extra participation gate',()=>{
  assert.equal(c.voteArtistPick(vote,vote.options[1]),true);
- for(const patch of [{status:'ongoing'},{isArtiPickExposed:false},{isArtiPickExposed:null},{artiPickOptionId:null},{hasArtiParticipated:false}]) assert.equal(c.voteArtistPick({...vote,...patch},vote.options[1]),false);
+ for(const patch of [{status:'ongoing'},{isArtiPickExposed:false},{isArtiPickExposed:null},{artiPickOptionId:null}]) assert.equal(c.voteArtistPick({...vote,...patch},vote.options[1]),false);
  assert.equal(c.voteArtistPick(vote,vote.options[0]),false);
+ assert.equal(c.voteArtistPick({...vote,hasArtiParticipated:false},vote.options[1]),true,'official UI does not gate the pick on hasArtiParticipated');
+ assert.equal(c.voteArtistPick({...vote,artiPickOptionId:0},{optionId:0}),true);
+ assert.equal(c.voteArtistPick({...vote,artiPickOptionId:'0'},{optionId:0}),true);
+ assert.equal(c.voteArtistPick({...vote,artiPickOptionId:null},{optionId:0}),false);
 });
 test('result markup renders genuine zero and missing values separately',()=>{
  const markup=c.voteDetailMarkup(vote);
  assert.match(markup,/>0%</);assert.match(markup,/>100%</);assert.match(markup,/>미제공</);
- assert.equal((markup.match(/vote-artist-pick/g)||[]).length,1);
+ assert.equal((markup.match(/class="vote-artist-pick"/g)||[]).length,1);
  const privateResult=c.voteDetailMarkup({...vote,status:'ongoing',myPickOptionId:null});
  assert.doesNotMatch(privateResult,/>100%|vote-artist-pick|width:100%/);
  assert.doesNotMatch(c.voteDetailMarkup({...vote,status:'deleted'}),/Synthetic question|100%|vote-option/);
@@ -48,4 +52,24 @@ test('card and detail escape server content and reject non-HTTPS image sources',
 test('vote search indexes questions/options without identifiers or image URLs',()=>{
  assert.equal(c.voteSearchText({...vote,topic:'Question',options:[{text:'Answer',originalImageUrl:'secret-url'}]}),'Question\nAnswer');
  assert.doesNotMatch(c.voteSearchText(vote),/7|optionId/);
+});
+
+test('artist profile appears only inside a confirmed public pick and escapes profile metadata',()=>{
+ const profile={name:'<아티>',image:'https://cdn.example/avatar.jpg'};
+ const markup=c.voteDetailMarkup(vote,profile);
+ assert.match(markup,/vote-artist-profile/);assert.match(markup,/&lt;아티&gt; 선택/);
+ assert.doesNotMatch(c.voteDetailMarkup({...vote,isArtiPickExposed:false},profile),/vote-artist-profile/);
+ assert.doesNotMatch(c.voteArtistBadge({name:'A',image:'javascript:bad'}),/<img/);
+ assert.match(c.voteArtistBadge({name:'아티'}),/vote-artist-avatar/);
+ assert.equal(c.voteResultsVisible({status:'ongoing',myPickOptionId:0}),true);
+});
+
+test('missing artist selections distinguish private, missing and mismatched data without exposing identifiers',()=>{
+ assert.match(c.voteArtistNotice({...vote,isArtiPickExposed:false}),/비공개/);
+ assert.match(c.voteArtistNotice({...vote,isArtiPickExposed:null}),/공개 여부/);
+ assert.match(c.voteArtistNotice({...vote,artiPickOptionId:null}),/선택 정보/);
+ assert.match(c.voteArtistNotice({...vote,artiPickOptionId:99}),/연결하지/);
+ const d=c.voteSelectionDiagnostic({...vote,artiPickOptionId:0,hasArtiParticipated:false,options:[{optionId:0,text:'private question'}]}, {image:'https://private-profile.test/secret'});
+ assert.equal(d.displayed,true);assert.equal(d.matched,true);
+ assert.doesNotMatch(JSON.stringify(d),/private question|secret|https?:|optionId|artiPickOptionId/);
 });

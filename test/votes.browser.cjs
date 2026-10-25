@@ -14,7 +14,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
   for(const width of [1440,390]){
    const context=await browser.newContext({viewport:{width,height:900}});
    const page=await context.newPage(),errors=[],requests=[];
-   let failPage=false,badCursor=false,listDelay=0,detailDelay=0,detailStatus=200,detailPatch={};
+   let failPage=false,badCursor=false,listDelay=0,detailDelay=0,detailStatus=200,detailPatch={},brokenAvatar=false;
    page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
     const url=new URL(route.request().url());
@@ -40,13 +40,14 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
      }
      return json({messages:[],liveRooms:[],channels:[],chatRooms:[]});
     }
+    if(url.hostname==='cdn.example' && brokenAvatar && url.pathname.startsWith('/avatar-')) return route.fulfill({status:404,body:''});
     if(url.hostname==='cdn.example') return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="180" height="100"><rect width="180" height="100" fill="#355983"/></svg>'});
     return route.abort();
    });
    await page.goto('http://viewer.test:4175/index.html');
    await page.evaluate(()=>{
     setActiveAuth('synthetic-token','synthetic-device','synthetic-account');hideLoginGate();
-    state.rooms=[{hostChatRoomId:'room-a',host:{nick:'합성 아티스트 A'}},{hostChatRoomId:'room-b',host:{nick:'합성 아티스트 B'}}];
+    state.rooms=[{hostChatRoomId:'room-a',host:{nick:'합성 아티스트 A',profileUrlThumbnail:'https://cdn.example/avatar-a.svg'}},{hostChatRoomId:'room-b',host:{nick:'합성 아티스트 B',profileUrlThumbnail:'https://cdn.example/avatar-b.svg'}}];
     state.room=state.rooms[0];state.filter='all';state.chatHistoryComplete=true;state.hasMoreMessages=false;
     const base={userType:'star',createdAt:'2026-10-24T12:00:00Z',updatedAt:'2026-10-24T12:00:00Z'};
     state.chatMessages=[{...base,messageId:'before',type:'text',content:'일반 대화'},
@@ -67,6 +68,9 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    assert.equal(await page.locator('.vote-percentage').first().innerText(),'0%');
    assert.equal(await page.locator('.vote-percentage').last().innerText(),'미제공');
    assert.equal(await page.locator('.vote-artist-pick').count(),1);
+   assert.match(await page.locator('.vote-artist-pick').innerText(),/합성 아티스트 A 선택/);
+   await page.waitForFunction(()=>document.querySelector('.vote-artist-profile')?.naturalWidth>0);
+   assert.match(await page.locator('.vote-artist-profile').getAttribute('src'),/avatar-a/);
    await page.waitForFunction(()=>document.querySelector('.vote-option img')?.naturalWidth>0);
    if(process.env.VOTE_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.VOTE_SCREENSHOT_DIR,`detail-${width}.png`)});
    await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.getElementById('voteDetailDialog').open);
@@ -87,6 +91,20 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    if(process.env.VOTE_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.VOTE_SCREENSHOT_DIR,`list-${width}.png`),fullPage:true});
    await page.locator('.vote-list-item').last().click();await page.getByRole('heading',{name:'합성 투표 3',exact:true}).waitFor();
    await page.getByRole('button',{name:'투표 닫기'}).click();
+   detailPatch={hasArtiParticipated:false,artiPickOptionId:0,options:[{optionId:0,text:'0번 ID 선택지',percentage:23},{optionId:1,text:'다른 선택지',percentage:77}]};
+   await page.locator('.vote-list-item').last().click();await page.getByRole('heading',{name:'합성 투표 3',exact:true}).waitFor();
+   assert.match(await page.locator('.vote-option.artist-pick').innerText(),/0번 ID 선택지/);
+   assert.equal(await page.locator('.vote-artist-profile').count(),1,'zero option and false participation flag follow native selection condition');
+   assert.equal(await page.evaluate(()=>FrommVoteDiag().displayed),true);
+   assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(FrommVoteDiag())),/synthetic|room-a|합성|https?:|Bearer/);
+   await page.getByRole('button',{name:'투표 닫기'}).click();
+   await page.evaluate(()=>{state.room.host.profileUrlThumbnail='https://cdn.example/avatar-missing.svg';});
+   brokenAvatar=true;await page.locator('.vote-list-item').last().click();await page.getByRole('heading',{name:'합성 투표 3',exact:true}).waitFor();
+   await page.waitForFunction(()=>document.querySelector('.vote-artist-pick') && !document.querySelector('.vote-artist-profile'));
+   assert.match(await page.locator('.vote-artist-pick').innerText(),/합성 아티스트 A 선택/,'failed profile retains artist label/initial');
+   assert.equal(await page.locator('.vote-artist-avatar').count(),1);
+   await page.getByRole('button',{name:'투표 닫기'}).click();brokenAvatar=false;
+   await page.evaluate(()=>{state.room.host.profileUrlThumbnail='https://cdn.example/avatar-a.svg';});
    detailPatch={status:'ongoing',myPickOptionId:null};await page.locator('.vote-list-item').last().click();
    await page.getByRole('heading',{name:'합성 투표 3',exact:true}).waitFor();
    assert.equal(await page.locator('.vote-artist-pick').count(),0);
@@ -94,6 +112,8 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    await page.getByRole('button',{name:'투표 닫기'}).click();
    detailPatch={isArtiPickExposed:false};await page.locator('.vote-list-item').last().click();await page.getByRole('heading',{name:'합성 투표 3',exact:true}).waitFor();
    assert.equal(await page.locator('.vote-artist-pick').count(),0,'private artist picks stay concealed');
+   assert.equal(await page.locator('.vote-artist-profile').count(),0);
+   assert.equal(await page.evaluate(()=>FrommVoteDiag().exposed),false);
    await page.getByRole('button',{name:'투표 닫기'}).click();
    detailStatus=403;await page.locator('.vote-list-item').last().click();await page.getByRole('alert').waitFor();
    assert.match(await page.getByRole('alert').innerText(),/권한/);
@@ -111,6 +131,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    await page.getByText('다른 아티스트 투표',{exact:true}).waitFor();
    assert.equal(await page.locator('.vote-list-item').count(),1,'room change rejects the delayed previous list');
    await page.locator('.vote-list-item').click();await page.getByRole('heading',{name:'합성 투표 9',exact:true}).waitFor();
+   assert.match(await page.locator('.vote-artist-profile').getAttribute('src'),/avatar-b/,'room B never reuses room A profile');
    await page.evaluate(()=>resetUserScopedMemory());
    await page.waitForFunction(()=>!document.getElementById('voteDetailDialog').open);
    assert.equal(await page.evaluate(()=>voteView.items.length),0,'account reset clears vote cache');

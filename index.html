@@ -1117,7 +1117,9 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
 .vote-option-top>span{overflow-wrap:anywhere;min-width:0;white-space:pre-wrap}
 .vote-percentage{white-space:nowrap;flex-shrink:0}
 .vote-option img{max-width:100%;max-height:240px;object-fit:contain;display:block;margin-bottom:10px;border-radius:8px}
-.vote-artist-pick{display:inline-block;font-size:12px;color:var(--accent,#ff6b8b);margin-top:6px}
+.vote-artist-pick{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--accent,#ff6b8b);margin-top:6px}
+.vote-artist-avatar{position:relative;display:inline-grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:50%;overflow:hidden;background:var(--panel2);border:1px solid var(--accent)}
+.vote-artist-avatar .vote-artist-profile{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:cover;margin:0;border-radius:50%}
 .vote-bar{height:5px;border-radius:5px;background:#ffffff16;margin-top:10px;overflow:hidden}
 .vote-bar>span{display:block;height:100%;background:var(--accent2,#4aa3ff)}
 .vote-error{color:var(--bad,#ff8393);line-height:1.6}
@@ -2868,10 +2870,26 @@ async function frommApiRequest(path,{method="GET",query=null,body=null,base=FROM
 
 // Read-only votes. No request in this feature uses a write method.
 const voteView = {key:"", context:null, items:[], loaded:false, cursor:null, cursors:new Set(), error:"", owner:null};
-let voteDetailOwner = null;
+let voteDetailOwner = null, voteDetailDiagnostic = null;
+window.FrommVoteDiag=()=>voteDetailDiagnostic ? {...voteDetailDiagnostic} : null;
 function voteId(value){
   if(typeof value === "number") return Number.isSafeInteger(value) && value > 0 ? String(value) : "";
   return typeof value === "string" && value.length <= 19 && /^[1-9][0-9]*$/.test(value) ? value : "";
+}
+// Option IDs are non-null Longs in the app; zero is a valid choice ID.
+function voteOptionId(value){
+  if(typeof value === "number") return Number.isSafeInteger(value) && value >= 0 ? String(value) : "";
+  return typeof value === "string" && value.length <= 19 && /^(0|[1-9][0-9]*)$/.test(value) ? value : "";
+}
+function voteArtistProfile(){
+  const host=state.room?.host || {};
+  const image=normalizeMediaUrl(host.profileUrlThumbnail || host.profileUrl || host.defaultProfileUrl || "");
+  return {name:voteText(host.nick) || "아티스트", image:/^https:\/\//i.test(image) ? image : ""};
+}
+function voteArtistBadge(profile){
+  const name=voteText(profile?.name) || "아티스트", image=voteText(profile?.image);
+  return `<span class="vote-artist-pick"><span class="vote-artist-avatar" aria-hidden="true"><span>${esc(name.slice(0,1))}</span>
+    ${/^https:\/\//i.test(image) && isHttpMediaUrl(image) ? `<img class="vote-artist-profile" src="${esc(image)}" alt="" referrerpolicy="no-referrer">` : ""}</span><span>${esc(name)} 선택</span></span>`;
 }
 function voteText(value){ return typeof value === "string" ? value : ""; }
 function voteStatusLabel(vote){
@@ -2883,10 +2901,27 @@ function voteDateLabel(value){
   return Number.isFinite(date.getTime()) ? `${date.toLocaleString("ko-KR")} 종료` : "종료일 미제공";
 }
 function votePercent(value){ return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : null; }
-function voteResultsVisible(vote){ return vote?.status === "ended" || (vote?.status === "ongoing" && !!voteId(vote.myPickOptionId)); }
+function voteResultsVisible(vote){ return vote?.status === "ended" || (vote?.status === "ongoing" && voteOptionId(vote.myPickOptionId) !== ""); }
 function voteArtistPick(vote,option){
-  return vote?.status === "ended" && vote.isArtiPickExposed === true && vote.hasArtiParticipated !== false &&
-    !!voteId(option?.optionId) && voteId(option.optionId) === voteId(vote.artiPickOptionId);
+  return vote?.status === "ended" && vote.isArtiPickExposed === true &&
+    voteOptionId(option?.optionId) !== "" && voteOptionId(option.optionId) === voteOptionId(vote.artiPickOptionId);
+}
+function voteArtistNotice(vote){
+  if(vote?.status !== "ended") return "아티스트 선택은 투표 종료 후 공개 설정에 따라 표시됩니다.";
+  if(vote.isArtiPickExposed === false) return "아티스트 선택이 비공개인 투표입니다.";
+  if(vote.isArtiPickExposed !== true) return "아티스트 선택의 공개 여부가 제공되지 않았습니다.";
+  if(vote.artiPickOptionId == null) return "아티스트 선택 정보가 제공되지 않았습니다.";
+  return "아티스트가 선택한 항목을 선택지 정보와 연결하지 못했습니다.";
+}
+function voteSelectionDiagnostic(vote,profile){
+  const options=Array.isArray(vote?.options) ? vote.options : [], pick=voteOptionId(vote?.artiPickOptionId);
+  return {status:["scheduled","ongoing","ended","deleted"].includes(vote?.status) ? vote.status : "unknown",
+    exposed:typeof vote?.isArtiPickExposed === "boolean" ? vote.isArtiPickExposed : "missing",
+    participated:typeof vote?.hasArtiParticipated === "boolean" ? vote.hasArtiParticipated : "missing",
+    pickType:vote?.artiPickOptionId == null ? "missing" : typeof vote.artiPickOptionId,
+    pickPresent:pick !== "", optionCount:options.length,
+    matched:pick !== "" && options.some(o=>voteOptionId(o?.optionId) === pick),
+    displayed:options.some(o=>voteArtistPick(vote,o)), profileAvailable:!!profile?.image};
 }
 function voteSearchText(vote){
   return [voteText(vote?.topic),...(Array.isArray(vote?.options) ? vote.options.map(o=>voteText(o?.text)) : [])].join("\n");
@@ -2917,7 +2952,7 @@ function invalidateVoteView(){
   }
 }
 function resetVoteView(){
-  invalidateVoteView();
+  invalidateVoteView();voteDetailDiagnostic=null;
   Object.assign(voteView,{key:"",context:null,items:[],loaded:false,cursor:null,cursors:new Set(),error:""});
 }
 function ensureVoteContext(){
@@ -2984,7 +3019,7 @@ async function loadVotes({refresh=false}={}){
   }catch(error){if(current()) voteView.error=voteReadError(error);}
   finally{if(voteView.owner===owner){voteView.owner=null;if(voteContextCurrent(context) && state.filter==="vote") renderVoteList();}}
 }
-function voteDetailMarkup(vote){
+function voteDetailMarkup(vote,profile=null){
   if(vote?.status === "deleted") return `<p class="vote-note">삭제된 투표입니다.</p>`;
   const results=voteResultsVisible(vote), options=Array.isArray(vote.options) ? vote.options : [];
   return `<div class="vote-detail-meta"><span class="vote-status">${esc(voteStatusLabel(vote))}</span><span class="vote-date">${esc(voteDateLabel(vote.endAt))}</span></div>
@@ -2996,16 +3031,16 @@ function voteDetailMarkup(vote){
       return `<li class="vote-option ${pick ? "artist-pick" : ""}">
         ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer">` : ""}
         <div class="vote-option-top"><span>${esc(voteText(option?.text) || `선택지 ${index+1}`)}</span><strong class="vote-percentage">${percent===null ? "미제공" : `${percent}%`}</strong></div>
-        ${pick ? `<span class="vote-artist-pick">아티스트 선택</span>` : ""}
+        ${pick ? voteArtistBadge(profile) : ""}
         ${percent!==null ? `<div class="vote-bar" aria-hidden="true"><span style="width:${percent}%"></span></div>` : ""}</li>`;
     }).join("")}</ol>
     ${!options.length ? `<p class="vote-note">선택지 정보가 제공되지 않았습니다.</p>` : ""}
-    ${!options.some(option=>voteArtistPick(vote,option)) ? `<p class="vote-note">아티스트 선택은 비공개이거나 정보가 제공되지 않았습니다.</p>` : ""}`;
+    ${!options.some(option=>voteArtistPick(vote,option)) ? `<p class="vote-note">${esc(voteArtistNotice(vote))}</p>` : ""}`;
 }
 async function openVoteDetail(id){
   id=voteId(id); const context=voteContext();
   if(!id || !context.room) return;
-  voteDetailOwner?.abort();
+  voteDetailOwner?.abort();voteDetailDiagnostic=null;
   const owner=voteDetailOwner=new AbortController();
   let dialog=document.getElementById("voteDetailDialog");
   if(!dialog){
@@ -3026,8 +3061,14 @@ async function openVoteDetail(id){
     const vote=data.vote;
     if(!vote || voteId(vote.id)!==id) throw new Error("VOTE_SCHEMA");
     dialog.querySelector("#voteDetailTitle").textContent=voteText(vote.topic) || "투표";
-    body.innerHTML=voteDetailMarkup(vote);
-    for(const image of body.querySelectorAll("img")) image.addEventListener("error",()=>{image.replaceWith(Object.assign(document.createElement("span"),{textContent:"선택지 사진을 불러오지 못했습니다.",className:"vote-note"}));},{once:true});
+    const profile=voteArtistProfile();
+    voteDetailDiagnostic=voteSelectionDiagnostic(vote,profile);
+    if(voteDetailDiagnostic.exposed === true && voteDetailDiagnostic.pickPresent && !voteDetailDiagnostic.matched){
+      console.warn("[Fromm votes] 아티스트 선택에 대응하는 선택지가 없습니다.", {...voteDetailDiagnostic});
+    }
+    body.innerHTML=voteDetailMarkup(vote,profile);
+    for(const image of body.querySelectorAll(".vote-artist-profile")) image.addEventListener("error",()=>image.remove(),{once:true});
+    for(const image of body.querySelectorAll(".vote-option>img")) image.addEventListener("error",()=>{image.replaceWith(Object.assign(document.createElement("span"),{textContent:"선택지 사진을 불러오지 못했습니다.",className:"vote-note"}));},{once:true});
   }catch(error){
     if(current()){
       dialog.querySelector("#voteDetailTitle").textContent="투표";

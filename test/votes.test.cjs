@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
 function source(name){const m=html.match(new RegExp('^(?:async )?function '+name+'\\([^]*?^}', 'm'));assert.ok(m,name);return m[0];}
 const c=vm.createContext({Date,Map,Number,String,Array,Set,isHttpMediaUrl:value=>/^https?:\/\//.test(value)});
-for(const name of ['esc','voteId','voteOptionId','voteArtistBadge','voteArtistNotice','voteSelectionDiagnostic','voteText','voteStatusLabel','voteDateLabel','votePercent','voteResultsVisible','voteArtistPick','voteSearchText','voteMessageMarkup','voteDetailMarkup']){
+for(const name of ['esc','voteId','voteOptionId','voteArtistBadge','voteArtistNotice','voteSelectionDiagnostic','voteText','voteStatusLabel','voteDateLabel','votePercent','voteResultsVisible','voteArtistPick','voteSearchText','voteMessageMarkup','voteImageSource','voteDetailMarkup']){
  // Some short pure functions are deliberately single-line.
  const m=html.match(new RegExp('^function '+name+'\\([^\\n]*\\}\\r?$', 'm'));
  vm.runInContext(m ? m[0] : source(name),c);
@@ -72,4 +72,11 @@ test('missing artist selections distinguish private, missing and mismatched data
  const d=c.voteSelectionDiagnostic({...vote,artiPickOptionId:0,hasArtiParticipated:false,options:[{optionId:0,text:'private question'}]}, {image:'https://private-profile.test/secret'});
  assert.equal(d.displayed,true);assert.equal(d.matched,true);
  assert.doesNotMatch(JSON.stringify(d),/private question|secret|https?:|optionId|artiPickOptionId/);
+});
+
+test('vote photos prefer a valid HTTPS original and fall back only to an available thumbnail',()=>{
+ const option={originalImageUrl:'https://cdn.example/original.jpg',thumbnailImageUrl:'https://cdn.example/thumb.jpg'};
+ assert.equal(c.voteImageSource(option,true),option.originalImageUrl);assert.equal(c.voteImageSource(option),option.thumbnailImageUrl);
+ assert.equal(c.voteImageSource({...option,originalImageUrl:null},true),option.thumbnailImageUrl);
+ assert.equal(c.voteImageSource({originalImageUrl:'javascript:bad',thumbnailImageUrl:'http://unsafe.test'}),'');
 });

@@ -95,19 +95,67 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    if(process.env.REPLY_SCREENSHOT_DIR){fs.mkdirSync(process.env.REPLY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.REPLY_SCREENSHOT_DIR,`reply-calendar-${width}.png`)});}
    await page.locator('#myRepliesBtn').click();
    assert.equal(await page.locator('#myRepliesBtn').getAttribute('aria-pressed'),'true');
+   await page.waitForFunction(()=>state.chatMatchKey==='my-reply');
+   assert.equal(await page.locator('.msg').count(),messages.length,'context mode retains surrounding conversation');
+   assert.equal(await page.locator('#chatMatchPosition').innerText(),'1 / 2');
+   assert.equal(await page.locator('#chatMatchPrev').isDisabled(),true);
+   await page.evaluate(()=>{window.contextNode=document.querySelector('[data-message-id="ordinary"]');});
+   await page.locator('#chatMatchNext').click();
+   await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
+   assert.equal(await page.locator('#chatMatchPosition').innerText(),'2 / 2');
+   assert.equal(await page.locator('#chatMatchNext').isDisabled(),true);
+   assert.equal(await page.evaluate(()=>window.contextNode===document.querySelector('[data-message-id="ordinary"]')),true,'nearby arrow jumps preserve existing DOM');
+   await page.locator('#chatMatchPrev').click();await page.waitForFunction(()=>state.chatMatchKey==='my-reply');
+   await page.locator('#chatToolsBtn').click();
+   await page.locator('#chatContextBtn').click();
+   assert.equal(await page.locator('#chatContextBtn').getAttribute('aria-pressed'),'false');
    assert.equal(await page.locator('.msg').count(),2);
    assert.equal(await page.locator('.reply-mine').count(),2);
    await page.locator('#chatSearchInput').fill('하나');
    await page.waitForFunction(()=>state.chatQuery==='하나');assert.equal(await page.locator('.msg').count(),1);
    assert.equal(await page.locator('#chatSearchCount').innerText(),'1개');
    await page.locator('#chatSearchClear').click();assert.equal(await page.locator('.msg').count(),2);
+   await page.locator('#datePickerBtn').click();
    await day('25').click();await page.waitForFunction(()=>document.querySelector('[data-message-id="my-image-reply"]')?.classList.contains('date-target-flash'));
    assert.equal(await page.locator('.msg').count(),2,'date navigation retains the personal filter');
    await page.locator('[data-message-id="my-reply"] .reply-quote').click();
    await page.waitForFunction(()=>!state.onlyMyReplies && document.querySelector('[data-message-id="original"]')?.classList.contains('reply-target-flash'));
    assert.equal(await page.locator('.msg').count(),messages.length);
+   // Plain text search can also navigate matches inside the complete conversation.
+   await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('일반 대화');
+   await page.waitForFunction(()=>state.chatQuery==='일반 대화');
+   const searchTotal=await page.evaluate(()=>chatMatches().length);assert.ok(searchTotal>1);
+   await page.locator('#chatContextBtn').click();await page.waitForFunction(()=>state.chatMatchKey==='ordinary');
+   assert.equal(await page.locator('.msg').count(),messages.length);
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='other-reply');
+   assert.equal(await page.evaluate(()=>state.chatQuery),'일반 대화');
+   await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchClear').click();
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),false);
    await page.locator('[data-filter="media"]').click();assert.equal(await page.locator('.media-card').count(),1);
    await page.locator('[data-filter="all"]').click();assert.equal(await page.locator('.msg').count(),messages.length);
+   // Far-apart matches keep the full conversation but render a bounded window.
+   await page.evaluate(()=>{
+    window.smallHistory=state.chatMessages;
+    state.chatMessages=Array.from({length:3000},(_,i)=>({messageId:'many-'+i,userType:'star',type:'text',content:'주변 대화 '+i,
+     createdAt:new Date(Date.UTC(2026,0,1,0,i)).toISOString(),...([0,1500,2999].includes(i)?{mentionedMessage:{messageId:'original',userId:'fan-a',content:'내 원문'}}:{})}));
+    state.chatContext=false;state.chatMatchKey='';state.onlyMyReplies=false;render();
+   });
+   await page.locator('#chatToolsBtn').click();await page.locator('#myRepliesBtn').click();
+   await page.waitForFunction(()=>state.chatMatchKey==='many-0');
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='many-1500');
+   assert.equal(await page.locator('[data-message-id="many-1499"]').count(),1);assert.equal(await page.locator('[data-message-id="many-1501"]').count(),1);
+   assert.ok(await page.locator('.msg').count()<1200,'far jumps do not render all history');
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='many-2999');
+   assert.equal(await page.locator('#chatMatchPosition').innerText(),'3 / 3');
+   await page.locator('#chatMatchPrev').click();await page.waitForFunction(()=>state.chatMatchKey==='many-1500');
+   assert.equal(await page.locator('#chatMatchPosition').innerText(),'2 / 3');
+   await page.evaluate(()=>jumpToDate('2026-01-03'));
+   await page.waitForFunction(()=>state.chatMatchKey==='many-2999');
+   assert.equal(await page.locator('#chatMatchPosition').innerText(),'3 / 3','context date jump lands on a reply after thousands of earlier records');
+
+   assert.equal(await page.locator('#chatToolsBtn svg.magnifier-icon circle').count(),1);
+   if(process.env.REPLY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.REPLY_SCREENSHOT_DIR,`reply-context-${width}.png`)});
+   await page.evaluate(()=>{state.chatMessages=window.smallHistory;state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey='';render();});
    await page.locator('#chatToolsBtn').click();await page.locator('#myRepliesBtn').click();
    await page.locator('#rooms .room').last().evaluate(el=>el.click());
    await page.waitForFunction(()=>state.room.hostChatRoomId==='room-b' && state.chatHistoryComplete);
@@ -123,7 +171,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.evaluate(()=>{resetReplyIdentity();render();});await page.evaluate(()=>ensureReplyIdentity());
    assert.equal(await page.locator('.reply-mine').count(),0);assert.equal(await page.locator('.msg').count(),1);
    await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#myReplyRetry').isVisible(),true);
-   await page.locator('#myRepliesBtn').click();assert.equal(await page.locator('.msg').count(),0);assert.match(await page.locator('#timeline').innerText(),/본인 정보를 확인하지/);assert.equal(await page.locator('#counts').innerText(),'내 답장 확인 불가');
+   await page.locator('#myRepliesBtn').click();assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#chatMatchNext').isDisabled(),true);assert.equal(await page.locator('#counts').innerText(),'내 답장 확인 불가');
    profileStatus=200;await page.locator('#myReplyRetry').click();await page.waitForFunction(()=>currentReplyUserId()==='fan-b');
    assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#myReplyRetry').isVisible(),false);
    // Missing IDs follow the same recoverable path.
@@ -137,7 +185,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    assert.equal(await page.evaluate(()=>state.onlyMyReplies),false);
    assert.deepEqual(dialogs,[]);assert.deepEqual(errors,[]);
    assert.ok(requests.every(r=>r.method==='GET'));
-   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar day/month/year/color, date/original jumps, media, room/account/reset/failure/retry/late logout PASS`);
+   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar day/month/year/color, date/original jumps, context arrows/list toggle/3000-message bounded jumps, SVG icon, media, room/account/reset/failure/retry/late logout PASS`);
    await context.close();
   }
  }finally{await browser.close();}

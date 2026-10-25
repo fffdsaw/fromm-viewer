@@ -145,6 +145,13 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='many-1500');
    assert.equal(await page.locator('[data-message-id="many-1499"]').count(),1);assert.equal(await page.locator('[data-message-id="many-1501"]').count(),1);
    assert.ok(await page.locator('.msg').count()<1200,'far jumps do not render all history');
+   assert.equal(await page.locator('#timeline > .date-sep').first().innerText(),await page.evaluate(()=>dateKey(state.infiniteList[state.chatWindowStart])),'mid-day context windows still show the date');
+   const anchorShift=await page.evaluate(()=>{
+    const active=document.querySelector('.chat-match-active'), before=active.getBoundingClientRect().top;
+    prependChatBatch(1,state.infiniteVersion);return active.getBoundingClientRect().top-before;
+   });
+   assert.ok(Math.abs(anchorShift)<2,'prepending older context preserves the current reply position');
+   const dates=await page.locator('#timeline > .date-sep').allTextContents();assert.equal(new Set(dates).size,dates.length,'prepending replaces the temporary date heading');
    await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='many-2999');
    assert.equal(await page.locator('#chatMatchPosition').innerText(),'3 / 3');
    await page.locator('#chatMatchPrev').click();await page.waitForFunction(()=>state.chatMatchKey==='many-1500');

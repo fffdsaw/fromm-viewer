@@ -7621,7 +7621,7 @@ function disconnectInfiniteObserver(){
   ).forEach(el=>el.remove());
 }
 
-function buildChatRangeFragment(start,end){
+function buildChatRangeFragment(start,end,includeStartDate=false){
   const list = state.infiniteList || [];
   const frag = document.createDocumentFragment();
 
@@ -7637,10 +7637,11 @@ function buildChatRangeFragment(start,end){
         ? dateKey(list[i-1])
         : "";
 
-    if(i === 0 || dk !== prevDate){
+    if(i === 0 || dk !== prevDate || (includeStartDate && i === safeStart)){
       const sep = document.createElement("div");
       sep.className = "date-sep";
       sep.dataset.date = dk;
+      if(includeStartDate && i === safeStart && i > 0 && dk === prevDate) sep.dataset.windowDate="true";
       sep.id = `chat-date-${dk}`;
       sep.textContent = dk;
       frag.appendChild(sep);
@@ -7683,7 +7684,8 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
   const amount = state.chunkSize * Math.max(1,chunkCount);
   const newStart = Math.max(0,oldStart - amount);
 
-  const firstVisibleContent = tl.querySelector(
+  const windowDate=tl.querySelector(":scope > .date-sep[data-window-date]");
+  const firstVisibleContent = windowDate?.nextElementSibling || tl.querySelector(
     ":scope > .date-sep, :scope > .msg"
   );
 
@@ -7691,7 +7693,8 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
     ? firstVisibleContent.getBoundingClientRect().top
     : 0;
 
-  const frag = buildChatRangeFragment(newStart,oldStart);
+  const frag = buildChatRangeFragment(newStart,oldStart,true);
+  windowDate?.remove();
   tl.insertBefore(frag,tl.firstChild);
 
   state.chatWindowStart = newStart;
@@ -8813,7 +8816,7 @@ function renderChatWindow(list,targetIndex){
   state.prefetching.clear();
 
   tl.appendChild(
-    buildChatRangeFragment(windowStart,windowEnd)
+    buildChatRangeFragment(windowStart,windowEnd,true)
   );
 
   // Downward scrolling continues into later conversations.

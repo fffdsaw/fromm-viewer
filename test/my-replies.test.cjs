@@ -13,14 +13,14 @@ function setup(){
  const c=vm.createContext({Date,Map,Number,String,Array,Set,JSON,AbortController,setTimeout,clearTimeout,
   auth:{token:'test-token',uuid:'device-not-user',accountKey:'account-a'},
   state:{chatMessages:[],onlyMyReplies:false,filter:'all',chatQuery:''},
-  replyIdentity:{context:null,id:'',status:'idle',owner:null,promise:null},
+  chatMatchCache:null,replyIdentity:{context:null,id:'',status:'idle',owner:null,promise:null},
   currentAuth(){return c.auth;},document:{querySelectorAll:()=>[]},
   syncMyReplyTools(){},renderDateCalendar(){},render(){},syncVisibleReplyLabels(){},
   specialTextState:()=>null,normType:v=>String(v||'text'),
   compareMessages:(a,b)=>new Date(a.createdAt)-new Date(b.createdAt),
   voteSearchText:()=>''
  });
- for(const n of ['replyUserId','replyAuthContext','replyAuthCurrent','currentReplyUserId','isArtist','looksLikeIdOnly','normalizeQuotedValue','getQuotedMessage','isReplyToMe','chatMessageMatches','filteredMessages','localDateKeyFromISO','chatDateSet','calendarActivityInfo','firstMessageOnDate','resetReplyIdentity','ensureReplyIdentity']) vm.runInContext(source(n),c);
+ for(const n of ['replyUserId','replyAuthContext','replyAuthCurrent','currentReplyUserId','isArtist','looksLikeIdOnly','normalizeQuotedValue','getQuotedMessage','isReplyToMe','chatMessageMatches','messageStableKey','chatContextEnabled','chatMessageVisible','chatMatches','filteredMessages','localDateKeyFromISO','chatDateSet','calendarActivityInfo','firstMessageOnDate','resetReplyIdentity','ensureReplyIdentity']) vm.runInContext(source(n),c);
  c.replyIdentity.context=c.replyAuthContext();c.replyIdentity.status='ready';c.replyIdentity.id='fan-a';return c;
 }
 const reply=(id,userId,patch={})=>({messageId:id,userType:'star',type:'text',content:'답장 본문',createdAt:'2026-10-25T05:00:00Z',mentionedMessage:{messageId:'original',userId,content:'인용 원문'},...patch});
@@ -71,4 +71,20 @@ test('logout/account change discards a late profile response and clears personal
  const pending=c.ensureReplyIdentity();const signal=c.replyIdentity.owner.signal;c.state.onlyMyReplies=true;
  c.auth={token:'token-b',uuid:'device-b',accountKey:'b'};c.resetReplyIdentity();resolve({data:{profile:{id:'fan-a'}}});
  assert.equal(await pending,false);assert.equal(signal.aborted,true);assert.equal(c.currentReplyUserId(),'');assert.equal(c.state.onlyMyReplies,false);
+});
+
+test('conversation context keeps surrounding messages while match navigation intersects own replies and text',()=>{
+ const c=setup();c.state.chatMessages=[reply('other','fan-b'),reply('mine','fan-a'),reply('normal','fan-a',{mentionedMessage:null})];
+ c.state.onlyMyReplies=true;c.state.chatContext=true;
+ assert.equal(c.filteredMessages().length,3);assert.deepEqual(Array.from(c.chatMatches(),m=>m.messageId),['mine']);
+ c.state.chatQuery='인용 원문';assert.equal(c.filteredMessages().length,3);assert.equal(c.chatMatches().length,1);
+ c.state.chatQuery='no match';assert.equal(c.chatMatches().length,0);assert.equal(c.filteredMessages().length,3);
+ c.state.chatContext=false;assert.equal(c.filteredMessages().length,0);
+});
+test('match cache updates after query, identity, or source changes and is reused for repeated arrows',()=>{
+ const c=setup();c.state.onlyMyReplies=true;c.state.chatMessages=[reply('a','fan-a'),reply('b','fan-b')];
+ const first=c.chatMatches();assert.equal(c.chatMatches(),first);
+ c.replyIdentity.id='fan-b';assert.deepEqual(Array.from(c.chatMatches(),m=>m.messageId),['b']);
+ c.state.chatMessages.push(reply('b2','fan-b'));assert.equal(c.chatMatches().length,2);
+ c.auth={...c.auth,token:'other'};assert.equal(c.chatMatches().length,0);
 });

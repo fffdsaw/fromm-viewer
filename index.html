@@ -200,8 +200,8 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .chat-tools { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
 .chat-tools-btn { width: 38px; height: 38px; padding: 0px; border: 1px solid var(--line); border-radius: 10px; background: rgb(21, 26, 34); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .chat-tools-btn:hover, .chat-tools-btn.active { border-color: var(--accent); background: rgb(36, 23, 28); }
-.magnifier-icon { position: relative; display: block; width: 15px; height: 15px; border: 2px solid; border-radius: 50%; }
-.magnifier-icon::after { content: ""; position: absolute; width: 7px; height: 2px; background: currentcolor; right: -6px; bottom: -3px; transform: rotate(45deg); transform-origin: left center; border-radius: 2px; }
+.magnifier-icon { display:block; width:20px; height:20px; flex-shrink:0; }
+
 .chat-tools-panel { position: absolute; right: 0px; top: 46px; z-index: 150; display: none; width: min(390px, -36px + 100vw); padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: rgb(17, 22, 30); box-shadow: rgba(0, 0, 0, 0.45) 0px 18px 48px; }
 .chat-tools-panel.open { display: block; }
 .chat-tools-title { margin-bottom: 12px; font-size: 14px; font-weight: 800; }
@@ -1089,6 +1089,25 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
   }
 }
 
+/* Keep scrolling usable with quiet scrollbars matching the dark UI. */
+html,.chat-tools-panel{scrollbar-width:thin;scrollbar-color:#515965 #20242b}
+html::-webkit-scrollbar,.chat-tools-panel::-webkit-scrollbar{width:7px;height:7px}
+html::-webkit-scrollbar-track,.chat-tools-panel::-webkit-scrollbar-track{background:#20242b}
+html::-webkit-scrollbar-thumb,.chat-tools-panel::-webkit-scrollbar-thumb{background:#515965;border-radius:8px;border:2px solid #20242b}
+html.vote-dialog-open{overflow:hidden}
+.vote-dialog{scrollbar-width:none;overscroll-behavior:contain}
+.vote-dialog::-webkit-scrollbar{display:none}
+.vote-image-save{font-size:12px;margin:0 0 10px}
+.vote-image-status{display:block;color:var(--muted);font-size:12px;line-height:1.5}
+.chat-match-nav{display:flex;align-items:center;gap:4px}
+.chat-match-nav[hidden],.chat-context-btn[hidden]{display:none}
+.toolbar:has(#chatMatchNav:not([hidden])) #selectedCount:not(.has-selection){display:none !important}
+.chat-match-nav .btn{width:32px;height:34px;padding:0;font-size:18px}
+#chatMatchPosition{font-size:12px;min-width:40px;text-align:center;color:var(--muted);white-space:nowrap}
+.chat-context-btn{width:100%;margin-top:10px}
+.chat-context-btn[aria-pressed="true"]{color:#ffb2c3;border-color:#ff8fa8}
+.msg.chat-match-active .bubble{outline:2px solid #ff8fa8;outline-offset:3px}
+
 /* Personal reply markers share the existing calendar dot; pink takes precedence. */
 .chat-tools-panel{max-height:calc(100dvh - var(--my-reply-panel-top, 200px) - 12px);overflow-y:auto;overscroll-behavior:contain}
 .my-replies-btn{margin:0 0 6px;width:100%;justify-content:center}
@@ -1313,16 +1332,21 @@ body.download-marquee-active{user-select:none;cursor:default}
       <button class="btn" id="selectAllBtn">전체선택</button>
       <button class="btn good" id="saveSelectedBtn" title="폴더를 한 번 선택하면 기존 파일을 건너뛰고 선택 항목을 자동 저장">저장</button>
 
+      <div id="chatMatchNav" class="chat-match-nav" aria-label="찾은 대화 이동" hidden>
+        <button id="chatMatchPrev" class="btn" type="button" aria-label="이전 일치 대화" title="이전 일치 대화">↑</button>
+        <output id="chatMatchPosition" aria-live="polite">0 / 0</output>
+        <button id="chatMatchNext" class="btn" type="button" aria-label="다음 일치 대화" title="다음 일치 대화">↓</button>
+      </div>
       <div class="chat-tools" id="chatTools">
         <button id="chatToolsBtn" class="chat-tools-btn" type="button"
                 title="대화 검색 / 날짜 찾기" aria-label="대화 검색 / 날짜 찾기">
-          <span class="magnifier-icon" aria-hidden="true"></span>
+          <svg class="magnifier-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
         </button>
 
         <div id="chatToolsPanel" class="chat-tools-panel" aria-hidden="true">
           <div class="chat-tools-title">전체 대화 찾기</div>
 
-          <button id="myRepliesBtn" class="btn my-replies-btn" type="button" aria-pressed="false">내 글에 온 답장만</button>
+          <button id="myRepliesBtn" class="btn my-replies-btn" type="button" aria-pressed="false">내 글에 온 답장</button>
           <p id="myReplyStatus" class="my-reply-status" role="status" aria-live="polite"></p>
           <button id="myReplyRetry" class="btn" type="button" hidden>본인 정보 다시 확인</button>
 
@@ -1335,6 +1359,7 @@ body.download-marquee-active{user-select:none;cursor:default}
                     type="button" title="검색 지우기">×</button>
           </div>
 
+          <button id="chatContextBtn" class="btn chat-context-btn" type="button" aria-pressed="false" hidden>전체 대화 함께 보기</button>
           <div class="chat-tools-divider"></div>
 
           <div class="chat-tools-label">날짜 찾기</div>
@@ -1912,6 +1937,8 @@ const state = {
   sortDirection: "desc",
   chatQuery: "",
   onlyMyReplies: false,
+  chatContext: false,
+  chatMatchKey: "",
   // Restore the previous visual batch size; gallery work is sliced across frames.
   chunkSize: 120,
   initialChunks: 2,
@@ -2359,7 +2386,7 @@ function legacyMediaFolders(t){
 function contentTypeExt(ct,t){
   ct = String(ct||"").split(";")[0].trim().toLowerCase();
   const map = {
-    "image/jpeg":".jpg","image/png":".png","image/webp":".webp","image/gif":".gif","image/heic":".heic",
+    "image/jpeg":".jpg","image/png":".png","image/webp":".webp","image/gif":".gif","image/heic":".heic","image/avif":".avif","image/svg+xml":".svg",
     "video/mp4":".mp4","video/quicktime":".mov","video/webm":".webm",
     "audio/mp4":".m4a","audio/x-m4a":".m4a","audio/mpeg":".mp3","audio/aac":".aac",
     "audio/wav":".wav","audio/x-wav":".wav","audio/ogg":".ogg"
@@ -3038,6 +3065,34 @@ async function loadVotes({refresh=false}={}){
   }catch(error){if(current()) voteView.error=voteReadError(error);}
   finally{if(voteView.owner===owner){voteView.owner=null;if(voteContextCurrent(context) && state.filter==="vote") renderVoteList();}}
 }
+function voteImageSource(option,original=false){
+  const candidates=original ? [option?.originalImageUrl,option?.thumbnailImageUrl] : [option?.thumbnailImageUrl,option?.originalImageUrl];
+  return candidates.find(url=>typeof url === "string" && /^https:\/\//i.test(url) && isHttpMediaUrl(url)) || "";
+}
+async function saveVoteImage(vote,index,button,current){
+  const option=vote?.options?.[index], url=voteImageSource(option,true);
+  if(!url || !current() || button.disabled) return;
+  const status=button.parentElement.querySelector(".vote-image-status");
+  button.disabled=true;button.textContent="저장 중…";status.textContent="";
+  try{
+    const {blob,contentType}=await fetchMediaBlob({type:"image",content:url});
+    if(!current()) return;
+    if(!contentType.startsWith("image/")) throw new Error("NOT_AN_IMAGE");
+    const objectUrl=URL.createObjectURL(blob), anchor=document.createElement("a");
+    anchor.href=objectUrl;anchor.download=`투표_${voteId(vote.id)}_선택지_${index+1}${contentTypeExt(contentType,"image")}`;
+    anchor.hidden=true;document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+    status.textContent="사진을 다운로드했습니다.";
+  }catch{
+    if(current()) status.textContent="사진을 저장하지 못했습니다. 다시 시도해 주세요.";
+  }finally{
+    if(current()){button.disabled=false;button.textContent="사진 저장";}
+  }
+}
+function voteOutsidePoint(event,dialog){
+  const rect=dialog.getBoundingClientRect();
+  return event.target===dialog && (event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom);
+}
 function voteDetailMarkup(vote,profile=null){
   if(vote?.status === "deleted") return `<p class="vote-note">삭제된 투표입니다.</p>`;
   const results=voteResultsVisible(vote), options=Array.isArray(vote.options) ? vote.options : [];
@@ -3045,10 +3100,9 @@ function voteDetailMarkup(vote,profile=null){
     <p class="vote-note">${results ? "공개된 결과를 표시합니다." : "결과는 종료 후 등 공개 가능한 상태에서 표시됩니다."}</p>
     <ol class="vote-options">${options.map((option,index)=>{
       const percent=results ? votePercent(option?.percentage) : null, pick=voteArtistPick(vote,option);
-      const image=voteText(option?.thumbnailImageUrl) || voteText(option?.originalImageUrl);
-      const safeImage=/^https:\/\//i.test(image) && isHttpMediaUrl(image);
+      const image=voteImageSource(option), safeImage=!!image;
       return `<li class="vote-option ${pick ? "artist-pick" : ""}">
-        ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer"><button class="btn vote-image-save" type="button" data-option-index="${index}" aria-label="선택지 ${index+1} 사진 저장">사진 저장</button><span class="vote-image-status" role="status"></span>` : ""}
         <div class="vote-option-top"><span>${esc(voteText(option?.text) || `선택지 ${index+1}`)}</span><strong class="vote-percentage">${percent===null ? "미제공" : `${percent}%`}</strong></div>
         ${pick ? voteArtistBadge(profile) : ""}
         ${percent!==null ? `<div class="vote-bar" aria-hidden="true"><span style="width:${percent}%"></span></div>` : ""}</li>`;
@@ -3065,14 +3119,18 @@ async function openVoteDetail(id){
   if(!dialog){
     dialog=document.createElement("dialog");dialog.id="voteDetailDialog";dialog.className="vote-dialog";
     dialog.setAttribute("aria-labelledby","voteDetailTitle");
-    dialog.innerHTML=`<header class="vote-detail-heading"><h2 id="voteDetailTitle">투표</h2><button type="button" class="btn vote-close" aria-label="투표 닫기">닫기</button></header><div class="vote-detail-body"></div>`;
-    dialog.querySelector(".vote-close").onclick=()=>dialog.close();
-    dialog.addEventListener("close",()=>{if(dialog.open) return;voteDetailOwner?.abort();voteDetailOwner=null;dialog.querySelector(".vote-detail-body").replaceChildren();});
+    dialog.innerHTML=`<header class="vote-detail-heading"><h2 id="voteDetailTitle">투표</h2></header><div class="vote-detail-body"></div>`;
+    let outsideStart=false;
+    dialog.addEventListener("pointerdown",event=>{outsideStart=voteOutsidePoint(event,dialog);});
+    dialog.addEventListener("pointercancel",()=>{outsideStart=false;});
+    dialog.addEventListener("click",event=>{if(outsideStart && voteOutsidePoint(event,dialog)) dialog.close();outsideStart=false;});
+    dialog.addEventListener("close",()=>{if(dialog.open) return;document.documentElement.classList.remove("vote-dialog-open");voteDetailOwner?.abort();voteDetailOwner=null;dialog.querySelector(".vote-detail-body").replaceChildren();});
     document.body.append(dialog);
   }
   dialog.querySelector("#voteDetailTitle").textContent="투표 불러오는 중…";
   const body=dialog.querySelector(".vote-detail-body");body.innerHTML=`<p role="status" class="vote-note">내용을 확인하고 있습니다.</p>`;
   if(!dialog.open) dialog.showModal();
+  document.documentElement.classList.add("vote-dialog-open");
   const current=()=>voteDetailOwner===owner && dialog.open && voteContextCurrent(context);
   try{
     const data=await readVoteData(`/v2/chat/votes/${encodeURIComponent(context.room)}/${encodeURIComponent(id)}`,null,owner);
@@ -3086,6 +3144,7 @@ async function openVoteDetail(id){
       console.warn("[Fromm votes] 아티스트 선택에 대응하는 선택지가 없습니다.", {...voteDetailDiagnostic});
     }
     body.innerHTML=voteDetailMarkup(vote,profile);
+    for(const button of body.querySelectorAll(".vote-image-save")) button.onclick=()=>saveVoteImage(vote,Number(button.dataset.optionIndex),button,current);
     for(const image of body.querySelectorAll(".vote-artist-profile")) image.addEventListener("error",()=>image.remove(),{once:true});
     for(const image of body.querySelectorAll(".vote-option>img")) image.addEventListener("error",()=>{image.replaceWith(Object.assign(document.createElement("span"),{textContent:"선택지 사진을 불러오지 못했습니다.",className:"vote-note"}));},{once:true});
   }catch(error){
@@ -6508,7 +6567,7 @@ function selectRoom(i, btn){
   syncHeaderLiveIndicator();
 
   state.chatQuery = "";
-  state.onlyMyReplies = false;
+  state.onlyMyReplies = false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
   syncMyReplyTools();
   state.selectedDate = "";
   state.calendarMonth = null;
@@ -6820,7 +6879,8 @@ function isReplyToMe(message){
 function resetReplyIdentity(){
   replyIdentity.owner?.abort();
   Object.assign(replyIdentity,{context:null,id:"",status:"idle",owner:null,promise:null});
-  state.onlyMyReplies=false;
+  state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
+  document.querySelectorAll(".chat-match-active").forEach(el=>el.classList.remove("chat-match-active"));
   // Remove personal markers immediately, including during account transitions.
   document.querySelectorAll(".reply-mine").forEach(el=>{
     el.classList.remove("reply-mine");
@@ -6842,9 +6902,10 @@ function syncMyReplyTools(){
   $("#chatToolsBtn")?.classList.toggle("reply-filter-active",state.onlyMyReplies);
   const ready=!!currentReplyUserId();
   retry.hidden=replyIdentity.status !== "error";
+  syncChatMatchControls();
   status.textContent=replyIdentity.status === "loading" ? "본인 답장을 확인하는 중…" :
     replyIdentity.status === "error" ? "본인 정보를 확인하지 못했습니다. 일반 대화는 계속 볼 수 있습니다." :
-    ready ? "불러온 대화에서 확인된 답장만 표시합니다." : "아티스트를 선택하면 본인 답장을 확인합니다.";
+    ready ? (state.onlyMyReplies && state.chatContext ? "전체 대화에서 ↑·↓로 내 답장을 찾습니다." : "확인된 답장을 찾거나 모아볼 수 있습니다.") : "아티스트를 선택하면 본인 답장을 확인합니다.";
 }
 function syncVisibleReplyLabels(){
   const messages=new Map(state.chatMessages.map(m=>[String(m.messageId || m.id || ""),m]));
@@ -6895,10 +6956,14 @@ async function ensureReplyIdentity({retry=false}={}){
   return promise;
 }
 async function setOnlyMyReplies(enabled){
-  state.onlyMyReplies=!!enabled;
-  state.chatAutoTopPending=true;
+  const generation=state.scanGeneration;
+  state.onlyMyReplies=!!enabled;state.chatContext=!!enabled;state.chatMatchKey="";
+  state.chatAutoTopPending=!enabled;
   syncMyReplyTools();render();
-  if(enabled) await ensureReplyIdentity();
+  if(enabled){
+    await ensureReplyIdentity();
+    if(generation===state.scanGeneration && state.onlyMyReplies && chatContextEnabled()) await navigateChatMatch(1);
+  }
 }
 
 function normalizeQuotedValue(value){
@@ -7094,6 +7159,7 @@ function toggleChatToolsPanel(){
 }
 
 function updateChatSearchCount(){
+  syncChatMatchControls();
   const tools = $("#chatTools");
   const count = $("#chatSearchCount");
   if(!tools || !count) return;
@@ -7116,12 +7182,65 @@ function updateChatSearchCount(){
   if(state.onlyMyReplies && !currentReplyUserId()){
     count.textContent=replyIdentity.status === "error" ? "확인 불가" : "확인 중…";return;
   }
-  const n = filteredMessages().length;
+  const n = chatMatches().length;
   count.textContent = `${n.toLocaleString()}개`;
 }
 
+let chatMatchCache=null;
+function chatContextEnabled(){
+  return state.chatContext===true && (state.onlyMyReplies || !!state.chatQuery.trim());
+}
+function chatMessageVisible(message){
+  return normType(message.type)!=="text" || specialTextState(message)?.kind!=="hidden-empty";
+}
+function chatMatches(){
+  const messages=state.chatMessages, query=state.chatQuery.trim(), own=!!state.onlyMyReplies, identity=currentReplyUserId();
+  const cached=chatMatchCache;
+  if(cached && cached.messages===messages && cached.length===messages.length && cached.query===query && cached.own===own && cached.identity===identity) return cached.items;
+  const items=(!own && !query) ? [] : messages.filter(m=>chatMessageVisible(m) && (!own || isReplyToMe(m)) && (!query || chatMessageMatches(m,query)))
+    .sort((a,b)=>compareMessages(a,b,"asc"));
+  chatMatchCache={messages,length:messages.length,query,own,identity,items};
+  return items;
+}
+function syncChatMatchControls(){
+  const nav=$("#chatMatchNav"), context=$("#chatContextBtn");
+  if(!nav || !context) return;
+  const active=state.filter==="all" && (state.onlyMyReplies || !!state.chatQuery.trim());
+  nav.hidden=!active;context.hidden=!active;
+  context.setAttribute("aria-pressed",String(chatContextEnabled()));
+  if(!active){state.chatMatchKey="";return;}
+  const items=chatMatches(), index=items.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
+  if(index<0) state.chatMatchKey="";
+  $("#chatMatchPosition").textContent=`${index+1} / ${items.length}`;
+  const unavailable=!state.chatHistoryComplete || (state.onlyMyReplies && !currentReplyUserId());
+  $("#chatMatchPrev").disabled=unavailable || index<=0;
+  $("#chatMatchNext").disabled=unavailable || !items.length || index>=items.length-1;
+}
+async function navigateChatMatch(direction){
+  if(state.filter!=="all") return;
+  const generation=state.scanGeneration;
+  await ensureFullChatHistory();
+  if(generation!==state.scanGeneration || state.filter!=="all") return;
+  const matches=chatMatches();if(!matches.length) return;
+  const previous=matches.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
+  const index=previous<0 ? 0 : Math.max(0,Math.min(matches.length-1,previous+direction));
+  const key=messageStableKey(matches[index]);state.chatMatchKey=key;state.chatAutoTopPending=false;
+  let target=[...document.querySelectorAll("#timeline .msg")].find(el=>el.dataset.messageId===key);
+  if(!target){
+    const list=filteredMessages(), targetIndex=list.findIndex(m=>messageStableKey(m)===key);
+    if(targetIndex<0) return;
+    renderChatWindow(list,targetIndex);
+    target=[...document.querySelectorAll("#timeline .msg")].find(el=>el.dataset.messageId===key);
+  }
+  document.querySelectorAll(".chat-match-active").forEach(el=>el.classList.remove("chat-match-active"));
+  target?.classList.add("chat-match-active");syncChatMatchControls();
+  requestAnimationFrame(()=>{
+    if(generation===state.scanGeneration && state.chatMatchKey===key && target?.isConnected) scrollElementBelowToolbar(target,"auto");
+  });
+}
 function filteredMessages(){
   if(state.filter==="all"){
+    if(chatContextEnabled()) return state.chatMessages.filter(chatMessageVisible).sort((a,b)=>compareMessages(a,b,"asc"));
     const q = state.chatQuery.trim();
 
     const source = state.chatMessages.filter(m=>{
@@ -7466,7 +7585,7 @@ function renderCountsOnly(){
   }
 
   if(state.filter === "all" && state.onlyMyReplies){
-    $("#counts").textContent=currentReplyUserId() ? `내 글에 온 답장 ${filteredMessages().length.toLocaleString()}개` :
+    $("#counts").textContent=currentReplyUserId() ? `내 글에 온 답장 ${chatMatches().length.toLocaleString()}개` :
       replyIdentity.status === "error" ? "내 답장 확인 불가" : "내 답장 확인 중…";
     updateSelectedCount();return;
   }
@@ -7502,7 +7621,7 @@ function disconnectInfiniteObserver(){
   ).forEach(el=>el.remove());
 }
 
-function buildChatRangeFragment(start,end){
+function buildChatRangeFragment(start,end,includeStartDate=false){
   const list = state.infiniteList || [];
   const frag = document.createDocumentFragment();
 
@@ -7518,10 +7637,11 @@ function buildChatRangeFragment(start,end){
         ? dateKey(list[i-1])
         : "";
 
-    if(i === 0 || dk !== prevDate){
+    if(i === 0 || dk !== prevDate || (includeStartDate && i === safeStart)){
       const sep = document.createElement("div");
       sep.className = "date-sep";
       sep.dataset.date = dk;
+      if(includeStartDate && i === safeStart && i > 0 && dk === prevDate) sep.dataset.windowDate="true";
       sep.id = `chat-date-${dk}`;
       sep.textContent = dk;
       frag.appendChild(sep);
@@ -7564,7 +7684,8 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
   const amount = state.chunkSize * Math.max(1,chunkCount);
   const newStart = Math.max(0,oldStart - amount);
 
-  const firstVisibleContent = tl.querySelector(
+  const windowDate=tl.querySelector(":scope > .date-sep[data-window-date]");
+  const firstVisibleContent = windowDate?.nextElementSibling || tl.querySelector(
     ":scope > .date-sep, :scope > .msg"
   );
 
@@ -7572,7 +7693,8 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
     ? firstVisibleContent.getBoundingClientRect().top
     : 0;
 
-  const frag = buildChatRangeFragment(newStart,oldStart);
+  const frag = buildChatRangeFragment(newStart,oldStart,true);
+  windowDate?.remove();
   tl.insertBefore(frag,tl.firstChild);
 
   state.chatWindowStart = newStart;
@@ -8246,7 +8368,8 @@ function renderMessage(m){
   const artist=isArtist(m);
   const wrap=document.createElement("div");
   wrap.className=`msg ${artist?"star":"me"}`;
-  wrap.dataset.messageId = String(m.messageId || m.id || "");
+  wrap.dataset.messageId = messageStableKey(m);
+  if(state.chatMatchKey && messageStableKey(m)===state.chatMatchKey) wrap.classList.add("chat-match-active");
 
   const bubble=document.createElement("div");
   bubble.className="bubble";
@@ -8667,21 +8790,8 @@ function oldestLoadedDate(){
   return localDateKeyFromISO(oldest?.createdAt);
 }
 
-function renderChatStartingAtDate(targetDate){
-  if(state.filter !== "all") return null;
-  if(!state.chatHistoryComplete) return null;
-
-  state.chatQuery = "";
-  if($("#chatSearchInput")) $("#chatSearchInput").value = "";
-
-  const list = filteredMessages();
-
-  const targetIndex = list.findIndex(
-    m=>localDateKeyFromISO(m.createdAt) === targetDate
-  );
-
-  if(targetIndex < 0) return null;
-
+function renderChatWindow(list,targetIndex){
+  if(state.filter!=="all" || targetIndex<0 || targetIndex>=list.length) return null;
   const tl = $("#timeline");
 
   disconnectInfiniteObserver();
@@ -8706,7 +8816,7 @@ function renderChatStartingAtDate(targetDate){
   state.prefetching.clear();
 
   tl.appendChild(
-    buildChatRangeFragment(windowStart,windowEnd)
+    buildChatRangeFragment(windowStart,windowEnd,true)
   );
 
   // Downward scrolling continues into later conversations.
@@ -8714,6 +8824,29 @@ function renderChatStartingAtDate(targetDate){
 
   // Upward scrolling progressively restores earlier conversations.
   armChatTopRenderObserver(version);
+
+  return {version};
+}
+
+function renderChatStartingAtDate(targetDate){
+  if(state.filter !== "all") return null;
+  if(!state.chatHistoryComplete) return null;
+
+  state.chatQuery = "";
+  if($("#chatSearchInput")) $("#chatSearchInput").value = "";
+
+  updateChatSearchCount();renderCountsOnly();
+  const list = filteredMessages();
+
+  const targetIndex = list.findIndex(
+    m=>localDateKeyFromISO(m.createdAt) === targetDate
+  );
+
+  if(targetIndex < 0) return null;
+
+  const result=renderChatWindow(list,targetIndex);
+  if(!result) return null;
+  const tl=$("#timeline"), version=result.version;
 
   const dateAnchor = tl.querySelector(
     `.date-sep[data-date="${CSS.escape(targetDate)}"]`
@@ -8783,6 +8916,12 @@ async function jumpToDate(targetDate){
     }
 
     state.chatAutoTopPending = false;
+    if(state.onlyMyReplies && chatContextEnabled()){
+      state.chatQuery="";$("#chatSearchInput").value="";
+      updateChatSearchCount();renderCountsOnly();
+      state.chatMatchKey=messageStableKey(firstMessage);
+      await navigateChatMatch(0);closeChatToolsPanel();return;
+    }
 
     // Date search is a navigation jump, not a filter.
     // Render a lightweight window around the target date and progressively
@@ -8842,7 +8981,7 @@ async function jumpToDate(targetDate){
 async function scrollToOriginalMessage(messageId){
   if(!messageId) return;
   const generation=state.scanGeneration;
-  state.onlyMyReplies=false;state.chatQuery="";
+  state.onlyMyReplies=false;state.chatQuery="";state.chatContext=false;state.chatMatchKey="";
   if($("#chatSearchInput")) $("#chatSearchInput").value="";
   syncMyReplyTools();
 
@@ -8889,7 +9028,7 @@ async function setFilter(f, options={}){
   invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
-  if(f === "all") state.onlyMyReplies=false;
+  if(f === "all"){state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";}
   const autoTop = options.autoTop !== false;
 
   if(was === "live" && f !== "live"){
@@ -10127,23 +10266,31 @@ $("#chatSearchInput").addEventListener("input",(e)=>{
       await ensureFullChatHistory();
     }
 
-    state.chatQuery = value;
+    state.chatQuery = value;state.chatMatchKey="";
     state.chatAutoTopPending = false;
     updateChatSearchCount();
     render();
+    if(chatContextEnabled()) await navigateChatMatch(1);
   }, 300);
 });
 
 $("#chatSearchClear").onclick=()=>{
   $("#chatSearchInput").value = "";
-  state.chatQuery = "";
+  state.chatQuery = "";state.chatMatchKey="";
   updateChatSearchCount();
   render();
+  if(chatContextEnabled()) navigateChatMatch(1);
   $("#chatSearchInput").focus();
 };
 
 $("#myRepliesBtn").onclick=()=>setOnlyMyReplies(!state.onlyMyReplies);
 $("#myReplyRetry").onclick=()=>ensureReplyIdentity({retry:true});
+$("#chatMatchPrev").onclick=()=>navigateChatMatch(-1);
+$("#chatMatchNext").onclick=()=>navigateChatMatch(1);
+$("#chatContextBtn").onclick=()=>{
+  state.chatContext=!chatContextEnabled();state.chatAutoTopPending=false;
+  render();navigateChatMatch(0);
+};
 
 $("#datePickerBtn").onclick=(e)=>{
   e.stopPropagation();

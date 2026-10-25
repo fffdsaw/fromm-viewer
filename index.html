@@ -1089,6 +1089,40 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
   }
 }
 
+/* Read-only vote cards, list and accessible result dialog. */
+.vote-chat-card h3{font-size:17px;line-height:1.5;margin:12px 0;overflow-wrap:anywhere}
+.vote-bubble{min-width:min(280px,70vw)}
+.vote-status{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-size:12px;color:var(--muted);white-space:nowrap}
+.vote-date,.vote-note{font-size:12px;color:var(--muted);line-height:1.6}
+.vote-open{display:flex;justify-content:space-between;gap:20px;width:100%;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);padding:13px 0 0;cursor:pointer;font:inherit;text-align:left}
+.vote-list-view{width:100%;min-width:0}
+.vote-list{width:min(820px,100%);margin:0 auto;padding:16px 0 40px}
+.vote-list-heading,.vote-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vote-list-heading h2,.vote-detail-heading h2{font-size:19px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.vote-list-items{margin:16px 0}
+.vote-list-item{position:relative;display:block;width:100%;border:0;border-bottom:1px solid var(--line);padding:20px 28px 20px 8px;text-align:left;color:var(--text);background:transparent;cursor:pointer;font:inherit}
+.vote-list-item:hover{background:var(--panel)}
+.vote-list-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.vote-list-top strong{overflow-wrap:anywhere;min-width:0}
+.vote-list-arrow{position:absolute;right:6px;bottom:20px;color:var(--muted)}
+.vote-dialog{box-sizing:border-box;width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;background:var(--panel,#171b23);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:20px}
+.vote-dialog::backdrop{background:#000a}
+.vote-detail-heading{align-items:flex-start;margin-bottom:18px}
+.vote-close{flex-shrink:0}
+.vote-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.vote-options{list-style:none;padding:0;display:grid;gap:12px}
+.vote-option{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.vote-option.artist-pick{border-color:var(--accent,#ff6b8b)}
+.vote-option-top{display:flex;justify-content:space-between;gap:12px;line-height:1.6}
+.vote-option-top>span{overflow-wrap:anywhere;min-width:0;white-space:pre-wrap}
+.vote-percentage{white-space:nowrap;flex-shrink:0}
+.vote-option img{max-width:100%;max-height:240px;object-fit:contain;display:block;margin-bottom:10px;border-radius:8px}
+.vote-artist-pick{display:inline-block;font-size:12px;color:var(--accent,#ff6b8b);margin-top:6px}
+.vote-bar{height:5px;border-radius:5px;background:#ffffff16;margin-top:10px;overflow:hidden}
+.vote-bar>span{display:block;height:100%;background:var(--accent2,#4aa3ff)}
+.vote-error{color:var(--bad,#ff8393);line-height:1.6}
+@media(max-width:600px){.toolbar>.pill{font-size:12px;padding:0 7px !important}.vote-dialog{padding:16px}.vote-list-top strong{font-size:14px}.vote-list{padding-top:12px}.vote-chat-card h3{font-size:15px}}
+
 </style>
 <style id="channelVideosStyle">
 .channel-video-play{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}
@@ -1253,6 +1287,7 @@ body.download-marquee-active{user-select:none;cursor:default}
       <button class="pill" data-filter="image">사진</button>
       <button class="pill" data-filter="video">영상</button>
       <button class="pill" data-filter="sound">음성</button>
+      <button class="pill" data-filter="vote">투표</button>
 
       <div class="sort-controls" id="sortControls" style="display:none">
         <button class="btn sort-btn" id="sortBtn" title="정렬 방향 바꾸기">최신순 ↓</button>
@@ -2831,6 +2866,179 @@ async function frommApiRequest(path,{method="GET",query=null,body=null,base=FROM
   return data;
 }
 
+// Read-only votes. No request in this feature uses a write method.
+const voteView = {key:"", context:null, items:[], loaded:false, cursor:null, cursors:new Set(), error:"", owner:null};
+let voteDetailOwner = null;
+function voteId(value){
+  if(typeof value === "number") return Number.isSafeInteger(value) && value > 0 ? String(value) : "";
+  return typeof value === "string" && value.length <= 19 && /^[1-9][0-9]*$/.test(value) ? value : "";
+}
+function voteText(value){ return typeof value === "string" ? value : ""; }
+function voteStatusLabel(vote){
+  return new Map([["scheduled","예정"],["ongoing","진행 중"],["ended","종료"],["deleted","삭제됨"]]).get(vote?.status) || "상태 미확인";
+}
+function voteDateLabel(value){
+  if(!value || !["string","number"].includes(typeof value)) return "종료일 미제공";
+  const date=new Date(value);
+  return Number.isFinite(date.getTime()) ? `${date.toLocaleString("ko-KR")} 종료` : "종료일 미제공";
+}
+function votePercent(value){ return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : null; }
+function voteResultsVisible(vote){ return vote?.status === "ended" || (vote?.status === "ongoing" && !!voteId(vote.myPickOptionId)); }
+function voteArtistPick(vote,option){
+  return vote?.status === "ended" && vote.isArtiPickExposed === true && vote.hasArtiParticipated !== false &&
+    !!voteId(option?.optionId) && voteId(option.optionId) === voteId(vote.artiPickOptionId);
+}
+function voteSearchText(vote){
+  return [voteText(vote?.topic),...(Array.isArray(vote?.options) ? vote.options.map(o=>voteText(o?.text)) : [])].join("\n");
+}
+function voteMessageMarkup(message){
+  const vote=message?.vote, id=voteId(vote?.id);
+  return `<section class="vote-chat-card" aria-label="투표"><span class="vote-status">${esc(voteStatusLabel(vote))}</span>
+    <h3>${esc(voteText(vote?.topic) || "투표 내용 미제공")}</h3>
+    <p class="vote-date">${esc(voteDateLabel(vote?.endAt))}</p>
+    ${id ? `<button type="button" class="vote-open" data-vote-id="${id}">투표 내용·결과 보기 <span aria-hidden="true">›</span></button>` : `<p class="vote-note">투표 조회 정보가 없습니다.</p>`}</section>`;
+}
+function voteContext(){
+  const auth=currentAuth(), room=String(state.room?.hostChatRoomId || "");
+  return {room, token:auth.token, uuid:auth.uuid, key:`${currentAccountScope()}::${room}`, generation:state.scanGeneration};
+}
+function voteContextCurrent(context){
+  const now=voteContext();
+  return now.room===context.room && now.key===context.key && now.token===context.token && now.uuid===context.uuid && now.generation===context.generation;
+}
+function invalidateVoteView(){
+  voteView.owner?.abort(); voteView.owner=null;
+  voteDetailOwner?.abort(); voteDetailOwner=null;
+  const dialog=document.getElementById("voteDetailDialog");
+  if(dialog){
+    dialog.querySelector(".vote-detail-body").replaceChildren();
+    dialog.querySelector("#voteDetailTitle").textContent="투표";
+    if(dialog.open) dialog.close();
+  }
+}
+function resetVoteView(){
+  invalidateVoteView();
+  Object.assign(voteView,{key:"",context:null,items:[],loaded:false,cursor:null,cursors:new Set(),error:""});
+}
+function ensureVoteContext(){
+  const context=voteContext();
+  if(voteView.key !== context.key || (voteView.context && !voteContextCurrent(voteView.context))){
+    resetVoteView(); voteView.key=context.key;
+  }
+  voteView.context=context;
+  return context;
+}
+function voteReadError(error){
+  return [401,403].includes(error?.status) ? "투표를 조회할 수 없습니다. 로그인과 구독 권한을 확인해 주세요." :
+    error?.status === 404 ? "투표가 삭제됐거나 조회할 수 없습니다." : "투표를 불러오지 못했습니다. 다시 시도해 주세요.";
+}
+async function readVoteData(path,query,owner){
+  const timer=setTimeout(()=>owner.abort(),12000);
+  try{
+    const payload=await frommApiRequest(path,{method:"GET",query,signal:owner.signal});
+    const data=payload?.data ?? payload;
+    if(!data || typeof data !== "object" || Array.isArray(data)) throw new Error("VOTE_SCHEMA");
+    return data;
+  }finally{clearTimeout(timer);}
+}
+function renderVoteList(){
+  ensureVoteContext(); disconnectInfiniteObserver();
+  const timeline=$("#timeline"); timeline.className="vote-list-view";
+  const busy=!!voteView.owner;
+  $("#counts").textContent=`${voteView.cursor !== null ? "불러온 " : ""}투표 ${voteView.items.length}개`;
+  $("#scanState").textContent=busy ? "투표 불러오는 중…" : "투표 · 읽기 전용";
+  timeline.innerHTML=`<section class="vote-list" aria-label="투표 목록" aria-busy="${busy}">
+    <header class="vote-list-heading"><h2>투표 목록</h2><span class="vote-note">${esc(state.room?.host?.nick || "아티스트")}</span></header>
+    ${!state.room ? `<p class="empty">아티스트를 선택해 주세요.</p>` : ""}
+    <div class="vote-list-items">${voteView.items.map(vote=>`<button type="button" class="vote-list-item" data-vote-id="${voteId(vote.id)}">
+      <span class="vote-list-top"><strong>${esc(voteText(vote.topic) || "제목 미제공")}</strong><span class="vote-status">${esc(voteStatusLabel(vote))}</span></span>
+      <span class="vote-date">${esc(voteDateLabel(vote.endAt))}</span><span class="vote-list-arrow" aria-hidden="true">›</span></button>`).join("")}</div>
+    ${busy ? `<p role="status" class="vote-note">투표 불러오는 중…</p>` : ""}
+    ${voteView.error ? `<p role="alert" class="vote-error">${esc(voteView.error)}</p>` : ""}
+    ${state.room && !busy && !voteView.error && voteView.loaded && !voteView.items.length ? `<p class="empty">표시할 투표가 없습니다.</p>` : ""}
+    ${state.room && (voteView.error || (!voteView.loaded || voteView.cursor !== null)) ? `<button type="button" id="voteLoadMore" class="btn" ${busy ? "disabled" : ""}>${voteView.error ? "다시 시도" : voteView.loaded ? "더 보기" : "불러오기"}</button>` : ""}
+  </section>`;
+  for(const button of timeline.querySelectorAll("[data-vote-id]")) button.onclick=()=>openVoteDetail(button.dataset.voteId);
+  const more=$("#voteLoadMore"); if(more) more.onclick=()=>loadVotes();
+  syncLoadingUI();
+}
+async function loadVotes({refresh=false}={}){
+  const context=ensureVoteContext();
+  if(!context.room || state.filter !== "vote") return;
+  if(refresh){resetVoteView();voteView.key=context.key;voteView.context=context;}
+  if(voteView.owner || (voteView.loaded && voteView.cursor===null)) {renderVoteList();return;}
+  const owner=voteView.owner=new AbortController(); voteView.error="";
+  const current=()=>voteView.owner===owner && voteContextCurrent(context) && state.filter==="vote";
+  renderVoteList();
+  try{
+    const data=await readVoteData(`/v2/chat/votes/${encodeURIComponent(context.room)}`,{limit:30,...(voteView.cursor!==null ? {cursor:voteView.cursor} : {})},owner);
+    if(!current()) return;
+    if(!Array.isArray(data.votes) || data.votes.some(v=>!v || !voteId(v.id))) throw new Error("VOTE_SCHEMA");
+    const next=data.nextCursor == null ? null : voteId(data.nextCursor);
+    if(next === "" || (next!==null && (next===voteView.cursor || voteView.cursors.has(next)))) throw new Error("VOTE_CURSOR");
+    const merged=new Map(voteView.items.map(v=>[voteId(v.id),v]));
+    for(const vote of data.votes) merged.set(voteId(vote.id),vote);
+    voteView.items=[...merged.values()];
+    if(voteView.cursor!==null) voteView.cursors.add(voteView.cursor);
+    voteView.cursor=next;voteView.loaded=true;
+  }catch(error){if(current()) voteView.error=voteReadError(error);}
+  finally{if(voteView.owner===owner){voteView.owner=null;if(voteContextCurrent(context) && state.filter==="vote") renderVoteList();}}
+}
+function voteDetailMarkup(vote){
+  if(vote?.status === "deleted") return `<p class="vote-note">삭제된 투표입니다.</p>`;
+  const results=voteResultsVisible(vote), options=Array.isArray(vote.options) ? vote.options : [];
+  return `<div class="vote-detail-meta"><span class="vote-status">${esc(voteStatusLabel(vote))}</span><span class="vote-date">${esc(voteDateLabel(vote.endAt))}</span></div>
+    <p class="vote-note">${results ? "공개된 결과를 표시합니다." : "결과는 종료 후 등 공개 가능한 상태에서 표시됩니다."}</p>
+    <ol class="vote-options">${options.map((option,index)=>{
+      const percent=results ? votePercent(option?.percentage) : null, pick=voteArtistPick(vote,option);
+      const image=voteText(option?.thumbnailImageUrl) || voteText(option?.originalImageUrl);
+      const safeImage=/^https:\/\//i.test(image) && isHttpMediaUrl(image);
+      return `<li class="vote-option ${pick ? "artist-pick" : ""}">
+        ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        <div class="vote-option-top"><span>${esc(voteText(option?.text) || `선택지 ${index+1}`)}</span><strong class="vote-percentage">${percent===null ? "미제공" : `${percent}%`}</strong></div>
+        ${pick ? `<span class="vote-artist-pick">아티스트 선택</span>` : ""}
+        ${percent!==null ? `<div class="vote-bar" aria-hidden="true"><span style="width:${percent}%"></span></div>` : ""}</li>`;
+    }).join("")}</ol>
+    ${!options.length ? `<p class="vote-note">선택지 정보가 제공되지 않았습니다.</p>` : ""}
+    ${!options.some(option=>voteArtistPick(vote,option)) ? `<p class="vote-note">아티스트 선택은 비공개이거나 정보가 제공되지 않았습니다.</p>` : ""}`;
+}
+async function openVoteDetail(id){
+  id=voteId(id); const context=voteContext();
+  if(!id || !context.room) return;
+  voteDetailOwner?.abort();
+  const owner=voteDetailOwner=new AbortController();
+  let dialog=document.getElementById("voteDetailDialog");
+  if(!dialog){
+    dialog=document.createElement("dialog");dialog.id="voteDetailDialog";dialog.className="vote-dialog";
+    dialog.setAttribute("aria-labelledby","voteDetailTitle");
+    dialog.innerHTML=`<header class="vote-detail-heading"><h2 id="voteDetailTitle">투표</h2><button type="button" class="btn vote-close" aria-label="투표 닫기">닫기</button></header><div class="vote-detail-body"></div>`;
+    dialog.querySelector(".vote-close").onclick=()=>dialog.close();
+    dialog.addEventListener("close",()=>{if(dialog.open) return;voteDetailOwner?.abort();voteDetailOwner=null;dialog.querySelector(".vote-detail-body").replaceChildren();});
+    document.body.append(dialog);
+  }
+  dialog.querySelector("#voteDetailTitle").textContent="투표 불러오는 중…";
+  const body=dialog.querySelector(".vote-detail-body");body.innerHTML=`<p role="status" class="vote-note">내용을 확인하고 있습니다.</p>`;
+  if(!dialog.open) dialog.showModal();
+  const current=()=>voteDetailOwner===owner && dialog.open && voteContextCurrent(context);
+  try{
+    const data=await readVoteData(`/v2/chat/votes/${encodeURIComponent(context.room)}/${encodeURIComponent(id)}`,null,owner);
+    if(!current()) return;
+    const vote=data.vote;
+    if(!vote || voteId(vote.id)!==id) throw new Error("VOTE_SCHEMA");
+    dialog.querySelector("#voteDetailTitle").textContent=voteText(vote.topic) || "투표";
+    body.innerHTML=voteDetailMarkup(vote);
+    for(const image of body.querySelectorAll("img")) image.addEventListener("error",()=>{image.replaceWith(Object.assign(document.createElement("span"),{textContent:"선택지 사진을 불러오지 못했습니다.",className:"vote-note"}));},{once:true});
+  }catch(error){
+    if(current()){
+      dialog.querySelector("#voteDetailTitle").textContent="투표";
+      body.innerHTML=`<p role="alert" class="vote-error">${esc(voteReadError(error))}</p><button type="button" class="btn vote-retry">다시 시도</button>`;
+      body.querySelector("button").onclick=()=>openVoteDetail(id);
+    }
+  }finally{
+    if(voteDetailOwner===owner && !voteContextCurrent(context)) dialog.close();
+  }
+}
+
 function liveArtistName(){
   const nickname=state.live.room?.host?.nickname;
   const language=(navigator.language || "ko").split("-")[0];
@@ -3253,11 +3461,11 @@ function syncLiveToolbarControls(){
   syncHeaderLiveIndicator();
   const live=state.filter==="live";
   const sort=$("#sortControls");
-  if(sort) sort.style.display = (!live && state.filter!=="all") ? "flex" : "none";
+  if(sort) sort.style.display = (!live && state.filter!=="all" && state.filter!=="vote") ? "flex" : "none";
   for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){
     const el=$("#"+id);
     const postList=live && ((state.live.centerMode==="replay" && !state.live.replaySelected) || (state.live.centerMode==="channel" && !channelVideoState.selected));
-    if(el) el.style.display=live && !postList ? "none" : "";
+    if(el) el.style.display=(state.filter==="vote" || (live && !postList)) ? "none" : "";
   }
   const counts=$("#counts");
   if(counts && live){
@@ -5382,6 +5590,7 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  resetVoteView();
   resetChannelVideos();
   state.scanGeneration++;
   state.rooms=[];
@@ -5895,6 +6104,7 @@ function roomCacheKey(){
 }
 
 function isCurrentTabLoading(){
+  if(state.filter === "vote") return !!voteView.owner;
   if(state.filter === "live"){
     return !!state.live.loading;
   }
@@ -6201,6 +6411,7 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
+  resetVoteView();
   state.scanGeneration++;
 
   // Artist selection must feel immediate. Do not wait for LIVE/Agora cleanup
@@ -6625,6 +6836,7 @@ function chatMessageMatches(m, query){
 
   // Search only human-readable chat text, not media CDN URLs.
   const t = normType(m.type);
+  if(t === "vote") return voteSearchText(m.vote).toLocaleLowerCase().includes(q);
   if(t !== "text") return false;
 
   const quoted = getQuotedMessage(m);
@@ -7050,6 +7262,7 @@ function updateSelectedCount(){
 }
 
 function renderCountsOnly(){
+  if(state.filter === "vote") return;
   if(state.filter === "live"){
     syncLiveToolbarControls();
     return;
@@ -7311,6 +7524,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  if(state.filter === "vote"){updateChatSearchCount();renderVoteList();return;}
   renderCountsOnly();
   updateChatSearchCount();
   syncLoadingUI();
@@ -7846,7 +8060,10 @@ function renderMessage(m){
     </div>`;
   }
 
-  if(t==="text"){
+  if(t==="vote"){
+    bubble.classList.add("vote-bubble");
+    html+=voteMessageMarkup(m);
+  }else if(t==="text"){
     const textContent = String(m.content || "").trim();
     const special = !textContent ? specialTextState(m) : null;
     const emoticonSrc = !textContent ? emoticonProxyUrl(m) : "";
@@ -7897,6 +8114,8 @@ function renderMessage(m){
   }
 
   bubble.innerHTML=html;
+  const voteOpen=bubble.querySelector(".vote-open");
+  if(voteOpen) voteOpen.onclick=()=>openVoteDetail(voteOpen.dataset.voteId);
 
   const replyQuote = bubble.querySelector(".reply-quote");
   if(replyQuote){
@@ -8446,6 +8665,7 @@ async function scrollToOriginalMessage(messageId){
 }
 
 async function setFilter(f, options={}){
+  invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
   const autoTop = options.autoTop !== false;
@@ -8478,6 +8698,12 @@ async function setFilter(f, options={}){
     if(state.live.centerMode==="replay") await loadReplayCenter();
     else if(state.live.centerMode==="channel") await loadChannelVideos();
     else await refreshLiveStatus({force:true,autoplay:true});
+    return;
+  }
+
+  if(f==="vote"){
+    renderVoteList();
+    await loadVotes();
     return;
   }
 
@@ -9612,6 +9838,7 @@ document.addEventListener("keydown",(e)=>{
   }
 });
 $("#scanBtn").onclick=async ()=>{
+  if(state.filter==="vote"){await loadVotes({refresh:true});return;}
   if(state.filter === "live"){
     if(state.live.centerMode==="replay") await loadReplayCenter({refresh:true});
     else if(state.live.centerMode==="channel"){ stopChannelVideoPlayback(); await loadChannelVideos({refresh:true}); }

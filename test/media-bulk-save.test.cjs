@@ -118,6 +118,7 @@ function setup(options = {}) {
     safeErrorDetail: value => String(value),
     friendlyNetworkError: error => error,
     flushDownloadClick() {}, downloadClickGesture: null,
+    drainPreviewQueue() {}, scheduleHistoryBackground() {},
     sleep: async () => {},
     supportsDirectorySave: () => !options.mobile,
     URL: {createObjectURL: () => {metrics.objectUrls++; return 'blob:fixture-only';},
@@ -617,4 +618,45 @@ test('mobile save guard respects an active post batch without history or media r
   await h.context.saveSelectedDirect();
   assert.equal(h.metrics.history, 0); assert.equal(h.metrics.blobFetches, 0);
   assert.equal(h.downloads.length, 0); unlocked(h);
+});
+
+test('complete chat snapshot bypasses redundant media-history requests and reuses sequence maps', async () => {
+  const h=setup({history:true});
+  h.state.chatMessages=h.state.messages;h.state.chatHistoryComplete=true;
+  h.context.buildMediaSequences();const stamp=h.state.mediaSequenceStamp;
+  await h.context.saveSelectedToFolder();
+  assert.equal(h.metrics.history,0);assert.equal(h.state.mediaSequenceStamp,stamp);
+  assert.equal(h.results[0].ok,3);unlocked(h);
+});
+test('fresh folder scan bounds file metadata reads to four and never reuses a stale disk index',async()=>{
+ const h=setup({types:['image']});let active=0,max=0,reads=0;
+ for(let i=0;i<12;i++) h.root.children.set(`2026-10-15_${100+i}.jpg`,{kind:'file',async getFile(){
+  active++;reads++;max=Math.max(max,active);await new Promise(r=>setTimeout(r,3));active--;return{size:4};
+ }});
+ await h.context.existingMediaNames(h.root,[]);assert.equal(reads,12);assert.equal(max,4);
+ h.root.children.set('2026-10-15_1.jpg',{kind:'file',async getFile(){return{size:17};}});
+ await h.context.saveSelectedToFolder();assert.equal(h.metrics.fetches,0);assert.equal(h.results[0].skipped,1);
+});
+test('file added after duplicate scan is protected by a final size check before opening writable',async()=>{
+ let h;h=setup({types:['image'],fetchHook:async()=>{
+  h.root.children.set('2026-10-15_1.jpg',{kind:'file',async getFile(){return{size:41};}});
+ }});
+ await h.context.saveSelectedToFolder();assert.equal(h.records.length,0);assert.equal(h.results[0].failures.length,1);
+ assert.match(h.results[0].failures[0].reason,/기존 파일/);unlocked(h);
+});
+
+test('cooperative sequence preparation yields to interactions and publishes all three maps atomically',async()=>{
+ const h=setup({types:['image']});const previous=h.state.mediaSequence;
+ h.state.messages=Array.from({length:2000},(_,i)=>({...h.media[0],messageId:String(i),createdAt:`2026-10-15T${String(Math.floor(i/120)).padStart(2,'0')}:00:00Z`}));
+ const pending=h.context.buildMediaSequences(true);
+ assert.equal(h.state.mediaSequence,previous,'visible map remains intact until preparation finishes');
+ let interaction=false;await tick();interaction=true;await pending;
+ assert.equal(interaction,true);assert.notEqual(h.state.mediaSequence,previous);
+ assert.equal(h.state.mediaSequence.size,2000);assert.equal(h.state.legacyMediaSequence.size,2000);assert.equal(h.state.typeMediaSequence.size,2000);
+});
+test('cancelled cooperative numbering cannot publish partial or previous-artist sequence maps',async()=>{
+ const h=setup({types:['image']});const previous=h.state.mediaSequence;
+ h.state.messages=Array.from({length:1200},(_,i)=>({...h.media[0],messageId:String(i)}));
+ let current=true;const pending=h.context.buildMediaSequences(true,()=>current);current=false;await pending;
+ assert.equal(h.state.mediaSequence,previous);assert.equal(h.state.mediaSequence.size,1);
 });

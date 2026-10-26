@@ -39,7 +39,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
       return json({profile:missing?{}:{id}},status);
      }
      if(/^\/v2\/chat\/message\/[^/]+\/messages$/.test(url.pathname)){
-      if(url.pathname.includes('/room-b/')) return json({messages:[base('room-b-reply','26',{mentionedMessage:quote('fan-b')})]});
+      if(url.pathname.includes('/room-b/')) return json({messages:[base('room-b-reply','26',{mentionedMessage:quote('fan-b')})].filter(m=>new Date(m.createdAt)<=new Date(url.searchParams.get('findEndAt')))});
       const end=new Date(url.searchParams.get('findEndAt')).getTime();
       return json({messages:messages.filter(m=>new Date(m.createdAt).getTime()<=end)});
      }

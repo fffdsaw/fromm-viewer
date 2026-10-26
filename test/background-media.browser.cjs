@@ -105,7 +105,7 @@ async function preparation(browser,variant,trial){
     const initial=await f.page.evaluate(()=>{window.savedCard=document.querySelector('.media-card');return{count:state.messages.length,y:scrollY};});
     assert.equal(initial.count,500);
     await f.page.evaluate(()=>{state.selected.add(state.infiniteList[0].messageId);syncDownloadSelection();});
-    await f.page.waitForFunction(()=>!state.hasMoreMessages,{timeout:20000});
+    await f.page.waitForFunction(()=>!state.hasMoreMessages && state.chatHistoryComplete && !state.loadingMessages,null,{timeout:20000});
     const final=await f.page.evaluate(()=>({count:state.messages.length,same:window.savedCard===document.querySelector('.media-card'),y:scrollY,
      selected:state.selected.size,shared:state.chatMessages===state.messages,previews:state.prefetching.size,queued:previewQueue.length,previewActive}));
     assert.equal(await f.page.evaluate(()=>document.querySelector('.media-card .card-title').textContent===state.mediaSequence.get(document.querySelector('.media-card').dataset.messageId)),true,'provisional filename label updates without replacing the card');

@@ -1958,7 +1958,7 @@ const state = {
   typeMediaSequence: new Map(),
 
   // Progressive history loading:
-  // load the newest ~500 messages first, then another ~500 near the end.
+  // One shared cursor: first ~500 promptly, then paced metadata-only background pages.
   pageTarget: 500,
   pageRequestLimit: 500,
   cursorEnd: null,
@@ -1967,8 +1967,15 @@ const state = {
   seenMessageKeys: new Set(),
   scanGeneration: 0,
 
-  // Full conversation uses its own complete history.
-  // Media tabs keep the progressive 500-message API loader.
+  historyJob: null,
+  historyOwner: null,
+  historyTimer: null,
+  historyError: null,
+  historyBlockedUntil: 0,
+  historyLastRequestAt: 0,
+  mediaSequenceStamp: null,
+
+  // Full conversation and media share the same completed metadata snapshot.
   chatMessages: [],
   chatHistoryComplete: false,
   chatHistoryLoading: false,
@@ -2433,41 +2440,62 @@ function markThumbReady(el){
   if(thumb) thumb.classList.add("media-ready");
 }
 
-function prefetchImage(url){
+function prefetchImage(url,signal){
   return new Promise(resolve=>{
-    if(!url){ resolve(); return; }
-    const img = new Image();
-    img.decoding = "async";
-    const timer=setTimeout(()=>{img.src="";resolve();},15000);
-    img.onload = img.onerror = ()=>{clearTimeout(timer);resolve();};
-    img.src = url;
+    if(!url || signal?.aborted){resolve();return;}
+    const img=new Image();
+    img.decoding="async";img.fetchPriority="low";
+    const done=()=>{
+      clearTimeout(timer);signal?.removeEventListener("abort",abort);
+      img.onload=img.onerror=null;resolve();
+    };
+    const abort=()=>{img.src="";done();};
+    const timer=setTimeout(abort,10000);
+    signal?.addEventListener("abort",abort,{once:true});
+    img.onload=img.onerror=done;img.src=url;
   });
 }
 
-let previewQueue = [], previewActive = 0;
+let previewQueue=[],previewActive=0;
+const previewOwners=new Set();
+function resetPreviewWork(){
+  previewQueue=[];
+  for(const owner of previewOwners) owner.abort();
+  state.prefetching.clear();
+}
 function drainPreviewQueue(){
-  while(previewActive < 6 && previewQueue.length){
-    const item = previewQueue.shift();
-    if(item.version !== state.infiniteVersion) continue;
-    previewActive++;
-    prefetchImage(item.url).finally(()=>{previewActive--;drainPreviewQueue();});
+  if(document.hidden || state.mediaBulkSaving || state.postBulkSaving || state.filter==="live") return;
+  const limit=constrainedMediaConnection()?1:2;
+  while(previewActive<limit && previewQueue.length){
+    const item=previewQueue.shift();
+    if(item.version!==state.infiniteVersion) continue;
+    const owner=new AbortController();previewOwners.add(owner);previewActive++;
+    prefetchImage(item.url,owner.signal).finally(()=>{
+      previewOwners.delete(owner);previewActive--;drainPreviewQueue();
+    });
   }
 }
 function prefetchMediaRange(startIndex){
-  previewQueue = previewQueue.filter(item=>item.version === state.infiniteVersion);
-  const list = state.infiniteList || [];
-  for(let i=startIndex;i<Math.min(startIndex+state.prefetchAhead,list.length);i++){
-    const m=list[i], t=normType(m?.type);
+  previewQueue=previewQueue.filter(item=>item.version===state.infiniteVersion);
+  const list=state.infiniteList || [];
+  // Keep the existing near-scroll lookahead, with a smaller mobile/data-saver budget.
+  const ahead=constrainedMediaConnection()?12:Math.min(state.prefetchAhead,60);
+  for(let i=startIndex;i<Math.min(startIndex+ahead,list.length);i++){
+    if(previewQueue.length>=ahead) break;
+    const m=list[i],t=normType(m?.type);
     if(t!=="image" && t!=="video") continue;
     const url=resolvePreviewUrl(m);
-    // A missing thumbnail must never turn speculative prefetch into an original download.
-    if(!url || imageUrlSame(url,resolveMediaUrl(m))) continue;
-    if(state.prefetching.has(url)) continue;
+    // Speculative requests are previews only, never original photo/video/audio.
+    if(!url || imageUrlSame(url,resolveMediaUrl(m)) || state.prefetching.has(url)) continue;
     state.prefetching.add(url);
+    while(state.prefetching.size>256) state.prefetching.delete(state.prefetching.values().next().value);
     previewQueue.push({url,version:state.infiniteVersion});
   }
   drainPreviewQueue();
 }
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden){drainPreviewQueue();scheduleHistoryBackground();}
+});
 
 function proxyUrl(m, download=false){
   const url=resolveMediaUrl(m);
@@ -2785,7 +2813,7 @@ function friendlyNetworkError(error){
   return error instanceof Error ? error : new Error(raw || "네트워크 오류");
 }
 
-async function frommApiJson(path, query=null){
+async function frommApiJson(path, query=null, {signal=null}={}){
   const auth = currentAuth();
 
   if(!auth.token || !auth.uuid){
@@ -2806,6 +2834,7 @@ async function frommApiJson(path, query=null){
   try{
     r = await fetch(url.toString(),{
       method:"GET",
+      signal,
       headers:{
         "Authorization":auth.token,
         "uuid":auth.uuid,
@@ -2814,6 +2843,7 @@ async function frommApiJson(path, query=null){
       cache:"no-store"
     });
   }catch(e){
+    if(signal?.aborted) throw e;
     throw friendlyNetworkError(e);
   }
 
@@ -2840,6 +2870,10 @@ async function frommApiJson(path, query=null){
 
     const error=new Error(`Fromm API HTTP ${r.status}: ${safeErrorDetail(detail)}`);
     error.status=r.status;
+    if(r.status===429){
+      const retry=r.headers.get("retry-after"), seconds=Number(retry);
+      error.retryAfterMs=retry && Number.isFinite(seconds) ? Math.max(0,seconds*1000) : Math.max(0,Date.parse(retry)-Date.now()) || 30000;
+    }
     error.errorType=data?.errorType || data?.code || "";
     throw error;
   }
@@ -5707,10 +5741,14 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  stopHistoryWork();
+  resetPreviewWork();
   resetReplyIdentity();
   resetVoteView();
   resetChannelVideos();
   state.scanGeneration++;
+  state.hasMoreMessages=true;state.cursorEnd=new Date();state.pageRequestLimit=500;
+  state.mediaSequenceStamp=null;
   state.rooms=[];
   state.room=null;
   state.messages=[];
@@ -6289,11 +6327,16 @@ function updateHistoryStatus(prefix=""){
   }else if(state.hasMoreMessages){
     $("#scanState").textContent = compact
       ? `${loaded}개 불러옴`
-      : `${artist} · ${loaded}개 불러옴 · 스크롤하면 더 불러옴`;
+      : `${artist} · ${loaded}개 · 나머지 기록 백그라운드 준비 중`;
   }else{
     $("#scanState").textContent = compact
       ? `전체 ${loaded}개`
       : `${artist} · 완료 · 전체 ${loaded}개`;
+  }
+  if(state.historyError) $("#scanState").textContent=`${loaded}개 · 기록 준비 일시 중지 · 새로고침으로 재시도`;
+  const save=$("#saveSelectedBtn");
+  if(save && !state.mediaBulkSaving && !state.postBulkSaving){
+    save.title=state.hasMoreMessages ? `저장 · 기록 ${loaded}개 준비됨 (나머지는 백그라운드 준비 중)` : "저장 · 파일명 준비 완료 · 기존 파일은 건너뜀";
   }
   syncLoadingUI();
 }
@@ -6302,12 +6345,18 @@ function saveRoomCache(){
   const key = roomCacheKey();
   if(!key) return;
 
+  state.roomCache.delete(key);
   state.roomCache.set(key,{
     messages: state.messages,
     cursorEnd: state.cursorEnd ? new Date(state.cursorEnd).toISOString() : null,
     hasMoreMessages: state.hasMoreMessages,
     pageRequestLimit: state.pageRequestLimit
   });
+  while(state.roomCache.size>2){
+    const oldest=state.roomCache.keys().next().value;
+    state.roomCache.delete(oldest);
+    state.chatCache.delete(oldest);
+  }
 }
 
 function restoreRoomCache(entry){
@@ -6331,6 +6380,7 @@ function resetHistoryPaging(){
   state.loadingMessages = false;
   state.pageRequestLimit = 500;
   state.seenMessageKeys = new Set();
+  state.mediaSequenceStamp = null;
 
   state.mediaSequence.clear();
   state.legacyMediaSequence.clear();
@@ -6375,117 +6425,20 @@ function restoreFullChatCache(){
 async function ensureFullChatHistory(){
   if(!state.room) return false;
   if(state.chatHistoryComplete) return true;
-
-  if(state.chatHistoryLoading){
-    while(state.chatHistoryLoading){
-      await sleep(80);
-    }
-    return state.chatHistoryComplete;
-  }
-
-  if(restoreFullChatCache()){
-    return true;
-  }
-
-  const generation = state.scanGeneration;
-  const roomId = String(state.room.hostChatRoomId);
-
-  state.chatHistoryLoading = true;
-  state.chatHistoryProgress = 0;
+  const generation=state.scanGeneration;
+  state.chatHistoryLoading=true;
   syncLoadingUI();
-
-  const seen = new Set();
-  const all = [];
-
-  let cursorEnd = new Date();
-  let requestLimit = 500;
-  let safety = 0;
-
   try{
-    while(true){
-      if(generation !== state.scanGeneration) return false;
-
-      safety++;
-      if(safety > 10000){
-        throw new Error("전체 대화 페이지 안전 제한에 도달했습니다.");
-      }
-
-      let data;
-      try{
-        data = await requestHistoryPage(roomId,cursorEnd,requestLimit);
-      }catch(e){
-        if(requestLimit > 100){
-          requestLimit = 100;
-          data = await requestHistoryPage(roomId,cursorEnd,100);
-        }else{
-          throw e;
-        }
-      }
-
-      if(generation !== state.scanGeneration) return false;
-
-      const batch = extractMessages(data);
-      if(!batch.length) break;
-
-      for(const msg of batch){
-        const key = String(msg.messageId || `${msg.createdAt}|${msg.type}|${msg.content}`);
-        if(!seen.has(key)){
-          seen.add(key);
-          all.push(msg);
-        }
-      }
-
-      state.chatHistoryProgress = all.length;
-
-      if(state.filter === "all"){
-        $("#scanState").textContent =
-          `${state.room?.host?.nick || "아티스트"} · 전체 대화 준비 중 ${all.length.toLocaleString()}개...`;
-      }
-
-      const dated = batch
-        .filter(msg=>msg.createdAt)
-        .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-
-      if(!dated.length) break;
-
-      const next = new Date(new Date(dated[0].createdAt).getTime()-1);
-
-      if(!Number.isFinite(next.getTime()) || next >= cursorEnd){
-        break;
-      }
-
-      cursorEnd = next;
-    }
-
-    if(generation !== state.scanGeneration) return false;
-
-    all.sort((a,b)=>compareMessages(a,b,"asc"));
-
-    state.chatMessages = all;
-    state.chatHistoryComplete = true;
-    state.chatHistoryProgress = all.length;
-    state.chatCache.set(chatCacheKey(), all);
-
-    buildMediaSequences();
-    renderDateCalendar();
-
-    if(state.filter === "all"){
-      $("#scanState").textContent =
-        `${state.room?.host?.nick || "아티스트"} · 전체 대화 ${all.length.toLocaleString()}개 · 오래된 순`;
-    }
-
-    return true;
+    await ensureAllHistory();
+    return generation===state.scanGeneration && state.chatHistoryComplete;
   }catch(e){
-    if(generation === state.scanGeneration){
-      $("#scanState").textContent = "전체 대화 불러오기 실패";
-      alert(e.message);
+    if(generation===state.scanGeneration && e?.name!=="AbortError"){
+      $("#scanState").textContent="전체 대화 불러오기 실패 · 새로고침으로 재시도";
+      console.warn("Fromm history preparation failed",cleanFailureReason(e?.message));
     }
     return false;
   }finally{
-    if(generation === state.scanGeneration){
-      state.chatHistoryLoading = false;
-      syncLoadingUI();
-    }
+    if(generation===state.scanGeneration){state.chatHistoryLoading=false;syncLoadingUI();}
   }
 }
 
@@ -6529,6 +6482,8 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
+  stopHistoryWork();
+  resetPreviewWork();
   resetVoteView();
   state.scanGeneration++;
 
@@ -6669,7 +6624,7 @@ function normalizeHistoryCursor(cursorEnd){
   return cursor;
 }
 
-async function requestHistoryPage(roomId, cursorEnd, limit){
+async function requestHistoryPage(roomId, cursorEnd, limit, signal=null){
   const safeCursor = normalizeHistoryCursor(cursorEnd);
 
   // Keep the state repaired as well when this request is using the active
@@ -6678,134 +6633,203 @@ async function requestHistoryPage(roomId, cursorEnd, limit){
     state.cursorEnd = safeCursor;
   }
 
-  return frommApiJson(
-    FROMM_COMPAT.endpoints.messages(roomId),
-    {
-      findStartAt:"2000-01-01T00:00:00.000Z",
-      findEndAt:safeCursor.toISOString(),
-      limit:String(limit)
-    }
-  );
-}
-
-async function loadMoreHistory({initial=false, forceAll=false}={}){
-  if(!state.room || state.loadingMessages || !state.hasMoreMessages) return 0;
-
-  const generation = state.scanGeneration;
-  const roomId = String(state.room.hostChatRoomId);
-  const target = forceAll ? Number.POSITIVE_INFINITY : state.pageTarget;
-
-  state.loadingMessages = true;
-  $("#scanBtn").disabled = true;
-  syncLoadingUI();
-  updateHistoryStatus(initial ? "처음 500개 불러오는 중" : "과거 기록 더 불러오는 중");
-
-  let addedTotal = 0;
-  let safety = 0;
-
+  const owner=new AbortController();
+  const abort=()=>owner.abort();
+  if(signal?.aborted) owner.abort();
+  else signal?.addEventListener("abort",abort,{once:true});
+  const timer=setTimeout(abort,15000);
   try{
-    while(state.hasMoreMessages && addedTotal < target){
-      if(generation !== state.scanGeneration) return addedTotal;
-      safety++;
-      if(safety > 10000) throw new Error("페이지 안전 제한에 도달했습니다.");
-
-      let data;
-      try{
-        data = await requestHistoryPage(roomId, state.cursorEnd, state.pageRequestLimit);
-      }catch(e){
-        // If 500 is rejected by Fromm, use 100 from then on.
-        if(state.pageRequestLimit > 100){
-          state.pageRequestLimit = 100;
-          data = await requestHistoryPage(roomId, state.cursorEnd, 100);
-        }else{
-          throw e;
-        }
-      }
-
-      if(generation !== state.scanGeneration) return addedTotal;
-
-      const batch = extractMessages(data);
-      if(!batch.length){
-        state.hasMoreMessages = false;
-        break;
-      }
-
-      for(const msg of batch){
-        const key = String(msg.messageId || `${msg.createdAt}|${msg.type}|${msg.content}`);
-        if(!state.seenMessageKeys.has(key)){
-          state.seenMessageKeys.add(key);
-          state.messages.push(msg);
-          addedTotal++;
-        }
-      }
-
-      const dated = batch
-        .filter(msg=>msg.createdAt)
-        .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-
-      if(!dated.length){
-        state.hasMoreMessages = false;
-        break;
-      }
-
-      const nextCursor = new Date(new Date(dated[0].createdAt).getTime()-1);
-
-      if(!Number.isFinite(nextCursor.getTime()) || nextCursor >= state.cursorEnd){
-        state.hasMoreMessages = false;
-        break;
-      }
-
-      state.cursorEnd = nextCursor;
-
-      // A logical page is 500 new messages. If Fromm silently caps at 100,
-      // this loop simply performs up to five small requests.
-      if(!forceAll && addedTotal >= state.pageTarget) break;
-    }
-
-    if(generation !== state.scanGeneration) return addedTotal;
-
-    // Keep the backing data deterministic.
-    state.messages.sort((a,b)=>compareMessages(a,b,"asc"));
-    buildMediaSequences();
-    saveRoomCache();
-    renderCountsOnly();
-    updateHistoryStatus();
-
-    return addedTotal;
+    return await frommApiJson(
+      FROMM_COMPAT.endpoints.messages(roomId),
+      {
+        findStartAt:"2000-01-01T00:00:00.000Z",
+        findEndAt:safeCursor.toISOString(),
+        limit:String(limit)
+      },
+      {signal:owner.signal}
+    );
   }catch(e){
-    if(generation === state.scanGeneration){
-      $("#scanState").textContent = "불러오기 실패";
-      alert(e.message);
-    }
-    return addedTotal;
+    if(owner.signal.aborted && !signal?.aborted) throw new Error("기록 요청 시간이 초과되었습니다. 다시 시도해주세요.");
+    throw e;
   }finally{
-    if(generation === state.scanGeneration){
-      state.loadingMessages = false;
-      $("#scanBtn").disabled = false;
-      updateHistoryStatus();
-      syncLoadingUI();
-    }
+    clearTimeout(timer);signal?.removeEventListener("abort",abort);
   }
 }
 
-async function ensureAllHistory(){
-  if(!state.hasMoreMessages || state.loadingMessages) return;
+function constrainedMediaConnection(){
+  const connection=navigator.connection;
+  return !!(connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || ""));
+}
 
-  const oldText = "";
-  syncLoadingUI();
-  await loadMoreHistory({forceAll:true});
-  syncLoadingUI();
+function stopHistoryWork(){
+  clearTimeout(state.historyTimer);
+  state.historyTimer=null;
+  state.historyOwner?.abort();
+  state.historyOwner=null;
+  state.historyJob=null;
+  state.historyError=null;
+  state.historyBlockedUntil=0;
+  state.historyLastRequestAt=0;
+  state.loadingMessages=false;
+}
+
+function historyAbortError(){
+  return new DOMException("기록 준비가 중단되었습니다.","AbortError");
+}
+
+function historyDelay(ms,signal){
+  return new Promise((resolve,reject)=>{
+    if(signal.aborted){reject(historyAbortError());return;}
+    const aborted=()=>{clearTimeout(timer);reject(historyAbortError());};
+    const timer=setTimeout(()=>{signal.removeEventListener("abort",aborted);resolve();},Math.max(0,ms));
+    signal.addEventListener("abort",aborted,{once:true});
+  });
+}
+
+function scheduleHistoryBackground(){
+  if(state.historyTimer || !state.room || !state.hasMoreMessages || state.historyError) return;
+  const generation=state.scanGeneration;
+  state.historyTimer=setTimeout(async()=>{
+    state.historyTimer=null;
+    if(generation!==state.scanGeneration) return;
+    // User work and visible playback take priority over speculative metadata.
+    if(document.hidden || state.filter==="live" || state.mediaBulkSaving || state.postBulkSaving){
+      scheduleHistoryBackground();return;
+    }
+    await loadMoreHistory({background:true});
+  },constrainedMediaConnection() ? 2400 : 800);
+}
+
+async function publishCompleteHistory(current=()=>true){
+  // Build into local maps in small slices, then publish one complete snapshot.
+  // Neither scrolling nor Save may observe partly updated filename sequences.
+  await buildMediaSequences(true,current);
+  if(!current()) return;
+  // Replace only provisional filename text; keep media/player/selection nodes intact.
+  if(!["all","live","vote"].includes(state.filter)){
+    for(const card of document.querySelectorAll("#timeline > .media-card")){
+      const title=card.querySelector(".card-title"),name=state.mediaSequence.get(card.dataset.messageId);
+      if(title && name) title.textContent=name;
+    }
+  }
+  state.chatMessages=state.messages;
+  state.chatHistoryComplete=true;
+  state.chatHistoryProgress=state.messages.length;
+  state.chatCache.set(chatCacheKey(),state.messages);
+  saveRoomCache();
+  renderDateCalendar();
+}
+
+async function loadMoreHistory({initial=false,forceAll=false,background=false}={}){
+  if(forceAll) return ensureAllHistory();
+  if(!state.room) return 0;
+  // Join even after the final empty page while atomic numbering is still preparing.
+  if(state.historyJob) return state.historyJob;
+  if(!state.hasMoreMessages) return 0;
+  if(Date.now()<state.historyBlockedUntil) return 0;
+  clearTimeout(state.historyTimer);state.historyTimer=null;
+  const generation=state.scanGeneration, roomId=String(state.room.hostChatRoomId);
+  const owner=new AbortController();
+  state.historyOwner=owner;state.historyError=null;state.loadingMessages=true;
+  updateHistoryStatus(initial ? "처음 500개 불러오는 중" : "기록 준비 중");
+  const job=(async()=>{
+    let addedTotal=0,requests=0;
+    try{
+      while(state.hasMoreMessages && addedTotal<state.pageTarget){
+        if(owner.signal.aborted || generation!==state.scanGeneration) throw historyAbortError();
+        if(++requests>100) throw new Error("기록 페이지가 진행되지 않아 중단했습니다.");
+        await historyDelay(Math.max(0,(constrainedMediaConnection()?600:150)-(Date.now()-state.historyLastRequestAt)),owner.signal);
+        state.historyLastRequestAt=Date.now();
+        let data;
+        try{
+          data=await requestHistoryPage(roomId,state.cursorEnd,state.pageRequestLimit,owner.signal);
+        }catch(e){
+          // Only an explicit invalid-limit response permits a smaller retry.
+          // 429/auth/network/schema failures must not multiply requests.
+          if(!owner.signal.aborted && state.pageRequestLimit>100 && [400,413,422].includes(apiErrorStatus(e))){
+            state.pageRequestLimit=100;
+            continue;
+          }
+          throw e;
+        }
+        if(owner.signal.aborted || generation!==state.scanGeneration) throw historyAbortError();
+        const batch=extractMessages(data);
+        if(!batch.length){state.hasMoreMessages=false;break;}
+        let oldest=Infinity;
+        for(const msg of batch){
+          const key=String(msg.messageId || `${msg.createdAt}|${msg.type}|${msg.content}`);
+          if(!state.seenMessageKeys.has(key)){
+            state.seenMessageKeys.add(key);state.messages.push(msg);addedTotal++;
+          }
+          const time=new Date(msg.createdAt).getTime();
+          if(Number.isFinite(time)) oldest=Math.min(oldest,time);
+        }
+        const next=new Date(oldest-1);
+        if(!Number.isFinite(next.getTime()) || next>=state.cursorEnd){
+          throw new Error("기록 커서가 진행되지 않아 파일명 보호를 위해 중단했습니다.");
+        }
+        state.cursorEnd=next;
+        state.chatHistoryProgress=state.messages.length;
+        // Background yields after each API response, including a server's 100-item cap.
+        if(background) break;
+      }
+    }catch(e){
+      if(owner.signal.aborted || generation!==state.scanGeneration) return addedTotal;
+      state.historyError=e;
+      if(apiErrorStatus(e)===429){
+        state.historyBlockedUntil=Date.now()+Math.max(1000,e.retryAfterMs || 30000);
+      }
+      console.warn("Fromm history paused",cleanFailureReason(e?.message));
+    }finally{
+      if(generation===state.scanGeneration && state.historyOwner===owner){
+        state.messages.sort((a,b)=>compareMessages(a,b,"asc"));
+        const current=()=>generation===state.scanGeneration && state.historyOwner===owner;
+        if(!state.hasMoreMessages) await publishCompleteHistory(current);
+        else{saveRoomCache();if(!background) await buildMediaSequences(true,current);}
+        if(!current()) return addedTotal;
+        state.loadingMessages=false;state.historyJob=null;state.historyOwner=null;
+        renderCountsOnly();updateHistoryStatus();syncLoadingUI();
+        // Never replace existing gallery nodes or reorder the visible view here.
+        if(!["all","live","vote"].includes(state.filter)){
+          const next=filteredMessages(),shown=state.infiniteList.slice(0,state.infiniteRendered);
+          if(shown.every((m,i)=>messageStableKey(m)===messageStableKey(next[i]))){
+            state.infiniteList=next;
+            prefetchMediaRange(state.infiniteRendered);
+          }
+          armInfiniteObserver(state.infiniteVersion);
+        }
+        scheduleHistoryBackground();
+      }
+    }
+    return addedTotal;
+  })();
+  state.historyJob=job;
+  return job;
+}
+
+async function ensureAllHistory(){
+  if(!state.room) return;
+  const generation=state.scanGeneration;
+  while(state.hasMoreMessages || state.loadingMessages){
+    if(generation!==state.scanGeneration) throw historyAbortError();
+    if(Date.now()<state.historyBlockedUntil){
+      throw new Error("HTTP 429 · 요청 제한으로 기록 준비를 멈췄습니다. 잠시 후 다시 시도해주세요.");
+    }
+    await loadMoreHistory();
+    if(generation!==state.scanGeneration) throw historyAbortError();
+    if(state.historyError) throw state.historyError;
+  }
+  if(!state.chatHistoryComplete) await publishCompleteHistory(()=>generation===state.scanGeneration);
 }
 
 
-function buildMediaSequences(){
-  state.mediaSequence.clear();
-  state.legacyMediaSequence.clear();
-  state.typeMediaSequence.clear();
-
+function buildMediaSequences(cooperative=false,current=()=>true){
   const source = state.chatHistoryComplete && state.chatMessages.length
     ? state.chatMessages
     : state.messages;
+  const stamp=state.mediaSequenceStamp;
+  if(stamp && stamp.source===source && stamp.length===source.length && stamp.generation===state.scanGeneration && stamp.complete===!state.hasMoreMessages) return;
+  const mediaSequence=new Map(),legacyMediaSequence=new Map(),typeMediaSequence=new Map();
 
   // v61:
   // Number files by their actual save location.
@@ -6822,29 +6846,47 @@ function buildMediaSequences(){
   // recognized even after photo/video were merged into the backup root.
   const perDayAndType = new Map();
 
-  const sorted = [...source].sort((a,b)=>compareMessages(a,b,"asc"));
+  const sorted = cooperative && source===state.messages ? source : [...source].sort((a,b)=>compareMessages(a,b,"asc"));
+  const generation=state.scanGeneration;
+  function* batches(){
+    let processed=0;
 
-  for(const m of sorted){
-    if(!isArtist(m) || !isMedia(m)) continue;
+    for(const m of sorted){
+      if(++processed%500===0) yield;
+      if(!isArtist(m) || !isMedia(m)) continue;
 
-    const day = dateKey(m);
-    const key = mediaSequenceKey(m);
+      const day = dateKey(m);
+      const key = mediaSequenceKey(m);
 
-    const legacyN = (legacyPerDay.get(day) || 0) + 1;
-    legacyPerDay.set(day,legacyN);
-    state.legacyMediaSequence.set(key, `${day}_${legacyN}`);
+      const legacyN = (legacyPerDay.get(day) || 0) + 1;
+      legacyPerDay.set(day,legacyN);
+      legacyMediaSequence.set(key, `${day}_${legacyN}`);
 
-    const typeKey = `${day}|${normType(m.type)}`;
-    const typeN = (perDayAndType.get(typeKey) || 0) + 1;
-    perDayAndType.set(typeKey,typeN);
-    state.typeMediaSequence.set(key, `${day}_${typeN}`);
+      const typeKey = `${day}|${normType(m.type)}`;
+      const typeN = (perDayAndType.get(typeKey) || 0) + 1;
+      perDayAndType.set(typeKey,typeN);
+      typeMediaSequence.set(key, `${day}_${typeN}`);
 
-    const folder = mediaFolder(m.type);
-    const groupKey = `${day}|${folder}`;
-    const n = (perDayAndFolder.get(groupKey) || 0) + 1;
-    perDayAndFolder.set(groupKey,n);
-    state.mediaSequence.set(key, `${day}_${n}`);
+      const folder = mediaFolder(m.type);
+      const groupKey = `${day}|${folder}`;
+      const n = (perDayAndFolder.get(groupKey) || 0) + 1;
+      perDayAndFolder.set(groupKey,n);
+      mediaSequence.set(key, `${day}_${n}`);
+    }
   }
+  const commit=()=>{
+    if(!current() || generation!==state.scanGeneration) return;
+    state.mediaSequence=mediaSequence;state.legacyMediaSequence=legacyMediaSequence;state.typeMediaSequence=typeMediaSequence;
+    state.mediaSequenceStamp={source,length:source.length,generation,complete:!state.hasMoreMessages};
+  };
+  if(!cooperative){for(const _ of batches()){}commit();return;}
+  return (async()=>{
+    for(const _ of batches()){
+      if(!current()) return;
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    commit();
+  })();
 }
 
 function looksLikeIdOnly(s){
@@ -7592,6 +7634,7 @@ function renderCountsOnly(){
 }
 
 function disconnectInfiniteObserver(){
+  resetPreviewWork();
   state.infiniteVersion++;
 
   if(state.infiniteObserver){
@@ -9571,42 +9614,43 @@ function backupTypeFromFilename(name){
   return "";
 }
 
-async function collectExistingMediaStems(dirHandle, index, depth=0){
-  // File System Access directory trees cannot normally loop back on themselves,
-  // but keep a generous depth limit as a safety guard.
+async function collectExistingMediaStems(dirHandle,index,depth=0,current=()=>true){
   if(!dirHandle) return;
-  if(depth > 24) throw new Error("백업 폴더가 너무 깊어 기존 파일 검사를 완료하지 못했습니다.");
-
-  for await (const [name,handle] of dirHandle.entries()){
-    if(handle?.kind === "file"){
-      const stem = normalizeFrommBackupStem(filenameStem(name));
-      if(stem){
-        // A failed first write may leave an empty entry created by the picker
-        // API. It is not a committed backup and must remain eligible for retry.
-        if(handle.getFile && (await handle.getFile()).size===0) continue;
-        index.all.add(stem);
-        const type=backupTypeFromFilename(name);
-        if(type && index.byType[type]) index.byType[type].add(stem);
+  if(depth>24) throw new Error("백업 폴더가 너무 깊어 기존 파일 검사를 완료하지 못했습니다.");
+  const pending=new Set();
+  let failure=null;
+  const inspect=async(name,handle)=>{
+    assertMediaSaveCurrent(current);
+    const stem=normalizeFrommBackupStem(filenameStem(name));
+    if(!stem) return;
+    if(handle.getFile && (await handle.getFile()).size===0) return;
+    assertMediaSaveCurrent(current);
+    index.all.add(stem);
+    const type=backupTypeFromFilename(name);
+    if(type && index.byType[type]) index.byType[type].add(stem);
+  };
+  try{
+    for await(const [name,handle] of dirHandle.entries()){
+      assertMediaSaveCurrent(current);
+      if(failure) throw failure;
+      if(handle?.kind==="file"){
+        const task=inspect(name,handle).catch(e=>{failure=e;}).finally(()=>pending.delete(task));
+        pending.add(task);
+        if(pending.size>=4) await Promise.race(pending);
+      }else if(handle?.kind==="directory"){
+        await Promise.all(pending);
+        if(failure) throw failure;
+        await collectExistingMediaStems(handle,index,depth+1,current);
       }
-      continue;
     }
-
-    if(handle?.kind === "directory"){
-      await collectExistingMediaStems(handle,index,depth+1);
-    }
-  }
+  }finally{await Promise.all(pending);}
+  if(failure) throw failure;
 }
 
-async function existingMediaNames(root, items){
-  const index = {
-    all:new Set(),
-    byType:{image:new Set(),video:new Set(),sound:new Set()}
-  };
-
-  // An incomplete index could overwrite a saved file. Stop before fetching if
-  // any part of the selected backup tree cannot be inspected.
-  await collectExistingMediaStems(root,index,0);
-
+async function existingMediaNames(root,items,current=()=>true){
+  const index={all:new Set(),byType:{image:new Set(),video:new Set(),sound:new Set()}};
+  // Fresh tree scan every click; any unreadable part fails closed before download.
+  await collectExistingMediaStems(root,index,0,current);
   return index;
 }
 
@@ -9686,6 +9730,9 @@ async function saveOneMediaItem(m, root,onProgress=null,current=()=>true){
     assertMediaSaveCurrent(current);
     const filename=stem+ext;
     const fh=await targetDir.getFileHandle(filename,{create:true});
+    assertMediaSaveCurrent(current);
+    // Recheck after the scan/network wait: a newly added backup must survive.
+    if(fh.getFile && (await fh.getFile()).size>0) throw new Error("같은 이름의 기존 파일을 보호하기 위해 저장하지 않았습니다.");
     assertMediaSaveCurrent(current);
     writable=await fh.createWritable();
     assertMediaSaveCurrent(current);
@@ -9891,6 +9938,7 @@ async function retryFailedSaves(){
     if(current()) showSaveResult(result.ok,result.failures,failures.length,0);
   }finally{
     state.mediaBulkSaving=false;
+    drainPreviewQueue();scheduleHistoryBackground();
     setBulkSaveButtonProgress(btn,null);
     btn.disabled=false;
     btn.classList.remove("retrying");
@@ -9969,14 +10017,15 @@ async function stableSelectedMediaForSave(selected=state.selected,current=()=>tr
   // An already-running page must finish too; partial numbering is unsafe.
   while(state.loadingMessages){
     assertMediaSaveCurrent(current);
-    await sleep(50);
+    if(state.historyJob) await state.historyJob;
+    else await sleep(50);
   }
   assertMediaSaveCurrent(current);
-  if(state.hasMoreMessages){
+  if(state.hasMoreMessages && !state.chatHistoryComplete){
     await ensureAllHistory();
   }
   assertMediaSaveCurrent(current);
-  if(state.hasMoreMessages) throw new Error("전체 기록을 불러오지 못했습니다. 파일명 보호를 위해 저장을 중단했습니다. 다시 시도해주세요.");
+  if(state.hasMoreMessages && !state.chatHistoryComplete) throw new Error("전체 기록을 불러오지 못했습니다. 파일명 보호를 위해 저장을 중단했습니다. 다시 시도해주세요.");
   buildMediaSequences();
   return selectedMediaForSave(selected);
 }
@@ -9985,10 +10034,10 @@ function selectedMediaForSave(selected=state.selected){
   const merged = new Map();
 
   for(const m of state.messages){
-    merged.set(String(m.messageId),m);
+    if(selected.has(String(m.messageId))) merged.set(String(m.messageId),m);
   }
-  for(const m of state.chatMessages){
-    merged.set(String(m.messageId),m);
+  if(state.chatMessages!==state.messages) for(const m of state.chatMessages){
+    if(selected.has(String(m.messageId))) merged.set(String(m.messageId),m);
   }
 
   const items=[...merged.values()].filter(
@@ -10021,6 +10070,8 @@ async function saveSelectedDirect(){
 
   const selected=new Set(state.selected),current=mediaSaveSession();
   state.mediaBulkSaving=true;
+  const button=$("#saveSelectedBtn"),oldText=button?.textContent || "저장";
+  if(button){button.disabled=true;button.textContent="기록 준비 중...";}
   try{
     const items=await stableSelectedMediaForSave(selected,current);
     if(!items.length){
@@ -10032,6 +10083,8 @@ async function saveSelectedDirect(){
     if(current()) alert(`미디어 저장 중단: ${cleanFailureReason(e?.message || e)}`);
   }finally{
     state.mediaBulkSaving=false;
+    drainPreviewQueue();scheduleHistoryBackground();
+    if(button){button.disabled=false;button.textContent=oldText;}
   }
 }
 
@@ -10063,18 +10116,17 @@ async function saveSelectedToFolder(){
     try{ root=await window.showDirectoryPicker({mode:"readwrite"}); }
     catch(e){ if(e?.name==="AbortError") return; throw e; }
     if(!current()) return;
-    if(saveBtn) saveBtn.textContent="기록 준비 중...";
-    const items=await stableSelectedMediaForSave(selected,current);
-    if(!current()) return;
     if(root.queryPermission && await root.queryPermission({mode:"readwrite"})!=="granted"){
       throw new Error("저장 폴더 쓰기 권한을 허용해주세요.");
     }
-    // First inspect the selected backup folder.
-    // Existing files are skipped BEFORE any Fromm download request.
-    if(saveBtn) saveBtn.textContent = "확인 중...";
-
-    const existing = await existingMediaNames(root,items);
+    if(saveBtn) saveBtn.textContent="기록·폴더 준비 중...";
+    const prepared=await Promise.allSettled([
+      stableSelectedMediaForSave(selected,current),
+      existingMediaNames(root,null,current)
+    ]);
     if(!current()) return;
+    for(const result of prepared) if(result.status==="rejected") throw result.reason;
+    const items=prepared[0].value,existing=prepared[1].value;
     const {pending,skipped} = splitExistingItems(items,existing);
     state.lastSaveRoot=root;
     state.lastSaveCurrent=current;
@@ -10090,6 +10142,7 @@ async function saveSelectedToFolder(){
     if(current()) alert(`미디어 저장 중단: ${cleanFailureReason(e?.message || e)}`);
   }finally{
     state.mediaBulkSaving=false;
+    drainPreviewQueue();scheduleHistoryBackground();
     if(saveBtn){
       setBulkSaveButtonProgress(saveBtn,null);
       saveBtn.disabled = false;
@@ -10181,6 +10234,8 @@ $("#scanBtn").onclick=async ()=>{
 
   // Keep the current DOM visible while fresh data is fetched.
   // This avoids the empty-screen -> cards-again jump from previous versions.
+  stopHistoryWork();
+  resetPreviewWork();
   state.scanGeneration++;
 
   state.roomCache.delete(roomCacheKey());

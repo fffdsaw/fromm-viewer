@@ -1,7 +1,7 @@
 name: Media bulk save regression
 on:
   pull_request:
-    paths: ['index.html', 'test/media-bulk-save*.cjs', 'test/direct-selection.test.cjs', '.github/workflows/media-bulk-save.yml']
+    paths: ['index.html', 'test/media-bulk-save*.cjs', 'test/background-media*.cjs', 'test/direct-selection.test.cjs', '.github/workflows/media-bulk-save.yml']
 permissions:
   contents: read
 jobs:
@@ -15,13 +15,15 @@ jobs:
         with:
           node-version: '22'
       - name: Folder and browser-download media saves
-        run: node --test test/media-bulk-save.test.cjs test/direct-selection.test.cjs
+        run: node --test test/media-bulk-save.test.cjs test/direct-selection.test.cjs test/background-media.test.cjs
       - name: Whitespace
         run: git -c core.whitespace=cr-at-eol diff --check HEAD^ HEAD
   browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -33,6 +35,15 @@ jobs:
         env:
           MEDIA_REPORT_PATH: media-results/chromium.json
         run: node test/media-bulk-save.browser.cjs
+      - name: Background metadata and preparation before/after
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MEDIA_PREP_BASELINE_HTML: media-results/baseline.html
+          MEDIA_PREP_REPORT_PATH: media-results/preparation.json
+        run: |
+          mkdir -p media-results
+          git show "${BASE_SHA}:index.html" > "$MEDIA_PREP_BASELINE_HTML"
+          node test/background-media.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

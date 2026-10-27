@@ -643,6 +643,8 @@ html.image-lightbox-open { overflow-y:hidden; }
 .live-center-tab.live.active::before{content:"";display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#ff4059;box-shadow:0 0 0 3px rgba(255,64,89,.12)}
 .replay-shell{padding:14px 16px 18px}
 .video-list-content,.video-list-footer{overflow-anchor:none}
+.video-list-sentinel{display:block;height:1px;pointer-events:none}
+.video-list-footer .replay-more[hidden]{display:none}
 .replay-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .replay-filter-strip{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;padding-bottom:3px;max-width:100%}
 .replay-filter{height:34px;flex:0 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#11151c;color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
@@ -1539,17 +1541,28 @@ function bindVideoListAuto(kind, filter) {
     else if (kind === "replay" && !state.live.channelsLoaded) void loadReplayCenter();
     else void load();
   };
-  if (!more() || target.disabled || s.paused || videoListError(kind) || !("IntersectionObserver" in window)) return;
+  const automatic = "IntersectionObserver" in window && !s.paused && (target.disabled || !videoListError(kind));
+  target.hidden = automatic;
+  if (s.paused && !target.disabled) target.textContent = "다시 시도";
+  let sentinel = target.parentElement.querySelector(".video-list-sentinel");
+  if (!automatic) { sentinel?.remove(); return; }
+  if (!sentinel) {
+    sentinel = document.createElement("span");
+    sentinel.className = "video-list-sentinel";
+    sentinel.setAttribute("aria-hidden", "true");
+    target.before(sentinel);
+  }
+  if (!more() || target.disabled) return;
   s.observer = new IntersectionObserver(entries => {
     if (!entries.some(e => e.isIntersecting) || s.timer) return;
     s.timer = setTimeout(() => {
       s.timer = null;
-      if (!target.isConnected) return;
-      const rect = target.getBoundingClientRect();
+      if (!target.isConnected || !sentinel.isConnected) return;
+      const rect = sentinel.getBoundingClientRect();
       if (rect.top <= innerHeight + 320 && rect.bottom >= 0) void load();
     }, 250);
   }, {rootMargin:"0px 0px 320px 0px"});
-  s.observer.observe(target);
+  s.observer.observe(sentinel);
 }
 
 // Replay list requests have their own generation, separate from LIVE playback.
@@ -1769,7 +1782,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       if (page.posts.length > initialCount || page.isLast) break;
     }
     if (page.posts.length === initialCount) {
-      s.notice = page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 더 불러오기를 누르면 이어서 확인합니다.";
+      s.notice = page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 다시 시도를 누르면 이어서 확인합니다.";
     }
   } catch (e) {
     if (current()) s.error = safeErrorDetail(e?.message || "채널 영상을 불러오지 못했습니다.");

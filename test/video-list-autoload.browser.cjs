@@ -44,6 +44,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    const more=kind==='replay'?'#replayLoadMore':'#channelLoadMore';
    const loaded=()=>page.waitForFunction(({kind,n})=>(kind==='replay'?visibleReplayPosts().length:channelVideoPage()?.posts.length)===n&&!(kind==='replay'?state.live.replayLoading:channelVideoState.loading),{kind,n:24});
    await loaded();
+   assert.equal(await page.locator(more).isVisible(),false,'normal pagination has no visible button');
+   assert.equal(await page.locator('.video-list-sentinel').count(),1,'one separate intersection target');
    // Plenty of rows: no eager DOM page commit before scrolling.
    await page.waitForTimeout(450);assert.equal(await page.locator(cards).count(),24);
    await page.locator(cards).last().scrollIntoViewIfNeeded();
@@ -56,7 +58,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    const ids=await page.locator(cards).evaluateAll(els=>els.map(e=>e.dataset.replayPost||e.dataset.channelVideoCard));
    assert.equal(await page.evaluate(()=>window.firstCard.classList.contains('replay-downloading')&&window.firstCard.querySelector('.replay-download-progress > span').style.width==='37%'),true,'download progress survives page append');
    assert.equal(new Set(ids).size,47);assert.deepEqual(ids,Array.from({length:47},(_,i)=>`a-${i}`));
-   assert.equal(await page.locator(more).count(),0,'end-of-list removes observer target');
+   assert.equal(await page.locator(more).count(),0,'end-of-list removes retry button');
+   assert.equal(await page.locator('.video-list-sentinel').count(),0,'end-of-list removes observer target');
    const total=requests.length;await page.waitForTimeout(650);assert.equal(requests.length,total,'terminal page stops requests');
    assert.equal(requests.length,2,'initial and next page requested once, including Replay prefetch');
    assert.equal(maxActive,1,'one page per selected channel in flight, including prefetch reuse');
@@ -71,11 +74,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    assert.ok((await page.locator('.replay-title').first().textContent()).endsWith('v1'),'explicit refresh replaces stale metadata');
    await page.locator(cards).last().scrollIntoViewIfNeeded();
    await page.waitForFunction(kind=>videoListError(kind),kind);
+   assert.equal(await page.locator(more).isVisible(),true,'failure exposes retry');
+   assert.equal(await page.locator(more).textContent(),'다시 시도');
    const failed=requests.length;await page.waitForTimeout(850);assert.equal(requests.length,failed,'non-progress response cannot loop');
    mode='empty';await page.locator(more).click();
    await page.waitForFunction(kind=>videoListError(kind)&&!(kind==='replay'?state.live.replayLoading:channelVideoState.loading),kind);
    const empty=requests.length;await page.waitForTimeout(850);assert.equal(requests.length,empty,'empty nonterminal response cannot loop');
    mode='normal';await page.locator(more).click();
+   assert.equal(await page.locator(more).isVisible(),false,'retry hides again when automatic loading resumes');
    await page.waitForFunction(cards=>document.querySelectorAll(cards).length===47,cards);
    // Opening the player while the next page is pending must keep that player mounted.
    // The detail fixture deliberately has no stream; real decode is covered by replay/channel-player tests.

@@ -92,8 +92,9 @@ test('Replay playback/download and Native frame transport/auth contracts remain 
   const names = [...baseline.matchAll(/^(?:async )?function ((?:\w*Replay\w*)|(?:replay\w+)|(?:visibleReplayPosts)|(?:returnToReplayList))\(/gm)].map(m => m[1]);
   assert.ok(names.length > 30);
   // List selection and the shared save-name / cross-tab download guard evolve;
-  // stream fetching/decryption and playback remain unchanged.
-  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  // automatic list pagination has its own browser coverage; stream fetching,
+  // decryption and playback remain unchanged.
+  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
   const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});

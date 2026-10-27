@@ -37,7 +37,10 @@ jobs:
           LIVE_SCREENSHOT_DIR: screenshots
           VOTE_SCREENSHOT_DIR: screenshots
           REPLY_SCREENSHOT_DIR: screenshots
+          UI_ICON_SCREENSHOT_DIR: screenshots
         run: |
+          node test/ui-icons.browser.cjs
+          node test/video-list-autoload.browser.cjs
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
           node test/replay-player.browser.cjs

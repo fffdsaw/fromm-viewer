@@ -15,6 +15,7 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
       const errors=[]; page.on('pageerror',e=>errors.push(e.message));
       await page.route('**/*',route=>{
         const url=new URL(route.request().url());
+        if(url.hostname==='cdn.example') return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440"><rect width="640" height="440" fill="#354158"/></svg>'});
         if(url.hostname==='viewer.test') return route.fulfill({contentType:url.pathname.endsWith('.js')?'text/javascript':'text/html',body:fs.readFileSync(path.join(root,url.pathname.endsWith('.js')?path.basename(url.pathname):'index.html'))});
         return route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{posts:[],isLast:true,channels:[],liveRooms:[]}})});
       });
@@ -43,6 +44,17 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
       await centered('#saveResultClose'); await page.locator('#saveResultClose').click();
       await page.evaluate(()=>{document.querySelector('#scrollTopBtn').classList.add('visible');});
       await centered('#scrollTopBtn');
+      await page.evaluate(()=>{
+        state.messages=[{messageId:'photo',type:'image',userType:'star',content:'https://cdn.example/photo.svg',createdAt:1791534600000},{messageId:'video',type:'video',userType:'star',content:'https://cdn.example/video.mp4',thumbnail:'https://cdn.example/photo.svg',createdAt:1791534599000},{messageId:'audio',type:'sound',userType:'star',content:'https://cdn.example/audio.wav',createdAt:1791534598000}];
+        state.chatMessages=state.messages;buildMediaSequences();state.filter='media';render();
+      });
+      assert.equal(await page.locator('.card-download').count(),3);
+      for(const link of await page.locator('.card-download').all()) {
+        assert.equal(await link.evaluate(el=>{const s=getComputedStyle(el);return s.alignItems==='center'&&s.justifyContent==='center';}),true,'media download remains centered');
+      }
+      await shot('media');
+      await page.evaluate(()=>{state.filter='live';state.live.centerMode='live';state.live.discoveryLoaded=true;renderLiveView();});
+      await shot('live');
       await page.evaluate(()=>{
         state.filter='live';state.live.centerMode='replay';state.live.channelsLoaded=true;state.live.channels=[{id:'a',channelName:'Test'}];
         const p={id:'r1',type:'live_record',title:'Replay',displayStartAt:1791534600000,_channelId:'a',_channelName:'Test'};

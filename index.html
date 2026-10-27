@@ -642,6 +642,7 @@ html.image-lightbox-open { overflow-y:hidden; }
 .live-center-tab.active{border-color:rgba(255,91,115,.62);background:rgba(255,91,115,.12);color:#fff}
 .live-center-tab.live.active::before{content:"";display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#ff4059;box-shadow:0 0 0 3px rgba(255,64,89,.12)}
 .replay-shell{padding:14px 16px 18px}
+.video-list-content,.video-list-footer{overflow-anchor:none}
 .replay-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .replay-filter-strip{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;padding-bottom:3px;max-width:100%}
 .replay-filter{height:34px;flex:0 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#11151c;color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
@@ -1441,6 +1442,142 @@ body.download-marquee-active{user-select:none;cursor:default}
 </div>
 
 <script id="channelVideosScript">
+// Shared list-only UI. Existing cards stay mounted while pages append.
+const videoListAuto = {observer:null, timer:null, scope:"", running:false, emptyPages:0, paused:false};
+function videoListCardKey(card) {
+  return JSON.stringify([card.dataset.replayChannel || "", card.dataset.replayPost || card.dataset.channelVideoCard]);
+}
+function renderVideoListMarkup(markup, scope) {
+  const timeline = document.querySelector("#timeline");
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  const next = template.content.firstElementChild;
+  next.dataset.videoListScope = scope;
+  const old = timeline.firstElementChild;
+  if (old?.dataset.videoListScope !== scope || old.querySelector(".channel-player")) {
+    timeline.replaceChildren(next);
+    return;
+  }
+  old.querySelector(".live-center-tabs").replaceWith(next.querySelector(".live-center-tabs"));
+  const grid = old.querySelector(".replay-grid"), nextGrid = next.querySelector(".replay-grid");
+  const anchor = [...(grid?.children || [])].find(c => c.getBoundingClientRect().bottom > 0);
+  const anchorTop = anchor?.getBoundingClientRect().top;
+  if (grid && nextGrid) {
+    const cards = new Map([...grid.children].map(c => [videoListCardKey(c), c]));
+    const keys = new Set();
+    let position = grid.firstElementChild;
+    for (const candidate of [...nextGrid.children]) {
+      const key = videoListCardKey(candidate);
+      if (keys.has(key)) continue;
+      keys.add(key);
+      const card = cards.get(key) || candidate;
+      if (card !== position) grid.insertBefore(card, position);
+      position = card.nextElementSibling;
+    }
+    for (const [key, card] of cards) if (!keys.has(key)) card.remove();
+  } else {
+    old.querySelector(".video-list-content").replaceChildren(...next.querySelector(".video-list-content").childNodes);
+  }
+  for (const selector of [".video-list-feedback", ".video-list-footer"]) {
+    const target = old.querySelector(selector), replacement = next.querySelector(selector);
+    if (target.innerHTML !== replacement.innerHTML) target.replaceChildren(...replacement.childNodes);
+  }
+  old.querySelector(".replay-count").textContent = next.querySelector(".replay-count").textContent;
+  const refresh = old.querySelector("#channelRefresh");
+  if (refresh) refresh.disabled = next.querySelector("#channelRefresh").disabled;
+  if (anchor?.isConnected) {
+    const delta = anchor.getBoundingClientRect().top - anchorTop;
+    if (Math.abs(delta) > .5) window.scrollBy(0, delta);
+  }
+}
+function disconnectVideoListAuto() {
+  videoListAuto.observer?.disconnect();
+  videoListAuto.observer = null;
+  clearTimeout(videoListAuto.timer);
+  videoListAuto.timer = null;
+}
+function videoListError(kind) {
+  if (kind === "channel") return !!channelVideoState.error;
+  const channels = state.live.channels.filter(c => state.live.replayFilter === "all" || c.id === state.live.replayFilter);
+  return !!state.live.replayError || channels.some(c => replayPagingFor(c.id).lastError);
+}
+function bindVideoListAuto(kind, filter) {
+  disconnectVideoListAuto();
+  const s = videoListAuto, scope = JSON.stringify([kind, filter]);
+  if (s.scope !== scope) Object.assign(s, {scope, emptyPages:0, paused:false});
+  const sameSession = channelVideoSession();
+  const current = () => sameSession() && state.filter === "live" && state.live.centerMode === kind &&
+    (kind === "channel" ? channelVideoState.channelId === filter && !channelVideoState.selected : state.live.replayFilter === filter && !state.live.replaySelected) &&
+    document.querySelector("#timeline > [data-video-list-scope]")?.dataset.videoListScope === scope;
+  const target = document.querySelector(kind === "channel" ? "#channelLoadMore" : "#replayLoadMore");
+  const more = () => kind === "channel" ? !!channelVideoPage()?.loaded && !channelVideoPage().isLast : replayHasMore();
+  const count = () => kind === "channel" ? channelVideoPage()?.posts.length || 0 : visibleReplayPosts().length;
+  if (!target || !current()) return;
+  const load = async () => {
+    if (!current() || document.hidden || s.running || !more() || target.disabled) return;
+    s.running = true;
+    const before = count();
+    try {
+      if (kind === "channel") await loadChannelVideos({loadMore:true});
+      else await loadReplayCenter({loadMore:true});
+      if (current() && s.scope === scope) {
+        s.emptyPages = count() > before ? 0 : s.emptyPages + 1;
+        if (videoListError(kind) || s.emptyPages >= 2) s.paused = true;
+      }
+    } finally {
+      s.running = false;
+      if (state.filter === "live") {
+        if (state.live.centerMode === "channel" && !channelVideoState.selected) bindVideoListAuto("channel", channelVideoState.channelId);
+        if (state.live.centerMode === "replay" && !state.live.replaySelected) bindVideoListAuto("replay", state.live.replayFilter);
+      }
+    }
+  };
+  target.onclick = () => {
+    s.paused = false; s.emptyPages = 0;
+    // Manual retry also supports an initial Channel load that failed.
+    if (kind === "channel" && !channelVideoPage()?.loaded) void loadChannelVideos();
+    else if (kind === "replay" && !state.live.channelsLoaded) void loadReplayCenter();
+    else void load();
+  };
+  if (!more() || target.disabled || s.paused || videoListError(kind) || !("IntersectionObserver" in window)) return;
+  s.observer = new IntersectionObserver(entries => {
+    if (!entries.some(e => e.isIntersecting) || s.timer) return;
+    s.timer = setTimeout(() => {
+      s.timer = null;
+      if (!target.isConnected) return;
+      const rect = target.getBoundingClientRect();
+      if (rect.top <= innerHeight + 320 && rect.bottom >= 0) void load();
+    }, 250);
+  }, {rootMargin:"0px 0px 320px 0px"});
+  s.observer.observe(target);
+}
+
+// Replay list requests have their own generation, separate from LIVE playback.
+let replayListGeneration = 0;
+const replayListRequests = new Set();
+function cancelReplayListRequests() {
+  replayListGeneration++;
+  for (const controller of replayListRequests) controller.abort();
+  replayListRequests.clear();
+}
+function replayListCurrent() {
+  const generation = replayListGeneration, sameSession = channelVideoSession();
+  return () => generation === replayListGeneration && sameSession();
+}
+async function replayListRequest(path, options, current) {
+  if (!current()) throw new Error("Replay 목록 요청이 변경되었습니다.");
+  const controller = new AbortController();
+  replayListRequests.add(controller);
+  let timer;
+  try {
+    return await Promise.race([
+      frommApiRequest(path, {...options, signal:controller.signal}),
+      new Promise((_resolve, reject) => {timer = setTimeout(() => {
+        controller.abort(); reject(new Error("Replay 응답이 늦어지고 있습니다. 다시 시도해주세요."));
+      }, 15000);}),
+    ]);
+  } finally {clearTimeout(timer); replayListRequests.delete(controller);}
+}
 // Uploaded channel videos use the Viewer's session and media helpers.
 // List, selection, playback and request generations are independent of Replay.
 const channelVideoState = {
@@ -1567,14 +1704,14 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
     s.loading = false;
     s.error = "로그인 세션을 확인한 뒤 다시 시도해주세요.";
     s.notice = "";
-    if (channelVideosActive()) renderLiveView();
+    if (channelVideosActive() && !s.selected) renderLiveView();
     return;
   }
   s.loading = true;
   s.error = "";
   s.notice = "";
   s.loadingMessage = loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
-  if (channelVideosActive()) renderLiveView();
+  if (channelVideosActive() && !s.selected) renderLiveView();
   try {
     const channels = await channelVideoChannels(current);
     if (!current()) return;
@@ -1591,7 +1728,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
     page ||= {posts: [], lastPost: null, loaded: false, isLast: false};
     const initialCount = page.posts.length;
     const cursorKey = post => post ? JSON.stringify([String(post.id), String(post.num), String(post.displayStartAt)]) : "";
-    const seen = new Set(page.lastPost ? [cursorKey(page.lastPost)] : []);
+    const seen = new Set(page.cursorKeys || (page.lastPost ? [cursorKey(page.lastPost)] : []));
     // A mixed page may contain only Replay/hidden/duplicate posts. Continue
     // until the grid gains an upload, but bound the work for sparse feeds.
     for (let scanned = 0; scanned < 5; scanned++) {
@@ -1628,6 +1765,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       page.loaded = true;
       s.pages.set(channel.id, page);
       if (cursor) seen.add(cursorKey(cursor));
+      page.cursorKeys = seen;
       if (page.posts.length > initialCount || page.isLast) break;
     }
     if (page.posts.length === initialCount) {
@@ -1638,7 +1776,10 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
   } finally {
     if (seq === s.requestSeq) {
       s.loading = false;
-      if (channelVideosActive()) renderLiveView();
+      if (channelVideosActive() && !s.selected) {
+        if (refresh) document.querySelector("#timeline > [data-video-list-scope]")?.removeAttribute("data-video-list-scope");
+        renderLiveView();
+      }
     }
   }
 }
@@ -1681,22 +1822,32 @@ function renderChannelVideosView() {
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
+    body = `<div class="video-list-content">${body}</div><div class="video-list-footer">`;
     body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice)}</p>`;
     if (s.loading || s.error || (s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast))) {
       body += `<button id="channelLoadMore" class="btn replay-more" type="button" ${s.loading ? 'disabled aria-busy="true"' : ""}>${s.loading ? "불러오는 중..." : s.error ? "다시 시도" : "더 불러오기"}</button>`;
     }
   }
-  $("#timeline").innerHTML = `<div class="live-shell replay-list-shell channel-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
+  if (!selected) body += `</div>`;
+  const markup = `<div class="live-shell replay-list-shell channel-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
     <div class="replay-toolbar"><div class="replay-filter-strip" aria-label="구독 채널 선택">${filters}</div><span class="replay-count">업로드된 비디오 ${posts.length}개</span><button id="channelRefresh" class="btn" type="button" ${s.loading ? "disabled" : ""}>새로고침</button></div>
-    ${s.error ? `<p class="live-entry-note replay-error" role="alert">${esc(s.error)}</p>` : ""}${body}
+    <div class="video-list-feedback">${s.error ? `<p class="live-entry-note replay-error" role="alert">${esc(s.error)}</p>` : ""}</div>${body}
   </div></div></div>`;
+  if (selected) $("#timeline").innerHTML = markup;
+  else renderVideoListMarkup(markup, JSON.stringify(["channel", s.channelId]));
   bindLiveCenterTabs();
-  for (const card of document.querySelectorAll("[data-channel-video-card]")) bindDownloadSelection(card,"channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
+  for (const card of document.querySelectorAll("[data-channel-video-card]")) {
+    if (card.dataset.videoListBound) continue;
+    bindDownloadSelection(card,"channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
+    card.dataset.videoListBound = "true";
+  }
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
   for (const btn of document.querySelectorAll("[data-channel-video-play]")) btn.onclick = () => playChannelVideo(btn.dataset.channelVideoPlay);
   for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
-  $("#channelLoadMore")?.addEventListener("click", () => loadChannelVideos({loadMore: !!channelVideoPage()?.loaded}));
-  $("#channelRefresh")?.addEventListener("click", () => { stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); });
+  if (!selected) bindVideoListAuto("channel", s.channelId);
+  else disconnectVideoListAuto();
+  const refreshButton = $("#channelRefresh");
+  if (refreshButton) refreshButton.onclick = () => { videoListAuto.paused = false; videoListAuto.emptyPages = 0; stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); };
   $("#channelBackToList")?.addEventListener("click", returnToChannelList);
   $("#channelDownloadCurrent")?.addEventListener("click", e => downloadChannelVideo(selected, e.currentTarget));
   updateSelectedCount();
@@ -3803,9 +3954,10 @@ function replayChannelName(channel){
   return String(channel?.channelName || channel?.name || channel?.artiName || "아티스트");
 }
 
-async function ensureReplayChannels(){
+async function ensureReplayChannels(current=replayListCurrent()){
   if(state.live.channelsLoaded) return state.live.channels;
-  const response=await frommApiRequest("/channels",{base:FROMM_CHANNEL_API_BASE});
+  const response=await replayListRequest("/channels",{base:FROMM_CHANNEL_API_BASE},current);
+  if(!current()) return [];
   const raw=response?.data?.channels || response?.channels || response?.result?.channels || [];
   if(!Array.isArray(raw)) throw new Error("구독 채널 목록 응답을 확인하지 못했습니다.");
   state.live.channels=raw.filter(c=>c?.isSubscribed).map(c=>({
@@ -3838,7 +3990,8 @@ function replayPagingFor(channelId){
   return p;
 }
 
-async function fetchReplayPage(channel,{loadMore=false}={}){
+async function fetchReplayPage(channel,{loadMore=false,current=replayListCurrent()}={}){
+  if(!current()) return;
   const paging=replayPagingFor(channel.id);
   if(loadMore && paging.isLast) return {added:0,rawCount:0};
 
@@ -3849,6 +4002,7 @@ async function fetchReplayPage(channel,{loadMore=false}={}){
     try{ await paging.prefetchPromise; }catch{}
   }
 
+  if(!current()) return;
   let data;
   let raw;
 
@@ -3876,12 +4030,13 @@ async function fetchReplayPage(channel,{loadMore=false}={}){
     // Short retry for transient channel/API hiccups. Cursor state is only
     // advanced after a successful response, so a failed page is never skipped.
     for(let attempt=0;attempt<3;attempt++){
+      if(!current()) return;
       try{
-        response=await frommApiRequest("/media/posts",{
+        response=await replayListRequest("/media/posts",{
           base:FROMM_CHANNEL_API_BASE,
           channelId:channel.id,
           query
-        });
+        },current);
         lastErr=null;
         break;
       }catch(e){
@@ -3895,6 +4050,15 @@ async function fetchReplayPage(channel,{loadMore=false}={}){
     raw=Array.isArray(data.posts) ? data.posts : [];
   }
 
+  if(!current()) return;
+  if(!Array.isArray(data.posts)) throw new Error("Replay 목록 응답을 확인하지 못했습니다.");
+  const cursorKey=replayCursorKey(raw.at(-1));
+  const cursors=paging.cursorKeys || new Set(paging.lastPost ? [replayCursorKey(paging.lastPost)] : []);
+  if((data.isLast===false && !raw.length) || (data.isLast!==true && raw.length && cursors.has(cursorKey))) {
+    throw new Error("Replay 다음 페이지가 비어 있거나 커서가 진행되지 않았습니다. 다시 시도해주세요.");
+  }
+  if(cursorKey) cursors.add(cursorKey);
+  paging.cursorKeys=cursors;
   // Prefer the API's explicit isLast boolean. If it is missing, only an empty
   // page is treated as terminal; this avoids accidentally stopping too early.
   if(data.isLast === true){
@@ -3941,7 +4105,8 @@ function replayCursorKey(post){
   return `${String(post.id||"")}:${String(post.num??"")}:${String(post.displayStartAt??"")}`;
 }
 
-async function prefetchReplayPage(channel){
+async function prefetchReplayPage(channel,current=replayListCurrent()){
+  if(!current()) return;
   const paging=replayPagingFor(channel.id);
   if(!paging.loaded || paging.isLast || paging.prefetched) return;
   if(paging.prefetchPromise) return paging.prefetchPromise;
@@ -3969,12 +4134,13 @@ async function prefetchReplayPage(channel){
     // Background work is deliberately conservative: fewer retries than a
     // user-triggered load, so it does not hammer the API.
     for(let attempt=0;attempt<2;attempt++){
+      if(!current()) return;
       try{
-        response=await frommApiRequest("/media/posts",{
+        response=await replayListRequest("/media/posts",{
           base:FROMM_CHANNEL_API_BASE,
           channelId:channel.id,
           query
-        });
+        },current);
         lastErr=null;
         break;
       }catch(e){
@@ -3989,7 +4155,7 @@ async function prefetchReplayPage(channel){
 
     // The user may have pressed 더보기 while this request was running.
     // Only keep the result if it still belongs to the current cursor.
-    if(replayCursorKey(paging.lastPost)!==cursorKey) return;
+    if(!current() || replayCursorKey(paging.lastPost)!==cursorKey) return;
 
     paging.prefetched={data,raw,cursorKey,fetchedAt:Date.now()};
     paging.prefetchError="";
@@ -4009,7 +4175,7 @@ async function prefetchReplayPage(channel){
   }
 }
 
-async function prefetchReplayPages(channels){
+async function prefetchReplayPages(channels,current=replayListCurrent()){
   const targets=channels.filter(c=>{
     const p=replayPagingFor(c.id);
     return p.loaded && !p.isLast && !p.prefetched;
@@ -4018,7 +4184,8 @@ async function prefetchReplayPages(channels){
   // Keep background traffic low to avoid rate-limit spikes.
   const batchSize=2;
   for(let i=0;i<targets.length;i+=batchSize){
-    await Promise.all(targets.slice(i,i+batchSize).map(c=>prefetchReplayPage(c)));
+    if(!current()) return;
+    await Promise.all(targets.slice(i,i+batchSize).map(c=>prefetchReplayPage(c,current)));
     if(i+batchSize<targets.length) await sleep(180);
   }
 }
@@ -4026,7 +4193,8 @@ async function prefetchReplayPages(channels){
 function scheduleReplayPrefetch(channels){
   if(!channels?.length) return;
 
-  const run=()=>prefetchReplayPages(channels).catch(e=>{
+  const current=replayListCurrent();
+  const run=()=>prefetchReplayPages(channels,current).catch(e=>{
     console.debug("Replay 다음 페이지 미리 불러오기 건너뜀",e);
   });
 
@@ -4036,13 +4204,15 @@ function scheduleReplayPrefetch(channels){
     setTimeout(run,450);
   }
 }
-async function runReplayBatches(channels,{loadMore=false,onBatch=null}={}){
+async function runReplayBatches(channels,{loadMore=false,onBatch=null,current=replayListCurrent()}={}){
   const batchSize=4;
   for(let i=0;i<channels.length;i+=batchSize){
+    if(!current()) return;
     await Promise.all(channels.slice(i,i+batchSize).map(async c=>{
       try{
-        return await fetchReplayPage(c,{loadMore});
+        return await fetchReplayPage(c,{loadMore,current});
       }catch(e){
+        if(!current()) return;
         const paging=replayPagingFor(c.id);
         paging.lastError=String(e?.message || e || "Replay 목록 불러오기 실패");
         console.warn("Replay 목록 불러오기 실패",c.channelName,e);
@@ -4055,7 +4225,9 @@ async function runReplayBatches(channels,{loadMore=false,onBatch=null}={}){
 }
 
 async function loadReplayCenter({loadMore=false,refresh=false}={}){
-  if(state.live.replayLoading) return;
+  if(state.live.replayLoading && !refresh) return;
+  if(refresh) { cancelReplayListRequests(); videoListAuto.paused=false; videoListAuto.emptyPages=0; }
+  const current=replayListCurrent();
   prewarmReplayRuntime();
   state.live.replayLoading=true;
   state.live.replayError="";
@@ -4063,9 +4235,10 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
     state.live.replayPosts=[];
     state.live.replayPaging.clear();
   }
-  renderLiveView();
+  if(!state.live.replaySelected) renderLiveView();
   try{
-    const channels=await ensureReplayChannels();
+    const channels=await ensureReplayChannels(current);
+    if(!current()) return;
     let targets;
     if(state.live.replayFilter!=="all"){
       const c=channels.find(x=>x.id===state.live.replayFilter);
@@ -4077,11 +4250,11 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
     else targets=targets.filter(c=>!replayPagingFor(c.id).isLast);
 
     await runReplayBatches(targets,{
-      loadMore,
+      loadMore,current,
       onBatch:()=>{
         // Initial entry becomes useful as soon as the first channel batch is
         // ready instead of waiting for every subscribed channel.
-        if(!loadMore && state.filter==="live" && state.live.centerMode==="replay"){
+        if(current() && !loadMore && state.filter==="live" && state.live.centerMode==="replay" && !state.live.replaySelected){
           renderLiveView();
         }
       }
@@ -4092,12 +4265,15 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
     const prefetchTargets=state.live.replayFilter==="all"
       ? channels
       : channels.filter(c=>c.id===state.live.replayFilter);
-    scheduleReplayPrefetch(prefetchTargets);
+    if(current() && !videoListError("replay")) scheduleReplayPrefetch(prefetchTargets);
   }catch(e){
-    state.live.replayError=String(e?.message || e || "Replay 목록을 불러오지 못했습니다.");
+    if(current()) state.live.replayError=String(e?.message || e || "Replay 목록을 불러오지 못했습니다.");
   }finally{
-    state.live.replayLoading=false;
-    if(state.filter==="live" && state.live.centerMode==="replay") renderLiveView();
+    if(current()) state.live.replayLoading=false;
+    if(current() && state.filter==="live" && state.live.centerMode==="replay" && !state.live.replaySelected) {
+      if(refresh) document.querySelector("#timeline > [data-video-list-scope]")?.removeAttribute("data-video-list-scope");
+      renderLiveView();
+    }
   }
 }
 
@@ -4144,6 +4320,8 @@ function replayHasMore(){
 }
 
 async function setReplayFilter(channelId){
+  cancelReplayListRequests();
+  state.live.replayLoading=false;
   state.live.replayFilter=String(channelId || "all");
   renderLiveView();
   const channels=state.live.replayFilter==="all" ? state.live.channels : state.live.channels.filter(c=>c.id===state.live.replayFilter);
@@ -4239,6 +4417,7 @@ function renderReplayView(){
   const channels=state.live.channels;
   const selected=state.live.replaySelected;
   if(selected){
+    disconnectVideoListAuto();
     renderReplayPlayerView();
     return;
   }
@@ -4257,16 +4436,19 @@ function renderReplayView(){
     </article>`;
   }).join("")}</div>` : `<div class="replay-empty">${state.live.replayLoading?"Replay를 불러오는 중...":state.live.replayError?esc(state.live.replayError):"표시할 Replay가 없습니다."}</div>`;
 
-  tl.innerHTML=`<div class="live-shell replay-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
+  const markup=`<div class="live-shell replay-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
     <div class="replay-toolbar">${filters}<span class="replay-count">Replay ${posts.length}개</span></div>
-    ${state.live.replayError && posts.length?`<div class="live-entry-note replay-error">${esc(state.live.replayError)}</div>`:""}
-    ${grid}
-    ${replayHasMore()&&!state.live.replayLoading?`<button id="replayLoadMore" class="btn replay-more" type="button">더 불러오기</button>`:""}
+    <div class="video-list-feedback">${state.live.replayError?`<div class="live-entry-note replay-error" role="alert">${esc(state.live.replayError)}</div>`:""}</div>
+    <div class="video-list-content">${grid}</div>
+    <div class="video-list-footer">${replayHasMore() || state.live.replayError?`<button id="replayLoadMore" class="btn replay-more" type="button" ${state.live.replayLoading?'disabled aria-busy="true"':""}>${state.live.replayLoading?"불러오는 중...":videoListError("replay")?"다시 시도":"더 불러오기"}</button>`:""}</div>
   </div></div></div>`;
 
+  renderVideoListMarkup(markup, JSON.stringify(["replay", state.live.replayFilter]));
   bindLiveCenterTabs();
-  for(const btn of document.querySelectorAll("[data-replay-filter]")) btn.addEventListener("click",()=>setReplayFilter(btn.dataset.replayFilter));
+  for(const btn of document.querySelectorAll("[data-replay-filter]")) btn.onclick=()=>setReplayFilter(btn.dataset.replayFilter);
   for(const card of document.querySelectorAll("[data-replay-post]")){
+    if(card.dataset.videoListBound) continue;
+    card.dataset.videoListBound="true";
     const play=()=>playReplay(card.dataset.replayPost,card.dataset.replayChannel);
     const prefetch=()=>{
       const post=state.live.replayPosts.find(
@@ -4284,14 +4466,14 @@ function renderReplayView(){
     playButton.addEventListener("click",e=>{e.stopPropagation();play();});
   }
   for(const btn of document.querySelectorAll("[data-replay-download]")){
-    btn.addEventListener("click",e=>{
+    btn.onclick=e=>{
       e.stopPropagation();
       const post=state.live.replayPosts.find(p=>String(p.id)===String(btn.dataset.replayDownload)&&p._channelId===String(btn.dataset.replayChannel));
       if(post) downloadReplayPost(post,btn);
-    });
-    btn.addEventListener("keydown",e=>e.stopPropagation());
+    };
+    btn.onkeydown=e=>e.stopPropagation();
   }
-  $("#replayLoadMore")?.addEventListener("click",()=>loadReplayCenter({loadMore:true}));
+  bindVideoListAuto("replay", state.live.replayFilter);
   updateSelectedCount();
 }
 
@@ -5788,6 +5970,9 @@ function resetUserScopedMemory(){
   state.live.channelsLoaded=false;
   state.live.replayPosts=[];
   state.live.replayPaging.clear();
+  cancelReplayListRequests();
+  disconnectVideoListAuto();
+  videoListAuto.scope="";
   state.live.replayLoading=false;
   state.live.replayError="";
   state.live.replayFilter="all";

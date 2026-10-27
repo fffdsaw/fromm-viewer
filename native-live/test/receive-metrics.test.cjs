@@ -11,11 +11,15 @@ test('SDK remote receive fields use correct units; source resolution and identit
     decoderFps: 30, rendererFps: 29, receivedBitrateKbps: 1600, frameLossPercent: 2, packetLossPercent: 1, rxStreamType: 0, nativeAvSyncMs: -12 });
   assert.deepEqual(safeDiagnostic(stats), stats);
 });
-const sdkTypesPath = path.join(__dirname, '../node_modules/agora-electron-sdk/types/Private/IAgoraRtcEngine.d.ts');
+const sdkTypesPath = process.env.AGORA_TYPES_PATH || path.join(__dirname, '../node_modules/agora-electron-sdk/types/Private/IAgoraRtcEngine.d.ts');
 test('installed Agora 4.6.2 declares the mapped remote callback fields', { skip: !fs.existsSync(sdkTypesPath) }, () => {
   const sdkTypes = fs.readFileSync(sdkTypesPath, 'utf8');
   const video = sdkTypes.split('class RemoteVideoStats')[1].split('\n}')[0];
   for (const field of ['width', 'height', 'decoderOutputFrameRate', 'rendererOutputFrameRate', 'receivedBitrate', 'packetLossRate', 'avSyncTimeMs']) assert.ok(video.includes(field + '?: number'));
+  const audio=sdkTypes.split('class RemoteAudioStats')[1].split('\n}')[0];
+  for(const field of ['networkTransportDelay','jitterBufferDelay','audioLossRate','receivedBitrate','e2eDelay']) assert.ok(audio.includes(field+'?: number'));
+  assert.ok(video.includes('rxStreamType?: VideoStreamType'));
+  assert.ok(sdkTypes.includes('onRemoteVideoStats?(') && sdkTypes.includes('onRemoteAudioStats?('));
 });
 test('absent, invalid and negative metrics remain absent; audio jitter buffer is not network jitter', () => {
   assert.deepEqual(remoteStats({ width: NaN, height: -1, receivedBitrate: '1600', rendererOutputFrameRate: Infinity }), { stage: 'rtc-video-stats', synthetic: false });

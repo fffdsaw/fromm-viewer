@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'web-live-pip.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -44,6 +44,7 @@ jobs:
           node test/direct-selection.browser.cjs
           node test/selection-gestures.browser.cjs
           node test/live-ui-pip.browser.cjs
+          node test/native-diagnostics.browser.cjs
           node test/live-chat-probe.browser.cjs
           node test/votes.browser.cjs
           node test/my-replies.browser.cjs

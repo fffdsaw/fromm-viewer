@@ -32,6 +32,12 @@ jobs:
         # Hosted Windows uses software GPU/JPEG decode. Keep all 30fps/ACK/rAF
         # gates with a smaller fixture; full 720x1280 and WASAPI run locally.
         run: node test/run-background-check.cjs --benchmark-size=360x640
+      - name: Verify diagnostics enabled with the same 30fps gates
+        working-directory: native-live
+        run: node test/run-background-check.cjs --benchmark-size=360x640 --diagnostics
+      - name: Verify full 720x1280 frame delivery (software VM, no LIVE FPS claim)
+        working-directory: native-live
+        run: node test/run-background-check.cjs --benchmark-size=720x1280 --delivery-only --diagnostics
       - name: Bundle the connection tool and extension
         shell: pwsh
         run: |
@@ -47,9 +53,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view native-live-0.4.0 *> $null
+          gh release view native-live-0.5.0 *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create native-live-0.4.0 --target "$env:GITHUB_SHA" --title "Windows LIVE 0.4.0 - background Native player" --notes "Native LIVE now runs in a hidden background window. Extract into a fixed folder, close active LIVE tabs, run native-live/Install-Web-LIVE.cmd, reload the bundled extension 1.0.8, then Ctrl+F5 the Viewer. Existing 0.3.0 users must rerun the installer for the new folder. Developer reveal: FROMM_NATIVE_DEBUG=1 before starting the browser. Windows synthetic SDK rendering, JPEG/ACK and teardown checks run before publication; authenticated broadcasts require a separate live check."
+            gh release create native-live-0.5.0 --target "$env:GITHUB_SHA" --title "Windows LIVE 0.5.0 - optional receive diagnostics" --notes "Adds opt-in LIVE receive and pipeline diagnostics on the existing hidden Native player. No real broadcast FPS claim. Native 0.4.0 remains playback-compatible; diagnostics require this 0.5.0 tool and extension 1.0.9. Extract into a fixed folder, close active LIVE tabs, run native-live/Install-Web-LIVE.cmd, reload the bundled extension 1.0.9, then Ctrl+F5 the Viewer. Existing 0.3.0 users must rerun the installer for the new folder. Developer reveal: FROMM_NATIVE_DEBUG=1 before starting the browser. Windows synthetic SDK rendering, JPEG/ACK and teardown checks run before publication; authenticated broadcasts require a separate live check."
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload native-live-0.4.0 fromm-native-live-windows-x64.zip --clobber
+          gh release upload native-live-0.5.0 fromm-native-live-windows-x64.zip

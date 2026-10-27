@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fromm Stream Nexus Proxy",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "minimum_chrome_version": "101",
   "description": "Connects Fromm Viewer API/media and Windows Native LIVE playback for the official Viewer page.",
   "permissions": [

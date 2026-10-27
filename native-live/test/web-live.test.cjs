@@ -13,7 +13,7 @@ function setup(keyBytes = 64, platform = 'Windows', options = {}) {
     queueMicrotask(() => listeners.get('message')({ source: window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { id: message.value.id, ok: true, backgroundPlayer: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7', ...options.hello } } }));
   } };
   const context = vm.createContext({ window, navigator: { userAgent: platform }, location: { origin: 'https://fffdsaw.github.io' },
-    document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, performance, requestAnimationFrame: options.requestAnimationFrame || (callback => callback()), cancelAnimationFrame: options.cancelAnimationFrame || (()=>{}),
+    document: options.document || { getElementById: () => null, querySelector: () => null }, TextEncoder, Map, Promise, setTimeout, clearTimeout, setInterval:()=>1, clearInterval(){}, performance: options.performance || performance, requestAnimationFrame: options.requestAnimationFrame || (callback => callback()), cancelAnimationFrame: options.cancelAnimationFrame || (()=>{}),
     state, currentAuth: () => ({ token: 'synthetic-auth', uuid: 'synthetic-device' }), resolveAgoraJoinArgs: () => {},
     decodeLiveEncryptionSalt: () => Array.from({ length: 32 }, (_, i) => i), recordLiveDiagnostic: (event, value) => diagnostics.push({ event, ...value }), liveStatusText() {},
     liveEncryptionCandidates(room) { if (room.encryptionKey.length > 62) throw new Error('WEB_LIMIT'); return [{ mode: 'web' }]; },
@@ -25,7 +25,8 @@ test('web-compatible keys keep original Web playback path', async () => {
   for (const size of [32, 62]) { const h = setup(size); await h.context.connectAgoraLive(); assert.equal(h.webJoins(), 1); assert.equal(h.calls.length, 0); }
 });
 test('RTC receive measurements stay separate from web display and arbitrary callback secrets are discarded', async () => {
-  const h = setup(); await h.context.connectAgoraLive();
+  const h = setup(64,'Windows',{hello:{receiveMetrics:true,extensionVersion:'1.0.9'}}); await h.context.connectAgoraLive();
+  await h.window.FrommSetLiveDiagnostics(true);
   const send = value => h.listeners.get('message')({ source: h.window, origin: 'https://fffdsaw.github.io', data: { protocol: 'fromm-native-v1', direction: 'extension', value: { type: 'status', value } } });
   send({ stage: 'rtc-video-stats', receivedWidth: 720, receivedHeight: 1280, decoderFps: 30, rendererFps: 30, receivedBitrateKbps: 1600, uid: 42, encryptionKey: 'DO_NOT_COPY', synthetic: false });
   const m = h.window.FrommLiveMetrics();
@@ -108,4 +109,21 @@ test('a superseded image decoding error acknowledges its own sequence, never the
   frame(1);const first=image.onload();frame(2);const second=image.onload();decoders[0].reject();await first;
   assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1]);
   decoders[1].resolve();await second;assert.deepEqual(h.calls.filter(v=>v.method==='frame-ack').map(v=>v.params.sequence),[1,2]);
+});
+
+test('diagnostics default off, opt in, expire independently and clear on disconnect without affecting legacy playback',async()=>{
+ let now=100;const h=setup(64,'Windows',{hello:{receiveMetrics:true,extensionVersion:'1.0.9'},performance:{now:()=>now,timeOrigin:10000}});
+ await h.context.connectAgoraLive();assert.equal(h.window.FrommLiveMetrics().enabled,false);
+ const send=value=>h.listeners.get('message')({source:h.window,origin:'https://fffdsaw.github.io',data:{protocol:'fromm-native-v1',direction:'extension',value:{type:'status',value}}});
+ send({stage:'rtc-video-stats',decoderFps:30,synthetic:false});assert.equal(h.window.FrommLiveMetrics().rtc,'UNAVAILABLE');
+ await h.window.FrommSetLiveDiagnostics(true);
+ send({stage:'rtc-video-stats',receivedWidth:720,decoderFps:29,synthetic:false,token:'SECRET',uid:123});
+ now+=4000;send({stage:'rtc-audio-stats',audioBitrateKbps:40,synthetic:false});
+ now+=3000;assert.equal(h.window.FrommLiveMetrics().rtc,'UNAVAILABLE');assert.equal(h.window.FrommLiveMetrics().audio.audioBitrateKbps,40);
+ send({stage:'pipeline-performance',captureFps:28,synthetic:true});assert.equal(h.window.FrommLiveMetrics().pipeline.synthetic,true);
+ now+=7000;assert.equal(h.window.FrommLiveMetrics().pipeline,'UNAVAILABLE');
+ send({stage:'native-disconnected'});assert.equal(h.window.FrommLiveMetrics().enabled,false);assert.equal(h.window.FrommLiveMetrics().audio,'UNAVAILABLE');
+ assert.equal(JSON.stringify(h.window.FrommLiveMetrics()).includes('SECRET'),false);
+ const legacy=setup();await legacy.context.connectAgoraLive();assert.equal(await legacy.window.FrommSetLiveDiagnostics(true),false);
+ assert.equal(legacy.calls.some(x=>x.method==='diagnostics'),false);assert.equal(legacy.webJoins(),0);
 });

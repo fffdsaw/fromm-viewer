@@ -203,7 +203,7 @@ test('renderer leave stops JPEG capture and releases Agora before sending its sh
 });
 
 function controllerHarness({ leave = async () => {}, show = async () => false, fetch } = {}) {
-  const input = new EventEmitter(), sent = [], joined = [], acknowledgements = []; let quits = 0, fetches = 0;
+  const input = new EventEmitter(), sent = [], joined = [], acknowledgements = [], measurements = []; let quits = 0, fetches = 0;
   const contracts = require('../src/contracts.cjs');
   const context = vm.createContext({ module: { exports: {} }, process, Buffer, URL, AbortController, AbortSignal,
     require: name => name === 'electron' ? { net: { fetch: async (...args) => { fetches++; return fetch ? fetch(...args) : { ok: true, json: async () => ({ synthetic: true }) }; } } }
@@ -211,15 +211,15 @@ function controllerHarness({ leave = async () => {}, show = async () => false, f
         : require(path.join(SRC, name)) });
   vm.runInContext(fs.readFileSync(path.join(SRC, 'native-controller.cjs'), 'utf8'), context);
   const controller = context.module.exports.createController({ input, sendMessage: value => sent.push(value), leave, show,
-    join: async payload => joined.push(payload), renew() {}, quit: () => { quits++; }, acknowledge: sequence => acknowledgements.push(sequence) });
+    join: async payload => joined.push(payload), renew() {}, quit: () => { quits++; }, acknowledge: sequence => acknowledgements.push(sequence), diagnostics: enabled => measurements.push(enabled) });
   const send = (id, method, params = {}) => input.emit('data', encode({ id, method, params }));
   const join = id => send(id, 'join', { roomId: 'room', channelId: 'synthetic-channel', uuid: 'synthetic-device', authToken: 'synthetic-auth' });
-  return { input, sent, joined, acknowledgements, controller, send, join, fetches: () => fetches, quits: () => quits };
+  return { input, sent, joined, acknowledgements, measurements, controller, send, join, fetches: () => fetches, quits: () => quits };
 }
 
 test('hello advertises hidden 30fps/ACK playback; disabled debug show keeps an active stream and ACK path', async () => {
   const h = controllerHarness(); h.send(1, 'hello'); await flush(); const hello = h.sent.find(value => value.id === 1);
-  for (const [key, value] of Object.entries({ version: 3, toolVersion: '0.4.0', backgroundPlayer: true, frameAck: true, targetFps: 30, inlineVideo: true })) assert.equal(hello[key], value);
+  for (const [key, value] of Object.entries({ version: 3, toolVersion: '0.5.0', receiveMetrics: true, backgroundPlayer: true, frameAck: true, targetFps: 30, inlineVideo: true })) assert.equal(hello[key], value);
   h.join(2); await flush(); assert.equal(h.joined.length, 1);
   h.send(3, 'show'); await flush(); assert.equal(h.sent.find(value => value.id === 3).code, 'NATIVE_DEBUG_DISABLED');
   h.controller.frame({ sequence: 1, jpeg: 'data:image/jpeg;base64,AQ==' }); h.send(4, 'frame-ack', { sequence: 1 });
@@ -291,4 +291,14 @@ test('relay EOF discards queued joins and ends a late Electron connection withou
   connect(stream);
   assert.equal(stream.ended, true); assert.equal(stream.writes.length, 0); assert.equal(child.killed, undefined);
   assert.equal(timers.get(1).ms, 3000); child.emit('exit', 0); assert.equal(timers.size, 0); assert.deepEqual(exits, [0]);
+});
+
+test('diagnostic command requires an authorized active envelope and boolean-only input',async()=>{
+ const h=controllerHarness();h.send(1,'diagnostics',{enabled:true});assert.equal(h.sent.at(-1).ok,false);
+ h.join(2);await flush();
+ for(const params of[{enabled:'yes'},{enabled:true,authToken:'SECRET'},{}])h.send(3,'diagnostics',params);
+ assert.deepEqual(h.measurements,[]);
+ h.send(4,'diagnostics',{enabled:true});h.send(5,'diagnostics',{enabled:false});assert.deepEqual(h.measurements,[true,false]);
+ h.send(6,'leave');h.send(7,'diagnostics',{enabled:true});assert.deepEqual(h.measurements,[true,false]);await flush();
+ assert.equal(JSON.stringify(h.sent).includes('SECRET'),false);
 });

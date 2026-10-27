@@ -90,7 +90,7 @@ function safeDiagnostic(value) {
     ...RTC_FIELDS, ...PIPELINE_FIELDS, 'targetFps', 'captureFps', 'ackWaitTicks', 'ackTimeouts', 'captureMisses']) {
     if (Number.isFinite(value?.[k])) out[k] = value[k];
   }
-  for (const k of ['tokenPresent', 'mediaVerified', 'synthetic']) if (typeof value?.[k] === 'boolean') out[k] = value[k];
+  for (const k of ['tokenPresent', 'mediaVerified', 'synthetic', 'audioReceiving']) if (typeof value?.[k] === 'boolean') out[k] = value[k];
   return out;
 }
 module.exports = { API_HOSTS, apiRequest, salt32, token007, enterEnvelope, safeDiagnostic, fail };

@@ -113,9 +113,9 @@ ipcMain.on('player:status', (event, value) => {
 });
 ipcMain.on('player:frame', (event, value) => {
   if (senderIs(event, player, 'fromm://player/player.html')) {
-    const now = performance.timeOrigin + performance.now();
+    const now = Number.isFinite(value?.sentAt) ? performance.timeOrigin + performance.now() : undefined;
     const nativeIpcMs = now - value?.sentAt;
-    const frame = { ...value, sentAt: now, nativeIpcMs: nativeIpcMs >= 0 && nativeIpcMs < 60000 ? nativeIpcMs : undefined };
+    const frame = now===undefined ? value : { ...value, sentAt: now, nativeIpcMs: nativeIpcMs >= 0 && nativeIpcMs < 60000 ? nativeIpcMs : undefined };
     nativeController?.frame(frame); frameBenchmark?.frame(frame);
   }
 });
@@ -245,6 +245,7 @@ app.whenReady().then(async () => {
         showPlayer(); player.webContents.send('player:command', { type: 'join', payload, inlineVideo: true });
       },
       leave: leavePlayer,
+      diagnostics: enabled => { if(player && !player.isDestroyed()) player.webContents.send('player:command',{type:'diagnostics',enabled}); },
       acknowledge: sequence => { if (player && !player.isDestroyed()) player.webContents.send('player:frame-ack', { sequence }); },
       show: showPlayer,
       renew: token => { if (player && !player.isDestroyed()) player.webContents.send('player:command', { type: 'renew', token }); },

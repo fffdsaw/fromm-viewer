@@ -2,7 +2,7 @@
 const { Decoder, encode } = require('./native-wire.cjs');
 const { enterEnvelope, token007, safeDiagnostic, fail } = require('./contracts.cjs');
 const { net } = require('electron');
-function createController({ join, leave, show, renew, quit, acknowledge, input = process.stdin, sendMessage }) {
+function createController({ join, leave, show, renew, quit, acknowledge, diagnostics = () => {}, input = process.stdin, sendMessage }) {
   let credentials = null, envelope = null, busy = Promise.resolve(), serial = 0, cancellation = 0, disconnected = false, activeRequest;
   const send = sendMessage || (value => process.stdout.write(encode(value, true)));
   function clear() { serial++; activeRequest?.abort(); credentials = null; if (envelope) { envelope.encryptionKey = ''; envelope.rtcToken = ''; envelope.encryptionKdfSalt.fill(0); } envelope = null; }
@@ -49,7 +49,12 @@ function createController({ join, leave, show, renew, quit, acknowledge, input =
     } catch { send({ type: 'status', value: { stage: 'token-renew-failed' } }); }
   }
   const decoder = new Decoder(message => {
-    if (!message || !Number.isSafeInteger(message.id) || !['hello', 'join', 'leave', 'show', 'frame-ack'].includes(message.method)) return;
+    if (!message || !Number.isSafeInteger(message.id) || !['hello', 'join', 'leave', 'show', 'frame-ack', 'diagnostics'].includes(message.method)) return;
+    if(message.method==='diagnostics'){
+      const valid=envelope && Object.keys(message.params||{}).length===1 && typeof message.params?.enabled==='boolean';
+      if(valid) diagnostics(message.params.enabled);
+      send({id:message.id,ok:!!valid,...(!valid?{code:'DIAGNOSTICS_INPUT_INVALID'}:{})});return;
+    }
     if (message.method === 'frame-ack') {
       if (envelope && Object.keys(message.params || {}).length === 1 && Number.isSafeInteger(message.params?.sequence) && message.params.sequence > 0) acknowledge?.(message.params.sequence);
       return;
@@ -60,7 +65,7 @@ function createController({ join, leave, show, renew, quit, acknowledge, input =
     busy = busy.then(async () => {
       if (disconnected) return;
       try {
-        if (message.method === 'hello') send({ id: message.id, ok: true, version: 3, toolVersion: '0.4.0', backgroundPlayer: true, inlineVideo: true, frameAck: true, targetFps: 30 });
+        if (message.method === 'hello') send({ id: message.id, ok: true, version: 3, toolVersion: '0.5.0', receiveMetrics: true, backgroundPlayer: true, inlineVideo: true, frameAck: true, targetFps: 30 });
         else if (message.method === 'leave') { clear(); await leave(); send({ id: message.id, ok: true }); }
         else if (message.method === 'show') { send(await show() ? { id: message.id, ok: true } : { id: message.id, ok: false, code: 'NATIVE_DEBUG_DISABLED' }); }
         else {
@@ -89,7 +94,13 @@ function createController({ join, leave, show, renew, quit, acknowledge, input =
   input.on('error', disconnect);
   return {
     status(value) { send({ type: 'status', value: safeDiagnostic(value) }); if (value.stage === 'token-renew-needed') renewToken(); },
-    frame(value) { if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }); }
+    frame(value) {
+      if (envelope && Number.isSafeInteger(value?.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg) && value.jpeg.length < 800000) {
+        const timing = {};
+        for (const key of ['sentAt', 'nativeIpcMs']) if (Number.isFinite(value[key]) && value[key] >= 0) timing[key] = value[key];
+        send({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence, ...timing, synthetic: false });
+      }
+    }
   };
 }
 module.exports = { createController };

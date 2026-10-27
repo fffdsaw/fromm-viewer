@@ -2,7 +2,7 @@ name: Verify GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'web-live-chat-probe.js', '.github/workflows/pages-verify.yml']
+    paths: ['index.html', 'web-live-chat-probe.js', 'web-native-live.js', '.github/workflows/pages-verify.yml']
 permissions:
   contents: read
   actions: read
@@ -24,6 +24,7 @@ jobs:
           const {createHash} = require('node:crypto');
           const hash = bytes => createHash('sha256').update(bytes).digest('hex');
           const expected = hash(readFileSync('index.html'));
+          const expectedNative = hash(readFileSync('web-native-live.js'));
           const expectedComments = hash(readFileSync('web-live-chat-probe.js'));
           const url = `https://fffdsaw.github.io/fromm-viewer/?deployment=${process.env.GITHUB_SHA}`;
           (async () => {
@@ -42,7 +43,9 @@ jobs:
                 observed = response.ok ? hash(Buffer.from(await response.arrayBuffer())) : `HTTP ${response.status}`;
                 const commentsResponse = await fetch(`https://fffdsaw.github.io/fromm-viewer/web-live-chat-probe.js?deployment=${process.env.GITHUB_SHA}`, {headers: {'cache-control': 'no-cache'}, signal: AbortSignal.timeout(15000)});
                 const commentsMatch = commentsResponse.ok && hash(Buffer.from(await commentsResponse.arrayBuffer())) === expectedComments;
-                if (pages?.conclusion === 'success' && observed === expected && commentsMatch) {
+                const nativeResponse=await fetch(`https://fffdsaw.github.io/fromm-viewer/web-native-live.js?deployment=${process.env.GITHUB_SHA}`,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});
+                const nativeMatch=nativeResponse.ok && hash(Buffer.from(await nativeResponse.arrayBuffer()))===expectedNative;
+                if (pages?.conclusion === 'success' && observed === expected && commentsMatch && nativeMatch) {
                   console.log(`Verified commit: ${process.env.GITHUB_SHA}\nDeployment: ${pages.html_url}\nPublic URL: ${url}\nHTML SHA-256: ${observed} (exact match)\nComments JS SHA-256: ${expectedComments} (exact match)`);
                   return;
                 }

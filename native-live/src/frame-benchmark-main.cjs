@@ -16,6 +16,7 @@ function testTone(seconds = 90) {
 }
 module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedWindow, stopPlayer, ensurePlayer, getPlayer }) => {
   const { width, height } = benchmarkSize(process.argv);
+  const diagnosticsEnabled=process.argv.includes('--diagnostics'),deliveryOnly=process.argv.includes('--delivery-only');
   const id = crypto.randomBytes(24).toString('hex'), pipeName = '\\\\.\\pipe\\fromm-frame-bench-' + id;
   const audioDirectory = fs.mkdtempSync(path.join(app.getPath('temp'), 'fromm-benchmark-'));
   const audioPath = path.join(audioDirectory, 'synthetic-697hz.wav'); fs.writeFileSync(audioPath, testTone());
@@ -35,6 +36,7 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   let visibleChecks = 0, lifecycle = {}, finishTimer, warmupTimer;
   const backgroundThrottling = player.webContents.getBackgroundThrottling(), audioMuted = player.webContents.isAudioMuted();
   const flightTimes = new Map(), displaySamples = [], playerSamples = [];
+  let pipelineSamples=0;
   const recordShown = () => { playerEverVisible = true; }; player.on('show', recordShown);
   const visibilityTimer = setInterval(() => { visibleChecks++; if (!player.isDestroyed() && player.isVisible()) playerEverVisible = true; }, 100);
   const server = net.createServer(socket => {
@@ -79,16 +81,18 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
     // SDK rendering and FramePump capture have independent clocks, so a
     // healthy 28fps renderer/30fps pump may repeat a captured image. Keep the
     // 30fps throughput gates and use pixel/JPEG changes to reject frozen input.
-    const passed = !error && !playerEverVisible && !backgroundThrottling && !audioMuted && visibleChecks >= 300 && displayFps >= 27 && rendererFps >= 27 && rafFps >= 27 && changingPixelFps >= 24 &&
+    const throughputPassed = !error && !playerEverVisible && !backgroundThrottling && !audioMuted && visibleChecks >= 300 && displayFps >= 27 && rendererFps >= 27 && rafFps >= 27 && changingPixelFps >= 24 &&
       received >= 945 && acknowledgements >= received - 1 && changedJpegs >= received * 0.80 && decodedFrames >= acknowledgements - 1 && invalidDecodedFrames === 0 &&
       audioPassed && Object.values(lifecycle).every(Boolean);
+    const metricsPassed=!diagnosticsEnabled || pipelineSamples>0;
+    const passed=metricsPassed && (deliveryOnly ? !error && !playerEverVisible && decodedFrames>=30 && changedPixels>=20 && invalidDecodedFrames===0 && Object.values(lifecycle).every(Boolean) : throughputPassed);
     process.stdout.write(JSON.stringify({ stage: passed ? 'frame-benchmark-passed' : 'frame-benchmark-failed', ...(error ? { error } : {}), targetFps: 30,
       displayFps: round(displayFps), minimumDisplayFps: displaySamples.length ? Math.min(...displaySamples) : 0, rendererFps: round(rendererFps), rafFps: round(rafFps),
       renderer: playerSamples.at(-1)?.renderer || 'unknown', receivedFrames: received, acknowledgements, changedJpegs, decodedFrames, changedPixels,
       changingPixelFps: round(changingPixelFps), invalidDecodedFrames, playerEverVisible, visibleChecks,
       playerBackgroundThrottling: backgroundThrottling, playerAudioMuted: audioMuted,
       averageFrameBytes: received ? Math.round(bytes / received) : 0, averageCaptureMs: round(captureMs / Math.max(1, received)), averageAckMs: round(ackMs / Math.max(1, acknowledgements)),
-      width, height, elapsedMs, audioMixingPassed: audioPassed, audioAdvancedMs, audioSamples: audioPositions.length,
+      width, height, elapsedMs, diagnosticsEnabled, pipelineSamples, deliveryOnly, throughputValidated: !deliveryOnly, audioMixingPassed: audioPassed, audioAdvancedMs, audioSamples: audioPositions.length,
       hardwareAudioVerified: false, lifecycle, synthetic: true, mediaVerified: false }) + '\n');
     host?.destroy(); consumer?.destroy(); server.close(); if (!browser.isDestroyed()) browser.destroy();
     try { fs.unlinkSync(audioPath); fs.rmdirSync(audioDirectory); } catch {}
@@ -101,15 +105,19 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   host.on('error', () => { void finish('pipe-failed'); });
   await new Promise(resolve => host.once('connect', resolve));
   const decoder = new Decoder(message => {
-    if (message.method === 'hello') host.write(encode({ id: message.id, ok: true, backgroundPlayer: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.7' }));
+    if (message.method === 'hello') host.write(encode({ id: message.id, ok: true, backgroundPlayer: true, frameAck: true, targetFps: 30, extensionVersion: '1.0.9', receiveMetrics: true }));
     else if (message.method === 'join' && !warmupTimer) {
       host.write(encode({ id: message.id, ok: true }));
       player.webContents.send('player:command', { type: 'frame-benchmark', audioPath, width, height });
       warmupTimer = setTimeout(() => {
+        if(diagnosticsEnabled) void browser.webContents.executeJavaScript('FrommSetLiveDiagnostics(true)');
         started = performance.now(); measuring = true;
-        process.stdout.write(JSON.stringify({ stage: 'frame-benchmark-measuring', durationMs: 35000, width, height, playerVisible: player.isVisible(), synthetic: true, mediaVerified: false }) + '\n');
-        finishTimer = setTimeout(() => { void finish(); }, 35000);
+        process.stdout.write(JSON.stringify({ stage: 'frame-benchmark-measuring', durationMs: deliveryOnly?10000:35000, width, height, playerVisible: player.isVisible(), synthetic: true, mediaVerified: false }) + '\n');
+        finishTimer = setTimeout(() => { void finish(); }, deliveryOnly?10000:35000);
       }, 3000);
+    } else if(message.method==='diagnostics'){
+      player.webContents.send('player:command',{type:'diagnostics',enabled:message.params.enabled});
+      host.write(encode({id:message.id,ok:true}));
     } else if (message.method === 'frame-ack') {
       if (measuring && flightTimes.has(message.params.sequence)) { acknowledgements++; ackMs += performance.now() - flightTimes.get(message.params.sequence); }
       flightTimes.delete(message.params.sequence);
@@ -118,7 +126,7 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
   });
   host.on('data', chunk => { try { decoder.push(chunk); } catch { void finish('protocol-failed'); } });
   ipcMain.on('benchmark:request', (event, value) => {
-    if (senderIs(event, browser, 'fromm://benchmark/index.html') && ['hello', 'join', 'frame-ack'].includes(value?.method) && consumer && !consumer.destroyed) consumer.write(encode(value));
+    if (senderIs(event, browser, 'fromm://benchmark/index.html') && ['hello', 'join', 'frame-ack', 'diagnostics'].includes(value?.method) && consumer && !consumer.destroyed) consumer.write(encode(value));
   });
   ipcMain.on('benchmark:metric', (event, value) => { if (measuring && senderIs(event, browser, 'fromm://benchmark/index.html') && Number.isFinite(value?.displayFps)) displaySamples.push(value.displayFps); });
   ipcMain.on('benchmark:decoded', (event, value) => {
@@ -130,13 +138,17 @@ module.exports = async ({ app, ipcMain, session, senderIs, player, root, lockedW
     if (measuring && senderIs(event, player, 'fromm://player/player.html') && Number.isFinite(value?.rendererFps) && Number.isFinite(value?.rafFps)) playerSamples.push(value);
   });
   ipcMain.on('player:status', (event, value) => {
+    if(senderIs(event,player,'fromm://player/player.html') && value?.stage==='pipeline-performance'){
+      pipelineSamples++;if(host && !host.destroyed)host.write(encode({type:'status',value}));
+    }
     if (senderIs(event, player, 'fromm://player/player.html') && ['native-failed', 'frame-benchmark-failed'].includes(value?.stage)) void finish('renderer-failed');
   });
   await browser.loadURL('fromm://benchmark/index.html');
+  if(diagnosticsEnabled) await browser.webContents.executeJavaScript('window.benchmarkDiagnostics = true');
   return { frame(value) {
     allFrames++;
     if (finished || !host || host.destroyed) return;
     if (measuring) { captureMs += value.captureMs; flightTimes.set(value.sequence, performance.now()); }
-    host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence }));
+    host.write(encode({ type: 'frame', jpeg: value.jpeg, sequence: value.sequence, sentAt: value.sentAt, nativeIpcMs: value.nativeIpcMs, synthetic: true }));
   } };
 };

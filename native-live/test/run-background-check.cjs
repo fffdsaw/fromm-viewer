@@ -50,7 +50,7 @@ function checkRelay() {
     let hello = false, left = false;
     const timer = setTimeout(() => { child.kill(); reject(new Error('RELAY_TIMEOUT')); }, 12000);
     const decoder = new Decoder(value => {
-      if (value.id === 1 && value.ok && value.backgroundPlayer && value.frameAck && value.targetFps === 30 && value.toolVersion === '0.4.0') {
+      if (value.id === 1 && value.ok && value.backgroundPlayer && value.frameAck && value.targetFps === 30 && value.toolVersion === '0.5.0') {
         hello = true; child.stdin.write(encode({ id: 2, method: 'leave' }));
       } else if (value.id === 2 && value.ok) { left = true; child.stdin.end(); }
     });
@@ -60,7 +60,7 @@ function checkRelay() {
     child.on('close', code => {
       clearTimeout(timer);
       if (code !== 0 || !hello || !left) reject(new Error('RELAY_HANDSHAKE_FAILED'));
-      else { process.stdout.write(JSON.stringify({ stage: 'native-relay-passed', toolVersion: '0.4.0', backgroundPlayer: true, frameAck: true, targetFps: 30 }) + '\n'); resolve(); }
+      else { process.stdout.write(JSON.stringify({ stage: 'native-relay-passed', toolVersion: '0.5.0', backgroundPlayer: true, frameAck: true, targetFps: 30 }) + '\n'); resolve(); }
     });
     child.stdin.write(encode({ id: 1, method: 'hello' }));
   });
@@ -77,7 +77,7 @@ async function main() {
   const loopback = process.argv.includes('--require-loopback') ? startLoopback() : null;
   try {
     if (loopback) await loopback.ready;
-    const frames = await run(['--frame-benchmark', ...process.argv.filter(arg => arg.startsWith('--benchmark-size='))], 65000);
+    const frames = await run(['--frame-benchmark', ...process.argv.filter(arg => arg.startsWith('--benchmark-size=') || ['--diagnostics','--delivery-only'].includes(arg))], 65000);
     if (!frames.some(v => v.stage === 'frame-benchmark-passed')) throw new Error('FRAME_BENCHMARK_FAILED');
     if (loopback) {
       const audio = (await loopback.complete).find(v => v.stage === 'audio-loopback-complete');

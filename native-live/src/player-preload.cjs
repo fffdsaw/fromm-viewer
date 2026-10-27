@@ -2,11 +2,15 @@
 const { ipcRenderer } = require('electron');
 const { safeDiagnostic } = require('./contracts.cjs');
 const { FramePump } = require('./frame-pump.cjs');
+const { remoteStats, LatencyWindow } = require('./receive-metrics.cjs');
 // Some SDK exception paths use console.error without enableLogging checks.
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 let sdk, engine, handlers, active = false, joined = false, generation = 0;
 let framePump;
 let stopBenchmark;
+let metricsEnabled = false;
+let metricsTimer, syntheticFrames = false, metricStarted = 0, captured = 0, counters = {};
+const pipeline = new LatencyWindow();
 const tiles = new Map(), diagnostics = [];
 function emit(value) {
   const safe = safeDiagnostic(value);
@@ -25,6 +29,9 @@ function checked(stage, call) {
 function dispose() {
   framePump?.stop();
   stopBenchmark?.(); stopBenchmark = undefined;
+  clearInterval(metricsTimer); metricsTimer = undefined; pipeline.reset();
+  captured = 0; counters = {}; syntheticFrames = false; metricsEnabled = false;
+  if(framePump) framePump.onMetric = null;
   generation++; active = false; joined = false;
   if (engine) {
     try { engine.unregisterEventHandler(handlers); } catch {}
@@ -45,10 +52,29 @@ function startInlineVideo() {
       const jpeg = canvas.toDataURL('image/jpeg', 0.65);
       return jpeg.length < 800000 ? jpeg : null;
     },
-    send: value => ipcRenderer.send('player:frame', value),
+    send: value => {
+      if(metricsEnabled) captured++;
+      ipcRenderer.send('player:frame', metricsEnabled ? { ...value, sentAt: performance.timeOrigin + performance.now(), synthetic: syntheticFrames } : value);
+    },
     onError: () => { emit({ stage: 'inline-frame-failed' }); framePump.stop(); }
   });
   framePump.start();
+}
+function setMetrics(enabled) {
+  metricsEnabled = enabled === true && active;
+  clearInterval(metricsTimer); metricsTimer = undefined; pipeline.reset();
+  captured = 0; counters = {}; metricStarted = performance.now();
+  if(framePump) framePump.onMetric = metricsEnabled ? (name,value) => {
+    if(['ackWaitTicks','ackTimeouts','captureMisses'].includes(name)) counters[name]=(counters[name]||0)+value;
+    else pipeline.add(name,value);
+  } : null;
+  if(!metricsEnabled) return;
+  metricsTimer=setInterval(()=>{
+    const now=performance.now();
+    emit({stage:'pipeline-performance',targetFps:30,captureFps:Math.round(captured*10000/(now-metricStarted))/10,
+      ...pipeline.take(),...counters,synthetic:syntheticFrames});
+    metricStarted=now;captured=0;counters={};
+  },5000);
 }
 ipcRenderer.on('player:frame-ack', (_event, value) => { if (Number.isSafeInteger(value?.sequence)) framePump?.acknowledge(value.sequence); });
 function loadEngine(appId) {
@@ -96,7 +122,7 @@ function start(payload, synthetic = false) {
     onJoinChannelSuccess: () => { if (valid()) { joined = true; emit({ stage: 'join-succeeded', mediaVerified: false }); } },
     onError: code => { if (valid()) emit({ stage: 'sdk-failed', code }); },
     onEncryptionError: (_connection, code) => { if (valid()) emit({ stage: 'encryption-error', code }); },
-    onConnectionStateChanged: (_connection, state, reason) => { if (valid()) emit({ stage: 'connection-state', code: reason }); },
+    onConnectionStateChanged: (_connection, state, reason) => { if (valid()) { emit({ stage: 'connection-state', code: reason }); if(state !== sdk.ConnectionStateType.ConnectionStateConnected) emit({stage:'rtc-unavailable'}); } },
     onUserJoined: (connection, uid) => {
       if (!valid() || tiles.has(uid)) return;
       const view = document.createElement('div'); view.className = 'video';
@@ -109,10 +135,20 @@ function start(payload, synthetic = false) {
         emit({ stage: visible ? 'render-canvas-visible' : 'render-canvas-waiting', width: canvas?.width || 0, height: canvas?.height || 0 });
       }, 2500);
     },
-    onUserOffline: (_connection, uid) => { if (valid()) { tiles.get(uid)?.remove(); tiles.delete(uid); } },
+    onUserOffline: (_connection, uid) => {
+      if (valid()) { if (tiles.keys().next().value === uid) emit({ stage: 'rtc-unavailable' }); tiles.get(uid)?.remove(); tiles.delete(uid); }
+    },
     onFirstRemoteVideoDecoded: (_connection, _uid, width, height) => { if (valid()) emit({ stage: 'video-decoded', width, height }); },
     onFirstRemoteVideoFrame: (_connection, _uid, width, height) => { if (valid()) emit({ stage: 'video-frame', width, height, mediaVerified: true }); },
     onFirstRemoteAudioDecoded: () => { if (valid()) emit({ stage: 'audio-frame', mediaVerified: false }); },
+    onRemoteAudioStateChanged: (_connection, uid, audioState) => { if(valid() && metricsEnabled && tiles.keys().next().value===uid) emit({stage:'rtc-audio-state',audioReceiving:audioState===2}); },
+    onRemoteVideoStats: (_connection, stats) => {
+      // Only the same first remote canvas used by the inline capture path.
+      if (valid() && metricsEnabled && tiles.keys().next().value === stats?.uid) emit(remoteStats(stats));
+    },
+    onRemoteAudioStats: (_connection, stats) => {
+      if (valid() && metricsEnabled && tiles.keys().next().value === stats?.uid) emit(remoteStats(stats, true));
+    },
     onTokenPrivilegeWillExpire: () => { if (valid()) emit({ stage: 'token-renew-needed' }); },
     onRequestToken: () => { if (valid()) emit({ stage: 'token-renew-needed' }); }
   };
@@ -127,7 +163,8 @@ function start(payload, synthetic = false) {
 }
 ipcRenderer.on('player:command', (_event, command) => {
   try {
-    if (command.type === 'leave') { dispose(); emit({ stage: 'left' }); }
+    if (command.type === 'diagnostics') setMetrics(command.enabled);
+    else if (command.type === 'leave') { dispose(); emit({ stage: 'left' }); }
     else if (command.type === 'renew' && active) checked('token-renewed', () => engine.renewToken(command.token));
     else if (command.type === 'join') { start(command.payload); if (command.inlineVideo) startInlineVideo(); }
     else if (command.type === 'frame-benchmark') {
@@ -140,7 +177,7 @@ ipcRenderer.on('player:command', (_event, command) => {
       attachRemoteVideo(12345, view, { channelId: 'synthetic-room', localUid: 67890 });
       stopBenchmark = require('./background-media-benchmark.cjs').startBackgroundMediaBenchmark({ sdk, engine, audioPath: command.audioPath, width: command.width, height: command.height,
         sendMetric: value => ipcRenderer.send('benchmark:player-metric', value), onError: () => { dispose(); emit({ stage: 'frame-benchmark-failed', synthetic: true, mediaVerified: false }); } });
-      active = true;
+      active = true; syntheticFrames = true;
       startInlineVideo();
     }
     else if (command.type === 'self-test') start(command.payload, true);

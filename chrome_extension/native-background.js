@@ -18,8 +18,12 @@ chrome.runtime.onConnect.addListener(port => {
     return nativePort;
   }
   port.onMessage.addListener(message => {
-    if (!Number.isSafeInteger(message?.id) || !['hello', 'join', 'leave', 'show', 'frame-ack'].includes(message.method)) return;
+    if (!Number.isSafeInteger(message?.id) || !['hello', 'join', 'leave', 'show', 'frame-ack', 'diagnostics'].includes(message.method)) return;
     let params = {};
+    if(message.method==='diagnostics'){
+      if(!nativePort || Object.keys(message.params||{}).length!==1 || typeof message.params?.enabled!=='boolean') return;
+      nativePort.postMessage({id:message.id,method:'diagnostics',params:{enabled:message.params.enabled}});return;
+    }
     if (message.method === 'frame-ack') {
       if (!nativePort || Object.keys(message.params || {}).length !== 1 || !Number.isSafeInteger(message.params?.sequence) || message.params.sequence <= 0) return;
       nativePort.postMessage({ id: message.id, method: 'frame-ack', params: { sequence: message.params.sequence } }); return;

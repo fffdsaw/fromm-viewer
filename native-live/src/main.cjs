@@ -112,7 +112,12 @@ ipcMain.on('player:status', (event, value) => {
   if (SELF_TEST && ['self-test-passed', 'self-test-failed'].includes(value?.stage)) setTimeout(() => app.exit(value.stage === 'self-test-passed' ? 0 : 1), 100);
 });
 ipcMain.on('player:frame', (event, value) => {
-  if (senderIs(event, player, 'fromm://player/player.html')) { nativeController?.frame(value); frameBenchmark?.frame(value); }
+  if (senderIs(event, player, 'fromm://player/player.html')) {
+    const now = Number.isFinite(value?.sentAt) ? performance.timeOrigin + performance.now() : undefined;
+    const nativeIpcMs = now - value?.sentAt;
+    const frame = now===undefined ? value : { ...value, sentAt: now, nativeIpcMs: nativeIpcMs >= 0 && nativeIpcMs < 60000 ? nativeIpcMs : undefined };
+    nativeController?.frame(frame); frameBenchmark?.frame(frame);
+  }
 });
 // Network bridge is restricted to three official Fromm API hosts. No generic native fetch API.
 ipcMain.handle('fromm:request', async (event, input) => {
@@ -240,6 +245,7 @@ app.whenReady().then(async () => {
         showPlayer(); player.webContents.send('player:command', { type: 'join', payload, inlineVideo: true });
       },
       leave: leavePlayer,
+      diagnostics: enabled => { if(player && !player.isDestroyed()) player.webContents.send('player:command',{type:'diagnostics',enabled}); },
       acknowledge: sequence => { if (player && !player.isDestroyed()) player.webContents.send('player:frame-ack', { sequence }); },
       show: showPlayer,
       renew: token => { if (player && !player.isDestroyed()) player.webContents.send('player:command', { type: 'renew', token }); },

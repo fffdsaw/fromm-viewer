@@ -8,8 +8,8 @@ Fromm 대화·사진·영상·음성을 보고 저장하는 웹 뷰어입니다.
 
 | 용도 | 다운로드 |
 | --- | --- |
-| Windows LIVE 포함 | [확장 1.0.8 + LIVE 도구 0.4.0](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.4.0/fromm-native-live-windows-x64.zip) |
-| 대화·미디어·Replay·Channel | [확장 1.0.8](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip) |
+| Windows LIVE 포함 | [확장 1.0.9 + LIVE 도구 0.5.0](https://github.com/fffdsaw/fromm-viewer/releases/download/native-live-0.5.0/fromm-native-live-windows-x64.zip) |
+| 대화·미디어·Replay·Channel | [확장 1.0.9](https://raw.githubusercontent.com/fffdsaw/fromm-viewer/main/chrome_extension.zip) |
 
 LIVE 패키지에도 같은 확장이 들어 있습니다. 확장은 하나만 설치하세요.
 

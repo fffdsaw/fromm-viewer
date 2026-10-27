@@ -94,24 +94,20 @@ test('Replay playback/download and Native frame transport/auth contracts remain 
   // List selection and the shared save-name / cross-tab download guard evolve;
   // stream fetching/decryption and playback remain unchanged.
   for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
-  for (const file of ['native-live/src/frame-pump.cjs', 'chrome_extension/native-background.js', 'chrome_extension/native-content.js']) {
-    const bytes = execFileSync('git', ['show', `d4d9c2f:${file}`], {cwd: root});
-    assert.equal(fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n'), bytes.toString('utf8').replace(/\r\n/g, '\n'), file);
+  const normalize=source=>source.replace(/\r\n/g,'\n');
+  for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
+    const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
+    assert.equal(normalize(fs.readFileSync(path.join(root,file),'utf8')),normalize(bytes.toString('utf8')),file);
   }
-  const native = fs.readFileSync(path.join(root, 'native-live/src/player-preload.cjs'), 'utf8');
-  const nativeBaseline = execFileSync('git', ['show', 'd4d9c2f:native-live/src/player-preload.cjs'], {cwd: root, encoding: 'utf8'});
-  // Hidden-window benchmarking and disposal may evolve; RTC identity, encryption,
-  // subscription/playout and the production JPEG/30fps capture path must survive.
-  for (const name of ['start', 'attachRemoteVideo', 'startInlineVideo']) {
-    assert.equal(fn(name, native).replace(/\r\n/g, '\n'), fn(name, nativeBaseline).replace(/\r\n/g, '\n'), name);
-  }
-  const web = fs.readFileSync(path.join(root, 'web-native-live.js'), 'utf8');
-  const webBaseline = execFileSync('git', ['show', 'd4d9c2f:web-native-live.js'], {cwd: root, encoding: 'utf8'});
-  // The background-capability handshake and audio-button behavior are covered
-  // by web-live.test.cjs. Keep the remaining auth/key/frame/ACK code identical.
-  const stableWeb = source => source.split(/\r?\n/).filter(line => !line.includes('if (!hello')
-    && !line.includes('resumeLiveAudio =') && !line.includes('// Agora Native playout')).join('\n');
-  assert.equal(stableWeb(web), stableWeb(webBaseline));
+  const native=fs.readFileSync(path.join(root,'native-live/src/player-preload.cjs'),'utf8');
+  const baselineNative=execFileSync('git',['show','5f47f97:native-live/src/player-preload.cjs'],{cwd:root,encoding:'utf8'});
+  for(const name of ['loadEngine','attachRemoteVideo'])assert.equal(normalize(fn(name,native)),normalize(fn(name,baselineNative)));
+  const contracts=fs.readFileSync(path.join(root,'native-live/src/contracts.cjs'),'utf8');
+  const baselineContracts=execFileSync('git',['show','5f47f97:native-live/src/contracts.cjs'],{cwd:root,encoding:'utf8'});
+  for(const name of ['apiRequest','salt32','token007','enterEnvelope'])assert.equal(normalize(fn(name,contracts)),normalize(fn(name,baselineContracts)),name);
+  // Opt-in measurements intentionally extend FramePump/status/bridge messages;
+  // their ACK, lifecycle, authorization and disabled-path behavior has dedicated tests.
+
 });
 
 test('only subscribed channels and uploaded visible videos; raw cursor preserves mixed pages', async () => {

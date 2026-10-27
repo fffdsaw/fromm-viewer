@@ -55,7 +55,7 @@ const root = path.resolve(__dirname, '..');
     assert.equal(await page.title(), 'Synthetic loopback CORS test');
     assert.deepEqual(await attempt('normal'), {blocked: true});
     assert.equal(posts.length, 1, 'an unrelated initiator never sends a POST');
-    console.log('Unchanged production extension 1.0.8 rules: real browser TLS preflight/JSON POST/ACK PASS; unrelated origin blocked before POST (loopback synthetic only)');
+    console.log('Production extension 1.0.9 with preserved API rules: real browser TLS preflight/JSON POST/ACK PASS; unrelated origin blocked before POST (loopback synthetic only)');
   } finally {
     await context?.close(); if (server) await new Promise(resolve => server.close(resolve));
     assert.equal(path.dirname(path.resolve(temp)), path.resolve(os.tmpdir()));

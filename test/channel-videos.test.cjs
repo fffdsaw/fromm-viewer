@@ -94,16 +94,17 @@ test('Replay playback/download and Native frame transport/auth contracts remain 
   // List selection and the shared save-name / cross-tab download guard evolve;
   // stream fetching/decryption and playback remain unchanged.
   for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
-    assert.equal(fs.readFileSync(path.join(root,file),'utf8'),bytes.toString('utf8'),file);
+    assert.equal(normalize(fs.readFileSync(path.join(root,file),'utf8')),normalize(bytes.toString('utf8')),file);
   }
   const native=fs.readFileSync(path.join(root,'native-live/src/player-preload.cjs'),'utf8');
   const baselineNative=execFileSync('git',['show','5f47f97:native-live/src/player-preload.cjs'],{cwd:root,encoding:'utf8'});
-  for(const name of ['loadEngine','attachRemoteVideo'])assert.equal(fn(name,native),fn(name,baselineNative));
+  for(const name of ['loadEngine','attachRemoteVideo'])assert.equal(normalize(fn(name,native)),normalize(fn(name,baselineNative)));
   const contracts=fs.readFileSync(path.join(root,'native-live/src/contracts.cjs'),'utf8');
   const baselineContracts=execFileSync('git',['show','5f47f97:native-live/src/contracts.cjs'],{cwd:root,encoding:'utf8'});
-  for(const name of ['apiRequest','salt32','token007','enterEnvelope'])assert.equal(fn(name,contracts),fn(name,baselineContracts),name);
+  for(const name of ['apiRequest','salt32','token007','enterEnvelope'])assert.equal(normalize(fn(name,contracts)),normalize(fn(name,baselineContracts)),name);
   // Opt-in measurements intentionally extend FramePump/status/bridge messages;
   // their ACK, lifecycle, authorization and disabled-path behavior has dedicated tests.
 

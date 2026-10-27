@@ -49,9 +49,15 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
         state.chatMessages=state.messages;buildMediaSequences();state.filter='media';render();
       });
       assert.equal(await page.locator('.card-download').count(),3);
-      for(const link of await page.locator('.card-download').all()) {
-        assert.equal(await link.evaluate(el=>{const s=getComputedStyle(el);return s.alignItems==='center'&&s.justifyContent==='center';}),true,'media download remains centered');
-      }
+      // A queued render may replace cards between locator resolution and evaluation.
+      // Inspect the current DOM in one browser task and wait for actual layout.
+      await page.waitForFunction(()=>{
+        const links=[...document.querySelectorAll('.card-download')];
+        return links.length===3&&links.every(el=>{
+          const s=getComputedStyle(el),r=el.getBoundingClientRect();
+          return el.isConnected&&r.width>0&&r.height>0&&Math.abs(r.width-r.height)<.5&&s.alignItems==='center'&&s.justifyContent==='center';
+        });
+      });
       await shot('media');
       await page.evaluate(()=>{state.filter='live';state.live.centerMode='live';state.live.discoveryLoaded=true;renderLiveView();});
       await shot('live');

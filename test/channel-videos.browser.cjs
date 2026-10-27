@@ -33,6 +33,9 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       let moreAttempts = 0, failMore = false;
       page.on('pageerror', e => errors.push(e.message));
       await page.addInitScript(() => {
+        // Exercise the manual fallback when observers are unsupported.
+        // The real automatic path is covered by video-list-autoload.browser.cjs.
+        delete window.IntersectionObserver;
         // Mock only the media engine, keeping the real Viewer UI/API/playlist logic.
         window.channelHlsFixture = [];
         window.Hls = class {

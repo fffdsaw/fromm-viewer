@@ -140,6 +140,9 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
           await page.setViewportSize({width:844,height:390});await rotationFits(90);await bar.locator('[data-mvc="right"]').click();await rotationFits(180);await bar.locator('[data-mvc="left"]').click();await rotationFits(90);
           await page.setViewportSize(viewport);await rotationFits(90);
         }
+        const colors=await bar.locator('.mvc-rotation-title').evaluate(el=>({fg:getComputedStyle(el).color,bg:getComputedStyle(el.closest('.mvc-popover')).backgroundColor}));
+        const luminance=color=>{const values=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return values[0]*.2126+values[1]*.7152+values[2]*.0722;};
+        assert.ok((luminance(colors.fg)+.05)/(luminance(colors.bg)+.05)>=4.5,'rotation label/icons remain readable in native Popover and fallback');
         const popup=await bar.locator('.mvc-popover').boundingBox();const size=page.viewportSize();
         assert.ok(popup.x>=10&&popup.y>=10&&popup.x+popup.width<=size.width-10&&popup.y+popup.height<=size.height-10,'settings fits the viewport');
         if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,`settings-${kind}-${viewport.width}x${viewport.height}-rotated.png`)});}

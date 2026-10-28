@@ -54,7 +54,8 @@ async function measure(page, label) {
     assert.ok(geometry.scrollHeight <= geometry.viewport.height + 1, `${label}: no vertical overflow`);
     assert.ok(geometry.scrollWidth <= geometry.viewport.width, `${label}: no horizontal overflow`);
     assert.equal(geometry.objectFit, 'contain');
-    assert.equal(geometry.controls, true);
+    assert.equal(geometry.controls, false);
+    assert.equal(await page.locator(".modern-video-controls").count(),1);
     assert.ok(geometry.currentTime > 0, `${label}: decoded video advances`);
     assert.equal(geometry.paused, false);
   }
@@ -108,7 +109,7 @@ async function measure(page, label) {
         const intrinsic = await page.locator('#channelVideo').evaluate(v => `${v.videoWidth}x${v.videoHeight}`);
         assert.equal(intrinsic, sizes[id], 'actual source ratio retained');
         if (baseline) await page.mouse.move(viewport.width / 2, viewport.height - 30);
-        else await page.locator('#channelVideo').hover();
+        else await page.locator('#channelVideo').hover({force:true});
         await measure(page, `channel-player-${viewport.width}x${viewport.height}-${id}`);
         assert.ok(await page.locator('#channelDownloadCurrent').isVisible());
         if (!baseline && viewport.width === 1440 && id === 'landscape') {

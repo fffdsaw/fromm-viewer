@@ -1255,6 +1255,34 @@ body.download-marquee-active{user-select:none;cursor:default}
   :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:10px}
   :is(.replay-player-page,.channel-player) .video-quality-select{height:30px;min-width:96px;font-size:11px}
 }
+/* Replay/Channel-only enhanced controls; video retains native controls if setup fails. */
+.modern-video-stage{position:relative;isolation:isolate;outline:none}
+.modern-video-stage:fullscreen{width:100vw;height:100dvh;max-height:none;border:0!important;border-radius:0!important;background:#080b10}
+.modern-video-stage:fullscreen video{width:100%;height:100%;max-height:none!important;object-fit:contain}
+.modern-video-controls{position:absolute;inset:0;z-index:4;display:flex;align-items:flex-end;pointer-events:none;color:#f7f9fc;opacity:1;transition:opacity .18s ease}
+.modern-video-controls.mvc-hidden{opacity:0;visibility:hidden}
+.mvc-panel{width:100%;padding:48px 20px 14px;background:linear-gradient(transparent,rgba(5,8,14,.85));pointer-events:none}
+.mvc-panel input,.mvc-panel button,.mvc-panel select,.mvc-panel summary,.mvc-settings{pointer-events:auto}
+.mvc-row,.mvc-left,.mvc-right{display:flex;align-items:center;gap:10px;min-width:0}.mvc-row{justify-content:space-between}.mvc-right{margin-left:auto;gap:8px}.mvc-time{white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;color:#dbe2ed}
+.mvc-button{display:inline-grid;place-items:center;flex:0 0 36px;width:36px;height:36px;padding:0;border:0;border-radius:9px;background:transparent;color:inherit;cursor:pointer;list-style:none}
+.mvc-button:hover,.mvc-button:focus-visible{background:rgba(255,255,255,.13)}.mvc-button svg{display:block}.mvc-button:focus-visible,.mvc-panel select:focus-visible,.mvc-panel input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.mvc-settings summary::-webkit-details-marker{display:none}.mvc-settings{position:relative}.mvc-popover{position:fixed;max-height:calc(100dvh - 24px);overflow-y:auto;width:200px;padding:12px;border:1px solid #3a4353;border-radius:12px;background:rgba(20,25,35,.97);box-shadow:0 8px 24px #0007;backdrop-filter:blur(14px)}
+.mvc-popover label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;color:#e2e8f2;font-size:12px}.mvc-popover select{width:76px;padding:6px;border:1px solid #3a4353;border-radius:7px;background:#222a38;color:#fff}.mvc-pip{width:100%;padding:9px;border:0;border-radius:7px;background:#2c3545;color:#fff;font:inherit;font-size:12px}.mvc-pip[hidden]{display:none}
+.mvc-panel input.mvc-seek,.mvc-panel input.mvc-volume{appearance:none;-webkit-appearance:none;display:block;padding:0;border:0;border-radius:99px;height:4px;min-height:4px;background:#ffffff40;cursor:pointer;accent-color:var(--accent2)}
+.mvc-panel input.mvc-seek{width:100%;margin:0 0 12px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}.mvc-panel input.mvc-volume{width:72px;margin:0 4px 0 0}
+.mvc-panel input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:11px;height:11px;border:0;border-radius:50%;background:#fff}.mvc-panel input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:#fff}
+.modern-video-controls .video-quality-control{margin:0;gap:0;flex:0 1 auto}.modern-video-controls .video-quality-control>span{display:none}.modern-video-controls select.video-quality-select{width:130px;max-width:130px;min-width:0;height:34px;background:#202734e6;color:#fff;border-color:#ffffff25}
+.modern-video-controls .video-quality-status{position:absolute;bottom:100px;left:20px;max-width:min(540px,calc(100% - 40px));padding:8px 12px;border-radius:8px;background:#141a25e8;pointer-events:none}
+.modern-video-controls .video-quality-status:empty{display:none}
+@media(max-width:600px){.mvc-panel{padding:42px 12px 10px}.mvc-row,.mvc-left{gap:5px}.mvc-right{gap:3px}.mvc-button{width:30px;height:32px;flex-basis:30px}.mvc-time{font-size:10px}.mvc-panel input.mvc-volume{display:none}.modern-video-controls select.video-quality-select{width:88px;max-width:88px;height:32px;font-size:11px;padding:4px}.modern-video-controls .video-quality-status{left:12px;bottom:90px;font-size:11px}}
+.mvc-panel input.mvc-seek{height:20px;min-height:20px;margin-bottom:4px;background:transparent}
+.mvc-seek::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}
+.mvc-seek::-moz-range-track{height:4px;border-radius:9px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}
+.mvc-seek::-webkit-slider-thumb{margin-top:-3.5px}
+@media(max-width:650px){:is(.replay-player-page,.channel-player) .replay-page-head{grid-template-columns:auto minmax(0,1fr) auto}:is(.replay-player-page,.channel-player) .video-player-actions{grid-column:3;grid-row:1;width:auto;justify-self:end}}
+.mvc-popover label.mvc-mobile-volume{display:none}.mvc-panel input.mvc-volume-extra{width:76px;height:4px;min-height:4px;padding:0;border:0;appearance:none;border-radius:9px;background:#ffffff40;accent-color:var(--accent2)}
+@media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex}}
+@media(prefers-reduced-motion:reduce){.modern-video-controls{transition:none}}
 </style>
 </head>
 <body>
@@ -1860,7 +1888,7 @@ function renderChannelVideosView() {
       <div class="replay-page-head">
         <button class="replay-page-back" id="channelBackToList" type="button">← Channel</button>
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(replayDateLabel(selected.displayStartAt))}</span></div>
-        <div class="video-player-actions">${videoQualityControls("channel")}<button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button></div>
+        <div class="video-player-actions"><button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button></div>
       </div>
       <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : `<p class="replay-page-status" role="status">채널 영상을 불러오는 중...</p>`}</div>
     </div>`;
@@ -4417,7 +4445,7 @@ function renderReplayPlayerView(){
         <span class="replay-page-divider" aria-hidden="true">|</span>
         <span class="replay-page-meta">${esc(meta)}</span>
       </div>
-      <div class="replay-page-actions video-player-actions">${videoQualityControls("replay")}<button class="replay-page-download" id="replayDownloadCurrent" type="button">다운로드</button></div>
+      <div class="replay-page-actions video-player-actions"><button class="replay-page-download" id="replayDownloadCurrent" type="button">다운로드</button></div>
     </div>
     <div class="replay-page-stage">${stage}</div>
   </div>`;
@@ -4659,6 +4687,83 @@ function replayVariantsFromMaster(text,baseUrl,authParams,includeAudio=false) {
   }
   return variants.sort((a,b)=>b.width*b.height-a.width*a.height || b.bandwidth-a.bandwidth || b.frameRate-a.frameRate);
 }
+function installModernVideoControls(player) {
+  const video=player.video, doc=player.owner.document;
+  const stage=video.closest?.('.replay-page-stage,.channel-player-stage');
+  if(!stage || !doc.createElement) return ()=>{};
+  const icon=path=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
+  const icons={play:'m8 5 11 7-11 7z',pause:'M8 5v14M16 5v14',sound:'M11 4 6 8H3v8h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',muted:'M11 4 6 8H3v8h3l5 4zM16 9l5 6m0-6-5 6',settings:'M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1zM9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0',full:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'};
+  const button=(name,label)=>`<button class="mvc-button" data-mvc="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name]||icons.full)}</button>`;
+  const controls=doc.createElement('div');controls.className='modern-video-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','영상 재생 컨트롤');
+  controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —</span></div><div class="mvc-right">${button('sound','음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량"><details class="mvc-settings"><summary class="mvc-button" aria-label="재생 설정" title="재생 설정">${icon(icons.settings)}</summary><div class="mvc-popover"><label class="mvc-mobile-volume">음량 <input class="mvc-volume-extra" type="range" min="0" max="1" step="0.05" value="1" aria-label="설정 음량"></label><label>재생 속도 <select class="mvc-rate" aria-label="재생 속도">${[.5,.75,1,1.25,1.5,1.75,2].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}×</option>`).join('')}</select></label><button class="mvc-pip" type="button">화면 속 화면 (PiP)</button></div></details>${videoQualityControls(player.kind)}${button('full','전체 화면')}</div></div></div>`;
+  const removers=[];let timer=null,dragging=false,dead=false,selectionOpen=false,keyboardMode=false;
+  const $=selector=>controls.querySelector(selector), seek=$('.mvc-seek'), volume=$('.mvc-volume'), play=$('[data-mvc="play"]'), sound=$('[data-mvc="sound"]'), settings=$('details');
+  const listen=(target,event,fn)=>{target.addEventListener(event,fn);removers.push(()=>target.removeEventListener(event,fn));};
+  const time=value=>{if(!Number.isFinite(value))return '—';const s=Math.max(0,Math.floor(value));return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
+  const message=text=>{const status=doc.querySelector(`#${player.kind}QualityStatus`);if(status)status.textContent=text;reveal();};
+  const focusHeld=()=>selectionOpen || (keyboardMode && controls.contains(doc.activeElement));
+  const reveal=()=>{
+    if(dead)return;clearTimeout(timer);controls.classList.remove('mvc-hidden');
+    if(!video.paused && video.readyState>=3 && !settings.open && !dragging && !focusHeld()) timer=setTimeout(()=>{if(!dead&&!video.paused&&!settings.open&&!dragging&&!focusHeld())controls.classList.add('mvc-hidden');},3000);
+  };
+  const sync=()=>{
+    if(dead)return;
+    const duration=video.duration,valid=Number.isFinite(duration)&&duration>0;
+    seek.disabled=!valid;
+    if(valid)seek.max=String(duration);
+    if(!dragging)seek.value=String(valid?Math.min(video.currentTime,duration):0);
+    const shown=dragging?Number(seek.value):video.currentTime;
+    seek.setAttribute('aria-valuetext',`${time(shown)} / ${time(duration)}`);
+    seek.style.setProperty('--played',`${valid?Math.min(100,Number(seek.value)/duration*100):0}%`);
+    $('.mvc-time').textContent=`${time(shown)} / ${time(duration)}`;
+    if(play.dataset.paused!==String(video.paused)){play.innerHTML=icon(video.paused?icons.play:icons.pause);play.dataset.paused=String(video.paused);}play.setAttribute('aria-label',video.paused?'재생':'일시정지');play.title=video.paused?'재생':'일시정지';
+    if(sound.dataset.muted!==String(video.muted||video.volume===0)){sound.innerHTML=icon(video.muted||video.volume===0?icons.muted:icons.sound);sound.dataset.muted=String(video.muted||video.volume===0);}sound.setAttribute('aria-label',video.muted?'음소거 해제':'음소거');sound.setAttribute('aria-pressed',String(video.muted));
+    volume.value=String(video.muted?0:video.volume);$('.mvc-volume-extra').value=volume.value;$('.mvc-rate').value=String(video.playbackRate);
+  };
+  const toggle=()=>{if(video.paused)video.play().catch(()=>message('재생 버튼을 다시 눌러주세요.'));else video.pause();reveal();};
+  const fullscreen=async()=>{try{if(doc.fullscreenElement===stage)await doc.exitFullscreen();else if(stage.requestFullscreen)await stage.requestFullscreen();else if(video.webkitEnterFullscreen)video.webkitEnterFullscreen();}catch{message('이 브라우저에서 전체 화면을 열지 못했습니다.');}reveal();};
+  try {
+    stage.classList.add('modern-video-stage');stage.tabIndex=0;stage.append(controls);
+    listen(play,'click',toggle);listen(sound,'click',()=>{video.muted=!video.muted;});
+    for(const input of [volume,$('.mvc-volume-extra')])listen(input,'input',()=>{video.volume=Number(input.value);video.muted=false;});
+    listen(seek,'pointerdown',()=>{dragging=true;reveal();});
+    listen(seek,'input',()=>{dragging=true;sync();reveal();});
+    listen(seek,'change',()=>{if(!seek.disabled)video.currentTime=Number(seek.value);dragging=false;sync();reveal();});
+    listen(seek,'pointercancel',()=>{dragging=false;sync();reveal();});
+    listen(player.owner,'pointerup',()=>{if(dragging&&!seek.disabled)video.currentTime=Number(seek.value);dragging=false;sync();reveal();});
+    listen($('.mvc-rate'),'change',()=>{video.playbackRate=Number($('.mvc-rate').value);});
+    listen($('[data-mvc="full"]'),'click',fullscreen);
+    const pip=$('.mvc-pip');pip.hidden=!doc.pictureInPictureEnabled||!video.requestPictureInPicture;
+    listen(pip,'click',async()=>{try{if(doc.pictureInPictureElement===video)await doc.exitPictureInPicture();else await video.requestPictureInPicture();settings.open=false;}catch{message('PiP를 열지 못했습니다. 재생 후 다시 시도해주세요.');}});
+    const quality=controls.querySelector('.video-quality-select');
+    listen(quality,'pointerdown',()=>{selectionOpen=true;reveal();});
+    for(const event of ['change','blur'])listen(quality,event,()=>{selectionOpen=false;reveal();});
+    listen(quality,'keydown',event=>{if(event.key==='Escape'){selectionOpen=false;reveal();}});
+    const placeSettings=()=>{if(!settings.open)return;const r=settings.getBoundingClientRect(),popup=$('.mvc-popover');popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-212,r.right-200))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;};
+    listen(settings,'toggle',()=>{placeSettings();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
+    listen(stage,'focusin',reveal);listen(stage,'pointermove',reveal);listen(stage,'pointerdown',()=>{keyboardMode=false;reveal();});listen(stage,'pointerleave',reveal);
+    listen(video,'click',()=>{stage.focus({preventScroll:true});toggle();});listen(video,'dblclick',fullscreen);
+    listen(doc,'keydown',()=>{keyboardMode=true;});
+    listen(stage,'keydown',event=>{
+      if(event.altKey||event.ctrlKey||event.metaKey||/^(INPUT|SELECT|BUTTON|SUMMARY)$/.test(event.target.tagName)||event.target.isContentEditable)return;
+      let handled=true;
+      if(event.code==='Space'||event.key==='k')toggle();
+      else if(event.key==='ArrowRight'&&Number.isFinite(video.duration))video.currentTime=Math.min(video.duration,video.currentTime+5);
+      else if(event.key==='ArrowLeft')video.currentTime=Math.max(0,video.currentTime-5);
+      else if(event.key==='ArrowUp')video.volume=Math.min(1,video.volume+.05);
+      else if(event.key==='ArrowDown')video.volume=Math.max(0,video.volume-.05);
+      else if(event.key==='m')video.muted=!video.muted;
+      else if(event.key==='f')void fullscreen();else handled=false;
+      if(handled){event.preventDefault();reveal();}
+    });
+    for(const event of ['timeupdate','durationchange','loadedmetadata','volumechange','ratechange','progress'])listen(video,event,sync);
+    for(const event of ['play','pause','waiting','playing','ended','seeking','seeked'])listen(video,event,()=>{sync();reveal();});
+    listen(doc,'fullscreenchange',()=>{const active=doc.fullscreenElement===stage;placeSettings();$('[data-mvc="full"]').setAttribute('aria-label',active?'전체 화면 종료':'전체 화면');reveal();});
+    video.controls=false;sync();reveal();
+  } catch(error) {for(const remove of removers)try{remove();}catch{}controls.remove();stage.classList.remove('modern-video-stage');video.controls=true;return ()=>{};}
+  return ()=>{dead=true;clearTimeout(timer);for(const remove of removers)try{remove();}catch{}controls.remove();stage.classList.remove('modern-video-stage');stage.removeAttribute('tabindex');video.controls=true;};
+}
+
 function videoQualityControls(kind) {
   return `<label class="video-quality-control" for="${kind}QualitySelect"><span>화질</span><select id="${kind}QualitySelect" class="video-quality-select" aria-label="재생 화질" disabled><option>확인 중…</option></select></label><span id="${kind}QualityStatus" class="video-quality-status" role="status" aria-live="polite"></span>`;
 }
@@ -4761,19 +4866,20 @@ function updateVideoQualityUi(player,message="") {
     select.replaceChildren(...player.variants.map((variant,index)=>{
       const option=player.owner.document.createElement("option");option.value=String(index);
       const repeated=player.variants.filter(v=>videoQualityLabel(v)===videoQualityLabel(variant)).length>1;
-      option.textContent=videoQualityLabel(variant)+(repeated&&variant.bandwidth?` · ${Number((variant.bandwidth/1e6).toFixed(2))} Mbps`:"")+(index===0?" · 최고":"");
+      option.textContent=videoQualityLabel(variant)+(repeated&&variant.bandwidth?` · ${Number((variant.bandwidth/1e6).toFixed(2))} Mbps`:"");
       return option;
     }));
     select.disabled=player.variants.length<=1;
     select.value=String(player.pendingIndex??player.selectedIndex??0);
     select.onchange=()=>{void changeVideoQuality(player,Number(select.value));};
   }
-  if(status) status.textContent=message || (player.variants.length>1?(player.selectedIndex===0?"최고 화질 고정":"선택한 화질 고정"):"단일 화질");
+  if(status) status.textContent=message;
 }
 function disposeVideoQualityPlayer(kind) {
   const player=videoQualityPlayers[kind];
   if(!player) return;
   player.disposed=true;player.requestSeq++;player.engineSeq++;player.abort?.abort();
+  try{player.controlsCleanup?.();}catch{}
   for(const remove of player.listeners) try{remove();}catch{}
   player.listeners=[];
   try{player.hls?.destroy();}catch{}
@@ -4917,6 +5023,7 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
   disposeVideoQualityPlayer(kind);
   const player={kind,url,video,owner,current,onHls,onFatal,refreshUrl,variants:[],catalog:null,selectedIndex:0,pendingIndex:null,requestSeq:0,engineSeq:0,disposed:false,urls:[],hls:null,abort:null,listeners:[],transitioning:false,resume:null};
   videoQualityPlayers[kind]=player;
+  try{player.controlsCleanup=installModernVideoControls(player);}catch{video.controls=true;}
   const direct=kind==="channel"?!/\.m3u8(?:\?|$)/i.test(url):/\.(mp4|webm|mov|m4v)(?:\?|$)/i.test(url);
   if(direct) {
     player.variants=[{width:0,height:0,bandwidth:0,attrs:{},url}];updateVideoQualityUi(player);
@@ -4925,8 +5032,11 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
     video.src=localProxyUrl(replayCanonicalStreamUrl(url));video.play().catch(()=>{});return;
   }
   player.Hls=await ensureReplayHlsSdk(owner).catch(()=>null);
-  if(!current() || player.disposed) return;
-  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+  if(!current() || player.disposed) {if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);return;}
+  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) {
+    disposeVideoQualityPlayer(kind);
+    throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+  }
   try{await changeVideoQuality(player,0,{initial:true});}
   catch(error){if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);throw error;}
 }

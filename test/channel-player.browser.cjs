@@ -104,6 +104,7 @@ async function measure(page, label) {
       for (const id of Object.keys(sizes)) {
         await page.locator(`[data-channel-video-play="${id}"]`).click();
         await page.waitForFunction(() => document.querySelector('#channelVideo')?.readyState >= 2);
+        if(!baseline)await page.locator('.video-loading').waitFor({state:'hidden'});
         await page.evaluate(async () => {const v = document.querySelector('#channelVideo'); v.muted = true; await v.play();});
         await page.waitForFunction(() => document.querySelector('#channelVideo').currentTime > 0.1);
         const intrinsic = await page.locator('#channelVideo').evaluate(v => `${v.videoWidth}x${v.videoHeight}`);

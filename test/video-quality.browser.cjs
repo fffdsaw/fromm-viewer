@@ -45,7 +45,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
       const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile});
       const page=await context.newPage();page.setDefaultTimeout(20000);
       if(viewport.width===844)await page.addInitScript(()=>{Object.defineProperty(HTMLElement.prototype,'showPopover',{configurable:true,value:undefined});});
-      const errors=[],requests=[]; let delayLow=false,deny720=false,lowStarted=false,detailRevision=0,expireSignature="";
+      const errors=[],requests=[]; let delayLow=false,deny720=false,lowStarted=false,detailRevision=0,expireSignature="",holdDetail=false,holdMaster=false,holdLeaf=false;const detailWaiters=[],masterWaiters=[],leafWaiters=[];
       page.on('pageerror',error=>errors.push(error.message));
       await page.route('**/*',async route=>{
         const url=new URL(route.request().url());
@@ -59,8 +59,9 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         if(url.hostname==='quality.test') {
           const caseId=url.searchParams.get('fixtureCase')||'multi';
           requests.push({path:url.pathname,caseId,signature:url.searchParams.get('Signature'),keyPair:url.searchParams.get('Key-Pair-Id')});
-          if(url.pathname==='/master.m3u8') return serve(master(caseId),'application/vnd.apple.mpegurl');
+          if(url.pathname==='/master.m3u8'){if(holdMaster)await new Promise(resolve=>masterWaiters.push(resolve));return serve(master(caseId),'application/vnd.apple.mpegurl');}
           if(url.pathname.endsWith('/index.m3u8')) {
+            if(holdLeaf)await new Promise(resolve=>leafWaiters.push(resolve));
             if(delayLow&&url.pathname.includes('land-360')) {lowStarted=true;await wait(450);}
             if(url.pathname.includes('land-720')&&((caseId==='denied'&&deny720)||(caseId==='expired'&&url.searchParams.get('Signature')===expireSignature))) return serve('Fixture signed playlist expired','text/plain',403);
             return serve(fs.readFileSync(path.join(temp,url.pathname.replace(/^\//,''))),'application/vnd.apple.mpegurl');
@@ -72,7 +73,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
           if(url.pathname==='/channels') return json({channels:[{id:'a',channelName:'Quality fixture',isSubscribed:true}]});
           if(url.pathname==='/media/posts') return json({posts:[...['multi','portrait','single','single720','race','expired','denied','fatal'].map(id=>post(id)),post('channel','video')],isLast:true});
           if(url.pathname.startsWith('/media/posts/')) {
-            const id=url.pathname.split('/').at(-1);detailRevision++;
+            const id=url.pathname.split('/').at(-1);detailRevision++;if(holdDetail)await new Promise(resolve=>detailWaiters.push(resolve));
             return json({post:{...post(id,id==='channel'?'video':'live_record'),url:`https://quality.test/master.m3u8?CloudFront-Signature=fixture-${detailRevision}&CloudFront-Key-Pair-Id=fixture&fixtureCase=${id==='channel'?'multi':id}&revision=${detailRevision}`}});
           }
           return json({liveRooms:[]});
@@ -106,9 +107,32 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         assert.equal(snapshot.version,'1.5.18');assert.equal(snapshot.levels,1,'the engine receives one rendition only');assert.equal(snapshot.auto,false,'ABR is disabled');assert.equal(snapshot.level,0,'engine stays manually pinned to its only rendition');
         const labels=await select(kind).locator('option').allTextContents();if(expectedLabels)assert.deepEqual(labels.map(x=>x.split(' · ')[0]),expectedLabels,'UI lists exactly the actual master variants');assert.ok(labels.every(x=>!/(?:자동|\bauto\b)/i.test(x)),'no misleading Auto choice');
       };
+      const spinnerFits=async kind=>{
+        const loader=page.locator('.video-loading');await loader.waitFor({state:'visible'});assert.equal(await loader.count(),1);
+        const geometry=await loader.evaluate(el=>{const a=el.querySelector('svg').getBoundingClientRect(),b=el.parentElement.getBoundingClientRect(),css=getComputedStyle(el.querySelector('svg'));return {x:a.x+a.width/2,y:a.y+a.height/2,w:parseFloat(css.width),h:parseFloat(css.height),cx:b.x+b.width/2,cy:b.y+b.height/2,animation:css.animationName};});
+        assert.ok(Math.abs(geometry.w-geometry.h)<.5,'the loader stays circular');assert.ok(geometry.w>=31&&geometry.w<=49,'loader size is restrained on desktop and mobile');
+        assert.ok(Math.abs(geometry.x-geometry.cx)<1&&Math.abs(geometry.y-geometry.cy)<1,'loader is centered independently of controls/video rotation');
+        assert.equal(geometry.animation,'video-loading-spin');
+        const before=await loader.locator('svg').evaluate(el=>getComputedStyle(el).transform);await wait(110);assert.notEqual(await loader.locator('svg').evaluate(el=>getComputedStyle(el).transform),before,'the circular arc actually animates');
+        assert.equal(await page.locator(`#${kind}QualityStatus`).count()?await page.locator(`#${kind}QualityStatus`).textContent():'','','routine loading does not print a bottom-left message');
+      };
+      const buffering=async kind=>{
+        const v=video(kind);await page.locator('.video-loading').waitFor({state:'hidden'});
+        await v.evaluate(v=>v.dispatchEvent(new Event('waiting')));await spinnerFits(kind);
+        if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,`loading-${kind}-${viewport.width}x${viewport.height}.png`)});}
+        if(viewport.width===1440){await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.video-loading-ring').evaluate(el=>getComputedStyle(el).animationName),'none');await page.emulateMedia({reducedMotion:'no-preference'});}
+        await v.evaluate(v=>v.pause());await page.locator('.video-loading').waitFor({state:'hidden'});
+        await v.evaluate(v=>{v.dispatchEvent(new Event('playing'));v.dispatchEvent(new Event('waiting'));v.dispatchEvent(new Event('playing'));});await wait(180);assert.equal(await page.locator('.video-loading').isVisible(),false,'short buffer gaps cannot flash the spinner');
+        await v.evaluate(v=>v.play());
+        if(viewport.width===1440&&kind==='replay'){
+          await v.evaluate(v=>{v.currentTime=v.duration-.1;});await page.waitForFunction(id=>document.getElementById(id).ended,'replayVideo');
+          assert.equal(await page.locator('.video-loading').isVisible(),false,'actual playback end leaves no spinner');
+          await v.evaluate(v=>{v.currentTime=0;return v.play();});
+        }
+      };
       const modernControls=async kind=>{
         const v=video(kind),bar=page.locator('.modern-video-controls');const portrait=await v.evaluate(v=>v.videoWidth<v.videoHeight);
-        await v.hover();
+        await v.hover();await buffering(kind);
         assert.equal(await page.locator('.replay-page-head .video-quality-control').count(),0,'quality is outside the title header');
         assert.equal(await bar.locator('.mvc-settings .mvc-quality-options').count(),1,'quality lives inside the settings menu');
         assert.equal(await select(kind).isVisible(),false,'the old bottom dropdown is hidden');
@@ -151,11 +175,16 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await bar.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('modern-video-stage'));
         await rotationFits(90);await bar.locator('summary').click();
         await bar.locator('.mvc-quality-options').waitFor({state:'visible'});assert.equal(await bar.locator('.mvc-quality-options').isVisible(),true,'quality is accessible inside container fullscreen');
+        if(viewport.width===1440)holdLeaf=true;
+        try{
         if(viewport.width===1440){
           await bar.locator('.mvc-quality-option[aria-checked="true"]').focus();await page.keyboard.press('ArrowDown');
           assert.equal(await bar.locator('details').evaluate(el=>el.open),true,'arrow-key quality selection keeps the menu open');
         }else await choose(kind,'720p');
+        if(viewport.width===1440)await spinnerFits(kind);
+        }finally{holdLeaf=false;for(const release of leafWaiters.splice(0))release();}
         await page.waitForFunction(({id,width})=>document.getElementById(id).videoWidth===width,{id:kind==='replay'?'replayVideo':'channelVideo',width:portrait?720:1280});
+        await page.locator('.video-loading').waitFor({state:'hidden'});
         assert.equal(await page.evaluate(()=>document.fullscreenElement?.classList.contains('modern-video-stage')),true,'quality switch retains container fullscreen');await rotationFits(90);
         await choose(kind,'1080p');await page.waitForFunction(({id,width})=>document.getElementById(id).videoWidth===width,{id:kind==='replay'?'replayVideo':'channelVideo',width:portrait?1080:1920});
         await bar.locator('summary').click();await bar.locator('[data-mvc="left"]').click();await rotationFits(0);
@@ -220,7 +249,13 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.evaluate(kind=>(kind==='replay'?state.live.replayHls:channelVideoState.hls).startLoad(),kind);
         return bytes;
       };
-      await openReplay('multi');await ready('replay',dimensions['land-1080']);await fixed('replay',['1080p','720p','360p']);await modernControls('replay');await layout('replay','landscape-highest');
+      holdDetail=true;holdMaster=true;
+      try{
+        await openReplay('multi');await spinnerFits('replay');if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,`loading-initial-${viewport.width}x${viewport.height}.png`)});}
+        holdDetail=false;for(const release of detailWaiters.splice(0))release();
+        await video('replay').waitFor({state:'attached'});await spinnerFits('replay');
+      }finally{holdDetail=false;holdMaster=false;for(const release of [...detailWaiters.splice(0),...masterWaiters.splice(0)])release();}
+      await ready('replay',dimensions['land-1080']);await fixed('replay',['1080p','720p','360p']);await modernControls('replay');await layout('replay','landscape-highest');
       await stateSwitch('replay','720p',dimensions['land-720'],{muted:false});
       if(viewport.width===1440){
         await stateSwitch('replay','1080p',dimensions['land-1080'],{playing:true});
@@ -255,7 +290,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.waitForFunction(()=>/기존 화질/.test(document.querySelector('#replayQualityStatus')?.textContent||''));
         assert.equal(detailRevision,deniedDetail+1,'persistent403 cannot refresh forever');
         assert.equal(await video('replay').evaluate(v=>v.videoWidth),1920,'failed selection retains old actual rendition');
-        assert.ok((await select('replay').locator('option:checked').textContent()).startsWith('1080p'),'failed selection rolls UI back');
+        assert.ok((await select('replay').locator('option:checked').textContent()).startsWith('1080p'),'failed selection rolls UI back');assert.equal(await page.locator('.video-loading').isVisible(),false,'failed quality preparation stops the spinner');
         deny720=false;const retryStart=requests.length;await stateSwitch('replay','720p',dimensions['land-720']);
         const retryManifest=requests.slice(retryStart).find(x=>x.caseId==='denied'&&x.path.includes('land-720/index.m3u8'));
         assert.equal(retryManifest?.signature,`fixture-${detailRevision}`,'explicit retry retains refreshed catalog, not expired signed URLs');
@@ -266,7 +301,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.waitForTimeout(100);
         assert.equal(await page.evaluate(()=>document.querySelector('#replayVideo')===window.qualityFatalNode),true,'fatal initial highest stream keeps manual quality controls');
         assert.equal(await select('replay').isEnabled(),true);await fixed('replay');
-        assert.ok((await select('replay').locator('option:checked').textContent()).startsWith('1080p'),'fatal fault never chooses a lower rendition');
+        assert.ok((await select('replay').locator('option:checked').textContent()).startsWith('1080p'),'fatal fault never chooses a lower rendition');assert.equal(await page.locator('.video-loading').isVisible(),false,'terminal HLS failure cannot leave an endless spinner');
         await stateSwitch('replay','720p',dimensions['land-720']);
         await openReplay('fatal');await ready('replay',dimensions['land-1080']);
         await video('replay').evaluate(v=>{window.qualityFatalNode=v;v.dispatchEvent(new Event('error'));});

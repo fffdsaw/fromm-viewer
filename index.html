@@ -1256,6 +1256,12 @@ body.download-marquee-active{user-select:none;cursor:default}
   :is(.replay-player-page,.channel-player) .video-quality-select{height:30px;min-width:96px;font-size:11px}
 }
 /* Replay/Channel-only enhanced controls; video retains native controls if setup fails. */
+.replay-page-stage,.channel-player-stage{position:relative}
+.video-loading{position:absolute;inset:0;z-index:3;display:grid;place-items:center;pointer-events:none}
+.video-loading[hidden]{display:none}
+.video-loading-ring{--ring-size:clamp(32px,4vmin,48px);display:block;width:var(--ring-size);height:var(--ring-size);aspect-ratio:1;flex:none;color:#f7f9fc;filter:drop-shadow(0 1px 3px #0009);animation:video-loading-spin .9s linear infinite}
+@keyframes video-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.video-loading-ring{animation:none}}
 .modern-video-stage{position:relative;isolation:isolate;outline:none}
 .modern-video-stage:fullscreen{width:100vw;height:100dvh;max-height:none;border:0!important;border-radius:0!important;background:#080b10}
 .modern-video-stage:fullscreen video{width:100%;height:100%;max-height:none!important;object-fit:contain}
@@ -1894,7 +1900,7 @@ function renderChannelVideosView() {
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(replayDateLabel(selected.displayStartAt))}</span></div>
         <div class="video-player-actions"><button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button></div>
       </div>
-      <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : `<p class="replay-page-status" role="status">채널 영상을 불러오는 중...</p>`}</div>
+      <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : videoLoadingIndicator()}</div>
     </div>`;
   } else {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
@@ -4440,7 +4446,7 @@ function renderReplayPlayerView(){
     ? `<div class="replay-page-status replay-error">${esc(state.live.replayPlayerError)}</div>`
     : selected._streamUrl
       ? `<video id="replayVideo" controls playsinline autoplay></video>`
-      : `<div class="replay-page-status">Replay를 불러오는 중...</div>`;
+      : videoLoadingIndicator();
   tl.innerHTML=`<div class="replay-player-page">
     <div class="replay-page-head">
       <button class="replay-page-back" id="replayBackToList" type="button" aria-label="Replay 목록으로 돌아가기">← Replay</button>
@@ -4691,6 +4697,9 @@ function replayVariantsFromMaster(text,baseUrl,authParams,includeAudio=false) {
   }
   return variants.sort((a,b)=>b.width*b.height-a.width*a.height || b.bandwidth-a.bandwidth || b.frameRate-a.frameRate);
 }
+function videoLoadingIndicator() {
+  return `<div class="video-loading" role="status" aria-label="영상을 불러오는 중"><svg class="video-loading-ring" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="19" stroke="currentColor" stroke-opacity=".18" stroke-width="3"/><circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="72 48"/></svg></div>`;
+}
 function installModernVideoControls(player) {
   const video=player.video, doc=player.owner.document;
   const stage=video.closest?.('.replay-page-stage,.channel-player-stage');
@@ -4700,9 +4709,19 @@ function installModernVideoControls(player) {
   const button=(name,label)=>`<button class="mvc-button" data-mvc="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name]||icons.full)}</button>`;
   const controls=doc.createElement('div');controls.className='modern-video-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','영상 재생 컨트롤');
   controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —</span></div><div class="mvc-right">${button('sound','음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량"><details class="mvc-settings"><summary class="mvc-button" aria-label="재생 설정" title="재생 설정">${icon(icons.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(icons.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div><div class="mvc-section"><label class="mvc-mobile-volume">음량 <input class="mvc-volume-extra" type="range" min="0" max="1" step="0.05" value="1" aria-label="설정 음량"></label><label>재생 속도 <select class="mvc-rate" aria-label="재생 속도">${[.5,.75,1,1.25,1.5,1.75,2].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}×</option>`).join('')}</select></label></div><div class="mvc-section"><div class="mvc-setting-heading">화질</div>${videoQualityControls(player.kind)}<div class="mvc-quality-options" role="radiogroup" aria-label="재생 화질"></div></div></div></details><button class="mvc-button mvc-pip" type="button" aria-label="화면 속 화면 (PiP)" aria-pressed="false" title="화면 속 화면 (PiP)">${icon(icons.pip)}</button>${button('full','전체 화면')}</div></div></div>`;
-  const removers=[];let timer=null,dragging=false,dead=false,keyboardMode=false,rotation=0;
+  const loadingWrapper=doc.createElement('div');loadingWrapper.innerHTML=videoLoadingIndicator();const loader=loadingWrapper.firstElementChild;
+  const removers=[];let timer=null,loadingTimer=null,dragging=false,dead=false,keyboardMode=false,rotation=0,preparing=true,hasFrame=video.readyState>=2,waiting=false,failed=false;
   const $=selector=>controls.querySelector(selector), seek=$('.mvc-seek'), volume=$('.mvc-volume'), play=$('[data-mvc="play"]'), sound=$('[data-mvc="sound"]'), settings=$('details');
   const listen=(target,event,fn)=>{target.addEventListener(event,fn);removers.push(()=>target.removeEventListener(event,fn));};
+  const loadingNeeded=()=>!failed&&!video.ended&&(preparing||!hasFrame||waiting);
+  const renderLoading=()=>{
+    if(dead)return;
+    const busy=loadingNeeded();stage.setAttribute('aria-busy',String(busy));
+    if(!busy){clearTimeout(loadingTimer);loadingTimer=null;loader.hidden=true;}
+    else if(!hasFrame){clearTimeout(loadingTimer);loadingTimer=null;loader.hidden=false;}
+    else if(loader.hidden&&!loadingTimer)loadingTimer=setTimeout(()=>{loadingTimer=null;if(!dead&&loadingNeeded())loader.hidden=false;},140);
+  };
+  const setLoading=(value,terminal=false)=>{preparing=value;if(value)failed=false;if(terminal)failed=true;renderLoading();};
   const time=value=>{if(!Number.isFinite(value))return '—';const s=Math.max(0,Math.floor(value));return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
   const message=text=>{const status=doc.querySelector(`#${player.kind}QualityStatus`);if(status)status.textContent=text;reveal();};
   const focusHeld=()=>keyboardMode && controls.contains(doc.activeElement);
@@ -4727,7 +4746,17 @@ function installModernVideoControls(player) {
   const toggle=()=>{if(video.paused)video.play().catch(()=>message('재생 버튼을 다시 눌러주세요.'));else video.pause();reveal();};
   const fullscreen=async()=>{try{if(doc.fullscreenElement===stage)await doc.exitFullscreen();else if(stage.requestFullscreen)await stage.requestFullscreen();else if(video.webkitEnterFullscreen)video.webkitEnterFullscreen();}catch{message('이 브라우저에서 전체 화면을 열지 못했습니다.');}reveal();};
   try {
-    stage.classList.add('modern-video-stage');stage.tabIndex=0;stage.append(controls);
+    stage.classList.add('modern-video-stage');stage.tabIndex=0;stage.append(loader,controls);
+    player.controlsSetLoading=setLoading;
+    removers.push(()=>{clearTimeout(loadingTimer);loader.remove();stage.removeAttribute('aria-busy');if(player.controlsSetLoading===setLoading)delete player.controlsSetLoading;});
+    for(const event of ['loadstart','emptied'])listen(video,event,()=>{hasFrame=false;waiting=true;failed=false;renderLoading();});
+    for(const event of ['loadeddata','canplay','seeked'])listen(video,event,()=>{hasFrame=video.readyState>=2;waiting=false;renderLoading();});
+    listen(video,'playing',()=>{hasFrame=true;waiting=false;failed=false;renderLoading();});
+    listen(video,'waiting',()=>{waiting=!video.paused;renderLoading();});
+    listen(video,'seeking',()=>{waiting=true;renderLoading();});
+    listen(video,'pause',()=>{waiting=false;renderLoading();});
+    listen(video,'ended',renderLoading);listen(video,'error',()=>{failed=true;renderLoading();});
+    renderLoading();
     listen(play,'click',toggle);listen(sound,'click',()=>{video.muted=!video.muted;});
     for(const input of [volume,$('.mvc-volume-extra')])listen(input,'input',()=>{video.volume=Number(input.value);video.muted=false;});
     listen(seek,'pointerdown',()=>{dragging=true;reveal();});
@@ -4899,7 +4928,7 @@ async function prepareVideoQualitySource(catalog,variant,owner,signal) {
     return {url:blob(["#EXTM3U","#EXT-X-VERSION:7",...tags,`#EXT-X-STREAM-INF:${videoQualityAttributesText(stream)}`,source].join("\n")),urls};
   } catch(error) {revokeVideoQualityUrls(urls,owner);throw error;}
 }
-function updateVideoQualityUi(player,message="") {
+function updateVideoQualityUi(player,message="",{loading,failed=false}={}) {
   const select=player.owner.document.querySelector(`#${player.kind}QualitySelect`);
   const status=player.owner.document.querySelector(`#${player.kind}QualityStatus`);
   if(select) {
@@ -4914,6 +4943,7 @@ function updateVideoQualityUi(player,message="") {
     select.onchange=()=>{void changeVideoQuality(player,Number(select.value));};
   }
   try{player.controlsQualityUpdate?.();}catch{}
+  if(typeof loading==='boolean')try{player.controlsSetLoading?.(loading,failed);}catch{}
   if(status) status.textContent=message;
 }
 function disposeVideoQualityPlayer(kind) {
@@ -4958,7 +4988,7 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
   player.abort?.abort();const abort=new AbortController();player.abort=abort;
   const current=()=>player.current() && !player.disposed && requestSeq===player.requestSeq && !abort.signal.aborted;
   player.pendingIndex=index;
-  if(player.variants.length) updateVideoQualityUi(player,"화질 변경 중…");
+  updateVideoQualityUi(player,"",{loading:true});
   let prepared, committed=false, committedSeq=0, oldUrls=[];
   try {
     let catalog=player.catalog;
@@ -5001,7 +5031,7 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
       video.volume=resume.volume;video.muted=resume.muted;video.playbackRate=resume.rate;
       if(resume.time>0) try{video.currentTime=Number.isFinite(video.duration)?Math.min(resume.time,Math.max(0,video.duration-.05)):resume.time;}catch{}
       if(resume.paused) video.pause();else video.play().catch(()=>{});
-      player.transitioning=false;updateVideoQualityUi(player);
+      player.transitioning=false;updateVideoQualityUi(player,"",{loading:false});
       restoreVideoQualityPresentation(player,()=>engineCurrent() && requestSeq===player.requestSeq);
       if(player.variants.length===1 && !player.variants[0].width && video.videoWidth>0) {
         player.variants=[{...player.variants[0],width:video.videoWidth,height:video.videoHeight}];updateVideoQualityUi(player);
@@ -5011,12 +5041,11 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
     const cancelPresentation=event=>{if(event.key==="Escape"&&player.transitioning){player.resume.fullscreen=null;player.resume.pip=false;}};
     player.owner.document.addEventListener?.("keydown",cancelPresentation);
     player.listeners.push(()=>player.owner.document.removeEventListener?.("keydown",cancelPresentation));
-    listen("waiting",()=>{if(engineCurrent()&&player.variants.length>1)updateVideoQualityUi(player,"버퍼링 중 · 필요하면 화질을 직접 선택하세요");});
     listen("playing",()=>{if(engineCurrent()&&!player.transitioning)updateVideoQualityUi(player);});
     const fatal=()=>{
       if(!engineCurrent()) return;
       if(initial && player.variants.length<=1) player.onFatal();
-      else updateVideoQualityUi(player,"재생하지 못했습니다. 다른 화질을 선택해주세요.");
+      else updateVideoQualityUi(player,"재생하지 못했습니다. 다른 화질을 선택해주세요.",{loading:false,failed:true});
     };
     player.onVideoError=()=>{if(engineCurrent())fatal();};video.onerror=player.onVideoError;
     if(player.Hls?.isSupported?.()) {
@@ -5042,7 +5071,7 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
       if(!player.resume.paused)video.play().catch(()=>{});
     }
     revokeVideoQualityUrls(oldUrls,player.owner);oldUrls=[];
-    updateVideoQualityUi(player,initial?"최고 화질 준비 중…":"화질 변경 중…");
+    updateVideoQualityUi(player,"",{loading:true});
   } catch(error) {
     if(prepared)revokeVideoQualityUrls(prepared.urls,player.owner);
     revokeVideoQualityUrls(oldUrls,player.owner);
@@ -5056,7 +5085,7 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
     if(!current()) return;
     player.pendingIndex=null;
     if(initial) throw new Error("영상 재생목록을 준비하지 못했습니다. 목록에서 다시 열어주세요.");
-    updateVideoQualityUi(player,committed?"변경한 화질을 재생하지 못했습니다. 다른 화질을 선택해주세요.":"화질을 변경하지 못했습니다. 기존 화질을 유지합니다.");
+    updateVideoQualityUi(player,committed?"변경한 화질을 재생하지 못했습니다. 다른 화질을 선택해주세요.":"화질을 변경하지 못했습니다. 기존 화질을 유지합니다.",{loading:false,failed:true});
   }
 }
 async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFatal,refreshUrl}={}) {
@@ -5068,7 +5097,7 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
   const direct=kind==="channel"?!/\.m3u8(?:\?|$)/i.test(url):/\.(mp4|webm|mov|m4v)(?:\?|$)/i.test(url);
   if(direct) {
     player.variants=[{width:0,height:0,bandwidth:0,attrs:{},url}];updateVideoQualityUi(player);
-    const metadata=()=>{if(current()){player.variants[0].width=video.videoWidth;player.variants[0].height=video.videoHeight;updateVideoQualityUi(player);}};
+    const metadata=()=>{if(current()){player.variants[0].width=video.videoWidth;player.variants[0].height=video.videoHeight;updateVideoQualityUi(player,"",{loading:false});}};
     video.addEventListener("loadedmetadata",metadata);player.listeners.push(()=>video.removeEventListener("loadedmetadata",metadata));
     video.src=localProxyUrl(replayCanonicalStreamUrl(url));video.play().catch(()=>{});return;
   }

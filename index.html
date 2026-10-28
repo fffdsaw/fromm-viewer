@@ -1266,22 +1266,26 @@ body.download-marquee-active{user-select:none;cursor:default}
 .mvc-row,.mvc-left,.mvc-right{display:flex;align-items:center;gap:10px;min-width:0}.mvc-row{justify-content:space-between}.mvc-right{margin-left:auto;gap:8px}.mvc-time{white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;color:#dbe2ed}
 .mvc-button{display:inline-grid;place-items:center;flex:0 0 36px;width:36px;height:36px;padding:0;border:0;border-radius:9px;background:transparent;color:inherit;cursor:pointer;list-style:none}
 .mvc-button:hover,.mvc-button:focus-visible{background:rgba(255,255,255,.13)}.mvc-button svg{display:block}.mvc-button:focus-visible,.mvc-panel select:focus-visible,.mvc-panel input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
-.mvc-settings summary::-webkit-details-marker{display:none}.mvc-settings{position:relative}.mvc-popover{position:fixed;max-height:calc(100dvh - 24px);overflow-y:auto;width:200px;padding:12px;border:1px solid #3a4353;border-radius:12px;background:rgba(20,25,35,.97);box-shadow:0 8px 24px #0007;backdrop-filter:blur(14px)}
-.mvc-popover label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;color:#e2e8f2;font-size:12px}.mvc-popover select{width:76px;padding:6px;border:1px solid #3a4353;border-radius:7px;background:#222a38;color:#fff}.mvc-pip{width:100%;padding:9px;border:0;border-radius:7px;background:#2c3545;color:#fff;font:inherit;font-size:12px}.mvc-pip[hidden]{display:none}
+.mvc-settings summary::-webkit-details-marker{display:none}.mvc-settings{position:relative}.mvc-popover{position:fixed;inset:auto;margin:0;pointer-events:auto;max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#536075 transparent;width:min(280px,calc(100vw - 24px));padding:0;border:1px solid #3a4353;border-radius:12px;background:rgba(20,25,35,.97);box-shadow:0 8px 24px #0007;backdrop-filter:blur(14px)}
+.mvc-popover label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;color:#e2e8f2;font-size:13px}.mvc-popover select{width:76px;padding:6px;border:1px solid #3a4353;border-radius:7px;background:#222a38;color:#fff}.mvc-pip[hidden]{display:none}
 .mvc-panel input.mvc-seek,.mvc-panel input.mvc-volume{appearance:none;-webkit-appearance:none;display:block;padding:0;border:0;border-radius:99px;height:4px;min-height:4px;background:#ffffff40;cursor:pointer;accent-color:var(--accent2)}
 .mvc-panel input.mvc-seek{width:100%;margin:0 0 12px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}.mvc-panel input.mvc-volume{width:72px;margin:0 4px 0 0}
 .mvc-panel input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:11px;height:11px;border:0;border-radius:50%;background:#fff}.mvc-panel input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:#fff}
-.modern-video-controls .video-quality-control{margin:0;gap:0;flex:0 1 auto}.modern-video-controls .video-quality-control>span{display:none}.modern-video-controls select.video-quality-select{width:130px;max-width:130px;min-width:0;height:34px;background:#202734e6;color:#fff;border-color:#ffffff25}
+.modern-video-controls .video-quality-control{display:none}
+.mvc-section{padding:12px 14px}.mvc-section+.mvc-section{border-top:1px solid #ffffff16}.mvc-rotation-row,.mvc-rotation-actions{display:flex;align-items:center;gap:8px}.mvc-rotation-row{justify-content:space-between}.mvc-rotation-title{display:flex;align-items:center;gap:8px;font-size:13px}.mvc-angle{font-size:11px;color:#a9b4c8;font-variant-numeric:tabular-nums}.mvc-rotation-actions .mvc-button{width:30px;height:30px;flex-basis:30px;background:#ffffff0a}
+.mvc-setting-heading{margin-bottom:7px;font-size:12px;color:#a9b4c8}.mvc-quality-options{display:grid;gap:4px}.mvc-quality-option{width:100%;padding:9px 12px;border:0;border-radius:7px;background:transparent;color:#e2e8f2;text-align:left;font:inherit;font-size:13px;cursor:pointer}.mvc-quality-option:hover,.mvc-quality-option:focus-visible{background:#ffffff0d}.mvc-quality-option[aria-checked="true"]{background:#477bdb24;color:#83b7ff}.mvc-quality-option:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}.mvc-quality-option:disabled{cursor:default}
+.modern-video-stage.mvc-menu-fallback{z-index:500}
+.modern-video-stage.mvc-rotated video{position:absolute;left:50%;top:50%;width:var(--mvc-video-width)!important;height:var(--mvc-video-height)!important;max-width:none!important;max-height:none!important;transform:translate(-50%,-50%) rotate(var(--mvc-video-angle));transform-origin:center;object-fit:contain!important}
 .modern-video-controls .video-quality-status{position:absolute;bottom:100px;left:20px;max-width:min(540px,calc(100% - 40px));padding:8px 12px;border-radius:8px;background:#141a25e8;pointer-events:none}
 .modern-video-controls .video-quality-status:empty{display:none}
-@media(max-width:600px){.mvc-panel{padding:42px 12px 10px}.mvc-row,.mvc-left{gap:5px}.mvc-right{gap:3px}.mvc-button{width:30px;height:32px;flex-basis:30px}.mvc-time{font-size:10px}.mvc-panel input.mvc-volume{display:none}.modern-video-controls select.video-quality-select{width:88px;max-width:88px;height:32px;font-size:11px;padding:4px}.modern-video-controls .video-quality-status{left:12px;bottom:90px;font-size:11px}}
+@media(max-width:600px){.mvc-panel{padding:42px 12px 10px}.mvc-row,.mvc-left{gap:5px}.mvc-right{gap:3px}.mvc-button{width:30px;height:32px;flex-basis:30px}.mvc-time{font-size:10px}.mvc-panel input.mvc-volume{display:none}.modern-video-controls .video-quality-status{left:12px;bottom:90px;font-size:11px}}
 .mvc-panel input.mvc-seek{height:20px;min-height:20px;margin-bottom:4px;background:transparent}
 .mvc-seek::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}
 .mvc-seek::-moz-range-track{height:4px;border-radius:9px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%))}
 .mvc-seek::-webkit-slider-thumb{margin-top:-3.5px}
 @media(max-width:650px){:is(.replay-player-page,.channel-player) .replay-page-head{grid-template-columns:auto minmax(0,1fr) auto}:is(.replay-player-page,.channel-player) .video-player-actions{grid-column:3;grid-row:1;width:auto;justify-self:end}}
 .mvc-popover label.mvc-mobile-volume{display:none}.mvc-panel input.mvc-volume-extra{width:76px;height:4px;min-height:4px;padding:0;border:0;appearance:none;border-radius:9px;background:#ffffff40;accent-color:var(--accent2)}
-@media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex}}
+@media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls{transition:none}}
 </style>
 </head>
@@ -4692,16 +4696,16 @@ function installModernVideoControls(player) {
   const stage=video.closest?.('.replay-page-stage,.channel-player-stage');
   if(!stage || !doc.createElement) return ()=>{};
   const icon=path=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
-  const icons={play:'m8 5 11 7-11 7z',pause:'M8 5v14M16 5v14',sound:'M11 4 6 8H3v8h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',muted:'M11 4 6 8H3v8h3l5 4zM16 9l5 6m0-6-5 6',settings:'M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1zM9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0',full:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'};
+  const icons={play:'m8 5 11 7-11 7z',pause:'M8 5v14M16 5v14',sound:'M11 4 6 8H3v8h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',muted:'M11 4 6 8H3v8h3l5 4zM16 9l5 6m0-6-5 6',settings:'M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1zM9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0',full:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',pip:'M20 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6M15 14h6v6h-6z',left:'M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7',right:'M21 11a9 9 0 1 0-2.7 6.4M21 4v7h-7'};
   const button=(name,label)=>`<button class="mvc-button" data-mvc="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name]||icons.full)}</button>`;
   const controls=doc.createElement('div');controls.className='modern-video-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','영상 재생 컨트롤');
-  controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —</span></div><div class="mvc-right">${button('sound','음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량"><details class="mvc-settings"><summary class="mvc-button" aria-label="재생 설정" title="재생 설정">${icon(icons.settings)}</summary><div class="mvc-popover"><label class="mvc-mobile-volume">음량 <input class="mvc-volume-extra" type="range" min="0" max="1" step="0.05" value="1" aria-label="설정 음량"></label><label>재생 속도 <select class="mvc-rate" aria-label="재생 속도">${[.5,.75,1,1.25,1.5,1.75,2].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}×</option>`).join('')}</select></label><button class="mvc-pip" type="button">화면 속 화면 (PiP)</button></div></details>${videoQualityControls(player.kind)}${button('full','전체 화면')}</div></div></div>`;
-  const removers=[];let timer=null,dragging=false,dead=false,selectionOpen=false,keyboardMode=false;
+  controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —</span></div><div class="mvc-right">${button('sound','음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량"><details class="mvc-settings"><summary class="mvc-button" aria-label="재생 설정" title="재생 설정">${icon(icons.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(icons.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div><div class="mvc-section"><label class="mvc-mobile-volume">음량 <input class="mvc-volume-extra" type="range" min="0" max="1" step="0.05" value="1" aria-label="설정 음량"></label><label>재생 속도 <select class="mvc-rate" aria-label="재생 속도">${[.5,.75,1,1.25,1.5,1.75,2].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}×</option>`).join('')}</select></label></div><div class="mvc-section"><div class="mvc-setting-heading">화질</div>${videoQualityControls(player.kind)}<div class="mvc-quality-options" role="radiogroup" aria-label="재생 화질"></div></div></div></details><button class="mvc-button mvc-pip" type="button" aria-label="화면 속 화면 (PiP)" aria-pressed="false" title="화면 속 화면 (PiP)">${icon(icons.pip)}</button>${button('full','전체 화면')}</div></div></div>`;
+  const removers=[];let timer=null,dragging=false,dead=false,keyboardMode=false,rotation=0;
   const $=selector=>controls.querySelector(selector), seek=$('.mvc-seek'), volume=$('.mvc-volume'), play=$('[data-mvc="play"]'), sound=$('[data-mvc="sound"]'), settings=$('details');
   const listen=(target,event,fn)=>{target.addEventListener(event,fn);removers.push(()=>target.removeEventListener(event,fn));};
   const time=value=>{if(!Number.isFinite(value))return '—';const s=Math.max(0,Math.floor(value));return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
   const message=text=>{const status=doc.querySelector(`#${player.kind}QualityStatus`);if(status)status.textContent=text;reveal();};
-  const focusHeld=()=>selectionOpen || (keyboardMode && controls.contains(doc.activeElement));
+  const focusHeld=()=>keyboardMode && controls.contains(doc.activeElement);
   const reveal=()=>{
     if(dead)return;clearTimeout(timer);controls.classList.remove('mvc-hidden');
     if(!video.paused && video.readyState>=3 && !settings.open && !dragging && !focusHeld()) timer=setTimeout(()=>{if(!dead&&!video.paused&&!settings.open&&!dragging&&!focusHeld())controls.classList.add('mvc-hidden');},3000);
@@ -4734,13 +4738,49 @@ function installModernVideoControls(player) {
     listen($('.mvc-rate'),'change',()=>{video.playbackRate=Number($('.mvc-rate').value);});
     listen($('[data-mvc="full"]'),'click',fullscreen);
     const pip=$('.mvc-pip');pip.hidden=!doc.pictureInPictureEnabled||!video.requestPictureInPicture;
-    listen(pip,'click',async()=>{try{if(doc.pictureInPictureElement===video)await doc.exitPictureInPicture();else await video.requestPictureInPicture();settings.open=false;}catch{message('PiP를 열지 못했습니다. 재생 후 다시 시도해주세요.');}});
-    const quality=controls.querySelector('.video-quality-select');
-    listen(quality,'pointerdown',()=>{selectionOpen=true;reveal();});
-    for(const event of ['change','blur'])listen(quality,event,()=>{selectionOpen=false;reveal();});
-    listen(quality,'keydown',event=>{if(event.key==='Escape'){selectionOpen=false;reveal();}});
-    const placeSettings=()=>{if(!settings.open)return;const r=settings.getBoundingClientRect(),popup=$('.mvc-popover');popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-212,r.right-200))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;};
-    listen(settings,'toggle',()=>{placeSettings();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
+    const pipState=()=>{const active=doc.pictureInPictureElement===video;pip.setAttribute('aria-pressed',String(active));pip.setAttribute('aria-label',active?'화면 속 화면 종료':'화면 속 화면 (PiP)');pip.title=pip.getAttribute('aria-label');};
+    listen(pip,'click',async()=>{try{if(doc.pictureInPictureElement===video)await doc.exitPictureInPicture();else await video.requestPictureInPicture();}catch{message('PiP를 열지 못했습니다. 재생 후 다시 시도해주세요.');}pipState();reveal();});
+    for(const event of ['enterpictureinpicture','leavepictureinpicture'])listen(video,event,pipState);
+    const quality=controls.querySelector('.video-quality-select'), qualityOptions=$('.mvc-quality-options');
+    const syncQuality=()=>{
+      const options=Array.from(quality.options),key=JSON.stringify(options.map(option=>[option.value,option.textContent]));
+      if(qualityOptions.dataset.options!==key){
+        const focused=qualityOptions.contains(doc.activeElement)?doc.activeElement.dataset.quality:null;
+        qualityOptions.replaceChildren(...options.map(option=>{const row=doc.createElement('button');row.type='button';row.className='mvc-quality-option';row.setAttribute('role','radio');row.dataset.quality=option.value;row.textContent=option.textContent;return row;}));
+        qualityOptions.dataset.options=key;
+        if(focused!=null)Array.from(qualityOptions.children).find(row=>row.dataset.quality===focused)?.focus({preventScroll:true});
+      }
+      for(const row of qualityOptions.children){const checked=row.dataset.quality===quality.value;row.setAttribute('aria-checked',String(checked));row.tabIndex=checked?0:-1;row.disabled=quality.disabled;}
+      placeSettings();
+    };
+    player.controlsQualityUpdate=syncQuality;removers.push(()=>{if(player.controlsQualityUpdate===syncQuality)delete player.controlsQualityUpdate;});
+    const chooseQuality=(row,close)=>{if(!row||row.disabled)return;quality.value=row.dataset.quality;quality.dispatchEvent(new player.owner.Event('change',{bubbles:true}));if(close){settings.open=false;settings.querySelector('summary').focus({preventScroll:true});}};
+    listen(qualityOptions,'click',event=>chooseQuality(event.target.closest('.mvc-quality-option'),true));
+    listen(qualityOptions,'keydown',event=>{const rows=Array.from(qualityOptions.children).filter(row=>!row.disabled),index=rows.indexOf(doc.activeElement);if(index<0||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();event.stopPropagation();const next=event.key==='Home'?0:event.key==='End'?rows.length-1:(index+(['ArrowUp','ArrowLeft'].includes(event.key)?-1:1)+rows.length)%rows.length;rows[next].focus();chooseQuality(rows[next],false);});
+    const popup=$('.mvc-popover');if(popup.showPopover)popup.setAttribute('popover','manual');
+    const placeSettings=()=>{
+      if(!settings.open||dead)return;
+      if(popup.showPopover&&popup.hasAttribute('popover')&&!popup.matches(':popover-open'))try{popup.showPopover();}catch{popup.removeAttribute('popover');}
+      stage.classList.toggle('mvc-menu-fallback',!popup.hasAttribute('popover'));
+      const r=settings.getBoundingClientRect();popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;
+    };
+    const closePopup=()=>{try{popup.hidePopover?.();}catch{}stage.classList.remove('mvc-menu-fallback');};removers.push(closePopup);
+    controls.append($('.video-quality-status'));syncQuality();
+    const rotateLayout=()=>{
+      if(dead)return;
+      stage.classList.toggle('mvc-rotated',rotation!==0);
+      const odd=rotation%180!==0;
+      stage.style.setProperty('--mvc-video-width',`${odd?stage.clientHeight:stage.clientWidth}px`);stage.style.setProperty('--mvc-video-height',`${odd?stage.clientWidth:stage.clientHeight}px`);stage.style.setProperty('--mvc-video-angle',`${rotation}deg`);
+      $('.mvc-angle').textContent=`${rotation}°`;placeSettings();
+    };
+    const clearRotation=()=>{stage.classList.remove('mvc-rotated');for(const name of ['--mvc-video-width','--mvc-video-height','--mvc-video-angle'])stage.style.removeProperty(name);};
+    removers.push(clearRotation);
+    for(const [name,delta] of [['left',-90],['right',90]])listen($(`[data-mvc="${name}"]`),'click',()=>{rotation=(rotation+delta+360)%360;rotateLayout();});
+    if(player.owner.ResizeObserver){const observer=new player.owner.ResizeObserver(rotateLayout);observer.observe(stage);removers.push(()=>observer.disconnect());}
+    listen(player.owner,'resize',rotateLayout);listen(video,'loadedmetadata',rotateLayout);listen(doc,'fullscreenchange',rotateLayout);
+    listen(doc,'pointerdown',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
+    listen(settings,'keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();settings.open=false;settings.querySelector('summary').focus({preventScroll:true});}});
+    listen(settings,'toggle',()=>{if(settings.open)placeSettings();else closePopup();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
     listen(stage,'focusin',reveal);listen(stage,'pointermove',reveal);listen(stage,'pointerdown',()=>{keyboardMode=false;reveal();});listen(stage,'pointerleave',reveal);
     listen(video,'click',()=>{stage.focus({preventScroll:true});toggle();});listen(video,'dblclick',fullscreen);
     listen(doc,'keydown',()=>{keyboardMode=true;});
@@ -4760,7 +4800,7 @@ function installModernVideoControls(player) {
     for(const event of ['play','pause','waiting','playing','ended','seeking','seeked'])listen(video,event,()=>{sync();reveal();});
     listen(doc,'fullscreenchange',()=>{const active=doc.fullscreenElement===stage;placeSettings();$('[data-mvc="full"]').setAttribute('aria-label',active?'전체 화면 종료':'전체 화면');reveal();});
     video.controls=false;sync();reveal();
-  } catch(error) {for(const remove of removers)try{remove();}catch{}controls.remove();stage.classList.remove('modern-video-stage');video.controls=true;return ()=>{};}
+  } catch(error) {dead=true;clearTimeout(timer);for(const remove of removers)try{remove();}catch{}controls.remove();stage.classList.remove('modern-video-stage');video.controls=true;return ()=>{};}
   return ()=>{dead=true;clearTimeout(timer);for(const remove of removers)try{remove();}catch{}controls.remove();stage.classList.remove('modern-video-stage');stage.removeAttribute('tabindex');video.controls=true;};
 }
 
@@ -4873,6 +4913,7 @@ function updateVideoQualityUi(player,message="") {
     select.value=String(player.pendingIndex??player.selectedIndex??0);
     select.onchange=()=>{void changeVideoQuality(player,Number(select.value));};
   }
+  try{player.controlsQualityUpdate?.();}catch{}
   if(status) status.textContent=message;
 }
 function disposeVideoQualityPlayer(kind) {

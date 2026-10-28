@@ -44,6 +44,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
       const mobile=viewport.width<700||viewport.height<500;
       const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile});
       const page=await context.newPage();page.setDefaultTimeout(20000);
+      if(viewport.width===844)await page.addInitScript(()=>{Object.defineProperty(HTMLElement.prototype,'showPopover',{configurable:true,value:undefined});});
       const errors=[],requests=[]; let delayLow=false,deny720=false,lowStarted=false,detailRevision=0,expireSignature="";
       page.on('pageerror',error=>errors.push(error.message));
       await page.route('**/*',async route=>{
@@ -89,10 +90,16 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo').currentTime>.05,kind);
       };
       const choose=async(kind,label,options={})=>{
-        await video(kind).hover();
+        await video(kind).hover({force:true});
         const chosen=await select(kind).locator('option').evaluateAll((items,label)=>items.find(x=>x.textContent.trim().startsWith(label))?.value,label);
         assert.notEqual(chosen,undefined,`${kind}: advertised ${label} option exists`);
-        await select(kind).selectOption(chosen,options);return chosen;
+        if(options.force)await select(kind).selectOption(chosen,options);
+        else {
+          const settings=page.locator('.mvc-settings');
+          if(!await settings.evaluate(el=>el.open))await settings.locator('summary').click();
+          await settings.locator(`.mvc-quality-option[data-quality="${chosen}"]`).click();
+        }
+        return chosen;
       };
       const fixed=async(kind,expectedLabels=null)=>{
         const snapshot=await page.evaluate(kind=>{const h=kind==='replay'?state.live.replayHls:channelVideoState.hls;return {version:window.Hls.version,levels:h?.levels?.length,auto:h?.autoLevelEnabled,level:h?.loadLevel};},kind);
@@ -100,24 +107,73 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         const labels=await select(kind).locator('option').allTextContents();if(expectedLabels)assert.deepEqual(labels.map(x=>x.split(' · ')[0]),expectedLabels,'UI lists exactly the actual master variants');assert.ok(labels.every(x=>!/(?:자동|\bauto\b)/i.test(x)),'no misleading Auto choice');
       };
       const modernControls=async kind=>{
-        const v=video(kind),bar=page.locator('.modern-video-controls');
+        const v=video(kind),bar=page.locator('.modern-video-controls');const portrait=await v.evaluate(v=>v.videoWidth<v.videoHeight);
         await v.hover();
         assert.equal(await page.locator('.replay-page-head .video-quality-control').count(),0,'quality is outside the title header');
-        assert.equal(await bar.locator('.video-quality-control').count(),1,'quality lives inside the bottom controls');
+        assert.equal(await bar.locator('.mvc-settings .mvc-quality-options').count(),1,'quality lives inside the settings menu');
+        assert.equal(await select(kind).isVisible(),false,'the old bottom dropdown is hidden');
+        assert.equal(await bar.locator('.mvc-right > .mvc-pip svg').count(),1,'PiP has an independent bottom-bar icon');
+        assert.equal(await bar.locator('.mvc-popover .mvc-pip').count(),0,'PiP is outside settings');
+        assert.equal(await bar.locator('.mvc-pip').textContent(),'');
+        assert.ok(!(await bar.locator('.mvc-popover').textContent()).includes('자막'));
         await v.evaluate(v=>v.pause());await v.hover();
         await bar.locator('[data-mvc="play"]').click();await page.waitForFunction(id=>!document.getElementById(id).paused,kind==='replay'?'replayVideo':'channelVideo');
         await bar.locator('[data-mvc="play"]').click();assert.equal(await v.evaluate(v=>v.paused),true);
         await bar.locator('.mvc-seek').evaluate(el=>{el.value='4';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});
         await page.waitForFunction(id=>Math.abs(document.getElementById(id).currentTime-4)<.5,kind==='replay'?'replayVideo':'channelVideo');
         const muted=await v.evaluate(v=>v.muted);await bar.locator('[data-mvc="sound"]').click();assert.equal(await v.evaluate(v=>v.muted),!muted);
-        await bar.locator('summary').click();await bar.locator('.mvc-rate').selectOption('1.5');assert.equal(await v.evaluate(v=>v.playbackRate),1.5);
+        await bar.locator('summary').click();
+        const rotationFits=async angle=>{
+          await page.waitForFunction(({id,angle})=>Math.round(parseFloat(document.querySelector(id).closest('.modern-video-stage').style.getPropertyValue('--mvc-video-angle'))||0)===angle,{id:kind==='replay'?'#replayVideo':'#channelVideo',angle});
+          await page.waitForTimeout(70);
+          const g=await v.evaluate(v=>{const r=v.getBoundingClientRect(),s=v.closest('.modern-video-stage').getBoundingClientRect();return {r:{x:r.x,y:r.y,w:r.width,h:r.height},s:{x:s.x,y:s.y,w:s.width,h:s.height},fit:getComputedStyle(v).objectFit};});
+          assert.equal(g.fit,'contain');assert.ok(g.r.x>=g.s.x-1&&g.r.y>=g.s.y-1&&g.r.x+g.r.w<=g.s.x+g.s.w+1&&g.r.y+g.r.h<=g.s.y+g.s.h+1,`rotation ${angle} stays completely inside the stage`);
+        };
+        await bar.locator('[data-mvc="right"]').click();await rotationFits(90);
+        await bar.locator('[data-mvc="right"]').click();await rotationFits(180);
+        await bar.locator('[data-mvc="left"]').click();await rotationFits(90);
+        await bar.locator('[data-mvc="left"]').click();await rotationFits(0);
+        await bar.locator('[data-mvc="left"]').click();await rotationFits(270);
+        await bar.locator('[data-mvc="right"]').click();await rotationFits(0);
+        await bar.locator('[data-mvc="right"]').click();await rotationFits(90);
+        if(viewport.width===390){
+          await page.setViewportSize({width:844,height:390});await rotationFits(90);await bar.locator('[data-mvc="right"]').click();await rotationFits(180);await bar.locator('[data-mvc="left"]').click();await rotationFits(90);
+          await page.setViewportSize(viewport);await rotationFits(90);
+        }
+        const popup=await bar.locator('.mvc-popover').boundingBox();const size=page.viewportSize();
+        assert.ok(popup.x>=10&&popup.y>=10&&popup.x+popup.width<=size.width-10&&popup.y+popup.height<=size.height-10,'settings fits the viewport');
+        if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,`settings-${kind}-${viewport.width}x${viewport.height}-rotated.png`)});}
+        await bar.locator('.mvc-rate').selectOption('1.5');assert.equal(await v.evaluate(v=>v.playbackRate),1.5);
         const volumeControl=viewport.width<=600?bar.locator('.mvc-volume-extra'):bar.locator('.mvc-volume');await volumeControl.evaluate(el=>{el.value='.35';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.ok(Math.abs((await v.evaluate(v=>v.volume))-.35)<.01);await bar.locator('summary').click();
         await bar.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('modern-video-stage'));
-        assert.equal(await select(kind).isVisible(),true,'quality is accessible inside container fullscreen');
-        await choose(kind,'720p');await page.waitForFunction(id=>document.getElementById(id).videoWidth===1280,kind==='replay'?'replayVideo':'channelVideo');
-        assert.equal(await page.evaluate(()=>document.fullscreenElement?.classList.contains('modern-video-stage')),true,'quality switch retains container fullscreen');
-        await choose(kind,'1080p');await page.waitForFunction(id=>document.getElementById(id).videoWidth===1920,kind==='replay'?'replayVideo':'channelVideo');
+        await rotationFits(90);await bar.locator('summary').click();
+        await bar.locator('.mvc-quality-options').waitFor({state:'visible'});assert.equal(await bar.locator('.mvc-quality-options').isVisible(),true,'quality is accessible inside container fullscreen');
+        if(viewport.width===1440){
+          await bar.locator('.mvc-quality-option[aria-checked="true"]').focus();await page.keyboard.press('ArrowDown');
+          assert.equal(await bar.locator('details').evaluate(el=>el.open),true,'arrow-key quality selection keeps the menu open');
+        }else await choose(kind,'720p');
+        await page.waitForFunction(({id,width})=>document.getElementById(id).videoWidth===width,{id:kind==='replay'?'replayVideo':'channelVideo',width:portrait?720:1280});
+        assert.equal(await page.evaluate(()=>document.fullscreenElement?.classList.contains('modern-video-stage')),true,'quality switch retains container fullscreen');await rotationFits(90);
+        await choose(kind,'1080p');await page.waitForFunction(({id,width})=>document.getElementById(id).videoWidth===width,{id:kind==='replay'?'replayVideo':'channelVideo',width:portrait?1080:1920});
+        await bar.locator('summary').click();await bar.locator('[data-mvc="left"]').click();await rotationFits(0);
+        await page.keyboard.press('Escape');assert.equal(await bar.locator('details').evaluate(el=>el.open),false,'Escape closes settings without leaving fullscreen');
+        assert.ok(await page.evaluate(()=>!!document.fullscreenElement));
         await bar.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>!document.fullscreenElement);
+        await bar.locator('summary').click();await page.mouse.click(1,1);
+        assert.equal(await bar.locator('details').evaluate(el=>el.open),false,'clicking outside closes settings');
+        if(viewport.width===1440&&await bar.locator('.mvc-pip').isVisible()){
+          await v.evaluate(v=>{
+            const doc=v.ownerDocument,originalRequest=Object.getOwnPropertyDescriptor(v,'requestPictureInPicture'),originalElement=Object.getOwnPropertyDescriptor(doc,'pictureInPictureElement'),originalExit=Object.getOwnPropertyDescriptor(doc,'exitPictureInPicture');
+            let active=false;window.pipRouting={enters:0,exits:0};
+            Object.defineProperty(doc,'pictureInPictureElement',{configurable:true,get:()=>active?v:null});
+            Object.defineProperty(v,'requestPictureInPicture',{configurable:true,value:async()=>{window.pipRouting.enters++;active=true;v.dispatchEvent(new Event('enterpictureinpicture'));}});
+            Object.defineProperty(doc,'exitPictureInPicture',{configurable:true,value:async()=>{window.pipRouting.exits++;active=false;v.dispatchEvent(new Event('leavepictureinpicture'));}});
+            window.restorePipRouting=()=>{for(const [obj,key,descriptor] of [[v,'requestPictureInPicture',originalRequest],[doc,'pictureInPictureElement',originalElement],[doc,'exitPictureInPicture',originalExit]]){if(descriptor)Object.defineProperty(obj,key,descriptor);else delete obj[key];}};
+          });
+          await bar.locator('.mvc-pip').click();assert.equal(await bar.locator('.mvc-pip').getAttribute('aria-pressed'),'true');
+          await bar.locator('.mvc-pip').click();assert.equal(await bar.locator('.mvc-pip').getAttribute('aria-pressed'),'false');
+          assert.deepEqual(await page.evaluate(()=>window.pipRouting),{enters:1,exits:1});await page.evaluate(()=>window.restorePipRouting());
+        }
         await v.evaluate(v=>v.closest('.modern-video-stage').focus());await page.keyboard.press('ArrowLeft');
         assert.ok((await v.evaluate(v=>v.currentTime))<1,'keyboard seek works');
         await v.evaluate(v=>{v.currentTime=0;v.muted=true;v.volume=1;v.playbackRate=1;return v.play();});
@@ -216,14 +272,14 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await openReplay('race');await ready('replay',dimensions['land-1080']);delayLow=true;lowStarted=false;await choose('replay','360p');
         for(let i=0;!lowStarted&&i<100;i++)await wait(10);assert.ok(lowStarted);await openReplay('portrait');delayLow=false;await ready('replay',dimensions['portrait-1080']);await wait(550);assert.equal(await video('replay').evaluate(v=>v.videoHeight),1920,'new-video highest selection survives stale response');
       }
-      await openReplay('portrait');await ready('replay',dimensions['portrait-1080']);await fixed('replay',['1080p','720p']);await layout('replay','portrait-highest');await stateSwitch('replay','720p',dimensions['portrait-720']);
+      await openReplay('portrait');await ready('replay',dimensions['portrait-1080']);assert.equal(await video('replay').evaluate(v=>v.closest('.modern-video-stage').classList.contains('mvc-rotated')),false,'new video resets rotation');await fixed('replay',['1080p','720p']);await modernControls('replay');await layout('replay','portrait-highest');await stateSwitch('replay','720p',dimensions['portrait-720']);
       await page.locator('#replayBackToList').click();await page.locator('[data-live-center-mode="channel"]').click();await page.locator('[data-channel-video-play="channel"]').click();
-      await ready('channel',dimensions['land-1080']);await fixed('channel',['1080p','720p','360p']);await layout('channel','landscape-highest');await stateSwitch('channel','360p',dimensions['land-360']);
+      await ready('channel',dimensions['land-1080']);await fixed('channel',['1080p','720p','360p']);await modernControls('channel');await layout('channel','landscape-highest');await stateSwitch('channel','360p',dimensions['land-360']);
       if(viewport.width===1440)await downloadHighest('channel');
       assert.ok(requests.filter(x=>x.path.endsWith('.ts')).every(x=>/^fixture-\d+$/.test(x.signature)&&x.keyPair==='fixture'),'signature propagation to actual segments retained');
       assert.deepEqual(errors,[]);
       records.push({viewport,replay:'single/multiple actual HLS as applicable, highest default, manual state/races',channel:'highest default/manual state',audio:'synthetic AAC',realFromm:false});
-      console.log(`${viewport.width}x${viewport.height}: real HLS highest/manual portrait+landscape, state retention, native controls and fixed single-level engine PASS`);
+      console.log(`${viewport.width}x${viewport.height}: real HLS highest/manual portrait+landscape, state retention, settings/rotation/PiP icon and fixed single-level engine PASS`);
       await context.close();
     }
     if(output)fs.writeFileSync(path.join(output,'video-quality-report.json'),JSON.stringify({records,realFromm:false,notes:['API responses/signatures and H264/AAC media are synthetic. Real hls.js MSE decoding is exercised.','Native video fullscreen hides external header; forced selection tests retention only.','Fatal engine/native-error events are injected; actual HTTP403 and MSE H264/AAC decode use real fixtures.','Physical audio, Safari/iOS native HLS and real Fromm authorization/expiry remain unverified.']},null,2));

@@ -471,3 +471,9 @@ test('an unsupported HLS browser releases enhanced controls before returning its
   assert.equal(disposed,1);
   assert.equal(h.engines.length,0);
 });
+
+
+test('quality menu rendering faults cannot interrupt playback or manual switching',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8'],['BANDWIDTH=800000,RESOLUTION=640x360','low.m3u8']),'/artist/high.m3u8':leaf('high'),'/artist/low.m3u8':leaf('low')}});h.c.installModernVideoControls=player=>{player.controlsQualityUpdate=()=>{throw new Error('synthetic UI failure');};return()=>{};};
+  const player=await h.attach();h.video.emit('loadedmetadata');assert.equal(h.engines.length,1);await h.c.changeVideoQuality(player,1);assert.equal(h.engines.length,2);assert.equal(h.engines[0].destroyed,true);
+});

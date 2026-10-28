@@ -5032,8 +5032,11 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
     video.src=localProxyUrl(replayCanonicalStreamUrl(url));video.play().catch(()=>{});return;
   }
   player.Hls=await ensureReplayHlsSdk(owner).catch(()=>null);
-  if(!current() || player.disposed) return;
-  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+  if(!current() || player.disposed) {if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);return;}
+  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) {
+    disposeVideoQualityPlayer(kind);
+    throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+  }
   try{await changeVideoQuality(player,0,{initial:true});}
   catch(error){if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);throw error;}
 }

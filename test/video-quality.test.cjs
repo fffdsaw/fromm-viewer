@@ -461,3 +461,13 @@ test('custom control setup or cleanup faults cannot break highest-quality playba
   h.c.disposeVideoQualityPlayer('replay');
   assert.equal(h.engines[0].destroyed,true,'UI cleanup failure cannot prevent HLS cleanup');
 });
+
+
+test('an unsupported HLS browser releases enhanced controls before returning its error',async()=>{
+  const h=runtimeSetup({supported:false});let disposed=0;
+  h.video.canPlayType=()=>'';
+  h.c.installModernVideoControls=()=>()=>{disposed++;};
+  await assert.rejects(()=>h.attach(),/지원하지/);
+  assert.equal(disposed,1);
+  assert.equal(h.engines.length,0);
+});

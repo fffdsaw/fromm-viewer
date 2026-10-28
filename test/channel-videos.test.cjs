@@ -36,7 +36,7 @@ function setup(overrides = {}) {
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
     window: {addEventListener() {}, alert: message => alerts.push(message), crypto: webcrypto, scrollY: 172, scrollTo() {}},
-    $: () => null, currentAuth: () => auth, renderLiveView() {}, safeErrorDetail: value => String(value),
+    $: () => null, currentAuth: () => auth, renderLiveView() {}, disposeVideoQualityPlayer() {}, safeErrorDetail: value => String(value),
     FROMM_CHANNEL_API_BASE: 'https://channel-api.frommyarti.com',
     replayChannelName: c => c.channelName || c.name || 'Artist', normalizeMediaUrl: value => value,
     isHttpMediaUrl: value => /^https?:\/\//.test(value || ''),
@@ -87,14 +87,15 @@ test('Channel single-save ignores a click during Replay or bulk save', async () 
   }
 });
 
-test('Replay playback/download and Native frame transport/auth contracts remain unchanged', () => {
+test('Replay download and Native transport/auth contracts remain protected around manual quality playback', () => {
   const baseline = execFileSync('git', ['show', 'd4d9c2f:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
   const names = [...baseline.matchAll(/^(?:async )?function ((?:\w*Replay\w*)|(?:replay\w+)|(?:visibleReplayPosts)|(?:returnToReplayList))\(/gm)].map(m => m[1]);
   assert.ok(names.length > 30);
   // List selection and the shared save-name / cross-tab download guard evolve;
   // automatic list pagination has its own browser coverage; stream fetching,
-  // decryption and playback remain unchanged.
-  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  // decryption and download wire paths remain unchanged. Playback/source selection
+  // now has dedicated real HLS quality-switch and lifecycle tests.
+  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
   const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
@@ -323,15 +324,17 @@ test('HLS player propagates signed parameters, owns blobs/Hls and ignores stale 
   const blobs = [];
   const h = setup({URL: class extends URL {static createObjectURL(b) {blobs.push(b); return 'blob:synthetic';} static revokeObjectURL(url) {revoked.push(url);}},
     ensureReplayHlsSdk: async () => Hls,
-    resolveReplayMediaPlaylist: async () => ({authParams: new URLSearchParams('Policy=synthetic'), mediaUrl: 'https://cdn.example/p/list.m3u8', mediaText: '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key"\nsegment.ts'}),
+    fetch: async () => ({ok:true, text:async ()=>'#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key"\nsegment.ts'}),
   });
-  const video = {play: async () => {}};
-  await h.context.attachChannelVideo('https://cdn.example/p/list.m3u8', video, 0);
+  h.context.window.URL=h.context.URL;h.context.window.Blob=Blob;h.context.window.document=h.context.document;
+  vm.runInContext(html.slice(html.indexOf('// Playback-only rendition state.'),html.indexOf('function replayVariantFromMaster(')),h.context);
+  const video = {play:async()=>{},addEventListener(){},removeEventListener(){},volume:1,muted:false,playbackRate:1,currentTime:0,paused:false};
+  await h.context.attachChannelVideo('https://cdn.example/p/list.m3u8?Policy=synthetic', video, 0);
   assert.equal(instances.length, 1);
   const text = await blobs[0].text(); assert.match(text, /key\?Policy=synthetic/); assert.match(text, /segment.ts\?Policy=synthetic/);
   events.get('error')(null, {fatal: true, type: 'network'}); assert.equal(instances[0].retried, true);
   h.context.stopChannelVideoPlayback(); assert.equal(instances[0].destroyed, true); assert.deepEqual(revoked, ['blob:synthetic']);
-  await h.context.attachChannelVideo('https://cdn.example/p/list.m3u8', video, 0); assert.equal(instances.length, 1);
+  await h.context.attachChannelVideo('https://cdn.example/p/list.m3u8?Policy=synthetic', video, 0); assert.equal(instances.length, 1);
 });
 
 test('existing AES-128 downloader decrypts ordered segments using the fresh channel detail', async () => {

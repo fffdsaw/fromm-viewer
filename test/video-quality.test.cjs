@@ -174,7 +174,7 @@ function runtimeSetup({bodies={}, supported=true, refreshUrl=null}={}) {
     'replayVariantFromMaster','videoQualityVariantKey','videoQualityAuth','fetchVideoQualityText','videoQualityMediaGroups',
     'videoQualityCatalog','videoQualityLeaf','videoQualityAttributesText','rewriteReplayMediaPlaylist','revokeVideoQualityUrls',
     'prepareVideoQualitySource','updateVideoQualityUi','disposeVideoQualityPlayer','videoQualitySnapshot','restoreVideoQualityPresentation','changeVideoQuality',
-    'attachVideoQualityPlayer','resolveReplayMediaPlaylist','parseReplayDownloadPlaylist','replayDownloadIv','downloadReplayStream']) vm.runInContext(fn(name),c);
+    'installModernVideoControls','attachVideoQualityPlayer','resolveReplayMediaPlaylist','parseReplayDownloadPlaylist','replayDownloadIv','downloadReplayStream']) vm.runInContext(fn(name),c);
   c.fetchReplayText=async url=>{const response=await read(url);if(!response.ok)throw Object.assign(new Error('HTTP '+response.status),{status:response.status});return response.text();};
   const attach=async(url=base)=>{
     await c.attachVideoQualityPlayer('replay',url,video,owner,{current:()=>active,onHls(){},onFatal(){fatal++;},
@@ -448,4 +448,16 @@ test('out-of-order forced signed-detail refreshes keep only the newest cache and
     assert.match(state.live.replayDetailCache.get('a:one')._streamUrl,/Signature=newest$/);
     assert.equal(state.live.replayDetailInflight.size,0);
   }
+});
+
+
+test('custom control setup or cleanup faults cannot break highest-quality playback and disposal',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':leaf('highest')}});
+  h.c.installModernVideoControls=()=>{throw new Error('fixture UI initialization failure');};
+  const p=await h.attach();
+  assert.equal(h.video.controls,true,'native controls survive enhanced UI initialization failure');
+  assert.equal(h.engines.length,1,'highest-quality engine still attaches');
+  p.controlsCleanup=()=>{throw new Error('fixture UI cleanup failure');};
+  h.c.disposeVideoQualityPlayer('replay');
+  assert.equal(h.engines[0].destroyed,true,'UI cleanup failure cannot prevent HLS cleanup');
 });

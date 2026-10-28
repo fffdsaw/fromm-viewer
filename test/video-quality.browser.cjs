@@ -89,6 +89,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo').currentTime>.05,kind);
       };
       const choose=async(kind,label,options={})=>{
+        await video(kind).hover();
         const chosen=await select(kind).locator('option').evaluateAll((items,label)=>items.find(x=>x.textContent.trim().startsWith(label))?.value,label);
         assert.notEqual(chosen,undefined,`${kind}: advertised ${label} option exists`);
         await select(kind).selectOption(chosen,options);return chosen;
@@ -98,9 +99,39 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         assert.equal(snapshot.version,'1.5.18');assert.equal(snapshot.levels,1,'the engine receives one rendition only');assert.equal(snapshot.auto,false,'ABR is disabled');assert.equal(snapshot.level,0,'engine stays manually pinned to its only rendition');
         const labels=await select(kind).locator('option').allTextContents();if(expectedLabels)assert.deepEqual(labels.map(x=>x.split(' · ')[0]),expectedLabels,'UI lists exactly the actual master variants');assert.ok(labels.every(x=>!/(?:자동|\bauto\b)/i.test(x)),'no misleading Auto choice');
       };
+      const modernControls=async kind=>{
+        const v=video(kind),bar=page.locator('.modern-video-controls');
+        await v.hover();
+        assert.equal(await page.locator('.replay-page-head .video-quality-control').count(),0,'quality is outside the title header');
+        assert.equal(await bar.locator('.video-quality-control').count(),1,'quality lives inside the bottom controls');
+        await v.evaluate(v=>v.pause());await v.hover();
+        await bar.locator('[data-mvc="play"]').click();await page.waitForFunction(id=>!document.getElementById(id).paused,kind==='replay'?'replayVideo':'channelVideo');
+        await bar.locator('[data-mvc="play"]').click();assert.equal(await v.evaluate(v=>v.paused),true);
+        await bar.locator('.mvc-seek').evaluate(el=>{el.value='4';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});
+        await page.waitForFunction(id=>Math.abs(document.getElementById(id).currentTime-4)<.5,kind==='replay'?'replayVideo':'channelVideo');
+        const muted=await v.evaluate(v=>v.muted);await bar.locator('[data-mvc="sound"]').click();assert.equal(await v.evaluate(v=>v.muted),!muted);
+        await bar.locator('summary').click();await bar.locator('.mvc-rate').selectOption('1.5');assert.equal(await v.evaluate(v=>v.playbackRate),1.5);
+        const volumeControl=viewport.width<=600?bar.locator('.mvc-volume-extra'):bar.locator('.mvc-volume');await volumeControl.evaluate(el=>{el.value='.35';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.ok(Math.abs((await v.evaluate(v=>v.volume))-.35)<.01);await bar.locator('summary').click();
+        await bar.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('modern-video-stage'));
+        assert.equal(await select(kind).isVisible(),true,'quality is accessible inside container fullscreen');
+        await choose(kind,'720p');await page.waitForFunction(id=>document.getElementById(id).videoWidth===1280,kind==='replay'?'replayVideo':'channelVideo');
+        assert.equal(await page.evaluate(()=>document.fullscreenElement?.classList.contains('modern-video-stage')),true,'quality switch retains container fullscreen');
+        await choose(kind,'1080p');await page.waitForFunction(id=>document.getElementById(id).videoWidth===1920,kind==='replay'?'replayVideo':'channelVideo');
+        await bar.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>!document.fullscreenElement);
+        await v.evaluate(v=>v.closest('.modern-video-stage').focus());await page.keyboard.press('ArrowLeft');
+        assert.ok((await v.evaluate(v=>v.currentTime))<1,'keyboard seek works');
+        await v.evaluate(v=>{v.currentTime=0;v.muted=true;v.volume=1;v.playbackRate=1;return v.play();});
+        if(viewport.width===1440){
+          await page.evaluate(()=>document.activeElement?.blur());await page.mouse.move(0,0);
+          await page.waitForFunction(()=>document.querySelector('.modern-video-controls').classList.contains('mvc-hidden'),null,{timeout:6000});
+          await v.hover();assert.equal(await bar.isVisible(),true);await v.evaluate(v=>v.pause());await page.waitForTimeout(3300);
+          assert.equal(await bar.evaluate(el=>el.classList.contains('mvc-hidden')),false,'paused controls stay visible');
+          await v.evaluate(v=>{v.currentTime=0;return v.play();});
+        }
+      };
       const layout=async(kind,label)=>{
         const g=await video(kind).evaluate(v=>{const r=v.getBoundingClientRect(),head=v.closest('.replay-player-page,.channel-player').querySelector('.replay-page-head').getBoundingClientRect();return {w:r.width,h:r.height,top:r.top,bottom:r.bottom,headBottom:head.bottom,objectFit:getComputedStyle(v).objectFit,controls:v.controls,viewport:[innerWidth,innerHeight],scroll:[document.documentElement.scrollWidth,document.documentElement.scrollHeight]};});
-        assert.equal(g.objectFit,'contain');assert.equal(g.controls,true);assert.ok(g.h>=60);assert.ok(g.top>=g.headBottom-1);assert.ok(g.bottom<=viewport.height-8);assert.ok(g.scroll[0]<=viewport.width+1&&g.scroll[1]<=viewport.height+1);
+        assert.equal(g.objectFit,'contain');assert.equal(g.controls,false);assert.equal(await page.locator(".modern-video-controls").count(),1);assert.ok(g.h>=60);assert.ok(g.top>=g.headBottom-1);assert.ok(g.bottom<=viewport.height-8);assert.ok(g.scroll[0]<=viewport.width+1&&g.scroll[1]<=viewport.height+1);
         if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,`quality-${kind}-${viewport.width}x${viewport.height}-${label}.png`)});}
       };
       const openReplay=async id=>{
@@ -130,7 +161,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.evaluate(kind=>(kind==='replay'?state.live.replayHls:channelVideoState.hls).startLoad(),kind);
         return bytes;
       };
-      await openReplay('multi');await ready('replay',dimensions['land-1080']);await fixed('replay',['1080p','720p','360p']);await layout('replay','landscape-highest');
+      await openReplay('multi');await ready('replay',dimensions['land-1080']);await fixed('replay',['1080p','720p','360p']);await modernControls('replay');await layout('replay','landscape-highest');
       await stateSwitch('replay','720p',dimensions['land-720'],{muted:false});
       if(viewport.width===1440){
         await stateSwitch('replay','1080p',dimensions['land-1080'],{playing:true});
@@ -148,7 +179,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
           await page.locator('#qualityFixtureFullscreen').click();await page.waitForFunction(()=>document.fullscreenElement===document.querySelector('#replayVideo'));
           await choose('replay','720p',{force:true});await page.waitForFunction(()=>document.querySelector('#replayVideo').videoWidth===1280);assert.equal(await page.evaluate(()=>document.fullscreenElement===document.querySelector('#replayVideo')),true,'same native fullscreen element retained');const fsAfter=await video('replay').evaluate(v=>({time:v.currentTime,paused:v.paused,volume:v.volume,muted:v.muted,rate:v.playbackRate}));assert.ok(Math.abs(fsAfter.time-fsBefore.time)<.35);assert.deepEqual({...fsAfter,time:0},{...fsBefore,time:0},'native fullscreen quality change preserves playback settings');await page.evaluate(()=>document.exitFullscreen());await page.locator('#qualityFixtureFullscreen').evaluate(el=>el.remove());
         }
-        records.push({viewport,fullscreen:support?'native video retained; external header requires exit for ordinary interaction':'unavailable'});
+        records.push({viewport,fullscreen:support?'container fullscreen keeps quality visible; native video API retention also tested':'unavailable'});
         for(const [id,size] of [['single',dimensions['single-540']],['single720',dimensions['land-720']]]){
           await openReplay(id);await ready('replay',size);
           if(await select('replay').count()){assert.ok(await select('replay').isDisabled()||!await select('replay').isVisible(),'single quality cannot suggest alternatives');assert.equal(await select('replay').locator('option').count(),1);}

@@ -50,7 +50,8 @@ async function measure(page, label) {
     assert.ok(geometry.scrollHeight <= geometry.viewport.height + 1, `${label}: no vertical overflow`);
     assert.ok(geometry.scrollWidth <= geometry.viewport.width, `${label}: no horizontal overflow`);
     assert.equal(geometry.objectFit, 'contain');
-    assert.equal(geometry.controls, true);
+    assert.equal(geometry.controls, false);
+    assert.equal(await page.locator(".modern-video-controls").count(),1);
     assert.ok(geometry.currentTime > 0, `${label}: decoded video advances`);
     assert.equal(geometry.paused, false);
   }
@@ -131,7 +132,7 @@ async function assertScrollLocked(page, label) {
         const intrinsic = await page.locator('#replayVideo').evaluate(v => `${v.videoWidth}x${v.videoHeight}`);
         assert.equal(intrinsic, sizes[id], 'actual source ratio retained');
         if (baseline) await page.mouse.move(viewport.width / 2, viewport.height - 30);
-        else await page.locator('#replayVideo').hover();
+        else await page.locator('#replayVideo').hover({force:true});
         await measure(page, `replay-player-${viewport.width}x${viewport.height}-${id}`);
         if (!baseline) await assertScrollLocked(page, `${viewport.width}x${viewport.height}-${id}`);
         assert.ok(await page.locator('#replayDownloadCurrent').isVisible());

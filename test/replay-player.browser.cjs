@@ -127,6 +127,7 @@ async function assertScrollLocked(page, label) {
       for (const id of Object.keys(sizes)) {
         await page.locator(`[data-replay-post="${id}"][data-replay-channel="a"] .replay-play`).click();
         await page.waitForFunction(() => document.querySelector('#replayVideo')?.readyState >= 2);
+        if(!baseline)await page.locator('.video-loading').waitFor({state:'hidden'});
         await page.evaluate(async () => {const v = document.querySelector('#replayVideo'); v.muted = true; await v.play();});
         await page.waitForFunction(() => document.querySelector('#replayVideo').currentTime > 0.1);
         const intrinsic = await page.locator('#replayVideo').evaluate(v => `${v.videoWidth}x${v.videoHeight}`);

@@ -22,7 +22,7 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
   image.naturalHeight = loaded ? 1280 : 0; image.complete = loaded;
   grid.append(image);
   const listeners = new Map(), windows = [], requests = [];
-  let observer, resolver, rejecter, webVideo = null, renders = 0, stops = 0, pipVideo, track, captures = 0;
+  const events=[];let observer, resolver, rejecter, webVideo = null, renders = 0, stops = 0, pipVideo, track, captures = 0;
   timeline.querySelector = selector => selector === '.live-head' ? head : null;
   const document = {pictureInPictureEnabled: true, pictureInPictureElement: null, body: element('body'),
     getElementById(id) {return id === 'timeline' ? timeline : id === 'nativeLiveVideo' ? grid.children.find(e => e.id === id) :
@@ -43,14 +43,14 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
       return el;
     },
     exitPictureInPicture: async () => {document.pictureInPictureElement = null;}};
-  const window = {isSecureContext: secure, addEventListener(type, callback) {listeners.set(type, callback);}};
+  const window = {isSecureContext: secure, dispatchEvent:event=>events.push(event), addEventListener(type, callback) {listeners.set(type, callback);}};
   window.top = topLevel ? window : {};
   if (supported) window.documentPictureInPicture = {requestWindow(options) {
     requests.push(options);
     return new Promise((resolve, reject) => {resolver = resolve; rejecter = reject;});
   }};
   const state = {filter: 'live', live: {client: {}, centerMode: 'live', connectionSeq: 1, currentLiveRoomId: 'room'}};
-  const context = vm.createContext({window, document, state, WeakMap, setTimeout, clearTimeout,
+  const context = vm.createContext({window, document, state, WeakMap, setTimeout, clearTimeout, CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}},
     ...(videoPip ? {HTMLVideoElement: {prototype: {requestPictureInPicture() {}}}, HTMLCanvasElement: {prototype: {captureStream() {}}}} : {}),
     MutationObserver: class {constructor(callback) {observer = callback;} observe() {}},
     renderLiveView: () => {renders++;}, stopLivePlayback: () => {state.live.client = null; state.live.connectionSeq++; stops++; return Promise.resolve();}});
@@ -61,7 +61,7 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
       addEventListener(type, callback) {this.listeners.set(type, callback);}};
     windows.push(win); return win;
   }
-  return {context, state, image, head, grid, document, requests, windows,
+  return {context, state, image, head, grid, document, requests, windows, events,
     button: () => document.getElementById('livePipBtn'), sync: () => observer([]),
     assign: () => observer([{type: 'attributes', target: image}]),
     click: () => document.getElementById('livePipBtn').listeners.get('click')(),
@@ -201,4 +201,22 @@ test('rejected Native video PiP cleans up capture without raw error details or c
   assert.equal(h.track().readyState, 'ended'); assert.equal(h.video().srcObject, null);
   assert.equal(h.grid.children[0], h.image); assert.equal(h.button().disabled, false);
   assert.doesNotMatch(h.button().title, /private/);
+});
+
+
+test('presentation notifications only change with verified readiness/PiP state and contain no RTC data',()=>{
+  const h=setup();assert.equal(h.context.window.FrommLivePresentation.ready,true);const first=h.events.length;
+  for(let i=0;i<30;i++){h.assign();h.load();h.sync();}assert.equal(h.events.length,first,'steady frames cannot emit UI updates repeatedly');
+  h.state.live.connectionSeq++;h.sync();assert.equal(h.events.at(-1).detail.ready,false);h.assign();h.load();assert.equal(h.events.at(-1).detail.ready,true);
+  assert.deepEqual(Object.keys(h.events.at(-1).detail).sort(),['active','pending','ready','sequence','supported']);assert.match(h.button().innerHTML,/<svg/);assert.equal(h.button().textContent,'');
+});
+
+
+test('LIVE presentation initialization failures preserve render/stop results, receiver and arguments',async()=>{
+  const marker={},promise=Promise.resolve('stopped'),receiver={},calls=[];
+  const timeline={querySelector:()=>({contains:()=>true}),addEventListener(){}},grid={};
+  const c=vm.createContext({window:{addEventListener(){}},document:{getElementById:id=>id==='timeline'?timeline:id==='liveVideoGrid'?grid:null,createElement(){throw new Error('synthetic UI setup failure');}},state:{filter:'live',live:{centerMode:'live'}},MutationObserver:class {observe(){}},renderLiveView:function(...args){calls.push({kind:'render',receiver:this,args});return marker;},stopLivePlayback:function(...args){calls.push({kind:'stop',receiver:this,args});return promise;}});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','web-live-controls.js'),'utf8'),c);
+  assert.strictEqual(c.renderLiveView.call(receiver,'render-argument'),marker);assert.strictEqual(c.stopLivePlayback.call(receiver,{clearRoom:true}),promise);
+  assert.strictEqual(calls[0].receiver,receiver);assert.deepEqual(calls[0].args,['render-argument']);assert.strictEqual(calls[1].receiver,receiver);assert.equal(calls[1].args[0].clearRoom,true);
 });

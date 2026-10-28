@@ -37,7 +37,7 @@ async function openFixture(browser, viewport, nativeWindowViewport = false) {
   await page.route('**/*', route => {
     const url = new URL(route.request().url());
     if (url.hostname === 'localhost') {
-      if (['/web-native-live.js', '/web-live-pip.js', '/web-live-chat-probe.js'].includes(url.pathname)) {
+      if (['/web-native-live.js', '/web-live-pip.js', '/web-live-controls.js', '/web-live-chat-probe.js'].includes(url.pathname)) {
         return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, path.basename(url.pathname)), 'utf8')});
       }
       if (url.pathname === '/index.html') return route.fulfill({contentType: 'text/html', body: html});
@@ -116,13 +116,38 @@ async function sendFrame(page, sequence) {
       assert.deepEqual(await page.locator('[data-live-center-mode]').allTextContents(), ['LIVE', 'Replay', 'Channel']);
       await measure(page, 'live-' + viewport.width + 'x' + viewport.height);
       if (!baseline && viewport.width === 1440) {
-        const before = await page.locator('.live-spinner').evaluate(el => getComputedStyle(el).transform);
+        const before = await page.locator('.video-loading-ring').evaluate(el => getComputedStyle(el).transform);
         await page.waitForTimeout(180);
-        const after = await page.locator('.live-spinner').evaluate(el => ({transform: getComputedStyle(el).transform,
+        const after = await page.locator('.video-loading-ring').evaluate(el => ({transform: getComputedStyle(el).transform,
           animations: el.getAnimations().map(animation => animation.playState)}));
         assert.notEqual(before, after.transform, 'LIVE connection spinner actually rotates over time');
         assert.deepEqual(after.animations, ['running']);
         reports.push({label: 'live-spinner', rotating: true, before, after: after.transform});
+      }
+      if(!baseline){
+        const controls=page.locator('.live-player-controls');assert.equal(await controls.count(),1);
+        assert.equal(await controls.locator('#livePipBtn svg').count(),1,'LIVE PiP is a stable bottom icon');assert.equal(await page.locator('.live-head #livePipBtn').count(),0);
+        assert.equal(await controls.locator('.mvc-seek,.mvc-rate,.video-quality-select').count(),0,'live playback has no invented seek, speed or quality control');
+        const ring=await page.locator('#livePlayerLoading .video-loading-ring').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.closest('.live-stage').getBoundingClientRect(),css=getComputedStyle(el);return {w:parseFloat(css.width),h:parseFloat(css.height),x:a.x+a.width/2,y:a.y+a.height/2,cx:b.x+b.width/2,cy:b.y+b.height/2};});
+        assert.ok(Math.abs(ring.w-ring.h)<.1&&Math.abs(ring.x-ring.cx)<1&&Math.abs(ring.y-ring.cy)<1,'LIVE loading ring is circular and centered');
+        await page.evaluate(async()=>{setActiveAuth('synthetic-session','synthetic-device','synthetic-account');resolveAgoraJoinArgs=()=>{};state.live.room.encryptionKey='x'.repeat(64);state.live.room.encryptionSalt='synthetic';await connectAgoraLive();});
+        await sendFrame(page,1);await page.locator('#livePlayerLoading').waitFor({state:'hidden'});await page.locator('#livePipBtn').waitFor({state:'visible'});
+        assert.equal(await controls.locator('.live-web-volume').isVisible(),false,'Native audio has no fake browser mute control');
+        await page.evaluate(()=>{window.liveControlsNode=document.querySelector('.live-player-controls');window.livePipIcon=document.querySelector('#livePipBtn svg');});
+        await controls.locator('summary').click();await controls.locator('[data-live-control="right"]').click();
+        const fits=async()=>{const box=await page.locator('#liveVideoGrid').evaluate(el=>{const r=el.getBoundingClientRect(),s=el.closest('.live-stage').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,sl:s.left,st:s.top,sr:s.right,sb:s.bottom};});assert.ok(box.left>=box.sl-1&&box.top>=box.st-1&&box.right<=box.sr+1&&box.bottom<=box.sb+1,'rotated LIVE pixels stay in the viewport');};
+        await fits();for(let sequence=2;sequence<=7;sequence++)await sendFrame(page,sequence);
+        assert.equal(await page.evaluate(()=>window.liveControlsNode===document.querySelector('.live-player-controls')&&window.livePipIcon===document.querySelector('#livePipBtn svg')),true,'received frames cannot rebuild controls or the PiP icon');
+        await page.keyboard.press('Escape');assert.equal(await controls.locator('details').evaluate(el=>el.open),false);
+        await controls.locator('[data-live-control="full"]').click();await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('live-player-stage'));await fits();
+        await page.locator('#liveVideoGrid').hover({force:true});assert.equal(await controls.isVisible(),true);await controls.locator('summary').click();await controls.locator('.mvc-popover').waitFor({state:'visible'});
+        const popup=await controls.locator('.mvc-popover').boundingBox();assert.ok(popup.x>=10&&popup.y>=10&&popup.x+popup.width<=viewport.width-10&&popup.y+popup.height<=viewport.height-10,'LIVE settings stay inside fullscreen');
+        if(output)await page.screenshot({path:path.join(output,`live-controls-fullscreen-${viewport.width}x${viewport.height}.png`)});
+        await controls.locator('[data-live-control="left"]').click();await fits();await page.keyboard.press('Escape');assert.ok(await page.evaluate(()=>!!document.fullscreenElement),'Escape closes settings before fullscreen');
+        await controls.locator('[data-live-control="full"]').click();await page.waitForFunction(()=>!document.fullscreenElement);
+        await page.evaluate(async()=>{await stopLivePlayback({clearRoom:true});});await page.waitForTimeout(550);assert.equal(await controls.count(),0,'stop cleans the UI without observer remount');
+        await page.evaluate(()=>{state.live.config={isStreaming:true,liveRoomId:'fixture-room'};state.live.currentLiveRoomId='fixture-room';state.live.room={id:'fixture-room',title:'따르르르릉',startedAt:'2026-10-14T14:27:00Z'};renderLiveView();});
+        reports.push({label:`live-controls-${viewport.width}`,synthetic:true,loading:true,rotation:true,fullscreen:true,stableNativeAck:true,stopCleanup:true});
       }
       await page.evaluate(() => {
         state.live.room.title = '아주 긴 방송 제목을 줄이지 않고 정보를 보존하는 LIVE 화면입니다 '.repeat(8);
@@ -137,6 +162,19 @@ async function sendFrame(page, sequence) {
       assert.deepEqual(errors, []);
       assert.ok(externalRequests.every(url => !url.includes('frommyarti.com')), 'fixture does not even initiate official API calls');
       await context.close();
+    }
+    if(!baseline){
+      const {context,page,errors}=await openFixture(browser,{width:844,height:390});
+      await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;canvas.getContext('2d').fillRect(0,0,640,360);const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=canvas.captureStream(5);document.getElementById('liveVideoGrid').append(video);window.fixtureVolumes=[];state.live.client={connectionState:'CONNECTED',remoteUsers:[{audioTrack:{setVolume:v=>fixtureVolumes.push(v)}}],removeAllListeners(){},leave:async()=>{}};await video.play();});
+      await page.locator('#livePlayerLoading').waitFor({state:'hidden'});await page.locator('.live-web-volume').waitFor({state:'visible'});
+      await page.locator('[data-live-control="sound"]').click();assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),0);
+      await page.locator('.live-player-controls .mvc-volume').evaluate(el=>{el.value='.4';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),40);
+      await page.evaluate(()=>state.live.client.connectionState='RECONNECTING');await page.locator('#livePlayerLoading').waitFor({state:'visible'});
+      await page.evaluate(()=>state.live.client.connectionState='CONNECTED');await page.locator('#livePlayerLoading').waitFor({state:'hidden'});
+      await page.evaluate(()=>{state.live.client.connectionState='DISCONNECTED';liveStatusText('합성 연결 오류',true);});assert.equal(await page.locator('#livePlayerLoading').isVisible(),false);assert.equal(await page.locator('.live-foot').isVisible(),true);await page.locator('.live-player-error').waitFor({state:'visible'});await page.locator('#liveVideoGrid').hover({force:true});await page.locator('[data-live-control="full"]').click();await page.waitForFunction(()=>!!document.fullscreenElement);assert.equal(await page.locator('.live-player-error').isVisible(),true,'terminal errors remain visible inside fullscreen');await page.evaluate(()=>document.exitFullscreen());
+      await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));assert.equal(await page.locator('.live-player-controls').count(),0);
+      await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));assert.equal(await page.locator('.live-player-controls').count(),1,'BFCache presentation restoration does not duplicate controls');
+      assert.deepEqual(errors,[]);await context.close();reports.push({label:'web-live-controls',synthetic:true,actualBrowserVideo:true,sdkVolumeRouting:true,reconnect:true});
     }
     if (!baseline) {
       const {context, page, errors} = await openFixture(browser, {width: 1440, height: 900}, true);

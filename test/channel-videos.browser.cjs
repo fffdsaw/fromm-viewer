@@ -55,6 +55,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
         if (url.hostname === 'viewer.test') {
           if (url.pathname === '/outside.html') return route.fulfill({contentType: 'text/html', body: '<title>Outside Viewer</title>Previous page'});
           if (url.pathname.endsWith('/web-live-chat-probe.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-chat-probe.js'), 'utf8')});
+          if (url.pathname.endsWith('/web-live-controls.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-controls.js'), 'utf8')});
           if (url.pathname.endsWith('/web-live-pip.js')) return route.fulfill({contentType: 'text/javascript', body: fs.readFileSync(path.join(root, 'web-live-pip.js'), 'utf8')});
           if (url.pathname.endsWith('/web-native-live.js')) return route.fulfill({contentType: 'text/javascript', body: adapter});
           return route.fulfill({contentType: 'text/html', body: html});

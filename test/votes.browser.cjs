@@ -22,7 +22,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
     const url=new URL(route.request().url());
     if(url.hostname==='viewer.test'){
      const name=url.pathname.split('/').pop();
-     const file=['web-native-live.js','web-live-pip.js','web-live-chat-probe.js','mobile-sync-test.js'].includes(name)?name:'index.html';
+     const file=['web-native-live.js','web-live-pip.js', 'web-live-controls.js','web-live-chat-probe.js','mobile-sync-test.js'].includes(name)?name:'index.html';
      return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':'text/html',body:fs.readFileSync(path.join(root,file))});
     }
     if(url.hostname.endsWith('frommyarti.com')){

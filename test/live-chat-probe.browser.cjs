@@ -24,7 +24,7 @@ const root = path.resolve(__dirname, '..');
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === 'localhost') {
-          const file = ['web-native-live.js', 'web-live-pip.js', 'web-live-chat-probe.js'].find(name => url.pathname === '/' + name);
+          const file = ['web-native-live.js', 'web-live-pip.js', 'web-live-controls.js', 'web-live-chat-probe.js'].find(name => url.pathname === '/' + name);
           return route.fulfill({contentType: file ? 'text/javascript' : 'text/html', body: fs.readFileSync(path.join(root, file || 'index.html'))});
         }
         if (url.hostname === 'live-chat-api.frommyarti.com') {
@@ -140,6 +140,8 @@ const root = path.resolve(__dirname, '..');
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-unconfirmed');
       assert.equal(await input.inputValue(), '합성 불확실 댓글'); assert.equal(await send.isDisabled(), true);
       await page.waitForTimeout(300); assert.equal(postCount, 3, 'unknown delivery never automatically retries');
+      const composer=await input.boundingBox(),bar=await page.locator('.live-player-controls .mvc-row').boundingBox();assert.ok(composer.y+composer.height<=bar.y,'LIVE composer cannot overlap bottom controls');
+      await input.focus();await page.keyboard.type('rf');assert.equal(await page.evaluate(()=>!!document.fullscreenElement),false,'typing comments cannot invoke player shortcuts');assert.equal(await page.locator('.mvc-angle').textContent(),'0°');
       await input.fill('다른 합성 댓글'); frozen = true; await send.click();
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'send-frozen');
       assert.equal(postCount, 3, 'a fresh frozen policy prevents posting even after an earlier allowed poll');

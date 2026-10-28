@@ -22,7 +22,7 @@ async function fixture(browser,variant='after',width=1440){
   if(url.hostname==='viewer.test'){
    const file=url.pathname.split('/').pop()||'index.html';
    if(file==='index.html')return route.fulfill({contentType:'text/html',body:variant==='before'?baseline:current});
-   if(['web-native-live.js','web-live-pip.js','web-live-chat-probe.js'].includes(file))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,file))});
+   if(['web-native-live.js','web-live-pip.js', 'web-live-controls.js','web-live-chat-probe.js'].includes(file))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,file))});
    return route.abort();
   }
   if(url.hostname.endsWith('frommyarti.com')){

@@ -1,7 +1,7 @@
 name: Media bulk save regression
 on:
   pull_request:
-    paths: ['index.html', 'test/media-bulk-save*.cjs', 'test/background-media*.cjs', 'test/direct-selection.test.cjs', '.github/workflows/media-bulk-save.yml']
+    paths: ['index.html', 'web-live-controls.js', 'web-live-pip.js', 'test/media-bulk-save*.cjs', 'test/background-media*.cjs', 'test/direct-selection.test.cjs', '.github/workflows/media-bulk-save.yml']
 permissions:
   contents: read
 jobs:

@@ -1,7 +1,7 @@
 // Video-only PiP. Native JPEG decoding, frame ACKs and helper audio stay in place.
 (() => {
   let pipWindow = null, mirror = null, source = null, pending = false, version = 0, failed = false;
-  let canvasPlayer = null;
+  let canvasPlayer = null, presentationMask = -1, presentationSequence = -1;
   const readySources = new WeakMap();
   const assignedSources = new WeakMap();
   const timeline = document.getElementById('timeline');
@@ -87,7 +87,8 @@
     if (!button) {
       button = document.createElement('button');
       button.id = 'livePipBtn';
-      button.className = 'live-mini-btn live-pip-btn';
+      button.className = 'mvc-button live-pip-btn';
+      button.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6M15 14h6v6h-6z"/></svg>';
       button.type = 'button';
       button.addEventListener('click', toggle);
       head.append(button);
@@ -99,8 +100,12 @@
     const active = !!pipWindow || !!(canvasPlayer && document.pictureInPictureElement === canvasPlayer.video) ||
       !!(video && document.pictureInPictureElement === video);
     button.disabled = pending || (!active && (!ready || !supported));
-    const label = active ? 'PiP 닫기' : 'PiP';
-    if (button.textContent !== label) button.textContent = label;
+    const mask = (ready ? 1 : 0) | (active ? 2 : 0) | (supported ? 4 : 0) | (pending ? 8 : 0);
+    if (mask !== presentationMask || presentationSequence !== state.live.connectionSeq) {
+      presentationMask = mask; presentationSequence = state.live.connectionSeq;
+      window.FrommLivePresentation = Object.freeze({ready, active, supported: !!supported, pending, sequence: presentationSequence});
+      if (window.dispatchEvent && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('fromm-live-presentation', {detail: window.FrommLivePresentation}));
+    }
     button.setAttribute('aria-label', active ? 'LIVE 영상 PiP 닫기' : 'LIVE 영상만 PiP로 보기');
     button.setAttribute('aria-pressed', String(active));
     button.title = failed ? 'PiP 창을 열지 못했습니다. 브라우저의 PiP 지원과 허용 설정을 확인해주세요.' :

@@ -26,7 +26,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
     const url=new URL(route.request().url());
     if(url.hostname==='viewer.test'){
      const file=url.pathname.split('/').pop()||'index.html';
-     if(!['index.html','web-native-live.js','web-live-pip.js','web-live-chat-probe.js','mobile-sync-test.js'].includes(file)) return route.abort();
+     if(!['index.html','web-native-live.js','web-live-pip.js', 'web-live-controls.js','web-live-chat-probe.js','mobile-sync-test.js'].includes(file)) return route.abort();
      return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':'text/html',body:fs.readFileSync(path.join(root,file))});
     }
     if(url.hostname.endsWith('frommyarti.com')){

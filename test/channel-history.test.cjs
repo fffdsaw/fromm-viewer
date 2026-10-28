@@ -28,7 +28,7 @@ function setup(initial = null) {
     document: {querySelector: () => null},
     window: {scrollY: 142, scrollTo() {}, crypto: require('node:crypto').webcrypto,
       addEventListener: (_, callback) => {listener = callback;}},
-    renderLiveView() {}, safeErrorDetail: String,
+    renderLiveView() {}, disposeVideoQualityPlayer() {}, safeErrorDetail: String,
     stopReplayPlayback() {state.live.replaySelected = null;},
     async setLiveCenterMode(mode) {state.live.centerMode = mode;},
   });

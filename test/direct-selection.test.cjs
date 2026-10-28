@@ -151,9 +151,9 @@ test('an empty leftover file is retried and permission errors never trigger an o
   // Legacy-name inspection is denied, so stop conservatively before any detail.
   assert.equal(h.details.length, 0); assert.equal(h.writes.length, 0); unlocked(h);
 });
-test('Channel playback/download and LIVE entry sources are preserved; media save retains direct dispatch', () => {
+test('Channel detail/download and LIVE entry sources are preserved; media save retains direct dispatch', () => {
   const baseline = execFileSync('git', ['show', 'd876793:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
-  for (const name of ['fetchChannelVideoDetail', 'attachChannelVideo',
+  for (const name of ['fetchChannelVideoDetail',
     'fetchLiveEntrances', 'refreshLiveStatus', 'connectAgoraLive']) {
     assert.equal(fn(name), fn(name, baseline), name);
   }

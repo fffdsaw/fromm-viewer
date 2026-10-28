@@ -1219,6 +1219,42 @@ body.download-marquee-active{user-select:none;cursor:default}
 .channel-list-shell:has(.channel-player) .live-center-tabs,
 .channel-list-shell:has(.channel-player) .replay-toolbar{display:none}
 .channel-list-shell .replay-shell:has(> .channel-player){padding:0}
+/* Replay / Channel player chrome only: keep native controls and contain sizing. */
+:is(.replay-player-page,.channel-player){border-radius:16px;background:#0d1117;box-shadow:0 16px 42px rgba(0,0,0,.2)}
+:is(.replay-player-page,.channel-player) > .replay-page-head{gap:12px;min-height:58px;padding:10px 14px;border-color:rgba(148,163,184,.15);background:linear-gradient(135deg,#171d27,#111720);box-shadow:0 1px 0 rgba(255,255,255,.025)}
+:is(.replay-player-page,.channel-player) .replay-page-copy{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+:is(.replay-player-page,.channel-player) .replay-page-title{width:100%;max-width:100%;font-size:15px;font-weight:750;line-height:1.3;letter-spacing:-.015em}
+:is(.replay-player-page,.channel-player) .replay-page-meta{flex:0 1 auto;width:100%;font-size:11px;line-height:1.35;color:var(--muted)}
+:is(.replay-player-page,.channel-player) .replay-page-divider{display:none}
+:is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 11px;border:1px solid rgba(148,163,184,.16);border-radius:10px;background:rgba(255,255,255,.035);color:var(--text);font-size:12px;font-weight:700;line-height:1.2;transition:background .15s,border-color .15s}
+:is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download):hover{background:rgba(255,255,255,.075);border-color:rgba(148,163,184,.3)}
+:is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download,.video-quality-select):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:is(.replay-player-page,.channel-player) :is(.replay-page-stage,.channel-player-stage){border-color:rgba(148,163,184,.15);background:#080b10!important}
+:is(.replay-player-page,.channel-player) video{background:#080b10}
+:is(.replay-player-page,.channel-player) :is(.replay-page-actions,.video-player-actions){display:flex;align-items:center;justify-content:flex-end;flex:0 0 auto;flex-wrap:wrap;gap:6px 8px;min-width:0;margin-left:auto}
+:is(.replay-player-page,.channel-player) .video-quality-control{display:inline-flex;align-items:center;gap:7px;margin:0;color:var(--muted);font-size:11px;line-height:1.2;white-space:nowrap}
+:is(.replay-player-page,.channel-player) .video-quality-select{width:auto;min-width:108px;max-width:180px;height:36px;margin:0;padding:0 9px;border:1px solid rgba(148,163,184,.22);border-radius:10px;background:#1b2430;color:var(--text);font:inherit;font-size:12px;font-weight:650;cursor:pointer;color-scheme:dark}
+:is(.replay-player-page,.channel-player) .video-quality-select:disabled{opacity:.65;cursor:default}
+:is(.replay-player-page,.channel-player) .video-quality-status{order:2;max-width:32ch;margin:0;color:var(--muted);font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+:is(.replay-player-page,.channel-player) .video-quality-status[role="alert"]{color:#ff9aa5}
+:is(.replay-player-page,.channel-player) :is(.video-quality-control,.video-quality-status)[hidden],
+:is(.replay-player-page,.channel-player) .video-quality-status:empty{display:none}
+@media(max-width:650px){
+  :is(.replay-player-page,.channel-player) > .replay-page-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;min-height:0;padding:9px 10px}
+  :is(.replay-player-page,.channel-player) .replay-page-back{grid-column:1;grid-row:1;align-self:center}
+  :is(.replay-player-page,.channel-player) .replay-page-copy{grid-column:2;grid-row:1;gap:2px}
+  :is(.replay-player-page,.channel-player) .replay-page-title{font-size:14px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-actions,.video-player-actions){grid-column:1/-1;grid-row:2;justify-content:space-between;width:100%;margin:0}
+  .channel-player > .replay-page-head > .replay-page-download{grid-column:1/-1;justify-self:end}
+  :is(.replay-player-page,.channel-player) .video-quality-status{flex-basis:100%;max-width:none}
+}
+@media(max-height:500px){
+  :is(.replay-player-page,.channel-player) > .replay-page-head{min-height:0;padding:6px 10px;gap:6px 10px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){min-height:30px;padding:6px 9px;font-size:11px}
+  :is(.replay-player-page,.channel-player) .replay-page-title{font-size:13px}
+  :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:10px}
+  :is(.replay-player-page,.channel-player) .video-quality-select{height:30px;min-width:96px;font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -1621,6 +1657,7 @@ function channelVideoSession() {
 }
 
 function stopChannelVideoPlayback() {
+  disposeVideoQualityPlayer("channel");
   const s = channelVideoState;
   s.playSeq++;
   try { s.hls?.destroy(); } catch {}
@@ -1823,7 +1860,7 @@ function renderChannelVideosView() {
       <div class="replay-page-head">
         <button class="replay-page-back" id="channelBackToList" type="button">← Channel</button>
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(replayDateLabel(selected.displayStartAt))}</span></div>
-        <button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button>
+        <div class="video-player-actions">${videoQualityControls("channel")}<button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button></div>
       </div>
       <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : `<p class="replay-page-status" role="status">채널 영상을 불러오는 중...</p>`}</div>
     </div>`;
@@ -1998,52 +2035,25 @@ async function playChannelVideo(postId, {pushHistory = true} = {}) {
 }
 
 async function attachChannelVideo(url, video, seq) {
-  const s = channelVideoState;
-  const current = () => seq === s.playSeq && channelVideosActive() && document.body.contains(video);
-  if (!video || !current()) return;
-  try { s.hls?.destroy(); } catch {}
-  s.hls = null;
-  video.onerror = () => {
-    if (!current()) return;
-    const selected = s.selected;
-    stopChannelVideoPlayback();
-    s.selected = selected;
-    s.playerError = "채널 영상을 재생하지 못했습니다. 목록으로 돌아가 다시 시도해주세요.";
-    renderLiveView();
-  };
-  if (!/\.m3u8(?:\?|$)/i.test(url)) {
-    video.src = localProxyUrl(replayCanonicalStreamUrl(url));
-    video.play().catch(() => {});
-    return;
-  }
-  const Hls = await ensureReplayHlsSdk(window).catch(() => null);
-  if (!current()) return;
-  if (Hls?.isSupported()) {
-    const {authParams, mediaUrl, mediaText} = await resolveReplayMediaPlaylist(url);
-    if (!current()) return;
-    const prepared = URL.createObjectURL(new Blob([rewriteReplayMediaPlaylist(mediaText, mediaUrl, authParams)], {type: "application/vnd.apple.mpegurl"}));
-    s.blobUrls.push(prepared);
-    const hls = new Hls({maxBufferLength: 120, backBufferLength: 60, enableWorker: true});
-    s.hls = hls;
-    hls.loadSource(prepared);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => { if (current()) video.play().catch(() => {}); });
-    let networkRecovered = false, mediaRecovered = false;
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (!data?.fatal || !current()) return;
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !networkRecovered) { networkRecovered = true; hls.startLoad(); return; }
-      if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !mediaRecovered) { mediaRecovered = true; hls.recoverMediaError(); return; }
-      const selected = s.selected;
-      stopChannelVideoPlayback();
-      s.selected = selected;
-      s.playerError = "채널 영상 재생에 실패했습니다. 목록으로 돌아가 다시 시도해주세요.";
+  const s=channelVideoState, sameSession=channelVideoSession();
+  const current=()=>sameSession() && seq===s.playSeq && channelVideosActive() && document.body.contains(video);
+  if(!video || !current()) return;
+  return attachVideoQualityPlayer("channel",url,video,window,{
+    current,onHls:hls=>{s.hls=hls;},
+    refreshUrl:async requestCurrent=>{
+      const selected=s.selected;
+      const detail=await fetchChannelVideoDetail(selected);
+      if(current() && requestCurrent()) s.selected={...selected,...detail};
+      return detail._streamUrl;
+    },
+    onFatal:()=>{
+      if(!current()) return;
+      const selected=s.selected;
+      stopChannelVideoPlayback();s.selected=selected;
+      s.playerError="채널 영상을 재생하지 못했습니다. 목록에서 다시 열어주세요.";
       renderLiveView();
-    });
-  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    video.src = localProxyUrl(replayCanonicalStreamUrl(url));
-    video.load();
-    video.play().catch(() => {});
-  } else throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+    }
+  });
 }
 
 async function downloadChannelVideo(post, button) {
@@ -4407,7 +4417,7 @@ function renderReplayPlayerView(){
         <span class="replay-page-divider" aria-hidden="true">|</span>
         <span class="replay-page-meta">${esc(meta)}</span>
       </div>
-      <div class="replay-page-actions"><button class="replay-page-download" id="replayDownloadCurrent" type="button">다운로드</button></div>
+      <div class="replay-page-actions video-player-actions">${videoQualityControls("replay")}<button class="replay-page-download" id="replayDownloadCurrent" type="button">다운로드</button></div>
     </div>
     <div class="replay-page-stage">${stage}</div>
   </div>`;
@@ -4417,7 +4427,9 @@ function renderReplayPlayerView(){
   requestAnimationFrame(()=>fitReplayPlayerViewport({scrollIntoPlace:true}));
 
   if(selected._streamUrl && !state.live.replayPlayerError){
-    attachReplayVideo(selected._streamUrl,window,$("#replayVideo")).catch(e=>{
+    const video=$("#replayVideo"), seq=state.live.replayPlaySeq;
+    attachReplayVideo(selected._streamUrl,window,video).catch(e=>{
+      if(seq!==state.live.replayPlaySeq || !document.body.contains(video)) return;
       state.live.replayPlayerError=String(e?.message || e);
       renderReplayPlayerView();
     });
@@ -4491,6 +4503,7 @@ function renderReplayView(){
 }
 
 function stopReplayPlayback(){
+  disposeVideoQualityPlayer("replay");
   state.live.replayPlaySeq++;
 
   try{state.live.replayHls?.destroy?.();}catch{}
@@ -4606,24 +4619,320 @@ async function fetchReplayText(url){
   return await r.text();
 }
 
-function replayVariantFromMaster(text,baseUrl,authParams){
-  const lines=String(text || "").split(/\r?\n/);
-  const variants=[];
-  for(let i=0;i<lines.length;i++){
-    const line=lines[i].trim();
-    if(!line.startsWith("#EXT-X-STREAM-INF:")) continue;
-    const bw=Number((line.match(/BANDWIDTH=(\d+)/i)||[])[1] || 0);
-    for(let j=i+1;j<lines.length;j++){
-      const uri=lines[j].trim();
-      if(!uri) continue;
-      if(uri.startsWith("#")) continue;
-      variants.push({bandwidth:bw,url:replaySignedUrl(uri,baseUrl,authParams)});
-      break;
-    }
+// Playback-only rendition state. Download resolution/cache never reads this state.
+const videoQualityPlayers = {replay:null, channel:null};
+function replayManifestAttributes(text) {
+  const attrs = {};
+  for (const match of String(text || "").matchAll(/(?:^|,)\s*([a-z0-9-]+)\s*=\s*("[^"]*"|[^,]*)/gi)) {
+    const value = match[2].trim();
+    attrs[match[1].toUpperCase()] = value.startsWith('"') ? value.slice(1,-1) : value;
   }
-  if(!variants.length) return "";
-  variants.sort((a,b)=>b.bandwidth-a.bandwidth);
-  return variants[0].url;
+  return attrs;
+}
+function videoQualityLabel(variant) {
+  const width=Number(variant.width)||0, height=Number(variant.height)||0;
+  if(width>0 && height>0) return `${Math.min(width,height)}p`;
+  const bandwidth=Number(variant.bandwidth)||0;
+  return bandwidth>0 ? `${Number((bandwidth/1e6).toFixed(2))} Mbps` : "원본";
+}
+function replayVariantsFromMaster(text,baseUrl,authParams,includeAudio=false) {
+  const lines=String(text||"").split(/\r?\n/), variants=[], seen=new Set();
+  for(let i=0;i<lines.length;i++) {
+    if(!lines[i].trim().startsWith("#EXT-X-STREAM-INF:")) continue;
+    const attrs=replayManifestAttributes(lines[i].trim().slice(18));
+    const size=(attrs.RESOLUTION||"").match(/^(\d+)x(\d+)$/i);
+    const width=Number(size?.[1])||0, height=Number(size?.[2])||0;
+    const codecs=(attrs.CODECS||"").split(",").map(x=>x.trim()).filter(Boolean);
+    if(!includeAudio && !size && codecs.length && codecs.every(x=>/^(mp4a|ac-3|ec-3|opus|flac|alac)(\.|$)/i.test(x))) continue;
+    let uri="";
+    for(let j=i+1;j<lines.length;j++) {
+      const line=lines[j].trim();
+      if(line.startsWith("#EXT-X-STREAM-INF:")) break;
+      if(line && !line.startsWith("#")) {uri=line;break;}
+    }
+    if(!uri) continue;
+    const url=replaySignedUrl(uri,baseUrl,authParams);
+    if(seen.has(url)) continue;
+    seen.add(url);
+    const variant={url,width,height,bandwidth:Number(attrs.BANDWIDTH)||Number(attrs["AVERAGE-BANDWIDTH"])||0,frameRate:Number(attrs["FRAME-RATE"])||0,attrs};
+    variant.label=videoQualityLabel(variant); variants.push(variant);
+  }
+  return variants.sort((a,b)=>b.width*b.height-a.width*a.height || b.bandwidth-a.bandwidth || b.frameRate-a.frameRate);
+}
+function videoQualityControls(kind) {
+  return `<label class="video-quality-control" for="${kind}QualitySelect"><span>화질</span><select id="${kind}QualitySelect" class="video-quality-select" aria-label="재생 화질" disabled><option>확인 중…</option></select></label><span id="${kind}QualityStatus" class="video-quality-status" role="status" aria-live="polite"></span>`;
+}
+function videoQualityVariantKey(variant) {
+  return [variant.width,variant.height,variant.bandwidth,variant.frameRate,variant.attrs?.CODECS||""].join("|");
+}
+function videoQualityAuth(url,inherited) {
+  const own=replayAuthParams(url);
+  for(const [key,value] of inherited || []) if(!own.has(key)) own.set(key,value);
+  return own;
+}
+async function fetchVideoQualityText(url,signal) {
+  const controller=new AbortController();
+  const abort=()=>controller.abort();
+  signal?.addEventListener("abort",abort,{once:true});
+  if(signal?.aborted) controller.abort();
+  const timer=setTimeout(()=>controller.abort(),15000);
+  try {
+    const response=await fetch(url,{cache:"no-store",signal:controller.signal});
+    if(!response.ok) throw Object.assign(new Error(`영상 재생목록 HTTP ${response.status}`),{status:response.status});
+    return await response.text();
+  } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);}
+}
+function videoQualityMediaGroups(text,url,auth) {
+  return String(text||"").split(/\r?\n/).filter(line=>line.trim().startsWith("#EXT-X-MEDIA:")).map(line=>{
+    const attrs=replayManifestAttributes(line.trim().slice(13));
+    return {attrs,url:attrs.URI?replaySignedUrl(attrs.URI,url,auth):""};
+  });
+}
+async function videoQualityCatalog(url,signal) {
+  const authParams=replayAuthParams(url), masterUrl=replaySignedUrl(url,url,authParams);
+  const masterText=await fetchVideoQualityText(masterUrl,signal);
+  const variants=replayVariantsFromMaster(masterText,masterUrl,authParams);
+  if(!variants.length && /#EXT-X-STREAM-INF:/i.test(masterText)) throw new Error("재생 가능한 영상 화질을 확인하지 못했습니다.");
+  if(!variants.length) variants.push({url:masterUrl,width:0,height:0,bandwidth:0,frameRate:0,attrs:{},label:"원본"});
+  return {masterUrl,masterText,authParams,variants,at:Date.now()};
+}
+async function videoQualityLeaf(url,authParams,signal,{text=null,attrs={},groups=[],includeAudio=false}={}) {
+  const seen=new Set();
+  let merged={...attrs}, collected=[...groups];
+  for(let depth=0;depth<6;depth++) {
+    if(signal.aborted) throw new DOMException("Cancelled","AbortError");
+    if(seen.has(url)) throw new Error("영상 재생목록이 순환하고 있습니다.");
+    seen.add(url); authParams=videoQualityAuth(url,authParams);
+    const body=text===null?await fetchVideoQualityText(url,signal):text; text=null;
+    const variants=replayVariantsFromMaster(body,url,authParams,includeAudio);
+    if(!variants.length) {
+      if(/#EXT-X-STREAM-INF:/i.test(body) || !/^\s*#EXTM3U/m.test(body)) throw new Error("영상 미디어 재생목록을 확인하지 못했습니다.");
+      return {url,text:body,authParams,attrs:merged,groups:collected};
+    }
+    const best=variants[0];
+    const localGroups=videoQualityMediaGroups(body,url,authParams);
+    const namespaces=new Set(localGroups.map(group=>`${group.attrs.TYPE}|${group.attrs["GROUP-ID"]}`));
+    collected=collected.filter(group=>!namespaces.has(`${group.attrs.TYPE}|${group.attrs["GROUP-ID"]}`));
+    collected.push(...localGroups);
+    const codecs=[...new Set([merged.CODECS,best.attrs.CODECS].filter(Boolean).flatMap(x=>x.split(",")))].join(",");
+    merged={...merged,...best.attrs};if(codecs) merged.CODECS=codecs;
+    url=best.url;
+  }
+  throw new Error("영상 재생목록 단계가 너무 많습니다.");
+}
+function videoQualityAttributesText(attrs) {
+  return Object.entries(attrs).filter(([,value])=>value!=null && value!=="").map(([key,value])=>{
+    const clean=String(value).replace(/["\r\n]/g,"");
+    return `${key}=${/^(BANDWIDTH|AVERAGE-BANDWIDTH|FRAME-RATE|RESOLUTION|TYPE|DEFAULT|AUTOSELECT|FORCED|VIDEO-RANGE)$/.test(key)?clean:`"${clean}"`}`;
+  }).join(",");
+}
+function revokeVideoQualityUrls(urls,owner) {
+  for(const url of urls || []) try{owner.URL.revokeObjectURL(url);}catch{}
+}
+async function prepareVideoQualitySource(catalog,variant,owner,signal) {
+  const urls=[];
+  const blob=text=>{const url=owner.URL.createObjectURL(new owner.Blob([text],{type:"application/vnd.apple.mpegurl"}));urls.push(url);return url;};
+  try {
+    const groups=videoQualityMediaGroups(catalog.masterText,catalog.masterUrl,catalog.authParams);
+    const leaf=await videoQualityLeaf(variant.url,catalog.authParams,signal,{text:variant.url===catalog.masterUrl?catalog.masterText:null,attrs:variant.attrs,groups});
+    const source=blob(rewriteReplayMediaPlaylist(leaf.text,leaf.url,leaf.authParams));
+    const companions=leaf.groups.filter(group=>["AUDIO","VIDEO","SUBTITLES","CLOSED-CAPTIONS"].some(type=>group.attrs.TYPE===type && leaf.attrs[type]===group.attrs["GROUP-ID"]));
+    const unique=[...new Map(companions.map(group=>[[group.attrs.TYPE,group.attrs["GROUP-ID"],group.attrs.NAME,group.attrs.LANGUAGE||""].join("|"),group])).values()];
+    if(unique.length>24) throw new Error("영상 트랙이 너무 많아 재생목록을 확인하지 못했습니다.");
+    if(!unique.length) return {url:source,urls};
+    const tags=[];
+    for(const group of unique) {
+      const attrs={...group.attrs};
+      if(group.url) {
+        const track=await videoQualityLeaf(group.url,catalog.authParams,signal,{includeAudio:true});
+        attrs.URI=blob(rewriteReplayMediaPlaylist(track.text,track.url,track.authParams));
+      }
+      tags.push(`#EXT-X-MEDIA:${videoQualityAttributesText(attrs)}`);
+    }
+    const stream={...leaf.attrs};delete stream.URI;
+    // A single video rendition, including its referenced audio/subtitle groups.
+    return {url:blob(["#EXTM3U","#EXT-X-VERSION:7",...tags,`#EXT-X-STREAM-INF:${videoQualityAttributesText(stream)}`,source].join("\n")),urls};
+  } catch(error) {revokeVideoQualityUrls(urls,owner);throw error;}
+}
+function updateVideoQualityUi(player,message="") {
+  const select=player.owner.document.querySelector(`#${player.kind}QualitySelect`);
+  const status=player.owner.document.querySelector(`#${player.kind}QualityStatus`);
+  if(select) {
+    select.replaceChildren(...player.variants.map((variant,index)=>{
+      const option=player.owner.document.createElement("option");option.value=String(index);
+      const repeated=player.variants.filter(v=>videoQualityLabel(v)===videoQualityLabel(variant)).length>1;
+      option.textContent=videoQualityLabel(variant)+(repeated&&variant.bandwidth?` · ${Number((variant.bandwidth/1e6).toFixed(2))} Mbps`:"")+(index===0?" · 최고":"");
+      return option;
+    }));
+    select.disabled=player.variants.length<=1;
+    select.value=String(player.pendingIndex??player.selectedIndex??0);
+    select.onchange=()=>{void changeVideoQuality(player,Number(select.value));};
+  }
+  if(status) status.textContent=message || (player.variants.length>1?(player.selectedIndex===0?"최고 화질 고정":"선택한 화질 고정"):"단일 화질");
+}
+function disposeVideoQualityPlayer(kind) {
+  const player=videoQualityPlayers[kind];
+  if(!player) return;
+  player.disposed=true;player.requestSeq++;player.engineSeq++;player.abort?.abort();
+  for(const remove of player.listeners) try{remove();}catch{}
+  player.listeners=[];
+  try{player.hls?.destroy();}catch{}
+  player.onHls(null);revokeVideoQualityUrls(player.urls,player.owner);player.urls=[];
+  if(player.video.onerror===player.onVideoError) player.video.onerror=null;
+  if(videoQualityPlayers[kind]===player) videoQualityPlayers[kind]=null;
+}
+function videoQualitySnapshot(player) {
+  const video=player.video;
+  const saved=player.transitioning && player.resume ? {...player.resume} : {time:Number(video.currentTime)||0,paused:video.paused};
+  return {...saved,volume:video.volume,muted:video.muted,rate:video.playbackRate,
+    fullscreen:player.transitioning?saved.fullscreen:player.owner.document.fullscreenElement,
+    pip:player.transitioning?saved.pip:player.owner.document.pictureInPictureElement===video};
+}
+function restoreVideoQualityPresentation(player,current) {
+  if(!current()) return;
+  const resume=player.resume, doc=player.owner.document, video=player.video;
+  // Retain a presentation mode the user already opened; never enter one by default.
+  if(resume.fullscreen?.isConnected && !doc.fullscreenElement && resume.fullscreen.requestFullscreen) {
+    try{Promise.resolve(resume.fullscreen.requestFullscreen()).catch(()=>{
+      if(current()) updateVideoQualityUi(player,"전체 화면은 재생 컨트롤에서 다시 열어주세요.");
+    });}catch{}
+  }
+  if(resume.pip && doc.pictureInPictureElement!==video && video.requestPictureInPicture) {
+    try{Promise.resolve(video.requestPictureInPicture()).catch(()=>{
+      if(current()) updateVideoQualityUi(player,"PiP는 재생 컨트롤에서 다시 열어주세요.");
+    });}catch{}
+  }
+}
+async function changeVideoQuality(player,index,{initial=false}={}) {
+  if(!player.current() || player.disposed || !Number.isInteger(index)) return;
+  const wanted=player.variants[index];
+  if(!initial && !wanted) return;
+  const requestSeq=++player.requestSeq;
+  player.abort?.abort();const abort=new AbortController();player.abort=abort;
+  const current=()=>player.current() && !player.disposed && requestSeq===player.requestSeq && !abort.signal.aborted;
+  player.pendingIndex=index;
+  if(player.variants.length) updateVideoQualityUi(player,"화질 변경 중…");
+  let prepared, committed=false, committedSeq=0, oldUrls=[];
+  try {
+    let catalog=player.catalog;
+    for(let attempt=0;attempt<2;attempt++) {
+      try {
+        if(!catalog || Date.now()-catalog.at>=45000) catalog=await videoQualityCatalog(player.url,abort.signal);
+        if(!current()) return;
+        const selected=initial?catalog.variants[0]:catalog.variants.find(v=>videoQualityVariantKey(v)===videoQualityVariantKey(wanted));
+        if(!selected) throw new Error("선택한 화질이 더 이상 제공되지 않습니다.");
+        index=catalog.variants.indexOf(selected);
+        prepared=await prepareVideoQualitySource(catalog,selected,player.owner,abort.signal);
+        break;
+      } catch(error) {
+        if(!current()) return;
+        if(attempt || ![401,403].includes(error.status) || !player.refreshUrl) throw error;
+        const url=await player.refreshUrl(current);
+        if(!current()) return;
+        player.url=url;player.catalog=null;catalog=null;
+      }
+    }
+    if(!current()) {revokeVideoQualityUrls(prepared?.urls,player.owner);return;}
+    player.catalog=catalog;player.variants=catalog.variants;
+    player.resume=initial?{time:0,paused:false,volume:player.video.volume,muted:player.video.muted,rate:player.video.playbackRate}:videoQualitySnapshot(player);
+    player.transitioning=true;
+    const engineSeq=++player.engineSeq;committedSeq=engineSeq;committed=true;
+    const engineCurrent=()=>player.current()&&!player.disposed&&engineSeq===player.engineSeq;
+    oldUrls=player.urls;
+    try{player.hls?.destroy();}catch{}
+    player.hls=null;player.onHls(null);
+    for(const remove of player.listeners) try{remove();}catch{}
+  player.listeners=[];
+    const source=prepared.url;player.urls=prepared.urls;prepared=null;
+    player.selectedIndex=index;player.pendingIndex=null;
+    const video=player.video;
+    video.autoplay=!player.resume.paused;
+    const listen=(event,callback)=>{video.addEventListener(event,callback);player.listeners.push(()=>video.removeEventListener(event,callback));};
+    const restore=()=>{
+      if(!engineCurrent() || !player.transitioning) return;
+      const resume=player.resume;
+      video.volume=resume.volume;video.muted=resume.muted;video.playbackRate=resume.rate;
+      if(resume.time>0) try{video.currentTime=Number.isFinite(video.duration)?Math.min(resume.time,Math.max(0,video.duration-.05)):resume.time;}catch{}
+      if(resume.paused) video.pause();else video.play().catch(()=>{});
+      player.transitioning=false;updateVideoQualityUi(player);
+      restoreVideoQualityPresentation(player,()=>engineCurrent() && requestSeq===player.requestSeq);
+      if(player.variants.length===1 && !player.variants[0].width && video.videoWidth>0) {
+        player.variants=[{...player.variants[0],width:video.videoWidth,height:video.videoHeight}];updateVideoQualityUi(player);
+      }
+    };
+    listen("loadedmetadata",restore);
+    const cancelPresentation=event=>{if(event.key==="Escape"&&player.transitioning){player.resume.fullscreen=null;player.resume.pip=false;}};
+    player.owner.document.addEventListener?.("keydown",cancelPresentation);
+    player.listeners.push(()=>player.owner.document.removeEventListener?.("keydown",cancelPresentation));
+    listen("waiting",()=>{if(engineCurrent()&&player.variants.length>1)updateVideoQualityUi(player,"버퍼링 중 · 필요하면 화질을 직접 선택하세요");});
+    listen("playing",()=>{if(engineCurrent()&&!player.transitioning)updateVideoQualityUi(player);});
+    const fatal=()=>{
+      if(!engineCurrent()) return;
+      if(initial && player.variants.length<=1) player.onFatal();
+      else updateVideoQualityUi(player,"재생하지 못했습니다. 다른 화질을 선택해주세요.");
+    };
+    player.onVideoError=()=>{if(engineCurrent())fatal();};video.onerror=player.onVideoError;
+    if(player.Hls?.isSupported?.()) {
+      const hls=new player.Hls({maxBufferLength:120,backBufferLength:60,enableWorker:true,startLevel:0});
+      player.hls=hls;player.onHls(hls);
+      hls.loadLevel=0; // Manual pin, including single-level prepared manifests.
+      hls.on(player.Hls.Events.MANIFEST_PARSED,()=>{
+        if(!engineCurrent()) return;
+        hls.loadLevel=0;
+        if(player.transitioning && !player.resume.paused)video.play().catch(()=>{});
+      });
+      let networkRecovered=false,mediaRecovered=false;
+      hls.on(player.Hls.Events.ERROR,(_event,data)=>{
+        if(!engineCurrent() || !data?.fatal) return;
+        if(data.type===player.Hls.ErrorTypes.NETWORK_ERROR && !networkRecovered) {networkRecovered=true;try{hls.startLoad();return;}catch{}}
+        if(data.type===player.Hls.ErrorTypes.MEDIA_ERROR && !mediaRecovered) {mediaRecovered=true;try{hls.recoverMediaError();return;}catch{}}
+        fatal();
+      });
+      hls.loadSource(source);hls.attachMedia(video);
+    } else {
+      // Never give native HLS the unrestricted master (which could enable ABR).
+      video.src=source;video.load();
+      if(!player.resume.paused)video.play().catch(()=>{});
+    }
+    revokeVideoQualityUrls(oldUrls,player.owner);oldUrls=[];
+    updateVideoQualityUi(player,initial?"최고 화질 준비 중…":"화질 변경 중…");
+  } catch(error) {
+    if(prepared)revokeVideoQualityUrls(prepared.urls,player.owner);
+    revokeVideoQualityUrls(oldUrls,player.owner);
+    if(committed && player.engineSeq===committedSeq) {
+      try{player.hls?.destroy();}catch{}
+      player.hls=null;player.onHls(null);
+      for(const remove of player.listeners) try{remove();}catch{}
+  player.listeners=[];
+      revokeVideoQualityUrls(player.urls,player.owner);player.urls=[];
+    }
+    if(!current()) return;
+    player.pendingIndex=null;
+    if(initial) throw new Error("영상 재생목록을 준비하지 못했습니다. 목록에서 다시 열어주세요.");
+    updateVideoQualityUi(player,committed?"변경한 화질을 재생하지 못했습니다. 다른 화질을 선택해주세요.":"화질을 변경하지 못했습니다. 기존 화질을 유지합니다.");
+  }
+}
+async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFatal,refreshUrl}={}) {
+  if(!video || !current()) return;
+  disposeVideoQualityPlayer(kind);
+  const player={kind,url,video,owner,current,onHls,onFatal,refreshUrl,variants:[],catalog:null,selectedIndex:0,pendingIndex:null,requestSeq:0,engineSeq:0,disposed:false,urls:[],hls:null,abort:null,listeners:[],transitioning:false,resume:null};
+  videoQualityPlayers[kind]=player;
+  const direct=kind==="channel"?!/\.m3u8(?:\?|$)/i.test(url):/\.(mp4|webm|mov|m4v)(?:\?|$)/i.test(url);
+  if(direct) {
+    player.variants=[{width:0,height:0,bandwidth:0,attrs:{},url}];updateVideoQualityUi(player);
+    const metadata=()=>{if(current()){player.variants[0].width=video.videoWidth;player.variants[0].height=video.videoHeight;updateVideoQualityUi(player);}};
+    video.addEventListener("loadedmetadata",metadata);player.listeners.push(()=>video.removeEventListener("loadedmetadata",metadata));
+    video.src=localProxyUrl(replayCanonicalStreamUrl(url));video.play().catch(()=>{});return;
+  }
+  player.Hls=await ensureReplayHlsSdk(owner).catch(()=>null);
+  if(!current() || player.disposed) return;
+  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+  try{await changeVideoQuality(player,0,{initial:true});}
+  catch(error){if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);throw error;}
+}
+
+function replayVariantFromMaster(text,baseUrl,authParams){
+  return replayVariantsFromMaster(text,baseUrl,authParams)[0]?.url || "";
 }
 
 function rewriteReplayMediaPlaylist(text,playlistUrl,authParams){
@@ -4654,11 +4963,21 @@ async function resolveReplayMediaPlaylist(rawUrl){
   const promise=(async()=>{
     const authParams=replayAuthParams(rawUrl);
     const masterUrl=replaySignedUrl(rawUrl,rawUrl,authParams);
-    const masterText=await fetchReplayText(masterUrl);
-    const variantUrl=replayVariantFromMaster(masterText,masterUrl,authParams);
-    const mediaUrl=variantUrl || masterUrl;
-    const mediaText=variantUrl ? await fetchReplayText(variantUrl) : masterText;
-    return {authParams,masterUrl,mediaUrl,mediaText};
+    let mediaUrl=masterUrl, effectiveAuth=authParams;
+    const seen=new Set();
+    for(let depth=0;depth<6;depth++) {
+      if(seen.has(mediaUrl)) throw new Error("Replay 재생목록이 순환하고 있습니다.");
+      seen.add(mediaUrl);
+      const mediaText=await fetchReplayText(mediaUrl);
+      effectiveAuth=videoQualityAuth(mediaUrl,effectiveAuth);
+      const variantUrl=replayVariantFromMaster(mediaText,mediaUrl,effectiveAuth);
+      if(!variantUrl) {
+        if(/#EXT-X-STREAM-INF:/i.test(mediaText)) throw new Error("Replay 최고 화질을 확인하지 못했습니다.");
+        return {authParams:effectiveAuth,masterUrl,mediaUrl,mediaText};
+      }
+      mediaUrl=variantUrl;
+    }
+    throw new Error("Replay 재생목록 단계가 너무 많습니다.");
   })();
 
   state.live.replayPlaylistCache.set(key,{at:now,promise});
@@ -4859,6 +5178,7 @@ function replayPostKey(postOrId,channelId=""){
 async function fetchReplayPostDetail(post,{force=false}={}){
   if(!post) throw new Error("Replay 정보를 확인하지 못했습니다.");
 
+  const sameSession=channelVideoSession();
   const key=replayPostKey(post);
   if(!force){
     const cached=state.live.replayDetailCache.get(key);
@@ -4877,6 +5197,7 @@ async function fetchReplayPostDetail(post,{force=false}={}){
     const response=await frommApiRequest(`/media/posts/${encodeURIComponent(post.id)}`,{
       base:FROMM_CHANNEL_API_BASE,channelId:String(post._channelId)
     });
+    if(!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
     const detail=response?.data?.post || response?.post || response?.result?.post;
     if(!detail) throw new Error("Replay 상세 정보를 확인하지 못했습니다.");
 
@@ -4887,7 +5208,8 @@ async function fetchReplayPostDetail(post,{force=false}={}){
       _channelName:post._channelName,
       _streamUrl:replayStreamUrl(detail)
     };
-    state.live.replayDetailCache.set(key,merged);
+    // A newer forced refresh may have superseded this same-session request.
+    if(state.live.replayDetailInflight.get(key)===promise) state.live.replayDetailCache.set(key,merged);
     return merged;
   })();
 
@@ -5047,66 +5369,24 @@ async function playReplay(postId,channelId,{pushHistory=true}={}){
 async function attachReplayVideo(url,targetWindow=window,video=null){
   video=video || targetWindow.document.querySelector("#replayVideo");
   if(!video || !url) return;
-  try{state.live.replayHls?.destroy?.();}catch{}
-  state.live.replayHls=null;
-
-  // Firefox Android reports native HLS support, but Fromm's signed CloudFront
-  // Replay needs the signature propagated to nested manifests/segments. Prefer
-  // hls.js with a rewritten media playlist so Android and desktop behave alike.
-  try{
-    const Hls=await ensureReplayHlsSdk(targetWindow);
-    if(!targetWindow.closed && targetWindow.document.body.contains(video) && Hls?.isSupported?.()){
-      const prepared=await prepareReplayMediaPlaylist(url,targetWindow);
-      if(targetWindow.closed || !targetWindow.document.body.contains(video)) return;
-      const hls=new Hls({
-        maxBufferLength:120,
-        backBufferLength:60,
-        enableWorker:true
-      });
-      state.live.replayHls=hls;
-      hls.loadSource(prepared);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        video.play().catch(()=>{
-          // Mobile autoplay can be blocked after async network work; controls
-          // remain available so the user can tap Play without treating it as an error.
-        });
-      });
-      let networkRecovered=false;
-      let mediaRecovered=false;
-      hls.on(Hls.Events.ERROR,(_evt,data)=>{
-        if(!data?.fatal) return;
-
-        if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !networkRecovered){
-          networkRecovered=true;
-          try{hls.startLoad();return;}catch{}
-        }
-
-        if(data.type===Hls.ErrorTypes.MEDIA_ERROR && !mediaRecovered){
-          mediaRecovered=true;
-          try{hls.recoverMediaError();return;}catch{}
-        }
-
-        const detail=data?.details || data?.type || "unknown";
-        try{hls.destroy();}catch{}
-        if(state.live.replayHls===hls) state.live.replayHls=null;
-        state.live.replayPlayerError=`Replay 재생 실패 · ${detail}`;
-        if(targetWindow===window && state.live.replaySelected) renderReplayPlayerView();
-      });
-      return;
+  const seq=state.live.replayPlaySeq, sameSession=channelVideoSession();
+  const current=()=>sameSession() && seq===state.live.replayPlaySeq && !targetWindow.closed && targetWindow.document.body.contains(video);
+  return attachVideoQualityPlayer("replay",url,video,targetWindow,{
+    current,onHls:hls=>{state.live.replayHls=hls;},
+    refreshUrl:async requestCurrent=>{
+      const selected=state.live.replaySelected;
+      const detail=await fetchReplayPostDetail({...selected,_streamUrl:""},{force:true});
+      if(current() && requestCurrent()) state.live.replaySelected={...selected,...detail};
+      return detail._streamUrl;
+    },
+    onFatal:()=>{
+      if(!current()) return;
+      const selected=state.live.replaySelected;
+      stopReplayPlayback();state.live.replaySelected=selected;
+      state.live.replayPlayerError="Replay 재생에 실패했습니다. 목록에서 다시 열어주세요.";
+      if(targetWindow===window) renderReplayPlayerView();
     }
-  }catch(e){
-    console.warn("Replay hls.js 준비 실패, native HLS fallback",e);
-  }
-
-  // Last fallback for browsers with usable native HLS.
-  if(video.canPlayType("application/vnd.apple.mpegurl")){
-    video.src=replayCanonicalStreamUrl(url);
-    video.load();
-    video.play().catch(()=>{});
-    return;
-  }
-  throw new Error("이 브라우저에서 HLS Replay 재생을 지원하지 않습니다.");
+  });
 }
 
 function liveTileId(uid){

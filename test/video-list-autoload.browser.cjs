@@ -68,6 +68,18 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    const total=requests.length;await page.waitForTimeout(650);assert.equal(requests.length,total,'terminal page stops requests');
    assert.equal(requests.length,2,'initial and next page requested once, including Replay prefetch');
    assert.equal(maxActive,1,'one page per selected channel in flight, including prefetch reuse');
+   // A terminal page also rebinds pagination in finally. Its distant thumbnails
+   // must remain observed after that cleanup, even though no Load More target exists.
+   await page.locator(cards).last().scrollIntoViewIfNeeded();
+   await page.waitForFunction(()=>{const img=document.querySelector('.replay-grid > :last-child img');return img?.complete&&img.naturalWidth>0;},null,{timeout:4000});
+   assert.equal(await page.locator(cards).last().locator('img').getAttribute('data-video-thumb'),null,'new distant thumbnail loads after terminal-page cleanup');
+   for(const index of [28,0,46]){
+    await page.locator(cards).nth(index).scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>{
+     const visible=[...document.querySelectorAll('.replay-thumb img')].filter(img=>{const box=img.getBoundingClientRect();return box.bottom>0&&box.top<innerHeight;});
+     return visible.length>0&&visible.every(img=>img.complete&&img.naturalWidth>0);
+    },null,{timeout:4000});
+   }
    // Preserved cards must not accumulate selection listeners on every render.
    await page.locator(cards).first().click();
    await page.waitForTimeout(350);

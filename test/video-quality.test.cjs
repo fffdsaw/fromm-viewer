@@ -368,10 +368,10 @@ test('cyclic playback and highest-download masters fail with bounded requests',a
   assert.equal(h.calls.length,2);
 });
 
-test('excluded automatic pagination state and loaders remain byte-equivalent',()=>{
+test('pagination state and requests remain equivalent apart from restarting thumbnail observation',()=>{
   const baseline=execFileSync('git',['show','38fca89:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
   const normalize=text=>text.replace(/\r\n/g,'\n');
-  for(const name of ['bindVideoListAuto','loadReplayCenter','loadChannelVideos'])assert.equal(normalize(fn(name)),normalize(fn(name,baseline)),name);
+  for(const name of ['bindVideoListAuto','loadReplayCenter','loadChannelVideos'])assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n',''),normalize(fn(name,baseline)),name);
   const declaration=source=>source.match(/^const videoListAuto = .*;$/m)?.[0];
   assert.ok(declaration(html)&&declaration(baseline),'pagination state declarations exist');
   assert.equal(declaration(html),declaration(baseline));

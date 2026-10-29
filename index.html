@@ -657,6 +657,7 @@ html.image-lightbox-open { overflow-y:hidden; }
 .replay-card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(255,91,115,.22)}
 .replay-thumb{position:relative;aspect-ratio:1.45/1;background:#090b0f;overflow:hidden}
 .replay-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.replay-thumb img[data-video-thumb]{visibility:hidden}
 .replay-thumb-empty{width:100%;height:100%;display:grid;place-items:center;color:var(--muted);font-size:12px}
 .replay-badge{position:absolute;left:10px;top:10px;max-width:calc(100% - 66px);padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(0,0,0,.72);color:#fff;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .replay-download{position:absolute;right:10px;top:10px;z-index:2;width:36px;height:36px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(0,0,0,.72);color:#fff;font:inherit;font-size:18px;cursor:pointer}
@@ -1615,6 +1616,7 @@ function videoListError(kind) {
 }
 function bindVideoListAuto(kind, filter) {
   disconnectVideoListAuto();
+  bindVideoListThumbnails();
   const s = videoListAuto, scope = JSON.stringify([kind, filter]);
   if (s.scope !== scope) Object.assign(s, {scope, emptyPages:0, paused:false});
   const sameSession = channelVideoSession();
@@ -1968,7 +1970,7 @@ function renderChannelVideosView() {
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
   for (const btn of document.querySelectorAll("[data-channel-video-play]")) btn.onclick = () => playChannelVideo(btn.dataset.channelVideoPlay);
   for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
-  if (!selected) { bindVideoListAuto("channel", s.channelId); bindVideoListThumbnails(); }
+  if (!selected) bindVideoListAuto("channel", s.channelId);
   else disconnectVideoListAuto();
   const refreshButton = $("#channelRefresh");
   if (refreshButton) refreshButton.onclick = () => { videoListAuto.paused = false; videoListAuto.emptyPages = 0; stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); };
@@ -4573,7 +4575,6 @@ function renderReplayView(){
     btn.onkeydown=e=>e.stopPropagation();
   }
   bindVideoListAuto("replay", state.live.replayFilter);
-  bindVideoListThumbnails();
   updateSelectedCount();
 }
 

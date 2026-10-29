@@ -75,7 +75,7 @@
       listen($('.mvc-panel'),'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
       listen($('.mvc-panel'),'pointerleave',()=>{controlHovered=false;reveal();});
       listen(controls,'pointerdown',()=>{controlActive=true;reveal();});
-      for(const event of ['pointerup','pointercancel'])listen(window,event,()=>{controlActive=false;reveal();});
+      for(const event of ['pointerup','pointercancel'])listen(window,event,()=>{if(controlActive){controlActive=false;reveal();}});
       listen(stage,'pointerleave',()=>{controlHovered=false;reveal();});
       listen(stage,'pointerdown',()=>{keyboard=false;reveal();});listen(stage,'pointermove',reveal);listen(stage,'focusin',reveal);listen(stage,'focusout',reveal);
       listen(stage,'keydown',event=>{

@@ -168,7 +168,7 @@ async function sendFrame(page, sequence) {
       const {context,page,errors}=await openFixture(browser,{width:844,height:390});
       await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;canvas.getContext('2d').fillRect(0,0,640,360);const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=canvas.captureStream(5);document.getElementById('liveVideoGrid').append(video);window.fixtureVolumes=[];state.live.client={connectionState:'CONNECTED',remoteUsers:[{audioTrack:{setVolume:v=>fixtureVolumes.push(v)}}],removeAllListeners(){},leave:async()=>{}};await video.play();});
       await page.locator('#livePlayerLoading').waitFor({state:'hidden'});await page.locator('.live-web-volume').waitFor({state:'visible'});
-      await checkControlsFade(page,page.locator('.live-player-controls'),page.locator('.live-stage'),{touch:true});
+      await checkControlsFade(page,page.locator('.live-player-controls'),page.locator('.live-stage'),{touch:true,outsideQuiet:true});
       await page.locator('[data-live-control="sound"]').click();assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),0);
       await page.locator('.live-player-controls .mvc-volume').evaluate(el=>{el.value='.4';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),40);
       await page.evaluate(()=>state.live.client.connectionState='RECONNECTING');await page.locator('#livePlayerLoading').waitFor({state:'visible'});

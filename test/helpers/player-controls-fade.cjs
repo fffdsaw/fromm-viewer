@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 // Sample the real CSS transition, including visibility. An opacity declaration
 // alone is insufficient if visibility is hidden at the start of the fade.
-module.exports=async function checkControlsFade(page,controls,stage,{touch=false,cancelTouch=false,resetPlayback=async()=>{}}={}){
+module.exports=async function checkControlsFade(page,controls,stage,{touch=false,cancelTouch=false,outsideQuiet=false,resetPlayback=async()=>{}}={}){
  const state=()=>controls.evaluate(el=>{const css=getComputedStyle(el);return {opacity:Number(css.opacity),visibility:css.visibility,hidden:el.classList.contains('mvc-hidden')};});
  const reveal=async()=>{
   await stage.hover({force:true,position:{x:5,y:5}});
@@ -30,7 +30,9 @@ module.exports=async function checkControlsFade(page,controls,stage,{touch=false
  }
  await resetPlayback();await page.mouse.move(0,0);
  await page.waitForFunction(()=>document.querySelector('.modern-video-controls').classList.contains('mvc-hidden'),null,{timeout:5000});
- await controls.waitFor({state:'hidden'});await reveal();
+ await controls.waitFor({state:'hidden'});
+ if(outsideQuiet){await page.mouse.click(1,1);assert.equal((await state()).hidden,true,'unrelated page clicks do not reveal LIVE controls');}
+ await reveal();
  await page.emulateMedia({reducedMotion:'reduce'});
  await controls.evaluate(el=>el.classList.add('mvc-hidden'));
  const reduced=await state();assert.equal(reduced.visibility,'hidden');assert.equal(reduced.opacity,0,'reduced motion hides immediately');

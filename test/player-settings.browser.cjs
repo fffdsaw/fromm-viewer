@@ -4,8 +4,9 @@
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
 const {execFileSync}=require('node:child_process');
+const checkControlsFade=require('./helpers/player-controls-fade.cjs');
 const root=path.resolve(__dirname,'..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'fromm-menu-'));
-execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=640x360:rate=12','-t','2','-c:v','libx264','-preset','ultrafast','-threads','1','-pix_fmt','yuv420p','-movflags','+faststart',path.join(temp,'fixture.mp4')]);
+execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=640x360:rate=12','-t','12','-c:v','libx264','-preset','ultrafast','-threads','1','-pix_fmt','yuv420p','-movflags','+faststart',path.join(temp,'fixture.mp4')]);
 const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
 (async()=>{
  const browser=await chromium.launch({headless:true});
@@ -30,6 +31,10 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    },{kind,height:viewport.height});
    const video=page.locator('#menuTestVideo'),settings=page.locator('.mvc-settings'),summary=settings.locator('summary');
    await video.evaluate(async v=>{await v.play();});await page.waitForFunction(()=>document.querySelector('#menuTestVideo').readyState>=2);
+   if(viewport.width===1440||viewport.width===844){
+    await checkControlsFade(page,page.locator('.modern-video-controls'),video.locator('..'),{touch:viewport.width===844,cancelTouch:kind==='channel',resetPlayback:async()=>{await video.evaluate(async v=>{v.currentTime=0;await v.play();});}});
+    console.log(`${kind} ${viewport.width}: real fade, interaction hold/release and reduced motion PASS`);
+   }
    const hitVideo=async()=>{
     const point=await video.evaluate(v=>{
      const r=v.getBoundingClientRect();

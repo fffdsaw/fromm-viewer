@@ -1272,8 +1272,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 .modern-video-stage{position:relative;isolation:isolate;outline:none}
 .modern-video-stage:fullscreen{width:100vw;height:100dvh;max-height:none;border:0!important;border-radius:0!important;background:#080b10}
 .modern-video-stage:fullscreen video{width:100%;height:100%;max-height:none!important;object-fit:contain}
-.modern-video-controls{position:absolute;inset:0;z-index:4;display:flex;align-items:flex-end;pointer-events:none;color:#f7f9fc;opacity:1;transition:opacity .18s ease}
-.modern-video-controls.mvc-hidden{opacity:0;visibility:hidden}
+.modern-video-controls{position:absolute;inset:0;z-index:4;display:flex;align-items:flex-end;pointer-events:none;color:#f7f9fc;opacity:1;visibility:visible;transition:opacity .15s ease,visibility 0s linear}
+.modern-video-controls.mvc-hidden{opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s linear .35s}
 .mvc-panel{width:100%;padding:48px 20px 14px;background:linear-gradient(transparent,rgba(5,8,14,.85));pointer-events:none}
 .mvc-panel input,.mvc-panel button,.mvc-panel select,.mvc-panel summary,.mvc-settings{pointer-events:auto}
 .mvc-row,.mvc-left,.mvc-right{display:flex;align-items:center;gap:10px;min-width:0}.mvc-row{justify-content:space-between}.mvc-right{margin-left:auto;gap:8px}.mvc-time{white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;color:#dbe2ed}
@@ -1299,7 +1299,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:650px){:is(.replay-player-page,.channel-player) .replay-page-head{grid-template-columns:auto minmax(0,1fr) auto}:is(.replay-player-page,.channel-player) .video-player-actions{grid-column:3;grid-row:1;width:auto;justify-self:end}}
 .mvc-popover label.mvc-mobile-volume{display:none}.mvc-panel input.mvc-volume-extra{width:76px;height:4px;min-height:4px;padding:0;border:0;appearance:none;border-radius:9px;background:#ffffff40;accent-color:var(--accent2)}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
-@media(prefers-reduced-motion:reduce){.modern-video-controls{transition:none}}
+@media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 </head>
 <body>
@@ -4750,7 +4750,7 @@ function installModernVideoControls(player) {
   const controls=doc.createElement('div');controls.className='modern-video-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','영상 재생 컨트롤');
   controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —</span></div><div class="mvc-right">${button('sound','음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량"><details class="mvc-settings"><summary class="mvc-button" aria-label="재생 설정" title="재생 설정">${icon(icons.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(icons.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div><div class="mvc-section"><label class="mvc-mobile-volume">음량 <input class="mvc-volume-extra" type="range" min="0" max="1" step="0.05" value="1" aria-label="설정 음량"></label><label>재생 속도 <select class="mvc-rate" aria-label="재생 속도">${[.5,.75,1,1.25,1.5,1.75,2].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}×</option>`).join('')}</select></label></div><div class="mvc-section"><div class="mvc-setting-heading">화질</div>${videoQualityControls(player.kind)}<div class="mvc-quality-options" role="radiogroup" aria-label="재생 화질"></div></div></div></details><button class="mvc-button mvc-pip" type="button" aria-label="화면 속 화면 (PiP)" aria-pressed="false" title="화면 속 화면 (PiP)">${icon(icons.pip)}</button>${button('full','전체 화면')}</div></div></div>`;
   const loadingWrapper=doc.createElement('div');loadingWrapper.innerHTML=videoLoadingIndicator();const loader=loadingWrapper.firstElementChild;
-  const removers=[];let timer=null,loadingTimer=null,dragging=false,dead=false,keyboardMode=false,rotation=0,preparing=true,hasFrame=video.readyState>=2,waiting=false,failed=false;
+  const removers=[];let timer=null,loadingTimer=null,dragging=false,dead=false,keyboardMode=false,rotation=0,preparing=true,hasFrame=video.readyState>=2,waiting=false,failed=false,controlHovered=false,controlActive=false;
   const $=selector=>controls.querySelector(selector), seek=$('.mvc-seek'), volume=$('.mvc-volume'), play=$('[data-mvc="play"]'), sound=$('[data-mvc="sound"]'), settings=$('details');
   const listen=(target,event,fn)=>{target.addEventListener(event,fn);removers.push(()=>target.removeEventListener(event,fn));};
   const loadingNeeded=()=>!failed&&!video.ended&&(preparing||!hasFrame||waiting);
@@ -4765,9 +4765,10 @@ function installModernVideoControls(player) {
   const time=value=>{if(!Number.isFinite(value))return '—';const s=Math.max(0,Math.floor(value));return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
   const message=text=>{const status=doc.querySelector(`#${player.kind}QualityStatus`);if(status)status.textContent=text;reveal();};
   const focusHeld=()=>keyboardMode && controls.contains(doc.activeElement);
+  const canHide=()=>!video.paused&&video.readyState>=3&&!settings.open&&!dragging&&!controlHovered&&!controlActive&&!focusHeld();
   const reveal=()=>{
     if(dead)return;clearTimeout(timer);controls.classList.remove('mvc-hidden');
-    if(!video.paused && video.readyState>=3 && !settings.open && !dragging && !focusHeld()) timer=setTimeout(()=>{if(!dead&&!video.paused&&!settings.open&&!dragging&&!focusHeld())controls.classList.add('mvc-hidden');},3000);
+    if(canHide()) timer=setTimeout(()=>{if(!dead&&canHide())controls.classList.add('mvc-hidden');},3000);
   };
   const sync=()=>{
     if(dead)return;
@@ -4803,7 +4804,8 @@ function installModernVideoControls(player) {
     listen(seek,'input',()=>{dragging=true;sync();reveal();});
     listen(seek,'change',()=>{if(!seek.disabled)video.currentTime=Number(seek.value);dragging=false;sync();reveal();});
     listen(seek,'pointercancel',()=>{dragging=false;sync();reveal();});
-    listen(player.owner,'pointerup',()=>{if(dragging&&!seek.disabled)video.currentTime=Number(seek.value);dragging=false;sync();reveal();});
+    listen(player.owner,'pointerup',()=>{if(dragging&&!seek.disabled)video.currentTime=Number(seek.value);dragging=false;controlActive=false;sync();reveal();});
+    listen(player.owner,'pointercancel',()=>{dragging=false;controlActive=false;sync();reveal();});
     listen($('.mvc-rate'),'change',()=>{video.playbackRate=Number($('.mvc-rate').value);});
     listen($('[data-mvc="full"]'),'click',fullscreen);
     const pip=$('.mvc-pip');pip.hidden=!doc.pictureInPictureEnabled||!video.requestPictureInPicture;
@@ -4850,7 +4852,10 @@ function installModernVideoControls(player) {
     listen(doc,'click',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
     listen(settings,'keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();settings.open=false;settings.querySelector('summary').focus({preventScroll:true});}});
     listen(settings,'toggle',()=>{if(settings.open)placeSettings();else closePopup();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
-    listen(stage,'focusin',reveal);listen(stage,'pointermove',reveal);listen(stage,'pointerdown',()=>{keyboardMode=false;reveal();});listen(stage,'pointerleave',reveal);
+    listen($('.mvc-panel'),'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
+    listen($('.mvc-panel'),'pointerleave',()=>{controlHovered=false;reveal();});
+    listen(controls,'pointerdown',()=>{controlActive=true;reveal();});
+    listen(stage,'focusin',reveal);listen(stage,'pointermove',reveal);listen(stage,'pointerdown',()=>{keyboardMode=false;reveal();});listen(stage,'pointerleave',()=>{controlHovered=false;reveal();});
     listen(video,'click',()=>{stage.focus({preventScroll:true});if(settings.open){settings.open=false;reveal();return;}toggle();});listen(video,'dblclick',fullscreen);
     listen(doc,'keydown',()=>{keyboardMode=true;});
     listen(stage,'keydown',event=>{
@@ -11250,7 +11255,7 @@ autoConnectSaved();
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>
-<script src="web-live-controls.js?v=1"></script>
+<script src="web-live-controls.js?v=2"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

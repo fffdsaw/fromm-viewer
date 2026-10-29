@@ -14,7 +14,7 @@
     if (!stage || !grid || !stage.contains(grid)) { dispose(); return; }
     if (mounted?.stage === stage) { mounted.sync(); return; }
     dispose();
-    const removers = []; let dead = false, angle = 0, hideTimer, keyboard = false, previouslyLoading = null, volume = 1, muted = false;
+    const removers = []; let dead = false, angle = 0, hideTimer, keyboard = false, previouslyLoading = null, volume = 1, muted = false, controlHovered = false, controlActive = false;
     const appliedTracks = new WeakMap();
     const controls = document.createElement('div');controls.className = 'modern-video-controls live-player-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','LIVE 재생 컨트롤');
     controls.innerHTML = `<div class="mvc-panel"><div class="mvc-row"><div class="mvc-left"><span class="live-control-badge">LIVE</span></div><div class="mvc-right"><span class="live-web-volume" hidden>${button('sound','음소거')}</span><input class="mvc-volume" type="range" min="0" max="1" step=".05" value="1" aria-label="LIVE 음량" hidden><details class="mvc-settings"><summary class="mvc-button" aria-label="LIVE 재생 설정" title="LIVE 재생 설정">${icon(paths.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(paths.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div></div></details><span class="live-pip-slot"></span>${button('full','전체 화면')}</div></div></div>`;
@@ -27,9 +27,10 @@
     const presentation = () => {const p=window.FrommLivePresentation;return p?.sequence===state.live.connectionSeq?p:null;};
     const error = () => state.live.status === 'error' || !!state.live.lastError;
     const busy = () => !error() && stage.dataset.liveFailed!=='true' && !!state.live.config?.isStreaming && (!presentation()?.ready || stage.dataset.liveWaiting==='true' || state.live.client?.connectionState === 'RECONNECTING');
+    const canHide = () => !busy()&&!settings.open&&!controlHovered&&!controlActive&&!(keyboard&&controls.contains(document.activeElement));
     const reveal = () => {
       if(dead)return;clearTimeout(hideTimer);controls.classList.remove('mvc-hidden');
-      if(!busy()&&!settings.open&&!(keyboard&&controls.contains(document.activeElement)))hideTimer=setTimeout(()=>{if(!dead&&!busy()&&!settings.open&&!(keyboard&&controls.contains(document.activeElement)))controls.classList.add('mvc-hidden');},3000);
+      if(canHide())hideTimer=setTimeout(()=>{if(!dead&&canHide())controls.classList.add('mvc-hidden');},3000);
     };
     const closePopup = () => {try{popup.hidePopover?.();}catch{}stage.classList.remove('mvc-menu-fallback');};
     const placePopup = () => {
@@ -71,6 +72,11 @@
       listen(settings,'toggle',()=>{if(settings.open)placePopup();else closePopup();reveal();});
       listen(document,'pointerdown',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
       listen(document,'keydown',()=>{keyboard=true;});
+      listen($('.mvc-panel'),'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
+      listen($('.mvc-panel'),'pointerleave',()=>{controlHovered=false;reveal();});
+      listen(controls,'pointerdown',()=>{controlActive=true;reveal();});
+      for(const event of ['pointerup','pointercancel'])listen(window,event,()=>{controlActive=false;reveal();});
+      listen(stage,'pointerleave',()=>{controlHovered=false;reveal();});
       listen(stage,'pointerdown',()=>{keyboard=false;reveal();});listen(stage,'pointermove',reveal);listen(stage,'focusin',reveal);listen(stage,'focusout',reveal);
       listen(stage,'keydown',event=>{
         if(event.key==='Escape'&&settings.open){event.preventDefault();event.stopPropagation();settings.open=false;settings.querySelector('summary').focus({preventScroll:true});return;}

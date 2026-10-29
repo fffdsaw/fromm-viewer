@@ -29,9 +29,23 @@ test('observer-free browsers retain lazy loading and removed cards never start r
  assert.equal(h.observers.length,0);assert.equal(h.images[3].loading,'lazy');
  assert.equal(h.requests.some(r=>r.i===2),false);
 });
+test('pagination cleanup restarts pending thumbnails even when the terminal page has no target',()=>{
+ const h=fixture();h.c.clearTimeout=clearTimeout;h.c.channelVideoSession=()=>()=>true;
+ h.c.state={filter:'live',live:{centerMode:'replay',replayFilter:'all'}};
+ h.c.document.querySelector=()=>null;
+ vm.runInContext('const videoListAuto={observer:null,timer:null,scope:""};'+fn('disconnectVideoListAuto')+fn('bindVideoListAuto'),h.c);
+ h.c.bindVideoListThumbnails();const original=h.observers.at(-1);
+ h.c.bindVideoListAuto('replay','all');
+ assert.equal(original.disconnected,true);
+ assert.notEqual(h.observers.at(-1),original);assert.ok(!h.observers.at(-1).disconnected);
+ assert.ok(h.observers.at(-1).targets.has(h.images[3]),'distant image remains observed after finally rebind');
+ h.images[3].getBoundingClientRect=()=>({top:100,bottom:200});
+ h.observers.at(-1).callback([{target:h.images[3],isIntersecting:true,boundingClientRect:{top:100,bottom:200}}]);
+ assert.ok(h.requests.some(r=>r.i===3));
+});
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
- for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','downloadChannelVideo','downloadReplayPost','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','loadReplayCenter','loadChannelVideos','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(fn(name),fn(name,baseline),name);
+ for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','downloadChannelVideo','downloadReplayPost','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','loadReplayCenter','loadChannelVideos','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
  for(const file of ['web-native-live.js','web-live-controls.js','web-live-pip.js','web-live-chat-probe.js'])assert.equal(fs.readFileSync(path.join(root,file),'utf8'),execFileSync('git',['show',`b78f2b1:${file}`],{cwd:root,encoding:'utf8'}),file);
  assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/'],{cwd:root,encoding:'utf8'}),'');
 });

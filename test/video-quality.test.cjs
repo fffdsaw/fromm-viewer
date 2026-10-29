@@ -168,10 +168,10 @@ function runtimeSetup({bodies={}, supported=true, refreshUrl=null}={}) {
   };
   const c=vm.createContext({URL,URLSearchParams,AbortController,DOMException,setTimeout,clearTimeout,
     fetch:read,localProxyUrl:value=>value,state:{live:{replayPlaylistCache:new Map()}},
-    window:owner,navigator:{userAgent:'desktop fixture'},ensureReplayHlsSdk:async()=>Hls});
-  vm.runInContext('const videoQualityPlayers={replay:null,channel:null};',c);
+    channelVideoSession:()=>()=>active,window:owner,navigator:{userAgent:'desktop fixture'},ensureReplayHlsSdk:async()=>Hls});
+  vm.runInContext('const videoQualityPlayers={replay:null,channel:null};const videoPlaybackCatalogCache={entries:new Map(),sameSession:null,timer:null};',c);
   for(const name of ['replayAuthParams','replaySignedUrl','replayManifestAttributes','videoQualityLabel','replayVariantsFromMaster',
-    'replayVariantFromMaster','videoQualityVariantKey','videoQualityAuth','fetchVideoQualityText','videoQualityMediaGroups',
+    'replayVariantFromMaster','videoQualityVariantKey','videoQualityAuth','clearVideoPlaybackCatalogCache','fetchVideoQualityText','videoQualityMediaGroups',
     'videoQualityCatalog','videoQualityLeaf','videoQualityAttributesText','rewriteReplayMediaPlaylist','revokeVideoQualityUrls',
     'prepareVideoQualitySource','updateVideoQualityUi','disposeVideoQualityPlayer','videoQualitySnapshot','restoreVideoQualityPresentation','changeVideoQuality',
     'installModernVideoControls','attachVideoQualityPlayer','resolveReplayMediaPlaylist','parseReplayDownloadPlaylist','replayDownloadIv','downloadReplayStream']) vm.runInContext(fn(name),c);
@@ -186,6 +186,62 @@ function runtimeSetup({bodies={}, supported=true, refreshUrl=null}={}) {
 }
 const leaf = name => `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\n${name}.ts\n#EXT-X-ENDLIST`;
 const deferred = () => {let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
+
+test('cold HLS SDK and signed playlists prepare concurrently without creating an engine early',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
+  const gate=deferred(),sdk=h.c.ensureReplayHlsSdk();h.c.ensureReplayHlsSdk=()=>gate.promise;
+  const pending=h.attach();
+  for(let i=0;i<12;i++)await Promise.resolve();
+  assert.ok(h.calls.some(url=>url.endsWith('/high.m3u8')),'leaf request does not wait for the SDK');
+  assert.equal(h.engines.length,0,'no engine before SDK ready');
+  gate.resolve(await sdk);await pending;assert.equal(h.engines.length,1);
+  h.c.disposeVideoQualityPlayer('replay');
+});
+
+test('leaving while SDK is unresolved cancels preparation and releases prepared blobs immediately',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
+  h.c.ensureReplayHlsSdk=()=>new Promise(()=>{});
+  const pending=h.attach();for(let i=0;i<20;i++)await Promise.resolve();
+  assert.ok(h.blobs.size>0);h.c.disposeVideoQualityPlayer('replay');await pending;
+  assert.equal(h.revoked.length,h.blobs.size);assert.equal(h.engines.length,0);
+});
+
+test('master reuse is bounded, session scoped and full signed URL specific; media is always fresh',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
+  let session=1;h.c.channelVideoSession=()=>{const before=session;return ()=>before===session;};
+  for(let i=0;i<2;i++){await h.attach(base+'?Signature=one');h.c.disposeVideoQualityPlayer('replay');}
+  assert.equal(h.calls.filter(url=>url.includes('master.m3u8')).length,1);
+  assert.equal(h.calls.filter(url=>url.includes('high.m3u8')).length,2,'fresh leaf even on a cache hit');
+  await h.attach(base+'?Signature=two');h.c.disposeVideoQualityPlayer('replay');
+  assert.equal(h.calls.filter(url=>url.includes('master.m3u8')).length,2);
+  session++;await h.attach(base+'?Signature=two');h.c.disposeVideoQualityPlayer('replay');
+  assert.equal(h.calls.filter(url=>url.includes('master.m3u8')).length,3,'different session cannot reuse');
+  vm.runInContext('for(const value of videoPlaybackCatalogCache.entries.values())value.at-=10001;',h.c);
+  await h.attach(base+'?Signature=two');h.c.disposeVideoQualityPlayer('replay');
+  assert.equal(h.calls.filter(url=>url.includes('master.m3u8')).length,4,'expired entry fetches again');
+  const signal=new AbortController().signal;
+  for(let i=0;i<12;i++)await h.c.fetchVideoQualityText(base+'?revision='+i,signal);
+  assert.equal(vm.runInContext('videoPlaybackCatalogCache.entries.size',h.c),8);
+  h.c.clearVideoPlaybackCatalogCache();
+});
+
+test('aborted, no-store, oversized and failed masters are never reusable',async()=>{
+  const h=runtimeSetup();let calls=0;
+  const signal=new AbortController().signal;
+  for(const fixture of [
+    {ok:true,headers:{get:()=> 'no-store'},text:async()=> '#EXTM3U\n#EXT-X-STREAM-INF:bad'},
+    {ok:true,headers:{get:key=>key==='cache-control'?'public, max-age=0':null},text:async()=> '#EXTM3U\n#EXT-X-STREAM-INF:bad'},
+    {ok:true,text:async()=> '#EXT-X-STREAM-INF:'+ 'a'.repeat(65536)},
+    {ok:false,status:403,text:async()=> ''}
+  ]){
+    h.c.fetch=async()=>{calls++;return fixture;};
+    for(let i=0;i<2;i++)await h.c.fetchVideoQualityText(base,signal).catch(()=>{});
+    assert.equal(vm.runInContext('videoPlaybackCatalogCache.entries.size',h.c),0);
+  }
+  const abort=new AbortController();abort.abort();
+  await assert.rejects(()=>h.c.fetchVideoQualityText(base,abort.signal),/Cancelled/);
+  assert.equal(calls,8);
+});
 
 test('download resolver follows nested highest masters and retains its independent highest cache', async()=>{
   const h=runtimeSetup({bodies:{

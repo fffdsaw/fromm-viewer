@@ -1572,7 +1572,37 @@ function renderVideoListMarkup(markup, scope) {
     if (Math.abs(delta) > .5) window.scrollBy(0, delta);
   }
 }
+// Metadata-free thumbnail scheduling: only the viewport and a small look-ahead.
+const videoListThumbnails = {observer:null};
+function bindVideoListThumbnails() {
+  videoListThumbnails.observer?.disconnect();
+  const pending=[...document.querySelectorAll('.replay-grid img[data-video-thumb]')];
+  const load=(img,visible)=>{
+    if(!img.isConnected || !img.dataset.videoThumb) return;
+    img.fetchPriority=visible?'high':'low';img.loading='eager';
+    img.src=img.dataset.videoThumb;delete img.dataset.videoThumb;
+  };
+  // Issue visible requests first, before admitting the nearby row.
+  for(const img of pending) {
+    const box=img.getBoundingClientRect();
+    if(box.bottom>0 && box.top<window.innerHeight) load(img,true);
+  }
+  if(!('IntersectionObserver' in window)) {
+    for(const img of pending) if(img.isConnected && img.dataset.videoThumb) {img.loading='lazy';img.src=img.dataset.videoThumb;delete img.dataset.videoThumb;}
+    return;
+  }
+  const observer=new IntersectionObserver(entries=>{
+    for(const entry of entries) if(entry.isIntersecting) {
+      load(entry.target,entry.boundingClientRect.bottom>0 && entry.boundingClientRect.top<window.innerHeight);
+      observer.unobserve(entry.target);
+    }
+  },{rootMargin:'240px 0px'});
+  videoListThumbnails.observer=observer;
+  for(const img of pending) if(img.dataset.videoThumb) observer.observe(img);
+}
 function disconnectVideoListAuto() {
+  videoListThumbnails.observer?.disconnect();
+  videoListThumbnails.observer = null;
   videoListAuto.observer?.disconnect();
   videoListAuto.observer = null;
   clearTimeout(videoListAuto.timer);
@@ -1912,7 +1942,7 @@ function renderChannelVideosView() {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
       const thumb = replayThumb(p);
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
-        <div class="replay-thumb">${thumb ? `<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div></div>
+        <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
@@ -1938,7 +1968,7 @@ function renderChannelVideosView() {
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
   for (const btn of document.querySelectorAll("[data-channel-video-play]")) btn.onclick = () => playChannelVideo(btn.dataset.channelVideoPlay);
   for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
-  if (!selected) bindVideoListAuto("channel", s.channelId);
+  if (!selected) { bindVideoListAuto("channel", s.channelId); bindVideoListThumbnails(); }
   else disconnectVideoListAuto();
   const refreshButton = $("#channelRefresh");
   if (refreshButton) refreshButton.onclick = () => { videoListAuto.paused = false; videoListAuto.emptyPages = 0; stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); };
@@ -4500,7 +4530,7 @@ function renderReplayView(){
     const thumb=replayThumb(p);
     const active=selected && String(selected.id)===String(p.id) && selected._channelId===p._channelId;
     return `<article class="replay-card ${active?"active":""}" data-replay-post="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" role="button" tabindex="0" aria-label="${esc(p.title || "LIVE Replay")} 재생">
-      <div class="replay-thumb">${thumb?`<img src="${esc(thumb)}" alt="" loading="lazy" decoding="async" fetchpriority="low"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
+      <div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
       <div class="replay-body"><div class="replay-title">${esc(p.title || "LIVE Replay")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
     </article>`;
   }).join("")}</div>` : `<div class="replay-empty">${state.live.replayLoading?"Replay를 불러오는 중...":state.live.replayError?esc(state.live.replayError):"표시할 Replay가 없습니다."}</div>`;
@@ -4543,6 +4573,7 @@ function renderReplayView(){
     btn.onkeydown=e=>e.stopPropagation();
   }
   bindVideoListAuto("replay", state.live.replayFilter);
+  bindVideoListThumbnails();
   updateSelectedCount();
 }
 
@@ -4665,6 +4696,8 @@ async function fetchReplayText(url){
 
 // Playback-only rendition state. Download resolution/cache never reads this state.
 const videoQualityPlayers = {replay:null, channel:null};
+// Playback master metadata only. Never keys, media playlists, segments or download state.
+const videoPlaybackCatalogCache = {entries:new Map(),sameSession:null,timer:null};
 function replayManifestAttributes(text) {
   const attrs = {};
   for (const match of String(text || "").matchAll(/(?:^|,)\s*([a-z0-9-]+)\s*=\s*("[^"]*"|[^,]*)/gi)) {
@@ -4850,7 +4883,18 @@ function videoQualityAuth(url,inherited) {
   for(const [key,value] of inherited || []) if(!own.has(key)) own.set(key,value);
   return own;
 }
+function clearVideoPlaybackCatalogCache() {
+  clearTimeout(videoPlaybackCatalogCache.timer);
+  videoPlaybackCatalogCache.entries.clear();videoPlaybackCatalogCache.sameSession=null;
+}
 async function fetchVideoQualityText(url,signal) {
+  const cache=videoPlaybackCatalogCache;
+  if(!cache.sameSession?.()) {clearVideoPlaybackCatalogCache();cache.sameSession=channelVideoSession();}
+  for(const [key,value] of cache.entries) if(Date.now()-value.at>=value.ttl) cache.entries.delete(key);
+  if(signal?.aborted) throw new DOMException("Cancelled","AbortError");
+  const cached=cache.entries.get(url);
+  if(cached) return cached.text;
+  const sameSession=cache.sameSession;
   const controller=new AbortController();
   const abort=()=>controller.abort();
   signal?.addEventListener("abort",abort,{once:true});
@@ -4859,7 +4903,20 @@ async function fetchVideoQualityText(url,signal) {
   try {
     const response=await fetch(url,{cache:"no-store",signal:controller.signal});
     if(!response.ok) throw Object.assign(new Error(`영상 재생목록 HTTP ${response.status}`),{status:response.status});
-    return await response.text();
+    const text=await response.text();
+    // A fresh media-playlist request still validates the signature/permission on every play.
+    // Cache full signed URLs only; 401/403 refresh remains in changeVideoQuality().
+    const policy=response.headers?.get('cache-control')||'';
+    const maxAge=policy.match(/(?:^|,)\s*max-age\s*=\s*"?(\d+)/i)?.[1];
+    const ttl=maxAge==null?10000:Math.min(10000,Math.max(0,Number(maxAge)-(Number(response.headers?.get('age'))||0))*1000);
+    if(!signal?.aborted && sameSession() && cache.sameSession===sameSession &&
+      /#EXT-X-STREAM-INF:/i.test(text) && text.length<=65536 && url.length<=8192 &&
+      ttl>0 && !/no-store|no-cache/i.test(policy)) {
+      cache.entries.set(url,{text,at:Date.now(),ttl});
+      while(cache.entries.size>8)cache.entries.delete(cache.entries.keys().next().value);
+      clearTimeout(cache.timer);cache.timer=setTimeout(clearVideoPlaybackCatalogCache,10000);cache.timer.unref?.();
+    }
+    return text;
   } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);}
 }
 function videoQualityMediaGroups(text,url,auth) {
@@ -5010,10 +5067,21 @@ async function changeVideoQuality(player,index,{initial=false}={}) {
       } catch(error) {
         if(!current()) return;
         if(attempt || ![401,403].includes(error.status) || !player.refreshUrl) throw error;
+        clearVideoPlaybackCatalogCache();
         const url=await player.refreshUrl(current);
         if(!current()) return;
         player.url=url;player.catalog=null;catalog=null;
       }
+    }
+    if(initial) {
+      player.Hls=await new Promise(resolve=>{
+        const cancel=()=>resolve(null);
+        if(abort.signal.aborted) {resolve(null);return;}
+        abort.signal.addEventListener('abort',cancel,{once:true});
+        player.hlsReady.then(Hls=>{abort.signal.removeEventListener('abort',cancel);resolve(Hls);});
+      });
+      if(current() && !player.Hls?.isSupported?.() && !player.video.canPlayType("application/vnd.apple.mpegurl"))
+        throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
     }
     if(!current()) {revokeVideoQualityUrls(prepared?.urls,player.owner);return;}
     player.catalog=catalog;player.variants=catalog.variants;
@@ -5107,14 +5175,14 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
     video.addEventListener("loadedmetadata",metadata);player.listeners.push(()=>video.removeEventListener("loadedmetadata",metadata));
     video.src=localProxyUrl(replayCanonicalStreamUrl(url));video.play().catch(()=>{});return;
   }
-  player.Hls=await ensureReplayHlsSdk(owner).catch(()=>null);
-  if(!current() || player.disposed) {if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);return;}
-  if(!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl")) {
-    disposeVideoQualityPlayer(kind);
-    throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
-  }
+  player.hlsReady=ensureReplayHlsSdk(owner).catch(()=>null).then(Hls=>{player.Hls=Hls;player.hlsSettled=true;return Hls;});
   try{await changeVideoQuality(player,0,{initial:true});}
-  catch(error){if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);throw error;}
+  catch(error){
+    if(videoQualityPlayers[kind]===player)disposeVideoQualityPlayer(kind);
+    if(player.hlsSettled&&!player.Hls?.isSupported?.()&&!video.canPlayType("application/vnd.apple.mpegurl"))
+      throw new Error("이 브라우저에서 HLS 영상 재생을 지원하지 않습니다.");
+    throw error;
+  }
 }
 
 function replayVariantFromMaster(text,baseUrl,authParams){

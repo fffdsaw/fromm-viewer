@@ -198,6 +198,14 @@ test('cold HLS SDK and signed playlists prepare concurrently without creating an
   h.c.disposeVideoQualityPlayer('replay');
 });
 
+test('leaving while SDK is unresolved cancels preparation and releases prepared blobs immediately',async()=>{
+  const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
+  h.c.ensureReplayHlsSdk=()=>new Promise(()=>{});
+  const pending=h.attach();for(let i=0;i<20;i++)await Promise.resolve();
+  assert.ok(h.blobs.size>0);h.c.disposeVideoQualityPlayer('replay');await pending;
+  assert.equal(h.revoked.length,h.blobs.size);assert.equal(h.engines.length,0);
+});
+
 test('master reuse is bounded, session scoped and full signed URL specific; media is always fresh',async()=>{
   const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
   let session=1;h.c.channelVideoSession=()=>{const before=session;return ()=>before===session;};

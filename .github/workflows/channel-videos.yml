@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -50,6 +50,7 @@ jobs:
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
           node test/replay-player.browser.cjs
+          node test/player-settings.browser.cjs
           node test/video-quality.browser.cjs
           STARTUP_RUNS=1 STARTUP_RESULTS_PATH=screenshots/video-startup.json node test/video-startup.browser.cjs
           node test/direct-selection.browser.cjs

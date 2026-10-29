@@ -4847,11 +4847,11 @@ function installModernVideoControls(player) {
     for(const [name,delta] of [['left',-90],['right',90]])listen($(`[data-mvc="${name}"]`),'click',()=>{rotation=(rotation+delta+360)%360;rotateLayout();});
     if(player.owner.ResizeObserver){const observer=new player.owner.ResizeObserver(rotateLayout);observer.observe(stage);removers.push(()=>observer.disconnect());}
     listen(player.owner,'resize',rotateLayout);listen(video,'loadedmetadata',rotateLayout);listen(doc,'fullscreenchange',rotateLayout);
-    listen(doc,'pointerdown',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
+    listen(doc,'click',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
     listen(settings,'keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();settings.open=false;settings.querySelector('summary').focus({preventScroll:true});}});
     listen(settings,'toggle',()=>{if(settings.open)placeSettings();else closePopup();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
     listen(stage,'focusin',reveal);listen(stage,'pointermove',reveal);listen(stage,'pointerdown',()=>{keyboardMode=false;reveal();});listen(stage,'pointerleave',reveal);
-    listen(video,'click',()=>{stage.focus({preventScroll:true});toggle();});listen(video,'dblclick',fullscreen);
+    listen(video,'click',()=>{stage.focus({preventScroll:true});if(settings.open){settings.open=false;reveal();return;}toggle();});listen(video,'dblclick',fullscreen);
     listen(doc,'keydown',()=>{keyboardMode=true;});
     listen(stage,'keydown',event=>{
       if(event.altKey||event.ctrlKey||event.metaKey||/^(INPUT|SELECT|BUTTON|SUMMARY)$/.test(event.target.tagName)||event.target.isContentEditable)return;

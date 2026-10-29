@@ -2,7 +2,7 @@ name: Verify GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'web-live-chat-probe.js', 'web-native-live.js', '.github/workflows/pages-verify.yml']
+    paths: ['index.html', 'web-live-chat-probe.js', 'web-native-live.js', 'web-live-pip.js', 'web-live-controls.js', '.github/workflows/pages-verify.yml']
 permissions:
   contents: read
   actions: read
@@ -26,6 +26,7 @@ jobs:
           const expected = hash(readFileSync('index.html'));
           const expectedNative = hash(readFileSync('web-native-live.js'));
           const expectedComments = hash(readFileSync('web-live-chat-probe.js'));
+          const extraAssets = Object.fromEntries(['web-live-pip.js','web-live-controls.js'].map(file=>[file,hash(readFileSync(file))]));
           const url = `https://fffdsaw.github.io/fromm-viewer/?deployment=${process.env.GITHUB_SHA}`;
           (async () => {
             let observed = 'not fetched';
@@ -45,11 +46,12 @@ jobs:
                 const commentsMatch = commentsResponse.ok && hash(Buffer.from(await commentsResponse.arrayBuffer())) === expectedComments;
                 const nativeResponse=await fetch(`https://fffdsaw.github.io/fromm-viewer/web-native-live.js?deployment=${process.env.GITHUB_SHA}`,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});
                 const nativeMatch=nativeResponse.ok && hash(Buffer.from(await nativeResponse.arrayBuffer()))===expectedNative;
-                if (pages?.conclusion === 'success' && observed === expected && commentsMatch && nativeMatch) {
+                const extrasMatch=(await Promise.all(Object.entries(extraAssets).map(async ([file,expectedHash])=>{const response=await fetch(`https://fffdsaw.github.io/fromm-viewer/${file}?deployment=${process.env.GITHUB_SHA}`,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});return response.ok&&hash(Buffer.from(await response.arrayBuffer()))===expectedHash;}))).every(Boolean);
+                if (pages?.conclusion === 'success' && observed === expected && commentsMatch && nativeMatch && extrasMatch) {
                   console.log(`Verified commit: ${process.env.GITHUB_SHA}\nDeployment: ${pages.html_url}\nPublic URL: ${url}\nHTML SHA-256: ${observed} (exact match)\nComments JS SHA-256: ${expectedComments} (exact match)`);
                   return;
                 }
-                console.log(`Waiting: Pages ${pages?.status || 'pending'}, public HTML ${observed === expected ? 'matches' : 'not updated'}`);
+                console.log(`Waiting: Pages ${pages?.status || 'pending'}, public HTML ${observed === expected ? 'matches' : 'not updated'}, PiP/controls ${extrasMatch ? 'match' : 'not updated'}`);
               } catch (error) {console.log(`Verification attempt: ${error.message}`);}
               await new Promise(resolve => setTimeout(resolve, 10000));
             }

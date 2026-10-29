@@ -32,7 +32,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/index.html' || url.pathname === '/') {
     res.setHeader('Content-Type', 'text/html'); return res.end(source);
   }
-  if (['/web-native-live.js', '/web-live-pip.js', '/web-live-chat-probe.js'].includes(url.pathname)) {
+  if (['/web-native-live.js', '/web-live-pip.js', '/web-live-controls.js', '/web-live-chat-probe.js'].includes(url.pathname)) {
     res.setHeader('Content-Type', 'text/javascript'); return res.end(fs.readFileSync(path.join(root, path.basename(url.pathname))));
   }
   if (url.pathname === '/preview.svg') {res.setHeader('Content-Type', 'image/svg+xml'); return res.end(preview);}

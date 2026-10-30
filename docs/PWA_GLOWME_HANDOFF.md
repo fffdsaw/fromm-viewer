@@ -2,13 +2,13 @@
 
 ## 현재 상태 / 마지막 저장
 
-- 상태: **상단·중간·하단 분리 및 사이드바 중복 투표 제거, 로컬 검증 완료**. 직전 `ea3c238`의 CI 4개 성공 확인. 이 변경의 원격 CI는 저장 후 확인하며 최신 PR HEAD Checks를 우선합니다. main 병합·공개 배포 없음.
+- 상태: **Liquid Glass 2차 소재 고도화 시작 체크포인트**. 기준 f52d48c의 CI 4개 성공 및 깨끗한 작업 트리 확인. 기존 구조/기능 보존, 같은 Draft PR #52, main 병합·공개 배포 금지.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
 - 동일 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/52
 - 현재 환경 작업 경로: `/workspace/fromm-viewer-glowme`
-- 직전 안전 저장 커밋: `ea3c238469c077b0a4249bd3a898ff24c7eb7700` (투명 로고/캐시 갱신 체크포인트, CI 4개 통과).
+- 직전 안전 저장 커밋: `f52d48c975d5a2ef7ffb56ca999cb7b99a353da1` (3개 영역 분리/중복 투표 정리, CI 4개 통과).
 - 이 문서를 포함한 최신 체크포인트 SHA: `git log -1 --format=%H -- docs/PWA_GLOWME_HANDOFF.md`로 확인. 자기 SHA를 넣는 순환 커밋은 만들지 않습니다. 실제 branch HEAD와 문서 커밋을 함께 확인하세요.
 - PR #50/#51/#11, main 및 기존 worktree는 보존했습니다. Hooks/Native/확장프로그램 변경 없음.
 
@@ -194,3 +194,15 @@
 - 화면 증거: `/tmp/fromm-separated-checked/` (실제 Chromium), `/tmp/fromm-separated-comparison/` (같은 크기의 전후 PNG·JSON·comparison.html). 이 내부 HTML 경로는 사용자 공개 링크가 아님. 채팅에 PNG를 직접 표시하거나 최신 성공 CI의 스크린샷 artifact를 제공할 것.
 - 보존 확인: 이 단계의 `index.html`, Native, 확장, LIVE 보조 JS, manifest/SW/PWA JS 및 artwork는 ea3c238와 동일. 인증·수신·재생·화질·다운로드 핵심 변경 없음. Hooks 변경 없음.
 - 다음 작업: 현재 체크포인트 SHA와 PR #52 HEAD 일치 확인 → 새 CI 4개 결과 확인. 성공한 로컬 검사는 새 오류가 없는 한 반복하지 않음. 실제 Chrome OS 설치·Fromm 인증 스트림/실방송/Native·물리 모바일/iOS는 미검증 유지.
+
+
+### Liquid Glass 2차 — 시작 / 2026-10-31 KST
+
+- 최신 GitHub PR #52 OPEN/Draft, head f52d48c, CI 4개 SUCCESS. main 82e41b0, 기존 branch와 원격 일치(0/0), 미커밋 변경 없음. 같은 브랜치에서 계속 작업하며 main을 합치거나 재설정하지 않음.
+- ZIP 원본 및 추출 시안 재사용 가능: `/tmp/fromm-liquid-reference/01_UI_References/03_ChromeApp_Visual_Target.png`, `/tmp/fromm-glowme-package/`. 이번 메시지의 추가 시안은 가장 우선하는 **재질** 기준이며 가상 내용·메뉴·레이아웃은 복제하지 않음.
+- 비교 분석: 현재 탭 바 #ffffffeb, 검색 패널 #ffffffed 계열은 거의 불투명. 약한 1px 광택/균일한 민트 그라데이션 때문에 두꺼운 유리 가장자리·휘어진 반사광·패널 깊이감이 부족. 헤더의 광학 이미지도 밝은 veil에 눌려 물결 색과 굴절 대비가 약함.
+- 구현 계획: 기존 독창적 liquid-header.webp 재사용을 우선하고 표면/내부 경계/곡면 반사를 함께 조정. 헤더 강함, 탭 바·사이드바 중~강함, 검색·달력은 읽기 쉬운 조용한 중심, 선택 버튼만 강한 유리 캡슐. 필요할 경우에만 추가 정적 소재 사용. JS/레이아웃/기능은 변경하지 않음.
+- 성능 주의: 앞 단계의 큰 고정 패널 backdrop-filter 때문에 16.7→33.3ms 악화한 기록 있음. 고정 패널/검색의 blur:none 및 좁은 웹 사이드바 2px 유지. 새 반복 애니메이션/Canvas/WebGL/실시간 왜곡 금지. 반사광은 영상/대화 위에 덮지 않음.
+- 보존: 12px/8px 영역 간격, 독립 웹 서랍, 설치 앱 3단/햄버거 숨김, 중간 투표/사이드바 중복 제거, 로고 투명 배경, 재생 검정 면/컨트롤/PiP/회전/품질/다운로드 및 인증·Native·확장·Hooks.
+- 다음 순서: 소재 CSS 1차 → 동일 크기 f52d48c 전후 Chromium 캡처(웹1440/모바일390/가로 Channel844×390/모의 앱1440/확대) → 실제 시각 검토/조정 → 가독성·성능 각3회/회귀 → 단계 커밋/동일 PR CI 확인.
+- 현재 새 CSS/자산 수정은 아직 없음. 테스트는 기준 f52d48c의 통과 기록을 재사용하고, 변경 후 필요한 범위만 재실행. 실제 Chrome 설치/실방송/Native·실물 모바일·iOS는 기존 미검증.

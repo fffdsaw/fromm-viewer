@@ -165,3 +165,113 @@
 @media(prefers-reduced-motion:reduce) {
   .glowme :is(.pill,.btn,.room,.glowme-nav button,.sidebar-toggle-btn span) {transition:none;}
 }
+
+/* Liquid Glass: static refracted material + separate inner/outer optical rims.
+   These layers never cover text, capture input, animate, or filter video pixels. */
+.glowme {
+  --liquid-face:
+    radial-gradient(ellipse 32% 50% at 22% 0%,#fffffffa 0%,#ffffffb3 20%,#ffffff00 72%),
+    radial-gradient(ellipse 65% 44% at 72% 112%,#ffffffed 10%,#ffffff61 45%,#ffffff00 78%),
+    linear-gradient(162deg,#e3fff9b8 4%,#abf1e7b5 42%,#9aebe4b3 72%,#d9fff6db 100%);
+  --liquid-button-rim:inset 0 1px 1px #fff,inset 2px 0 3px #ffffffb3,
+    inset -1px 0 2px #218b943d,inset 0 -2px 2px #ffffffd1,
+    0 2px 5px #258f9624;
+}
+.glowme body {
+  background:
+    radial-gradient(ellipse at 2% 12%,#aeece44d,transparent 35%),
+    radial-gradient(ellipse at 92% 4%,#a9e5f24a,transparent 44%),
+    linear-gradient(105deg,#dff9f5,#f8fefd 40%,#f5fdfd 66%,#dff6f4);
+  background-attachment:fixed;
+}
+.glowme .viewer-header {
+  background:#e5fbf5c4;border-color:#85cfcf;
+  box-shadow:inset 0 1px 1px #fff,inset 1px 0 2px #fff,
+    inset -1px 0 1px #248e9d40,inset 0 -2px 2px #ffffffc9,
+    0 4px 6px #39a3a514,0 14px 30px #409b9f12;
+}
+.glowme .topbar {
+  position:relative;isolation:isolate;border-radius:17px 17px 0 0;
+  background:#c7f8ee;
+}
+.glowme .topbar::before {
+  content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;
+  pointer-events:none;
+  background-image:linear-gradient(95deg,#f6fffef5 0%,#effffedb 20%,#ccfff78c 48%,#b5f8ee9e 100%),
+    url("assets/glowme/liquid-header.webp");
+  background-size:cover;background-position:center 52%;
+}
+.glowme .topbar::after {
+  content:"";position:absolute;inset:2px;z-index:-1;border-radius:15px 15px 0 0;
+  pointer-events:none;border:1px solid #ffffffb3;border-bottom:0;
+  background:linear-gradient(169deg,#ffffff94 0%,#ffffff00 22% 74%,#c3fff56b 94%,#ffffffbb 100%);
+  box-shadow:inset 0 2px 4px #ffffff6b,inset -2px 0 3px #ffffffb5;
+}
+.glowme .toolbar {background:#ffffffeb;border-top-color:#84cfc878;box-shadow:inset 0 1px 0 #fff;}
+.glowme #scanState {color:#35545e!important;}
+.glowme #sidebar {
+  isolation:isolate;border-color:#80c9c9;
+  background:linear-gradient(112deg,#ffffffc9 0%,#edfffbaa 28%,#ddfaf280 72%,#9ce4de94 100%);
+  box-shadow:inset 1px 1px 1px #fff,inset 4px 0 5px #f5ffffe8,
+    inset -2px 0 1px #2e929b5c,inset -7px 0 9px #a4f0df85,
+    inset 0 -3px 3px #ffffffc7,0 5px 8px #399fa017,0 16px 36px #348e971a;
+  backdrop-filter:blur(12px) saturate(1.12);-webkit-backdrop-filter:blur(12px) saturate(1.12);
+}
+.glowme #sidebar::before {
+  content:"";position:absolute;inset:3px;z-index:-1;border-radius:inherit;
+  border:1px solid #ffffffe0;box-shadow:inset -1px 0 2px #ffffffb3;
+  pointer-events:none;
+}
+.glowme #sidebar::after {
+  content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(ellipse 110% 30% at -8% -5%,#ffffffb5 8%,#ffffff00 66%),
+    radial-gradient(ellipse 110% 48% at 128% 92%,#72dcd542,#ffffff00 68%);
+}
+/* The dimmer belongs outside a clear drawer, not behind the glass itself. */
+.glowme .sidebar-backdrop {clip-path:inset(0 0 0 min(284px,88vw));}
+.glowme :is(.pill.active,.room.active,.date-picker-btn.active,.replay-filter.active,.live-center-tab.active),
+.glowme-nav button[aria-current="page"] {
+  background:var(--liquid-face);border-color:#75c8c5;box-shadow:var(--liquid-button-rim);
+  color:#164f58;
+}
+.glowme .room.active,.glowme-nav button[aria-current="page"] {border-radius:24px;}
+.glowme #dateJumpBtn {background:var(--liquid-face);border-color:#89ceca;box-shadow:var(--liquid-button-rim);}
+.glowme :is(.token-life-wrap,.logout-mini-btn,.reload-btn,.header-live-btn) {
+  background:var(--liquid-face)!important;border-color:#88cfcd!important;
+  box-shadow:var(--liquid-button-rim);
+}
+.glowme .sidebar-toggle-btn,.glowme .sidebar-toggle-btn:hover,.glowme .sidebar-toggle-btn:focus-visible {
+  background:radial-gradient(ellipse at 29% 9%,#fffffffa 0%,#ffffff63 30%,#ffffff00 52%),
+    linear-gradient(145deg,#f5ffffbf,#c3f5eaa6 62%,#effffad6)!important;
+  border-color:#78c8c8!important;
+  box-shadow:inset 0 2px 3px #fff,inset 2px 0 2px #ffffffdb,
+    inset -2px -1px 3px #369ea84a,inset 0 -3px 2px #fff,
+    0 3px 8px #348f9b21;
+}
+.glowme #chatToolsPanel {
+  background:linear-gradient(110deg,#ffffffed,#f3fffbf2 65%,#e8f9f5ed);
+  border-color:#a1d5d3;
+  box-shadow:inset 1px 1px 1px #fff,inset -2px 0 3px #d6f4ed,
+    inset 0 -2px 2px #fff,0 10px 26px #368b9717;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.glowme[data-glow-layout="pinned"] #chatToolsPanel {
+  box-shadow:inset 1px 1px 1px #fff,inset -2px 0 3px #c4ebe3,
+    inset 0 -2px 2px #fff,0 8px 24px #368b9714;
+}
+/* Plain reading/entry surfaces anchor the more expressive surrounding glass. */
+.glowme .chat-tools-row input[type="search"],.glowme .date-calendar {background:#fbfefd;}
+.glowme .date-day.selected {background:var(--liquid-face);box-shadow:inset 0 1px 2px #fff;border:1px solid #89ceca;}
+.glowme .bubble {background:#f6fafcf5;box-shadow:0 1px 2px #3b7c8212;}
+@media(max-width:700px) {
+  .glowme .topbar {border-radius:13px 13px 0 0;}
+  .glowme .topbar::before {background-position:58% 52%;}
+  .glowme .topbar::after {border-radius:11px 11px 0 0;}
+}
+@media(prefers-reduced-transparency:reduce) {
+  .glowme #sidebar,.glowme #chatToolsPanel {backdrop-filter:none;-webkit-backdrop-filter:none;background:#f3fbf8;}
+  .glowme .topbar::before {background:#dcf6ee;}
+}
+@media(forced-colors:active) {
+  .glowme .topbar::before,.glowme .topbar::after,.glowme #sidebar::before,.glowme #sidebar::after {display:none;}
+}

@@ -7,7 +7,7 @@ const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),out=process.env.GLOWME_SCREENSHOT_DIR;
 const reports=[],errors=[];
 const audits=[];
-const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.png':'image/png','.webmanifest':'application/manifest+json'};
+const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.png':'image/png','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),rel=decodeURIComponent(url.pathname).replace(/^\/fromm-viewer\//,'');
  const file=path.resolve(root,rel||'index.html');

@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['glowme.css', 'web-glowme.js', 'web-pwa.js', 'sw.js', 'manifest.webmanifest', 'assets/glowme/**', 'test/glowme*.cjs', 'test/pwa*.cjs', 'test/helpers/shell-assets.cjs', 'index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['glowme.css', 'web-glowme.js', 'web-pwa.js', 'sw.js', 'manifest.webmanifest', 'assets/glowme/**', 'test/glowme*.cjs', 'test/liquid-glass*.cjs', 'test/pwa*.cjs', 'test/helpers/shell-assets.cjs', 'index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -47,8 +47,10 @@ jobs:
           UI_ICON_SCREENSHOT_DIR: screenshots
           QUALITY_SCREENSHOT_DIR: screenshots
           GLOWME_SCREENSHOT_DIR: screenshots/glowme
+          LIQUID_SCREENSHOT_DIR: screenshots/liquid-glass
         run: |
           node test/glowme.browser.cjs
+          node test/liquid-glass.browser.cjs
           node test/ui-icons.browser.cjs
           node test/video-list-autoload.browser.cjs
           node test/channel-videos.browser.cjs

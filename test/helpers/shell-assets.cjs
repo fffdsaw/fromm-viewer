@@ -13,8 +13,8 @@ module.exports=async page=>{
   const url=new URL(route.request().url());
   if(!['viewer.test','localhost','127.0.0.1'].includes(url.hostname))return route.fallback();
   const file=url.pathname.replace(/^\/fromm-viewer\//,'').replace(/^\//,'');
-  if(!['glowme.css','web-glowme.js','web-pwa.js','manifest.webmanifest'].includes(file)&&!/^assets\/glowme\/[a-z0-9-]+\.png$/.test(file))return route.fallback();
-  const type=file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':file.endsWith('.png')?'image/png':'application/manifest+json';
+  if(!['glowme.css','web-glowme.js','web-pwa.js','manifest.webmanifest'].includes(file)&&!/^assets\/glowme\/[a-z0-9-]+\.(png|webp)$/.test(file))return route.fallback();
+  const type=file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':file.endsWith('.png')?'image/png':file.endsWith('.webp')?'image/webp':'application/manifest+json';
   return route.fulfill({contentType:type,body:fs.readFileSync(path.join(root,file))});
  });
 };

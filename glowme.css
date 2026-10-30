@@ -316,10 +316,13 @@
   .glowme :is(.pill,.room,.glowme-nav button,.chat-tools-btn,.replay-page-download,.replay-page-back,#dateJumpBtn,.logout-mini-btn,.reload-btn) {transition:none;}
 }
 @media(prefers-reduced-transparency:reduce) {
+  .glowme {--liquid-face:linear-gradient(165deg,#f6fffd,#c7eee6);}
   .glowme #sidebar,.glowme #chatToolsPanel,.glowme .toolbar {backdrop-filter:none;-webkit-backdrop-filter:none;background:#f3fbf8;}
   .glowme .topbar::before {background:#dcf6ee;}
   .glowme #sidebar::after {background:none;}
 }
 @media(forced-colors:active) {
+  .glowme {--liquid-button-rim:none;--liquid-panel-rim:none;}
+  .glowme .topbar,.glowme .toolbar,.glowme #sidebar,.glowme #chatToolsPanel {background:Canvas;border-color:CanvasText;}
   .glowme .topbar::before,.glowme .topbar::after,.glowme .toolbar::before,.glowme #sidebar::before,.glowme #sidebar::after,.glowme #chatToolsPanel::before {display:none;}
 }

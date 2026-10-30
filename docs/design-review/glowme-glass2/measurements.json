@@ -1,0 +1,1319 @@
+{
+  "reports": [
+    {
+      "scene": "web",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          1386,
+          162
+        ],
+        "top": [
+          22,
+          12,
+          1386,
+          88
+        ],
+        "middle": [
+          22,
+          112,
+          1386,
+          62
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          900
+        ],
+        "content": [
+          275,
+          186,
+          880,
+          10387.06
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          37,
+          33,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 1
+    },
+    {
+      "scene": "web",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          1386,
+          162
+        ],
+        "top": [
+          22,
+          12,
+          1386,
+          88
+        ],
+        "middle": [
+          22,
+          112,
+          1386,
+          62
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          900
+        ],
+        "content": [
+          275,
+          186,
+          880,
+          10387.06
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          37,
+          33,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 2
+    },
+    {
+      "scene": "app",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          278,
+          12,
+          1130,
+          154
+        ],
+        "top": [
+          278,
+          12,
+          1130,
+          88
+        ],
+        "middle": [
+          278,
+          112,
+          1130,
+          54
+        ],
+        "sidebar": [
+          12,
+          12,
+          244,
+          876
+        ],
+        "content": [
+          278,
+          178,
+          792,
+          10387.06
+        ],
+        "search": [
+          1092,
+          178,
+          316,
+          710
+        ],
+        "toggle": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 1
+    },
+    {
+      "scene": "app",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          278,
+          12,
+          1130,
+          154
+        ],
+        "top": [
+          278,
+          12,
+          1130,
+          88
+        ],
+        "middle": [
+          278,
+          112,
+          1130,
+          54
+        ],
+        "sidebar": [
+          12,
+          12,
+          244,
+          876
+        ],
+        "content": [
+          278,
+          178,
+          792,
+          10387.06
+        ],
+        "search": [
+          1092,
+          178,
+          316,
+          710
+        ],
+        "toggle": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 2
+    },
+    {
+      "scene": "mobile",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          8,
+          8,
+          364,
+          194
+        ],
+        "top": [
+          8,
+          8,
+          364,
+          62
+        ],
+        "middle": [
+          8,
+          78,
+          364,
+          124
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          844
+        ],
+        "content": [
+          8,
+          210,
+          364,
+          10412.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          17,
+          17,
+          46,
+          44
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 1
+    },
+    {
+      "scene": "mobile",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          8,
+          8,
+          364,
+          194
+        ],
+        "top": [
+          8,
+          8,
+          364,
+          62
+        ],
+        "middle": [
+          8,
+          78,
+          364,
+          124
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          844
+        ],
+        "content": [
+          8,
+          210,
+          364,
+          10412.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          17,
+          17,
+          46,
+          44
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 2
+    },
+    {
+      "scene": "narrow",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          8,
+          8,
+          294,
+          234
+        ],
+        "top": [
+          8,
+          8,
+          294,
+          62
+        ],
+        "middle": [
+          8,
+          78,
+          294,
+          164
+        ],
+        "sidebar": [
+          -295.67,
+          0,
+          281.59,
+          740
+        ],
+        "content": [
+          8,
+          250,
+          294,
+          10628.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          17,
+          17,
+          46,
+          44
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 1
+    },
+    {
+      "scene": "narrow",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          8,
+          8,
+          294,
+          234
+        ],
+        "top": [
+          8,
+          8,
+          294,
+          62
+        ],
+        "middle": [
+          8,
+          78,
+          294,
+          164
+        ],
+        "sidebar": [
+          -295.67,
+          0,
+          281.59,
+          740
+        ],
+        "content": [
+          8,
+          250,
+          294,
+          10628.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          17,
+          17,
+          46,
+          44
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 2
+    },
+    {
+      "scene": "landscape",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          790,
+          211
+        ],
+        "top": [
+          22,
+          12,
+          790,
+          88
+        ],
+        "middle": [
+          22,
+          112,
+          790,
+          111
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          390
+        ],
+        "content": [
+          22,
+          235,
+          790,
+          10617.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          37,
+          33,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 1
+    },
+    {
+      "scene": "landscape",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          790,
+          211
+        ],
+        "top": [
+          22,
+          12,
+          790,
+          88
+        ],
+        "middle": [
+          22,
+          112,
+          790,
+          111
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          390
+        ],
+        "content": [
+          22,
+          235,
+          790,
+          10617.69
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          37,
+          33,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": null,
+      "materialRequests": 2
+    },
+    {
+      "scene": "channel-landscape",
+      "variant": "before",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          790,
+          122
+        ],
+        "top": [
+          22,
+          12,
+          790,
+          58
+        ],
+        "middle": [
+          22,
+          82,
+          790,
+          52
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          390
+        ],
+        "content": [
+          22,
+          140,
+          790,
+          238
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          31,
+          18,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": {
+        "video": {
+          "x": 23,
+          "y": 187.390625,
+          "right": 811,
+          "bottom": 377,
+          "width": 788,
+          "height": 189.609375
+        },
+        "stage": {
+          "x": 22,
+          "y": 187.390625,
+          "right": 812,
+          "bottom": 378,
+          "width": 790,
+          "height": 190.609375
+        },
+        "controls": {
+          "x": 23,
+          "y": 187.390625,
+          "right": 811,
+          "bottom": 377,
+          "width": 788,
+          "height": 189.609375
+        },
+        "intrinsic": [
+          640,
+          360
+        ],
+        "fit": "contain",
+        "background": "rgb(8, 11, 16)"
+      },
+      "materialRequests": 1
+    },
+    {
+      "scene": "channel-landscape",
+      "variant": "after",
+      "geometry": {
+        "header": [
+          22,
+          12,
+          790,
+          122
+        ],
+        "top": [
+          22,
+          12,
+          790,
+          58
+        ],
+        "middle": [
+          22,
+          82,
+          790,
+          52
+        ],
+        "sidebar": [
+          -298.2,
+          0,
+          284,
+          390
+        ],
+        "content": [
+          22,
+          140,
+          790,
+          238
+        ],
+        "search": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "toggle": [
+          31,
+          18,
+          46,
+          46
+        ],
+        "overflow": false
+      },
+      "player": {
+        "video": {
+          "x": 23,
+          "y": 187.390625,
+          "right": 811,
+          "bottom": 377,
+          "width": 788,
+          "height": 189.609375
+        },
+        "stage": {
+          "x": 22,
+          "y": 187.390625,
+          "right": 812,
+          "bottom": 378,
+          "width": 790,
+          "height": 190.609375
+        },
+        "controls": {
+          "x": 23,
+          "y": 187.390625,
+          "right": 811,
+          "bottom": 377,
+          "width": 788,
+          "height": 189.609375
+        },
+        "intrinsic": [
+          640,
+          360
+        ],
+        "fit": "contain",
+        "background": "rgb(8, 11, 16)"
+      },
+      "materialRequests": 2
+    }
+  ],
+  "benchmarks": [
+    {
+      "scene": "web",
+      "variant": "before",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.9322128295898438,
+          "layoutMs": 13.07,
+          "styleMs": 8.77,
+          "nodes": 2174
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 2.9918479919433594,
+          "layoutMs": 7.965000000000002,
+          "styleMs": 7.214999999999999,
+          "nodes": 2174
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.052154541015625,
+          "layoutMs": 7.979,
+          "styleMs": 7.056,
+          "nodes": 2174
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.799999999999272,
+      "heapMiB": 2.9918479919433594
+    },
+    {
+      "scene": "web-panels",
+      "variant": "before",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.2316665649414062,
+          "layoutMs": 8.417,
+          "styleMs": 15.585999999999999,
+          "nodes": 2283
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.2927818298339844,
+          "layoutMs": 9.593000000000002,
+          "styleMs": 14.166000000000002,
+          "nodes": 2283
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.4096412658691406,
+          "layoutMs": 9.847999999999999,
+          "styleMs": 13.795999999999996,
+          "nodes": 2283
+        }
+      ],
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.700000000000728,
+      "heapMiB": 3.2927818298339844
+    },
+    {
+      "scene": "web",
+      "variant": "after",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.9896240234375,
+          "layoutMs": 9.357000000000001,
+          "styleMs": 8.651000000000002,
+          "nodes": 2176
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.799999999999727,
+          "heapMiB": 3.054065704345703,
+          "layoutMs": 7.584999999999998,
+          "styleMs": 8.422,
+          "nodes": 2176
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.1136016845703125,
+          "layoutMs": 8.009000000000002,
+          "styleMs": 8.426,
+          "nodes": 2176
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000728,
+      "heapMiB": 3.054065704345703
+    },
+    {
+      "scene": "web-panels",
+      "variant": "after",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 3.307598114013672,
+          "layoutMs": 8.103000000000002,
+          "styleMs": 15.966999999999999,
+          "nodes": 2286
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.3685874938964844,
+          "layoutMs": 10.663,
+          "styleMs": 20.339,
+          "nodes": 2286
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.485454559326172,
+          "layoutMs": 13.863999999999997,
+          "styleMs": 21.958000000000006,
+          "nodes": 2286
+        }
+      ],
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.799999999999272,
+      "heapMiB": 3.3685874938964844
+    },
+    {
+      "scene": "app",
+      "variant": "before",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.8010597229003906,
+          "layoutMs": 11.313,
+          "styleMs": 17.511,
+          "nodes": 2079
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.860179901123047,
+          "layoutMs": 8.866999999999999,
+          "styleMs": 12.624,
+          "nodes": 2079
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 2.91845703125,
+          "layoutMs": 7.237,
+          "styleMs": 12.446000000000002,
+          "nodes": 2079
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000273,
+      "heapMiB": 2.860179901123047
+    },
+    {
+      "scene": "app",
+      "variant": "after",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 2.8740234375,
+          "layoutMs": 9.473,
+          "styleMs": 17.589000000000002,
+          "nodes": 2084
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 2.933025360107422,
+          "layoutMs": 7.901,
+          "styleMs": 13.676,
+          "nodes": 2084
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 2.9925918579101562,
+          "layoutMs": 8.08,
+          "styleMs": 18.054000000000002,
+          "nodes": 2084
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.800000000000182,
+      "heapMiB": 2.933025360107422
+    },
+    {
+      "scene": "mobile",
+      "variant": "before",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999932,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.923187255859375,
+          "layoutMs": 10.799,
+          "styleMs": 7.82,
+          "nodes": 2186
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 2.9828224182128906,
+          "layoutMs": 6.882,
+          "styleMs": 7.412,
+          "nodes": 2186
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.0431289672851562,
+          "layoutMs": 7.870000000000002,
+          "styleMs": 7.270999999999998,
+          "nodes": 2186
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.799999999999272,
+      "heapMiB": 2.9828224182128906
+    },
+    {
+      "scene": "mobile-panels",
+      "variant": "before",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.2229995727539062,
+          "layoutMs": 8.706,
+          "styleMs": 14.578000000000001,
+          "nodes": 2295
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.2839202880859375,
+          "layoutMs": 9.443999999999999,
+          "styleMs": 12.517999999999997,
+          "nodes": 2295
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.40087890625,
+          "layoutMs": 9.063000000000002,
+          "styleMs": 13.259000000000004,
+          "nodes": 2295
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000728,
+      "heapMiB": 3.2839202880859375
+    },
+    {
+      "scene": "mobile",
+      "variant": "after",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 2.9859237670898438,
+          "layoutMs": 12.05,
+          "styleMs": 8.139999999999999,
+          "nodes": 2189
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.700000000000273,
+          "heapMiB": 3.050067901611328,
+          "layoutMs": 10.399000000000001,
+          "styleMs": 10.193,
+          "nodes": 2189
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.800000000000182,
+          "heapMiB": 3.1099815368652344,
+          "layoutMs": 6.8870000000000005,
+          "styleMs": 7.419000000000002,
+          "nodes": 2189
+        }
+      ],
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000273,
+      "heapMiB": 3.050067901611328
+    },
+    {
+      "scene": "mobile-panels",
+      "variant": "after",
+      "runs": [
+        {
+          "run": 1,
+          "medianFrameMs": 16.699999999999818,
+          "p95FrameMs": 16.799999999999272,
+          "heapMiB": 3.3267250061035156,
+          "layoutMs": 8.637,
+          "styleMs": 18.41,
+          "nodes": 2299
+        },
+        {
+          "run": 2,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.3880348205566406,
+          "layoutMs": 8.992999999999999,
+          "styleMs": 15.198,
+          "nodes": 2299
+        },
+        {
+          "run": 3,
+          "medianFrameMs": 16.69999999999891,
+          "p95FrameMs": 16.700000000000728,
+          "heapMiB": 3.5048789978027344,
+          "layoutMs": 9.148,
+          "styleMs": 13.641,
+          "nodes": 2299
+        }
+      ],
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.700000000000728,
+      "heapMiB": 3.3880348205566406
+    }
+  ],
+  "audits": [
+    {
+      "scene": "web",
+      "contrast": [
+        {
+          "selector": ".header-live-btn span:last-child",
+          "minContrast": 6.55
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 6.52
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.77
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.66
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.44
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.25
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 6.45
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 13.24
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 12.94
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 9.84
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 11.79
+        },
+        {
+          "selector": ".chat-tools-title",
+          "minContrast": 13.6
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.95
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.87
+        },
+        {
+          "selector": "#dateCalendarTitle",
+          "minContrast": 9.4
+        },
+        {
+          "selector": "#chatSearchInput",
+          "minContrast": 4.92
+        }
+      ]
+    },
+    {
+      "scene": "app",
+      "contrast": [
+        {
+          "selector": "#artistTitle",
+          "minContrast": 12.9
+        },
+        {
+          "selector": "#scanState",
+          "minContrast": 7.53
+        },
+        {
+          "selector": ".header-live-btn span:last-child",
+          "minContrast": 6.47
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 6.43
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.75
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.83
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.66
+        },
+        {
+          "selector": ".glowme-nav button span",
+          "minContrast": 9.52
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 6.32
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 13.34
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 13.08
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 12.92
+        },
+        {
+          "selector": ".fixture-room-name",
+          "minContrast": 12.04
+        },
+        {
+          "selector": ".chat-tools-title",
+          "minContrast": 13.67
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.95
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.89
+        },
+        {
+          "selector": "#dateCalendarTitle",
+          "minContrast": 9.4
+        },
+        {
+          "selector": "#chatSearchInput",
+          "minContrast": 4.92
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.48
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.48
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        }
+      ]
+    },
+    {
+      "scene": "mobile",
+      "contrast": [
+        {
+          "selector": ".chat-tools-title",
+          "minContrast": 13.6
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.9
+        },
+        {
+          "selector": ".chat-tools-label",
+          "minContrast": 5.87
+        },
+        {
+          "selector": "#dateCalendarTitle",
+          "minContrast": 9.4
+        },
+        {
+          "selector": "#chatSearchInput",
+          "minContrast": 4.92
+        }
+      ]
+    },
+    {
+      "scene": "narrow",
+      "contrast": [
+        {
+          "selector": "#artistTitle",
+          "minContrast": 8.41
+        },
+        {
+          "selector": "#scanState",
+          "minContrast": 4.87
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.48
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.48
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.51
+        }
+      ]
+    },
+    {
+      "scene": "landscape",
+      "contrast": [
+        {
+          "selector": "#artistTitle",
+          "minContrast": 12.2
+        },
+        {
+          "selector": ".header-live-btn span:last-child",
+          "minContrast": 6.34
+        },
+        {
+          "selector": ".bubble .text",
+          "minContrast": 13.48
+        }
+      ]
+    },
+    {
+      "scene": "channel-landscape",
+      "contrast": [
+        {
+          "selector": "#artistTitle",
+          "minContrast": 12.49
+        },
+        {
+          "selector": ".header-live-btn span:last-child",
+          "minContrast": 6.28
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "file": "liquid-header.webp",
+      "bytes": 61810
+    },
+    {
+      "file": "liquid-reflections.webp",
+      "bytes": 41986
+    }
+  ],
+  "assetBytes": 103796
+}

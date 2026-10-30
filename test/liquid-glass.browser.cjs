@@ -222,6 +222,12 @@ async function benchmark(page,cdp){
      assert.ok(material.toolbar.includes('liquid-reflections.webp'),'toolbar uses the shared quiet optical material');
      assert.equal(material.search,'none','no large search-panel blur');
      if(scene.width>=1000)assert.equal(material.sidebar,'none','no large fixed/drawer blur');
+     if(scene.installed){
+      await page.emulateMedia({forcedColors:'active'});
+      const surfaces=await page.locator('.topbar,.toolbar,#sidebar,#chatToolsPanel').evaluateAll(els=>els.map(el=>({image:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow})));
+      for(const surface of surfaces){assert.equal(surface.image,'none','high-contrast mode removes decorative water');assert.equal(surface.shadow,'none');}
+      await page.emulateMedia({forcedColors:'none'});
+     }
      if(!scene.player){
      await page.evaluate(()=>{setSidebarOpen(false);closeChatToolsPanel();});
      await page.locator('.toolbar [data-filter="vote"]').click();

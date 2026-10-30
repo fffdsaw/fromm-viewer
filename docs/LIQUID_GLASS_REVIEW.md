@@ -71,3 +71,8 @@
 - 실제 Chromium PNG를 직접 검토: 웹/모의 설치 앱 1440×900, 모바일 390×844, 좁은 320×740, 가로 844×390. 같은 크기의 전후 PNG와 comparison.html은 최신 CI artifact의 liquid-glass 디렉터리에서 함께 열기. 내부 /tmp HTML 링크를 공개 사이트 링크로 안내하지 않음.
 - Node 277/277, Glow ME 셸/PWA/SW/axe, Replay/Channel MP4 각 12개 뷰포트, 설정창/회전/페이드/재생 상태 검사 통과. 짧은 가로 합성 stage의 가려진 hover 좌표는 실제 노출 지점으로 검사해 해결.
 - 이 단계 생산 코드 변경은 CSS와 presentation 셸 JS뿐. 기존 재생·인증·다운로드·Native/확장/PWA 캐시·로고 자산은 ea3c238와 동일. 실기/실방송 미검증과 main 병합·배포 금지 유지. 최종 원격 CI 상태는 PR #52 HEAD Checks 확인.
+
+
+## 2차 소재 고도화
+
+f52d48c 이후의 최신 재질 개선·실제 전후 원본 스크린샷·성능/메모리/대비 수치는 [Liquid Glass 2차 검토](LIQUID_GLASS_ROUND2_REVIEW.md)를 참고하세요. 레이아웃·기능은 유지하고 CSS와 추가 41,986-byte 정적 반사 소재만 변경했습니다. 1차/영역분리 시점의 기록과 최신 수치를 혼동하지 마세요. 최종 CI는 PR #52 HEAD Checks가 기준입니다.

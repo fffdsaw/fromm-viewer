@@ -2,13 +2,13 @@
 
 ## 현재 상태 / 마지막 저장
 
-- 상태: **Liquid Glass 2차 소재 고도화 시작 체크포인트**. 기준 f52d48c의 CI 4개 성공 및 깨끗한 작업 트리 확인. 기존 구조/기능 보존, 같은 Draft PR #52, main 병합·공개 배포 금지.
+- 상태: **Liquid Glass 2차 시각 개선·로컬 검증 완료 / 최종 CI 확인 단계**. f52d48c 기준 레이아웃/기능 보존, 실제 전후 캡처·각3회 성능·가독성·PWA/셸·고대비 검사 통과. 같은 Draft PR #52, main 병합·공개 배포 없음. 최종 CI 결과는 PR HEAD Checks/설명을 우선.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
 - 동일 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/52
 - 현재 환경 작업 경로: `/workspace/fromm-viewer-glowme`
-- 직전 안전 저장 커밋: `f52d48c975d5a2ef7ffb56ca999cb7b99a353da1` (3개 영역 분리/중복 투표 정리, CI 4개 통과).
+- 직전 안전 저장 커밋: `f9f4aa89324147d45b796fad77a7deaa43a48a37` (2차 광학 재료 WIP, Node277·개별 미리보기 통과; 이 체크포인트에서 전체 로컬 검증 완료). 기준 f52d48c의 CI 4개 성공 기록 유지.
 - 이 문서를 포함한 최신 체크포인트 SHA: `git log -1 --format=%H -- docs/PWA_GLOWME_HANDOFF.md`로 확인. 자기 SHA를 넣는 순환 커밋은 만들지 않습니다. 실제 branch HEAD와 문서 커밋을 함께 확인하세요.
 - PR #50/#51/#11, main 및 기존 worktree는 보존했습니다. Hooks/Native/확장프로그램 변경 없음.
 
@@ -218,3 +218,16 @@
 - `test/helpers/liquid-glass-report.cjs`: f52d48c 전후, 실제 Channel 844×390 및 헤더/탭/버튼 원본 확대 비교 항목 추가. PNG 실제 크기를 읽어 확대 자료 비율을 왜곡하지 않음.
 - 현재 증거: `/tmp/fromm-glass2-round1/`(폐기 1차), `/tmp/fromm-glass2-round2/`(PC/모바일2차), `/tmp/fromm-glass2-channel-review/`(실제 844×390 Channel 전후). 내부 HTML 링크를 공개 링크로 안내하지 않음.
 - **WIP**: 새 CSS의 전체 Node/PWA/axe/회귀, 전후3회 성능/메모리 최종 측정 및 CI는 아직 진행 전. 개별 미리보기 통과를 전체 검증 완료로 보지 말 것. 다음 세션은 이 CSS/자산을 덮지 말고 전체 비교/회귀부터 진행.
+
+
+### Liquid Glass 2차 — 최종 시각·로컬 검증 체크포인트
+
+- 구현 완료: 헤더 아쿠아/곡면 모서리 광택, 중간 탭 바의 조용한 광학 반사/이중 림, 사이드바·검색의 깊이감, 선택 탭/메뉴·날짜·검색·다운로드 유리 캡슐, 일반 탭·본문·입력은 조용하게 유지. 레이아웃·12px/8px 간격·투표 위치·투명 로고·PWA 구조 유지. 물리 기반 실시간 굴절 엔진이 아니라 정적 소재/CSS 근사.
+- 소재 최종 검토: f52d48c 동일 상태와 크기의 웹1440, 앱 배치1440, 모바일390, 좁은320, 가로844, **실제 MP4 Channel844×390** 전후 캡처. Channel 영상/컨트롤/검정 면 경계 좌표 모두 동일, 같은1초 프레임. 열린 좌/우 패널과 원본 해상도의 헤더·탭/선택 버튼 확대도 확인. 1차 거친 물결 확대를 폐기하고 조용한 41,986-byte 새 재료를 적용해 최종 조정.
+- 고대비/축소 설정: forced-colors에서는 패널 장식/그림자를 제거하고 시스템 Canvas/CanvasText 사용. 모의 고정 앱 실제 스타일 검사 통과. prefers-reduced-transparency는 불투명한 표면으로 전환, prefers-reduced-motion은 버튼 전환 제거. 일반 상태의 기존 한정 blur 정책은 유지.
+- 로컬 최종 명령/결과: `node --test test/*.test.cjs native-live/test/*.test.cjs` 277/277 PASS, skip0(AGORA_TYPES_PATH 제공); `node test/glowme.browser.cjs` 웹320/390/844/1440·독립 패널/고정 토글·모의 앱 넓음/좁음·실제 HTTP SW/PWA·axe PASS; `node test/liquid-glass.browser.cjs` 6개 화면 전후 주요 컨테이너 좌표 동일성·실제 Channel1초 프레임/contain/컨트롤·장식예산·대형blur없음·대비 PASS. 마지막 고대비 fallback 추가 후 app 한정 비교/고대비 검사를 재실행 PASS(일반 스타일 측정에 영향 없음).
+- 전후 성능은 다른 로컬 브라우저 작업 없이 각 조건3회: 웹/웹패널/모의앱/모바일/모바일패널 모두 중앙16.7→16.7ms. P95 16.7~16.8ms. JS heap 표본 각각2.99→3.05 / 3.29→3.37 / 2.86→2.93 / 2.98→3.05 / 3.28→3.39MiB. 최저 가시텍스트 대비4.87:1. 전체 접근성 인증/실제 방송 FPS/실기GPU/장기메모리를 의미하지 않음.
+- 추가전송: 41,986 bytes 최초장식1요청 추가, 총2개103,796 bytes. 패널마다 같은 파일 재다운로드하지 않음. 새디코딩면 약3.09MiB 추정; JS heap에 GPU/이미지메모리 미포함. 추가 API/원본미디어/렌더타이머/대형필터 없음.
+- 저장한 증거: `docs/LIQUID_GLASS_ROUND2_REVIEW.md` 및 `docs/design-review/glowme-glass2/`의 **원본PNG12장·measurements.json**. 앱에서 요청하지 않는 PR 검토용 문서/자료. 일반웹/앱/모바일/가로Channel/헤더/선택버튼 전후를 GitHub 보고서에서 바로 볼 수 있음. 로컬 전체산출물 `/tmp/fromm-glass2-final/`, 셸 `/tmp/fromm-glass2-shell/`, 고대비 `/tmp/fromm-glass2-accessibility/`. 내부 HTML경로는 사용자 공개링크가 아님.
+- 소스 보존: f52d48c 대비 index.html/web-glowme.js/Native/확장/LIVE보조JS/manifest/SW/PWA JS/로고·아이콘 모두 동일. 실생산 변경은 glowme.css 및 추가 정적 재료 한 개뿐. 대화·영상·인증·화질·저장 기능을 수정하지 않음. Hooks 변경 없음.
+- 남은 작업: **이 최종 커밋의 원격 CI4개 확인**, 오류 발생 시 필요한 부분만 수정. 성공 후 동일 PR 설명의 CI/스크린샷 링크 갱신. 코드 구현 미완료 없음. 다음 세션은 문서 커밋/실제 HEAD/PR Checks 대조부터 시작하고 성공 검사를 반복하지 않음. 실제Chrome설치/업데이트/실인증스트림·LIVE·Native/물리모바일·iOS는 미검증 유지.

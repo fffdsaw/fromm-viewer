@@ -11,16 +11,30 @@
 - Do not merge/deploy or modify PR #50 / Hooks.
 - Existing main base: `82e41b0`. Baseline PR CI: all four jobs succeeded.
 
-## Status
+## Status — implementation complete, final CI pending
 
-1. Confirmed PR #51 OPEN and baseline branch clean.
-2. Read installed Impeccable 4.8.0 Polish instructions; engine 0.1.18 runs.
-3. Official stored critique lookup returned exit 2 (no current snapshot). Prior
-   independent review is an input; not a permission to re-run sub-agents.
-4. Next: capture current UI and inspect controls/type/video/settings at mobile,
-   intermediate and desktop sizes; change only demonstrated defects.
-5. Then run manual Impeccable Audit, applicable Node/browser regression tests,
-   compare captures, and update this file with final commits/results/risks.
+1. PR #51 OPEN; baseline UI and original four CI jobs were clean.
+2. Impeccable4.8.0/engine0.1.18 Polish guidance applied. No official current
+   critique snapshot (lookup exit2); used the prior report as supporting context.
+3. Before-state regression demonstrated native audio `color-scheme: normal`
+   and missing video-stage keyboard focus outline. Captures/logs saved under
+   `/tmp/pr51-polish/before*`.
+4. App changes: ONLY two CSS rules, dark native audio controls and an inset
+   `:focus-visible` video-stage outline using the existing accent token. No new
+   spacing, type, controls, stage proportions, animations or PiP placement changes.
+5. Added native WAV playback/pause and real Tab-entry/pointer focus checks to the
+   existing browser regression. Baseline fails the new checks; polished UI passes.
+6. Local Node273/273 (official Agora types supplied) and Chromium/axe at320x700,
+   390x844,844x390,1440x900 passed. Native audio plays/pauses; video/card/list,
+   keyboard, rotation, settings, standalone PiP checks preserved.
+7. Manual Impeccable Audit still has10 context-dependent static signals, matching
+   PR51 baseline. No new signals and no rule suppressions.
+8. Compared screenshots; native audio visibly darkens and Tab focus becomes
+   visible. Source check confirms all markup/JavaScript is unchanged from52bf457.
+9. NEXT: confirm GitHub video/media Node+browser jobs on the latest implementation
+   commit; fix only real failures. Update this checkpoint and PR body when done.
+   Do not merge/deploy. Real Fromm, physical mobile/iOS and screen-reader usage
+   remain unverified.
 
 ## Recovery instructions
 

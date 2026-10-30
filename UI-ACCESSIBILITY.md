@@ -74,3 +74,15 @@ The viewport suite checks the gap plus click-to-close and Escape after rotation.
 The existing surface-click test waits for toggle/ResizeObserver placement frames
 before computing a real exposed video hit point. No click or playback assertion
 is removed. Local real HLS mobile quality/rotation/state regressions passed.
+
+## Impeccable Polish follow-up
+
+Two CSS-only refinements after52bf457: native audio controls follow the existing
+dark theme, and keyboard entry to the video shortcut surface has a visible inset
+accent outline. Pointer use does not leave that ring. Button layout, spacing,
+text sizes, PiP position, aspect/rotation behavior and all application markup/JS
+remain unchanged in this pass. Added real local-WAV playback/pause and Tab/pointer
+focus regression checks, along with before/after screenshots. The manual static
+Audit remains10 context-dependent signals; no rule is suppressed.
+
+Resume/checkpoint details: `UI-POLISH-PROGRESS.md`.

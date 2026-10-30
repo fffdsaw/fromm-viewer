@@ -19,7 +19,8 @@ npx --yes impeccable@4.8.0 install --providers=codex --scope=project --no-hooks
 ```
 
 `--yes` here belongs to npx (package execution confirmation), not Impeccable's
-installer. `--no-hooks` deliberately leaves automatic hooks uninstalled. The
+installer. The initial install used `--no-hooks`; hooks were subsequently enabled on the
+user's explicit request using the official `hooks on` command below. The
 installer's non-interactive default otherwise installs hooks; do not treat that
 as the user's approval to run a hook.
 
@@ -65,28 +66,36 @@ Smoke check from a POSIX shell:
 Windows without `sh` uses `scripts/impeccable.cmd` instead. Native/browser checks
 on the user's Windows Codex installation remain unverified.
 
-## Hooks: supported, not installed or approved
+## Hooks: enabled; Codex runtime approval remains separate
 
 Official documentation: https://impeccable.style/docs/hooks
 
-Codex supports `.codex/hooks.json` project hooks for edited-file checks and a
-completion review. This installation writes no hook manifest, consent record,
-or approval/trust configuration, and executes no design hook.
+After the user explicitly requested automatic checks, the installed official engine ran:
 
-If automatic checking is wanted later:
+```sh
+.agents/skills/impeccable/scripts/impeccable hooks on
+```
 
-1. Review the official hook commands and their downloaded-engine behavior.
-2. Rerun the official installation command without `--no-hooks`, interactively:
-   `npx impeccable@4.8.0 install --providers=codex --scope=project`.
-3. Review the resulting `.codex/hooks.json` diff and accept the installer's hook
-   prompt only if wanted. Do not use non-interactive defaults as substitute consent.
-4. Reload Codex and open `/hooks` to explicitly approve the project hook. Official
-   docs require reapproval after an update changes the hook. Installation consent
-   and Codex runtime approval are separate steps.
+This generated `.codex/hooks.json` and `.impeccable/config.json` (`hook.enabled: true`).
+The hook checks edited UI files on `PostToolUse` and runs a completion review on
+`Stop`. The official commands include POSIX and Windows launchers. Default limits
+remain 5 findings / 8000 characters, with 5-second edit and 30-second Stop timeouts.
+No application file was edited to trigger a hook.
 
-Do not edit trust state or bypass approval if the current Codex client does not
-expose `/hooks` or refuses to run project hooks. Manual skill commands remain
-available. End-to-end hook execution/approval was deliberately not tested.
+The command also recorded this user's installation consent in the gitignored
+`.impeccable/config.local.json`. That private consent file is not shared or committed.
+Installation consent does not approve the hook inside Codex.
+
+Reload Codex with this branch checked out, open `/hooks`, review the project hook,
+and approve it once. Official docs require reapproval after updates that change
+the hook. No runtime approval/trust files were edited, and no hook was manually
+invoked to bypass this requirement. If the current Codex client does not expose
+`/hooks` or refuses project hooks, automatic execution is not confirmed; use a
+supported client and its approval flow. End-to-end approved execution remains
+unverified in this managed session.
+
+Hooks run the engine with the agent's environment and network access; do not
+assume they run in a separate sandbox. To disable later, use `$impeccable hooks off`.
 
 ## Installation verification
 
@@ -94,7 +103,9 @@ available. End-to-end hook execution/approval was deliberately not tested.
 - Fresh-checkout fixture without the platform binary: official launcher fetched
   engine 0.1.18 into an empty isolated cache; probe and checksum passed.
 - Installed JSON/TOML, JavaScript and POSIX launcher syntax checks: passed.
-- Change scope and absence of hook manifests/consent files: passed.
+- Initial no-hooks install scope check: passed. Subsequent user-authorized hook
+  enablement: official status reports enabled; generated manifests/config parse,
+  launcher paths resolve, local consent stays ignored; runtime approval untouched.
 - Project-authored documentation/ignore-file whitespace check: passed. Upstream
   reference whitespace and Windows launcher CRLF are preserved verbatim rather
   than rewriting third-party files to satisfy a whole-diff whitespace check.

@@ -1304,6 +1304,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
+<link rel="stylesheet" href="glowme.css">
 </head>
 <body>
 
@@ -6323,6 +6324,7 @@ function mountSidebarToggle(){
   positionSidebarToggle();
 }
 function setSidebarOpen(open){
+  if(window.FrommGlowME?.pinned) open=true;
   const sidebar = $("#sidebar");
   const btn = $("#sidebarToggleBtn");
   const backdrop = $("#sidebarBackdrop");
@@ -7891,6 +7893,7 @@ function highlightText(text, query){
 }
 
 function fitChatToolsPanel(){
+  if(window.FrommGlowME) { window.FrommGlowME.fitPanel(); return; }
   const panel=$("#chatToolsPanel"), button=$("#chatToolsBtn");
   if(!panel || !button) return;
   panel.style.setProperty("--my-reply-panel-top",`${Math.max(0,button.getBoundingClientRect().bottom+8)}px`);
@@ -7914,6 +7917,7 @@ function openChatToolsPanel(){
 }
 
 function closeChatToolsPanel(){
+  if(window.FrommGlowME?.pinned) return;
   const panel = $("#chatToolsPanel");
   const btn = $("#chatToolsBtn");
   if(!panel || !btn) return;
@@ -9361,6 +9365,7 @@ function openDateCalendar(){
 }
 
 function closeDateCalendar(){
+  if(window.FrommGlowME?.pinned) return;
   const cal = $("#dateCalendar");
   const btn = $("#datePickerBtn");
   if(!cal || !btn) return;
@@ -11159,7 +11164,7 @@ $("#chatToolsPanel").onclick=(e)=>{
 
 document.addEventListener("click",(e)=>{
   const tools = $("#chatTools");
-  if(tools && !tools.contains(e.target)){
+  if(tools && !tools.contains(e.target) && !e.target.closest("#sidebar,#sidebarToggleBtn")){
     closeChatToolsPanel();
   }
 });
@@ -11270,6 +11275,7 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
+<script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
 </body>
 </html>

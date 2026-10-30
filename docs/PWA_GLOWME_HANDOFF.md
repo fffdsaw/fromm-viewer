@@ -2,7 +2,7 @@
 
 ## 상태 및 재개
 
-- 상태: WIP — 1단계 PWA 기반 검증 완료, 화면/레이아웃 구현 전. 검증 완료 제품이 아닙니다.
+- 상태: WIP — PWA/기본 Glow ME 셸 구현 및 1차 브라우저 검사 완료. 미디어·접근성 최종 검증 진행 중.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
@@ -70,3 +70,18 @@
 - 테스트: `/workspace/.fromm-env/node_modules/node/bin/node --test test/pwa.test.cjs` → 4/4 통과, 실패/스킵 0.
 - 아이콘은 제공된 시험용 원본 그대로이며 maskable로 선언하지 않았습니다. 배포용 정제는 미완료로 표시합니다.
 - 다음: 실제 sidebar/검색 DOM을 재사용하는 설치 앱/웹 셸, Glow ME CSS 및 브라우저 검사.
+
+## 체크포인트 2 — 실제 UI 셸
+
+- 이전 안전 커밋: `e75e04f` (PWA 기반).
+- 추가: `glowme.css`, `web-glowme.js`, `test/glowme.browser.cjs`.
+- `index.html`: 외부 스타일/셸 링크, 설치 앱에서 패널을 닫지 않는 UI 가드, 패널 위치 계산 위임, 메뉴/검색 독립 토글만 변경. 재생/인증 구현은 변경하지 않음.
+- 일반 웹: 원형 긴/짧은/긴 → X 버튼, 고정 헤더, 독립 좌우 패널. 설치 앱(standalone + 1200px 이상): 왼쪽/오른쪽 고정, 햄버거 제거. 좁아지면 원래 웹 패널 상태 복원.
+- 실제 기존 검색 DOM/달력/이벤트 재사용. 비대화 화면에서 검색 fieldset을 비활성화해 재생 중 의도치 않은 화면 전환을 방지.
+- Glow ME 민트/유리 셸 적용. 영상/플레이어·라이트박스는 읽기 쉬운 검정 표면 유지. 원본 제공 로고 사용.
+- `/workspace/.fromm-env/node_modules/node/bin/node --check web-glowme.js`: 통과.
+- `AGORA_TYPES_PATH=/tmp/agora-462/package/types/Private/IAgoraRtcEngine.d.ts ...node --test test/*.test.cjs native-live/test/*.test.cjs`: 277/277 통과, 실패/스킵 0.
+- `NODE_PATH=/workspace/.fromm-env/node_modules:/tmp/fromm-ui-deps/node_modules GLOWME_SCREENSHOT_DIR=/tmp/fromm-glowme-check ...node test/glowme.browser.cjs`: 통과. 320/390/844/1440px 웹, 독립 패널, 버튼 위치, 모의 standalone 넓음/좁음, 실제 HTTP 서비스워커 범위 검증. JS 오류/가로 넘침 없음.
+- 화면 증거(현재 환경): `/tmp/fromm-glowme-check/`의 before/web/login/menu/search/installed PNG 및 geometry.json. 합성 데이터만 포함.
+- 초기 실패/수정: 테스트 seed의 존재하지 않는 renderRooms 호출 제거(테스트 오류); 844px 스크롤 후 기존 relative 헤더 때문에 토글이 숨는 문제를 sticky 헤더로 수정. 재실행 통과.
+- 다음: 실제 영상 재생/다크 컨트롤, 추가 로그인/카드/투표 표면 대비, 접근성 검사, CI 연결 및 Draft PR 검증.

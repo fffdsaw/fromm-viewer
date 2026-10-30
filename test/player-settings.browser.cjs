@@ -48,14 +48,14 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    };
    const dismiss=async paused=>{
     await video.evaluate(async(v,paused)=>{if(paused)v.pause();else await v.play();},paused);
-    await video.hover();await summary.click();assert.equal(await settings.evaluate(el=>el.open),true);
+    await video.locator('..').hover({position:{x:5,y:5}});await summary.click();assert.equal(await settings.evaluate(el=>el.open),true);
     await hitVideo();assert.equal(await settings.evaluate(el=>el.open),false,'surface click dismisses settings');
     assert.equal(await video.evaluate(v=>v.paused),paused,'dismissing the menu must preserve playback state');
    };
    await dismiss(false);await dismiss(true);
    await hitVideo();assert.equal(await video.evaluate(v=>v.paused),false,'a later ordinary click still plays');
    await hitVideo();assert.equal(await video.evaluate(v=>v.paused),true,'ordinary surface click still pauses');
-   await video.hover();await summary.click();await page.locator('[data-mvc="right"]').click();await hitVideo();
+   await video.locator('..').hover({position:{x:5,y:5}});await summary.click();await page.locator('[data-mvc="right"]').click();await hitVideo();
    assert.equal(await video.evaluate(v=>v.paused),true,'rotated surface dismissal keeps paused state');
    assert.equal(await video.evaluate(v=>v.closest('.modern-video-stage').style.getPropertyValue('--mvc-video-angle')),'90deg');
    await summary.click();await page.mouse.click(1,1);assert.equal(await settings.evaluate(el=>el.open),false,'outside-player click still dismisses');

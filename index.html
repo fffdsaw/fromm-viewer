@@ -1170,6 +1170,45 @@ html.vote-dialog-open{overflow:hidden}
 .download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
 .download-selectable .replay-body{padding-right:52px}
 .media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
+/* Keep thin tracks and 20px icons, enlarge only their input surfaces. */
+.mvc-panel input.mvc-volume,.mvc-panel input.mvc-volume-extra{height:32px;min-height:32px;background:transparent;touch-action:none}
+.mvc-panel input.mvc-seek{height:32px;min-height:32px;touch-action:none}
+.mvc-panel input.mvc-volume::-webkit-slider-runnable-track,.mvc-panel input.mvc-volume-extra::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-moz-range-track,.mvc-panel input.mvc-volume-extra::-moz-range-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-webkit-slider-thumb,.mvc-panel input.mvc-volume-extra::-webkit-slider-thumb{margin-top:-3.5px}
+:is(.replay-player-page,.channel-player) .replay-page-meta,.replay-meta{font-size:12px}
+.replay-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.4;max-height:2.8em;overflow:hidden}
+@media(max-width:900px),(pointer:coarse){
+  .modern-video-controls .mvc-button,.modern-video-controls #livePipBtn{width:44px;height:44px;min-width:44px;min-height:44px;flex-basis:44px}
+  .mvc-rotation-actions .mvc-button{width:44px;height:44px;flex-basis:44px}
+  .live-controls-enabled .live-comments-overlay{bottom:64px!important;max-height:calc(100% - 64px)!important}
+}
+@media(max-width:600px){
+  .mvc-time{font-size:12px;position:absolute;left:12px;bottom:86px}
+  .mvc-panel{padding-top:28px}
+  .live-player-controls .mvc-panel{padding-top:20px}
+  :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:12px}
+}
+/* Watching a video does not reset the list's filters, selection or scroll. */
+@media(max-width:900px){
+  .main:has(.replay-player-page)>.viewer-header,.main:has(.channel-player)>.viewer-header{display:none}
+  .main:has(.live-player-stage)>.viewer-header .toolbar{display:none}
+  .main:has(.replay-player-page),.main:has(.channel-player){padding-top:8px;padding-bottom:8px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-stage,.channel-player-stage):not(:fullscreen){flex:0 1 auto!important;aspect-ratio:var(--mvc-aspect-ratio,16/9);min-height:160px!important;max-height:100%}
+  .modern-video-stage:fullscreen{aspect-ratio:auto!important}
+  :is(.replay-player-page,.channel-player) .replay-page-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35;max-height:2.7em;overflow:hidden}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){min-height:44px}
+}
+@media(max-width:600px){
+  :is(.replay-player-page,.channel-player)>.replay-page-head{grid-template-columns:1fr auto;gap:6px 10px;padding:6px 10px}
+  :is(.replay-player-page,.channel-player) .replay-page-back{grid-column:1;grid-row:1;justify-self:start}
+  :is(.replay-player-page,.channel-player) .video-player-actions{grid-column:2;grid-row:1}
+  :is(.replay-player-page,.channel-player) .replay-page-copy{grid-column:1/-1;grid-row:2}
+}
+@media(max-width:900px){
+  .replay-player-page{height:auto;max-height:calc(100dvh - 16px);flex:0 1 auto!important}
+  .live-timeline:has(>.replay-player-page){flex:0 1 auto!important}
+}
 </style>
 <style id="channelVideosStyle">
 .channel-video-play{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}
@@ -1318,6 +1357,41 @@ body.download-marquee-active{user-select:none;cursor:default}
 .download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
 .download-selectable .replay-body{padding-right:52px}
 .media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
+/* Keep thin tracks and 20px icons, enlarge only their input surfaces. */
+.mvc-panel input.mvc-volume,.mvc-panel input.mvc-volume-extra{height:32px;min-height:32px;background:transparent;touch-action:none}
+.mvc-panel input.mvc-seek{height:32px;min-height:32px;touch-action:none}
+.mvc-panel input.mvc-volume::-webkit-slider-runnable-track,.mvc-panel input.mvc-volume-extra::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-moz-range-track,.mvc-panel input.mvc-volume-extra::-moz-range-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-webkit-slider-thumb,.mvc-panel input.mvc-volume-extra::-webkit-slider-thumb{margin-top:-3.5px}
+:is(.replay-player-page,.channel-player) .replay-page-meta,.replay-meta{font-size:12px}
+.replay-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.4;max-height:2.8em;overflow:hidden}
+@media(max-width:900px),(pointer:coarse){
+  .modern-video-controls .mvc-button,.modern-video-controls #livePipBtn{width:44px;height:44px;min-width:44px;min-height:44px;flex-basis:44px}
+  .mvc-rotation-actions .mvc-button{width:44px;height:44px;flex-basis:44px}
+  .live-controls-enabled .live-comments-overlay{bottom:64px!important;max-height:calc(100% - 64px)!important}
+}
+@media(max-width:600px){
+  .mvc-time{font-size:12px;position:absolute;left:12px;bottom:86px}
+  .mvc-panel{padding-top:28px}
+  .live-player-controls .mvc-panel{padding-top:20px}
+  :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:12px}
+}
+/* Watching a video does not reset the list's filters, selection or scroll. */
+@media(max-width:900px){
+  .main:has(.replay-player-page)>.viewer-header,.main:has(.channel-player)>.viewer-header{display:none}
+  .main:has(.live-player-stage)>.viewer-header .toolbar{display:none}
+  .main:has(.replay-player-page),.main:has(.channel-player){padding-top:8px;padding-bottom:8px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-stage,.channel-player-stage):not(:fullscreen){flex:0 1 auto!important;aspect-ratio:var(--mvc-aspect-ratio,16/9);min-height:160px!important;max-height:100%}
+  .modern-video-stage:fullscreen{aspect-ratio:auto!important}
+  :is(.replay-player-page,.channel-player) .replay-page-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35;max-height:2.7em;overflow:hidden}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){min-height:44px}
+}
+@media(max-width:600px){
+  :is(.replay-player-page,.channel-player)>.replay-page-head{grid-template-columns:1fr auto;gap:6px 10px;padding:6px 10px}
+  :is(.replay-player-page,.channel-player) .replay-page-back{grid-column:1;grid-row:1;justify-self:start}
+  :is(.replay-player-page,.channel-player) .video-player-actions{grid-column:2;grid-row:1}
+  :is(.replay-player-page,.channel-player) .replay-page-copy{grid-column:1/-1;grid-row:2}
+}
 </style>
 </head>
 <body>
@@ -4021,7 +4095,7 @@ function renderLiveView(){
   }else if(state.live.status==="error"){
     stageHtml=`<div class="live-stage-empty"><div class="big">LIVE 재생을 시작하지 못했습니다</div><div class="small">아래 연결 상태를 확인하고 새로고침으로 다시 시도해주세요.</div></div>`;
   }else{
-    stageHtml=`<div id="liveVideoGrid" class="live-video-grid" tabindex="0" aria-label="LIVE 영상">${videoLoadingIndicator().replace('<div class="video-loading"','<div id="liveWaiting" class="video-loading"')}</div>`;
+    stageHtml=`<div id="liveVideoGrid" class="live-video-grid" role="group" tabindex="0" aria-label="LIVE 영상">${videoLoadingIndicator().replace('<div class="video-loading"','<div id="liveWaiting" class="video-loading"')}</div>`;
   }
 
   const footerText=state.live.lastError || (mockStreaming ? "TEST · 과거 LIVE 로그 Mock · 실제 영상 연결 생략" : streaming ? "방송 정보 확인됨" : "");
@@ -4859,10 +4933,11 @@ function installModernVideoControls(player) {
       if(dead)return;
       stage.classList.toggle('mvc-rotated',rotation!==0);
       const odd=rotation%180!==0;
+      if(video.videoWidth && video.videoHeight)stage.style.setProperty('--mvc-aspect-ratio',`${odd?video.videoHeight:video.videoWidth} / ${odd?video.videoWidth:video.videoHeight}`);
       stage.style.setProperty('--mvc-video-width',`${odd?stage.clientHeight:stage.clientWidth}px`);stage.style.setProperty('--mvc-video-height',`${odd?stage.clientWidth:stage.clientHeight}px`);stage.style.setProperty('--mvc-video-angle',`${rotation}deg`);
       $('.mvc-angle').textContent=`${rotation}°`;placeSettings();
     };
-    const clearRotation=()=>{stage.classList.remove('mvc-rotated');for(const name of ['--mvc-video-width','--mvc-video-height','--mvc-video-angle'])stage.style.removeProperty(name);};
+    const clearRotation=()=>{stage.classList.remove('mvc-rotated');for(const name of ['--mvc-video-width','--mvc-video-height','--mvc-video-angle','--mvc-aspect-ratio'])stage.style.removeProperty(name);};
     removers.push(clearRotation);
     for(const [name,delta] of [['left',-90],['right',90]])listen($(`[data-mvc="${name}"]`),'click',()=>{rotation=(rotation+delta+360)%360;rotateLayout();});
     if(player.owner.ResizeObserver){const observer=new player.owner.ResizeObserver(rotateLayout);observer.observe(stage);removers.push(()=>observer.disconnect());}

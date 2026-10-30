@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['test/ui-accessibility*.cjs', 'index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -32,7 +32,7 @@ jobs:
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
-          npm install --no-save --package-lock=false playwright@1.62.1
+          npm install --no-save --package-lock=false playwright@1.62.1 axe-core@4.11.1
           npx playwright install --with-deps chromium
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg xvfb xdotool
@@ -44,7 +44,9 @@ jobs:
           REPLY_SCREENSHOT_DIR: screenshots
           UI_ICON_SCREENSHOT_DIR: screenshots
           QUALITY_SCREENSHOT_DIR: screenshots
+          ACCESSIBILITY_SCREENSHOT_DIR: screenshots
         run: |
+          node test/ui-accessibility.browser.cjs
           node test/ui-icons.browser.cjs
           node test/video-list-autoload.browser.cjs
           node test/channel-videos.browser.cjs

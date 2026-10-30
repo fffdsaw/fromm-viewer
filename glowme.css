@@ -167,120 +167,159 @@
   .glowme :is(.pill,.btn,.room,.glowme-nav button,.sidebar-toggle-btn span) {transition:none;}
 }
 
-/* Liquid Glass: static refracted material + separate inner/outer optical rims.
-   These layers never cover text, capture input, animate, or filter video pixels. */
+/* Liquid Glass: a shared static optical material, curved specular faces and
+   inset rims. No live distortion, large-area filter or layer over video/text. */
 .glowme {
+  --liquid-water:url("assets/glowme/liquid-header.webp");
+  --liquid-reflections:url("assets/glowme/liquid-reflections.webp");
   --liquid-face:
-    radial-gradient(ellipse 32% 50% at 22% 0%,#fffffffa 0%,#ffffffb3 20%,#ffffff00 72%),
-    radial-gradient(ellipse 65% 44% at 72% 112%,#ffffffed 10%,#ffffff61 45%,#ffffff00 78%),
-    linear-gradient(162deg,#e3fff9b8 4%,#abf1e7b5 42%,#9aebe4b3 72%,#d9fff6db 100%);
-  --liquid-button-rim:inset 0 1px 1px #fff,inset 2px 0 3px #ffffffb3,
-    inset -1px 0 2px #218b943d,inset 0 -2px 2px #ffffffd1,
-    0 2px 5px #258f9624;
+    radial-gradient(ellipse 42% 65% at 25% -9%,#fff 4%,#ffffffb3 28%,#ffffff00 75%),
+    radial-gradient(ellipse 75% 55% at 66% 120%,#fff 12%,#ffffff70 48%,#ffffff00 76%),
+    linear-gradient(173deg,#f1ffffd9 3%,#97f1edc9 38%,#69dcdcb8 69%,#dcfff6ed 100%);
+  --liquid-button-rim:inset 0 2px 1px #fff,inset 3px 0 3px #ffffffdb,
+    inset -2px 0 2px #168a9d66,inset 0 -3px 2px #fffffff5,
+    inset 0 -5px 5px #47c7cf40,0 2px 2px #278e9c26,0 5px 9px #31979d21;
+  --liquid-panel-rim:inset 0 2px 2px #fff,inset 3px 0 3px #ffffffed,
+    inset -2px 0 2px #158f9d70,inset -6px 0 8px #71e3de66,
+    inset 0 -3px 2px #fff,0 2px 2px #4abac24d,0 12px 24px #258a9821;
 }
 .glowme body {
   background:
-    radial-gradient(ellipse at 2% 12%,#aeece44d,transparent 35%),
-    radial-gradient(ellipse at 92% 4%,#a9e5f24a,transparent 44%),
-    linear-gradient(105deg,#dff9f5,#f8fefd 40%,#f5fdfd 66%,#dff6f4);
+    radial-gradient(ellipse at 2% 12%,#8ee8e14d,transparent 35%),
+    radial-gradient(ellipse at 92% 4%,#8bdde94a,transparent 44%),
+    linear-gradient(105deg,#def9f5,#f8fefd 40%,#f5fdfd 66%,#d8f5f4);
   background-attachment:fixed;
 }
 .glowme .topbar {
-  position:relative;isolation:isolate;border:1px solid #85cfcf;border-radius:18px;
-  background:#c7f8ee;
-  box-shadow:inset 0 1px 1px #fff,inset 1px 0 2px #fff,
-    inset -1px 0 1px #248e9d40,inset 0 -2px 2px #ffffffc9,
-    0 4px 6px #39a3a514,0 14px 30px #409b9f12;
+  position:relative;isolation:isolate;border:1px solid #75cdd3;border-radius:18px;
+  background:#a6f2ec;box-shadow:var(--liquid-panel-rim);
 }
 .glowme .topbar::before {
-  content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;
-  pointer-events:none;
-  background-image:linear-gradient(95deg,#f6fffef5 0%,#effffedb 20%,#ccfff78c 48%,#b5f8ee9e 100%),
-    url("assets/glowme/liquid-header.webp");
+  content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  background-image:linear-gradient(96deg,#f3fffff2 0%,#e7fffbc2 20%,#89f3ed70 56%,#80f2ee80 100%),var(--liquid-water);
+  background-color:#94eeed;background-blend-mode:normal,luminosity;
   background-size:cover;background-position:center 52%;
 }
 .glowme .topbar::after {
-  content:"";position:absolute;inset:2px;z-index:-1;border-radius:16px;
-  pointer-events:none;border:1px solid #ffffffb3;
-  background:linear-gradient(169deg,#ffffff94 0%,#ffffff00 22% 74%,#c3fff56b 94%,#ffffffbb 100%);
-  box-shadow:inset 0 2px 4px #ffffff6b,inset -2px 0 3px #ffffffb5;
+  content:"";position:absolute;inset:3px;z-index:-1;border-radius:14px;
+  pointer-events:none;border:1px solid #fffffff2;
+  background:radial-gradient(ellipse 18% 160% at 0% 40%,#ffffffdb,#ffffff00 70%),
+    radial-gradient(ellipse 12% 170% at 100% 80%,#ffffffa6,#ffffff00 72%),
+    linear-gradient(167deg,#ffffffdb 0%,#ffffff00 16% 78%,#acfff66b 91%,#fff 100%);
+  box-shadow:inset 0 2px 3px #ffffffb3,inset -2px -1px 2px #ffffffd6;
 }
-.glowme .toolbar {background:#ffffffeb;border-top-color:#84cfc878;box-shadow:inset 0 1px 0 #fff;}
+/* The middle band uses the same water, softened under the labels, with its own
+   curved inner lip. It keeps its existing dimensions and 12px/8px separation. */
+.glowme .toolbar {
+  position:relative;isolation:isolate;border-color:#8ed3d7;
+  background:linear-gradient(100deg,#e9fffd9c,#f4ffffb3 42%,#b9f8f3a6),var(--liquid-reflections) center 72%/cover;
+  box-shadow:var(--liquid-panel-rim);
+}
+.glowme .toolbar::before {
+  content:"";position:absolute;inset:3px;z-index:-1;border:1px solid #fffffff2;
+  border-radius:14px;pointer-events:none;
+  box-shadow:inset 0 2px 3px #fff,inset -1px -2px 2px #ffffffe6;
+  background:radial-gradient(ellipse 60% 90% at 30% -40%,#fff 34%,#ffffff00 70%),
+    linear-gradient(174deg,#ffffff85,#ffffff00 45% 72%,#85e6e633 85%,#ffffffb3);
+}
 .glowme #scanState {color:#35545e!important;}
 .glowme #sidebar {
-  isolation:isolate;border-color:#80c9c9;
-  background:linear-gradient(180deg,#f4fffeeb 0px,#effffb82 72px,#effffb00 142px),
-    linear-gradient(112deg,#ffffffc9 0%,#edfffbaa 28%,#ddfaf280 72%,#9ce4de94 100%);
-  box-shadow:inset 1px 1px 1px #fff,inset 4px 0 5px #f5ffffe8,
-    inset -2px 0 1px #2e929b5c,inset -7px 0 9px #a4f0df85,
-    inset 0 -3px 3px #ffffffc7,0 5px 8px #399fa017,0 16px 36px #348e971a;
+  isolation:isolate;border-color:#80ced0;
+  background:linear-gradient(112deg,#f4ffffd9,#e5fff9b5 43%,#8ce3df9c);
+  box-shadow:var(--liquid-panel-rim);
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
 }
 .glowme #sidebar::before {
-  content:"";position:absolute;inset:3px;z-index:-1;border-radius:inherit;
-  border:1px solid #ffffffe0;box-shadow:inset -1px 0 2px #ffffffb3;
-  pointer-events:none;
+  content:"";position:absolute;inset:4px;z-index:-1;border-radius:inherit;
+  border:1px solid #fff;pointer-events:none;
+  box-shadow:inset 2px 1px 3px #ffffffed,inset -2px -2px 3px #fff;
 }
 .glowme #sidebar::after {
   content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
-  background:radial-gradient(ellipse 110% 30% at -8% -5%,#ffffffb5 8%,#ffffff00 66%),
-    radial-gradient(ellipse 110% 48% at 128% 92%,#72dcd542,#ffffff00 68%);
+  background:linear-gradient(180deg,#f4fffee8 0%,#effffbc2 23%,#e9fffb80 56%,#9eece833 100%),
+    radial-gradient(ellipse 90% 30% at -8% -5%,#fff 8%,#ffffff00 65%),
+    var(--liquid-reflections);
+  background-size:cover,cover,auto 72%;background-position:center,center,68% bottom;background-repeat:no-repeat;
 }
 /* The dimmer belongs outside a clear drawer, not behind the glass itself. */
 .glowme .sidebar-backdrop {clip-path:inset(0 0 0 min(284px,88vw));}
 .glowme :is(.pill.active,.room.active,.date-picker-btn.active,.replay-filter.active,.live-center-tab.active),
 .glowme-nav button[aria-current="page"] {
-  background:var(--liquid-face);border-color:#75c8c5;box-shadow:var(--liquid-button-rim);
+  background:var(--liquid-face);border-color:#69cbd0;box-shadow:var(--liquid-button-rim);
   color:#164f58;
 }
 .glowme .room.active,.glowme-nav button[aria-current="page"] {border-radius:24px;}
-.glowme #dateJumpBtn {background:var(--liquid-face);border-color:#89ceca;box-shadow:var(--liquid-button-rim);}
+.glowme :is(#dateJumpBtn,.chat-tools-btn,.replay-page-download,.replay-page-back) {
+  background:var(--liquid-face);border-color:#83cdd0;box-shadow:var(--liquid-button-rim);
+}
+.glowme .toolbar .btn:not(.good):not(.primary) {
+  background:linear-gradient(175deg,#fffffff2,#d3f6f2b3 64%,#effffbe6);
+  border-color:#9ad3d5;box-shadow:inset 0 2px 1px #fff,inset 0 -2px 2px #fff,0 2px 4px #31979d1a;
+}
+.glowme .toolbar .btn {border-radius:999px!important;}
+.glowme :is(.replay-page-download,.replay-page-back,#dateJumpBtn) {border-radius:999px;}
+.glowme .toolbar .btn.good {
+  background:linear-gradient(165deg,#167b65,#0d695b);border-color:#187b6c;
+  box-shadow:inset 0 1px 1px #ffffffa6,inset 0 -1px 1px #064d455c,0 2px 4px #31979d26;
+}
 .glowme :is(.token-life-wrap,.logout-mini-btn,.reload-btn,.header-live-btn) {
-  background:var(--liquid-face)!important;border-color:#88cfcd!important;
+  background:var(--liquid-face)!important;border-color:#7bcdd0!important;
+  color:#173f49!important;
   box-shadow:var(--liquid-button-rim);
 }
 .glowme .sidebar-toggle-btn,.glowme .sidebar-toggle-btn:hover,.glowme .sidebar-toggle-btn:focus-visible {
-  background:radial-gradient(ellipse at 29% 9%,#fffffffa 0%,#ffffff63 30%,#ffffff00 52%),
-    linear-gradient(145deg,#f5ffffbf,#c3f5eaa6 62%,#effffad6)!important;
-  border-color:#78c8c8!important;
-  box-shadow:inset 0 2px 3px #fff,inset 2px 0 2px #ffffffdb,
-    inset -2px -1px 3px #369ea84a,inset 0 -3px 2px #fff,
-    0 3px 8px #348f9b21;
+  background:radial-gradient(ellipse at 27% 7%,#fff 6%,#ffffff85 30%,#ffffff00 56%),
+    linear-gradient(145deg,#f5ffffc7,#a6eee9b8 62%,#effffae8)!important;
+  border-color:#79cbd1!important;box-shadow:var(--liquid-button-rim);
+}
+.glowme :is(.pill,.room,.glowme-nav button,.chat-tools-btn,.replay-page-download,.replay-page-back,#dateJumpBtn,.logout-mini-btn,.reload-btn) {
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.glowme :is(.pill.active,.room.active,.glowme-nav button[aria-current="page"],.chat-tools-btn,.replay-page-download,.replay-page-back,#dateJumpBtn,.logout-mini-btn,.reload-btn):not(:disabled):hover {
+  border-color:#409fae;box-shadow:var(--liquid-button-rim),0 0 0 1px #ffffffb3;
+}
+.glowme :is(.pill.active,.room.active,.glowme-nav button[aria-current="page"],.chat-tools-btn,.replay-page-download,.replay-page-back,#dateJumpBtn):not(:disabled):active {
+  box-shadow:inset 0 2px 4px #217b8e40,inset 0 -1px 1px #fff,0 1px 2px #31979d21;
 }
 .glowme #chatToolsPanel {
-  background:linear-gradient(110deg,#ffffffed,#f3fffbf2 65%,#e8f9f5ed);
-  border-color:#a1d5d3;
-  box-shadow:inset 1px 1px 1px #fff,inset -2px 0 3px #d6f4ed,
-    inset 0 -2px 2px #fff,0 10px 26px #368b9717;
+  isolation:isolate;background:linear-gradient(110deg,#f6ffffd9,#effffbd9 55%,#bff4ed9c),var(--liquid-reflections) 62% 65%/auto 100%;
+  border-color:#8bcfd2;box-shadow:var(--liquid-panel-rim);
   backdrop-filter:none;-webkit-backdrop-filter:none;
 }
-.glowme[data-glow-layout="pinned"] #chatToolsPanel {
-  box-shadow:inset 1px 1px 1px #fff,inset -2px 0 3px #c4ebe3,
-    inset 0 -2px 2px #fff,0 8px 24px #368b9714;
+.glowme #chatToolsPanel::before {
+  content:"";position:absolute;inset:4px;z-index:-1;border-radius:16px;border:1px solid #fff;pointer-events:none;
+  background:radial-gradient(ellipse 70% 14% at 12% -5%,#ffffffdb,#ffffff00 75%);
+  box-shadow:inset 1px 1px 3px #ffffffb3,inset -2px -1px 3px #ffffffed;
 }
-/* Fixed rails look onto the static page surround. Filtering that whole area on
-   every scroll adds work without improving their optical material. */
+.glowme[data-glow-layout="pinned"] #chatToolsPanel {box-shadow:var(--liquid-panel-rim);}
+/* Preserve the measured performance fix: no scroll-sized live blur on fixed
+   rails. Small overlaid drawers alone retain their existing 2px softening. */
 .glowme[data-glow-layout="pinned"] #sidebar,.glowme[data-glow-layout="pinned"] #chatToolsPanel {
   backdrop-filter:none;-webkit-backdrop-filter:none;
 }
-/* Plain reading/entry surfaces anchor the more expressive surrounding glass. */
-.glowme .chat-tools-row input[type="search"],.glowme .date-calendar {background:#fbfefd;}
-.glowme .date-day.selected {background:var(--liquid-face);box-shadow:inset 0 1px 2px #fff;border:1px solid #89ceca;}
+/* Quiet reading/entry surfaces keep text separate from the surrounding water. */
+.glowme .chat-tools-row input[type="search"] {
+  background:#fafffff0;box-shadow:inset 0 1px 3px #398e9b17,0 1px 0 #fff;
+}
+.glowme .date-calendar {background:#faffffe8;box-shadow:inset 0 1px 1px #fff;}
+.glowme .date-day.selected {background:var(--liquid-face);box-shadow:var(--liquid-button-rim);border:1px solid #89ceca;}
 .glowme .bubble {background:#f6fafcf5;box-shadow:0 1px 2px #3b7c8212;}
 @media(min-width:1000px) {
-  /* The broad desktop rail uses the optical rim rather than a scroll-sized
-     live filter. Narrow overlaid drawers retain only a 2px softening. */
   .glowme #sidebar {backdrop-filter:none;-webkit-backdrop-filter:none;}
 }
 @media(max-width:700px) {
   .glowme .topbar,.glowme .toolbar {border-radius:14px;}
   .glowme .topbar::before {background-position:58% 52%;}
-  .glowme .topbar::after {border-radius:12px;}
+  .glowme .topbar::after,.glowme .toolbar::before {border-radius:10px;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .glowme :is(.pill,.room,.glowme-nav button,.chat-tools-btn,.replay-page-download,.replay-page-back,#dateJumpBtn,.logout-mini-btn,.reload-btn) {transition:none;}
 }
 @media(prefers-reduced-transparency:reduce) {
-  .glowme #sidebar,.glowme #chatToolsPanel {backdrop-filter:none;-webkit-backdrop-filter:none;background:#f3fbf8;}
+  .glowme #sidebar,.glowme #chatToolsPanel,.glowme .toolbar {backdrop-filter:none;-webkit-backdrop-filter:none;background:#f3fbf8;}
   .glowme .topbar::before {background:#dcf6ee;}
+  .glowme #sidebar::after {background:none;}
 }
 @media(forced-colors:active) {
-  .glowme .topbar::before,.glowme .topbar::after,.glowme #sidebar::before,.glowme #sidebar::after {display:none;}
+  .glowme .topbar::before,.glowme .topbar::after,.glowme .toolbar::before,.glowme #sidebar::before,.glowme #sidebar::after,.glowme #chatToolsPanel::before {display:none;}
 }

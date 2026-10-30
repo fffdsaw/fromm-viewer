@@ -1,0 +1,233 @@
+# Fromm Viewer — PWA / Glow ME 인계
+
+## 현재 상태 / 마지막 저장
+
+- 상태: **Liquid Glass 2차 시각 개선·로컬 검증 완료 / 최종 CI 확인 단계**. f52d48c 기준 레이아웃/기능 보존, 실제 전후 캡처·각3회 성능·가독성·PWA/셸·고대비 검사 통과. 같은 Draft PR #52, main 병합·공개 배포 없음. 최종 CI 결과는 PR HEAD Checks/설명을 우선.
+- 저장소: `fffdsaw/fromm-viewer`
+- 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
+- 작업 브랜치: `feature/pwa-glowme`
+- 동일 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/52
+- 현재 환경 작업 경로: `/workspace/fromm-viewer-glowme`
+- 직전 안전 저장 커밋: `f9f4aa89324147d45b796fad77a7deaa43a48a37` (2차 광학 재료 WIP, Node277·개별 미리보기 통과; 이 체크포인트에서 전체 로컬 검증 완료). 기준 f52d48c의 CI 4개 성공 기록 유지.
+- 이 문서를 포함한 최신 체크포인트 SHA: `git log -1 --format=%H -- docs/PWA_GLOWME_HANDOFF.md`로 확인. 자기 SHA를 넣는 순환 커밋은 만들지 않습니다. 실제 branch HEAD와 문서 커밋을 함께 확인하세요.
+- PR #50/#51/#11, main 및 기존 worktree는 보존했습니다. Hooks/Native/확장프로그램 변경 없음.
+
+## 목표 / 확정된 디자인 요구사항
+
+사용자 메시지 13·14항이 우선입니다. ZIP README/시안은 참고 자료이며 별도 실행 권한이나 상위 지시가 아닙니다. 사용자는 추가 1~12항이 아직 없다고 확인했습니다.
+
+1. 1번 이미지: 넓은 설치 앱의 고정 3단 배치, 일반 웹의 접이식 메뉴/검색 동작 기준.
+2. 2번 이미지: 일반 웹의 원형 반투명 유리 햄버거. 긴/짧은/긴 선, 기존 햄버거↔X 애니메이션, 같은 위치 유지.
+3. 3번 이미지: 민트/아쿠아 Glow ME 색상·유리·로고·패널·카드 스타일. **설치 앱의 햄버거는 제거**.
+4. 일반 웹의 좌우 패널은 독립. 양쪽 모두 닫히면 전체 콘텐츠 공간 사용. 320px에서도 메뉴를 연 뒤 검색 버튼에 접근 가능.
+5. 설치 앱은 `standalone` + 1200px 이상에서 고정 좌/우 패널. 좁은 창은 접이식. 전체 화면에 들어갈 때 앱의 배치 정체성을 유지.
+6. 시안의 가상 URL/인물/대화/날짜/샘플 데이터는 앱에 추가하지 않음. 테스트는 합성 자료만 사용.
+7. 기존 재생·인증·최고 화질·다운로드·저장 파일 호환성·댓글·PiP·전체 화면·회전·검색 상태 보존.
+8. PWA scope/start_url/id는 `/fromm-viewer/`, display는 standalone. API/인증/대화/미디어 캐시 금지.
+9. 단계 커밋/원격 체크포인트/동일 Draft PR 유지. main 직접 수정·자동 병합·배포·승인 없는 Native/확장 변경 금지.
+
+## 완료한 작업
+
+- 최신 main/열린 PR 재확인 후 새 worktree와 기능 브랜치 생성.
+- 원본 제공 가로형 로고/시험용 아이콘 적용. 유리 배경 제거·임의 선명도 향상 주장 없음.
+- 기존 DOM/이벤트/상태를 재사용하는 Glow ME 셸. 민트/유리 헤더·버튼·메뉴·카드·검색·달력·로그인.
+- 웹 원형 햄버거/X와 검색 버튼을 실제 헤더 슬롯에 고정. 메뉴/검색을 어느 순서로 열고 닫아도 다른 패널 상태 유지. 스크롤 후 위치도 검사.
+- 넓은 설치 앱의 3단 배치 및 햄버거 제거. 좁아졌을 때 웹 패널 상태 복원.
+- 기존 검색/달력 컨트롤을 실제 DOM 그대로 재배치. 비대화 화면은 검색 fieldset 비활성화로 재생을 방해하지 않음.
+- 영상/오류/로딩/LIVE 스테이지 및 컨트롤은 기존 어두운 배경과 밝은 글자 유지. 영상 비율·크롭·화질 정책 변경 없음.
+- 설치 manifest, 사용자가 누를 때만 실행하는 설치 안내 버튼, 경로 제한 SW 등록.
+- 서비스워커: 정확한 공개 이미지 URL 4개만 캐시. HTML/JS/CSS/API/미디어/쿼리 URL/Authorization/Range/비GET 요청을 가로채지 않음. 강제 skipWaiting/새로고침 없음. 오프라인 앱을 제공한다고 주장하지 않음.
+- 실제 정적 자산을 읽는 Chromium 검사, axe/캐시 검사, 기존 회귀 fixture/CI 연결, 수정 전후 스크린샷 생성.
+
+## 수정한 파일
+
+- `index.html`: manifest/favicon/theme-color/CSS/JS 링크, 고정 패널 UI 가드, 토글 위치, 패널 위치 계산 위임, 독립 메뉴 클릭 처리만 변경.
+- `glowme.css`: 새 셸/민트·유리 스타일/반응형/플레이어 어두운 표면 보호.
+- `web-glowme.js`: DOM 재사용, 메뉴 내 기존 라우트 호출, standalone/창 크기 배치, 접근성 상태, 명시적 설치 버튼.
+- `manifest.webmanifest`, `web-pwa.js`, `sw.js`: 설치·정적 이미지 전용 캐시.
+- `assets/glowme/`: 제공 로고/시험용 192·512·favicon32·참고 ICO 및 출처/제약 문서. **정식 maskable/16px 아이콘은 아직 아님**.
+- `test/pwa.test.cjs`, `test/glowme.browser.cjs`, `test/helpers/shell-assets.cjs`: 새 안전성/실제 자산/셸 검사.
+- 기존 `test/*.browser.cjs`: API fixture와 별도로 실제 새 CSS/JS를 읽게 연결. 확장 CORS 전용 fixture는 앱을 렌더링하지 않으므로 원본 유지.
+- `test/helpers/player-controls-fade.cjs`: 강제 hover 대신 실제 노출 좌표로 검사.
+- `test/my-replies.browser.cjs`: 메뉴 동작 후 열린 상태를 유지한 검색 패널을 불필요하게 다시 닫지 않게 검사.
+- `.github/workflows/channel-videos.yml`: 자산/테스트 변경 감지, 전체 Git 이력(전후 화면 기준 필요), axe, 새 셸 및 설치 앱 모의 미디어 검사/스크린샷.
+- 본 문서: 요구/체크포인트/실패 원인/재개 기록.
+
+## 실행한 테스트 / 결과
+
+로컬 명령은 Node 22 및 기존 Playwright Chromium, ffmpeg, axe-core 4.11.1 설치가 필요합니다. 이 환경의 node는 `/workspace/.fromm-env/node_modules/node/bin/node`, 의존 경로는 `NODE_PATH=/workspace/.fromm-env/node_modules:/tmp/fromm-ui-deps/node_modules`입니다. 새 환경에서 경로를 그대로 가정하지 마세요.
+
+- `node --test test/*.test.cjs native-live/test/*.test.cjs`: **277/277 통과, 실패/스킵 0**. `AGORA_TYPES_PATH=/tmp/agora-462/package/types/Private/IAgoraRtcEngine.d.ts`를 제공해 SDK 타입 검사 포함. CI에서는 기존 SDK 미설치 항목이 skip될 수 있음.
+- `node --test test/pwa.test.cjs`: **4/4 통과**(위 277에 포함). manifest/아이콘 크기·캐시 경계·인증/서명 요청 제외·자기 캐시만 정리.
+- `GLOWME_SCREENSHOT_DIR=... node test/glowme.browser.cjs`: 통과. 웹 320/390/844/1440, 양방향 독립 패널, 스크롤 후 토글 위치, 모의 standalone 넓음/좁음/표시 모드 전환, Chrome manifest 파서, 명시적 설치 이벤트, 실제 HTTP SW와 공개 이미지 4개 캐시 확인. JS 오류/가로 넘침 없음.
+- 위 검사 내 axe WCAG A/AA: 로그인390/메뉴390/설치 앱 대화1440 **위반 0**. 전체 제품·스크린리더 적합성 인증은 아님.
+- `node test/ui-icons.browser.cjs`: 1440/390 통과.
+- `node test/channel-player.browser.cjs`, `node test/replay-player.browser.cjs`: 각각 12개 뷰포트의 실제 로컬 MP4 가로·세로 재생/탐색/컨트롤/목록 복귀 통과.
+- `GLOWME_INSTALLED_MODE=1 node test/channel-player.browser.cjs`, 같은 Replay 명령: 설치 앱 배치 모의 모드에서 동일 MP4 검사 통과. 물리 Chrome 설치를 뜻하지 않음.
+- `node test/player-settings.browser.cjs`: PC/모바일 설정·회전·재생 상태·페이드·터치 유지·전체 화면·축소 모션 통과.
+- `node test/video-quality.browser.cjs`: 1920/1440/1366/390/844의 실제 합성 HLS 최고/수동/단일 화질·상태 유지 통과.
+- `STARTUP_RUNS=1 node test/video-startup.browser.cjs`: 기존 보통/느린 네트워크 시작·재개/요청 회귀 검사 통과. 이번 디자인 작업의 전후 성능 향상을 주장하지 않음.
+- `node test/channel-videos.browser.cjs`: 내비게이션/탭·필터·선택/오류/로그아웃/Replay·LIVE 분리 통과.
+- `node test/video-list-autoload.browser.cjs`: 페이지 추가·중복/스크롤/선택/아티스트 변경/로그아웃 통과.
+- `node test/direct-selection.browser.cjs`, `node test/selection-gestures.browser.cjs`, `node test/media-bulk-save.browser.cjs`: 선택·기존 파일/이름·저장 통과.
+- `node test/live-ui-pip.browser.cjs`, `node test/native-diagnostics.browser.cjs`: 합성 LIVE 컨트롤/프레임/PiP/복귀·정리 통과.
+- `node test/live-chat-probe.browser.cjs`, `node test/live-chat-probe-extension.browser.cjs`: 합성 댓글 및 실제 로컬 TLS/CORS/DNR/POST·ACK 통과. 프로덕션 확장 규칙 원본 사용.
+- `node test/votes.browser.cjs`, `node test/my-replies.browser.cjs`: 투표/검색·답장·날짜·오류·계정 전환 통과.
+- `git -c core.whitespace=cr-at-eol diff --check`: 통과.
+- 기준 main과 HLS/저장/연결/기존 라우트 핵심 14개 함수 및 Native/확장/LIVE 보조 JS 동일성 확인. UI 가드 외 핵심 로직 변경 없음.
+
+## 실패 기록 / 해결
+
+- 초기 fixture의 없는 renderRooms 호출: 테스트 seed 수정, 해결.
+- 첫 CI: 새 JS 요청에 fixture가 HTML을 반환해 `Unexpected token '<'`. 실제 자산 helper 연결 후 로컬 해결.
+- 다음 CI: shallow checkout에 기준 main 객체가 없어 수정 전 화면 생성 실패. browser checkout을 fetch-depth 0으로 수정.
+- 새 공통 input 스타일이 seek 배경을 덮음: selector 우선순위 수정, 실제 화면에서 4px 트랙 확인.
+- 로그인 고급 옵션 대비 2.45:1: 민트 테마용 진한 텍스트로 수정, axe 재검사 통과.
+- LIVE 검정 스테이지가 밝은 셸의 진한 글자를 상속: 어두운 스테이지 전용 토큰 적용, 밝은 글자 회귀 검사 추가.
+- LIVE 페이드 강제 hover가 sticky 헤더 뒤를 가리킴: 실제 노출 지점으로 검사, 재실행 통과.
+- 답장 검사에서 이미 열린 검색을 다시 닫음: 독립 패널 정책에 맞게 조건부 열기, 재실행 통과.
+- 로컬 확장 preflight 검사: 불필요한 Playwright route가 실제 OPTIONS에 간섭. 앱 자산 연결이 필요 없는 확장 fixture를 원본으로 복원, 실제 OPTIONS/POST/ACK 재실행 통과.
+- 스크롤 직후 토글 좌표 비교: scroll 이벤트/rAF를 기다리게 수정. 기존 메뉴 top clamp도 새 셸에서는 적용하지 않아 고정 위치 유지.
+- 설치 앱에서 메뉴를 고정하면서 일반 웹의 저장된 메뉴 설정을 덮는 문제: pinned 상태에서는 기존 SIDEBAR_STATE_KEY를 쓰지 않게 수정하고 회귀 검사 추가. UI 설정만 취급하며 인증 저장은 변경하지 않음.
+- 원격 CI(489ead9) 마지막 투표 검사에서 최초 innerText가 빈 문자열: 기존 `.msg {content-visibility:auto}`의 첫 화면 그리기 전에 즉시 읽는 검사였음. 실제 카드로 스크롤하고 화면의 문구가 나타날 때까지 기다리도록 수정. 문구/기존 추가 요청 0 검증은 유지. 일반 실행과 CPU 6배 저속 모의 실행 모두 1440/390 통과. 투표 앱 구현은 변경하지 않음. 같은 CI에서 이전 영상·화질·LIVE·PiP·댓글 검사는 통과.
+- 현재 알려진 로컬 차단 실패: 없음. 최종 원격 CI 결과는 PR Checks에서 확인 필요.
+
+## 남은 작업 / 직접 검증 / 위험
+
+- 진행 중: 이 체크포인트 commit의 GitHub CI. 이미 성공한 로컬 검사를 이유 없이 반복하지 말고 실패한 step만 우선 조사.
+- 미시작(실기/사용자 검토): 실제 Chrome 설치·업데이트·독립창·OS 아이콘, 물리 모바일/iOS/Safari, 실방송/실인증 Replay·Channel, Native/확장 연결 및 실제 파일 저장.
+- 프로토타입 아이콘: 원본 해상도/작은 favicon/Windows ICO 품질과 정식 maskable 안전 영역은 디자인 검토가 남음. 현재 `purpose:any`이며 maskable이라고 오인시키지 않음.
+- API/미디어/앱 HTML을 오프라인 캐시하지 않으므로 네트워크 없이 새 대화를 여는 기능은 제공하지 않음.
+- 공개 아트워크를 바꾸면 `sw.js` CACHE_NAME도 갱신할 것. 재생 중 강제 reload/skipWaiting/clients.claim을 추가하지 말 것.
+- PR #51 접근성 개선은 미병합 별도 작업. 이번 브랜치에 전체를 임의로 합치지 않았음. 나중에 두 PR을 통합할 때 공통 UI 부분을 비교해야 함.
+- 기존 전체 서비스 접근성/실기 동작까지 모두 검증했다고 보고하지 말 것.
+
+## 다음 세션에서 가장 먼저 할 일
+
+1. GitHub `feature/pwa-glowme`와 **기존 PR #52** 상태를 확인. 브랜치를 찾지 못하면 대체 브랜치 생성 전에 복구 가능 여부 보고.
+2. 이 문서, `git status --short`, `git log -5 --oneline`, PR 최신 HEAD/Checks를 대조. 저장된 변경을 덮어쓰지 말 것.
+3. 최종 CI가 성공이면 구현/검사 반복 없이 사용자 디자인 검토와 위 실기 미검증 항목만 정리. 실패하면 해당 step 로그만 읽고 필요한 부분 수정·검사·체크포인트.
+4. 새 main이 생겼어도 변경 차이를 먼저 분석. 무조건 reset/merge하지 않음. 같은 브랜치/같은 Draft PR에서 계속.
+5. main 직접 수정·자동 병합·공개 배포·승인 없는 Native/확장 변경·Hooks 활성화 금지.
+6. 끝나거나 중단할 때 브랜치·PR·실제 최신 SHA·완료/실패/미검증·다음 순서를 보고.
+
+## 단계 기록
+
+- `be09944`: 요구사항/복구 문서 초기화 후 원격 저장.
+- `e75e04f`: PWA 설치/공개 이미지 전용 캐시, 4개 테스트 통과.
+- `d8b21af`: Glow ME 셸/독립 패널, Node 277 및 1차 실제 자산 브라우저 검사.
+- `c17ebb7`: 미디어/실제 자산/접근성 회귀/CI 연결.
+- `6c4f3a3`: 양방향 패널 접근/스크롤 고정/전체 화면 배치 보호, 실기·아이콘 제약 기록.
+- `489ead9`: 설치 앱이 일반 웹의 메뉴 저장 상태를 변경하지 않도록 보호.
+- 현재 문서 포함 checkpoint: 투표 카드 첫 화면 렌더링 대기 검사 보강. 최신 CI는 PR Checks 확인.
+
+민감정보(인증 토큰·비밀번호·계정·개인 대화·API 응답)는 문서/로그/스크린샷에 기록하지 않습니다. 화면 증거는 합성 자료만 사용합니다.
+
+
+## Liquid Glass 후속 요청 — 시작 체크포인트
+
+- 사용자 요청: 기존 기능/웹·앱 배치를 그대로 유지하며 실제 물 같은 반사·굴절·두께 표현을 강화. 새 PR/main 병합/배포 금지. 기존 PR #52와 feature/pwa-glowme만 사용.
+- 기준: `0222accf4210311cf101e210481c38ee4b1ed371`. 기존 CI 4개 성공 확인, 작업 트리 깨끗함 확인.
+- 시각 분석: 현재 거의 불투명한 밝은 민트 면/균일 1px 선/대칭적 약한 그림자로 깊이 부족. 목표는 비균일 반사 띠, 밝은 내측 모서리와 어두운 굴절 테두리, 볼록한 버튼의 위·아래 반사광. 텍스트 뒤의 거친 무늬와 대화 영역의 과장된 효과는 피함.
+- 계획: 헤더(강한 물결/원본 생성 광학 텍스처), 사이드바(두꺼운 가장자리/반사), 활성 버튼(볼록한 광택), 검색/달력(약한 유리/불투명한 입력 표면), 본문·영상(기존 가독성/화면 유지).
+- 공식 앨범아트/로고 복제 금지. 기존 사용자가 제공한 로고·PWA 아이콘은 변경하지 않음. 새 재료 텍스처는 독창적인 추상 물/유리 소재로 제작하며 UI/인물/글자를 넣지 않음.
+- 진행 중: 전후 동일 크기/상태 캡처 및 정적 재료 텍스처 준비. 변경은 CSS/정적 장식 자산/검사/인계 문서 중심. 인증·수신·재생·저장/PWA 제어 JS는 수정하지 않음.
+- 미시작: 재료/테두리 적용, 전후 시각 재검토, PC 웹/모의 설치 앱/모바일·가독성/성능 검사, 필요한 회귀/최종 CI.
+- 기존 실기 미검증 범위는 유지. CSS는 실제 광선 추적이 아니므로 광학 굴절을 정적 재료와 경계 반사로 근사하며 이를 실제 실시간 굴절 엔진으로 주장하지 않음.
+
+
+### Liquid Glass 재료 체크포인트 — WIP
+
+- 독창적인 추상 물/유리 재료 생성 후 `assets/glowme/liquid-header.webp` 1600×600 / 61,810 bytes로 웹 전송용 인코딩. 공식 앨범아트/로고 복제 없음. 기존 로고/아이콘 변경 없음.
+- `glowme.css`: 헤더 광학 소재, 안팎 테두리 반사, 사이드바 내측 가장자리, 활성 버튼 곡면 하이라이트. 본문/영상/기능 JS는 그대로.
+- 1차가 너무 짙고 복잡한 헤더여서 밝고 청량한 베일 및 곡면 반사로 재조정. 모바일 dimmer가 유리 뒤를 회색으로 물들이지 않게 유리 바깥에만 적용.
+- `test/liquid-glass.browser.cjs`: 같은 데이터/크기의 0222acc CSS와 현재 CSS 비교, 5개 화면 상태 레이아웃 동일성/장식 1요청/배경 픽셀 대비/3회 스크롤 측정. 테스트 자산 서버 WebP 지원 및 CI 연결.
+- 320px 안내문 대비 3.96:1 발견 → 글자색 조정 후 샘플 최저 4.81:1. 모든 5개 화면 비교 통과. 초기 가로 화면의 최소 라벨 개수 검사만 실제 노출 영역에 맞게 수정; 실제 대비 기준 4.5:1 유지.
+- `test/glowme.browser.cjs`: 최종 5개 뷰포트/독립 패널/PWA 기본 동작/axe 통과.
+- Node 전체 277/277 통과(실제 Agora 타입 포함), 실패/스킵 0.
+- **당시 미해결 성능(아래 최종 단계에서 해결):** 첫 3회 측정에서 웹/모바일은 16.7ms 유지, 고정 앱은 16.7→33.3ms. 새로 추가한 고정 사이드바/검색 패널 블러로 의심. 다음 단계: 고정 배치에서는 불필요한 블러 제거, 전후 재측정. 이 WIP를 최종 성능 검증 완료로 보고하지 않음.
+- 설치 앱은 standalone 모의 렌더링으로 확인. 임시 프로필의 실제 설치를 CDP로 시도했으나 제공 Chromium에서 `PWA.install` 프로토콜이 없어 수행 불가. 우회/다른 도구 설치 없음. 실제 OS 설치/물리 기기 검증은 기존 미검증 유지.
+- 현재 증거: `/tmp/fromm-liquid-final/`, `/tmp/fromm-liquid-round1/`, `/tmp/fromm-liquid-round2/`. 출력은 합성 자료만 포함.
+
+
+### Liquid Glass 최적화·최종 로컬 검증 체크포인트
+
+- 206437c의 디자인을 이어서 작업했고 기존 변경을 덮거나 새 브랜치를 만들지 않음. 생산 파일은 CSS/새 장식 재료만 변경. HTML/기능 JS/PWA 제어·manifest·SW/로고·아이콘/Native·확장은 0222acc와 동일.
+- 고정형 앱과 넓은 웹 사이드바의 불필요한 실시간 블러 제거. 검색 패널도 실시간 블러 대신 밝은 유리 면과 경계 반사를 사용. 좁은 웹 메뉴의 블러는 2px로 제한.
+- 기존에 관측한 16.7→33.3ms 악화 해결. 웹 기본/양쪽 패널, 고정 앱, 모바일 기본/양쪽 패널 모두 3회 스크롤 표본 중앙 프레임 간격 16.7ms 유지, P95 약 16.7~16.8ms. 현재 수치/범위는 `docs/LIQUID_GLASS_REVIEW.md` 참고. 실제 방송 FPS/물리 기기 GPU 검증을 뜻하지 않음.
+- 웹 메뉴 상단의 뒤쪽 제목 비침을 밝은 반사 면으로 완화. 컨테이너/조작 영역 위치·크기는 변경 없음.
+- `test/liquid-glass.browser.cjs`: 5개 뷰포트의 전후 10개 상태, 동일 경계 좌표, 장식 요청 1개/80KiB 예산, 샘플링된 가시 라벨 최저 대비 4.81:1. 정상 종료. `/tmp/fromm-liquid-final-review/`에 원본 PNG, JSON, 비교 슬라이더 HTML 저장.
+- 대비 검사 보강: 전경 라벨만 숨겨 뒤쪽 대화는 유지. DOM Range의 실제 텍스트 경계로 측정해 제목 영역의 X 아이콘을 배경으로 오인하는 테스트 문제 수정. 짧은 가로 화면은 실제 가시 라벨 수에 맞춘 검사, 4.5:1 대비 기준은 유지.
+- `test/helpers/liquid-glass-report.cjs`: 테스트 산출물 전용 비교 HTML 생성. 앱에 로드/배포하지 않음.
+- 이 단계의 로컬 Node는 277/277 통과, 실패/스킵 0(실제 Agora 타입 포함). UI/PWA/axe의 기존 glowme 브라우저 검사도 통과. 새 CSS 최종 반영 후 필요한 브라우저 검사와 원격 CI를 확인.
+- 시각/자산/성능 보고: `docs/LIQUID_GLASS_REVIEW.md`. 원본 시안의 헤더 물결/굴절·패널 두께감과의 차이, 두 번의 조정, 정적 근사 방식의 한계와 실기 미검증을 기록.
+- 남은 일: 최종 commit의 CI 확인, 같은 PR #52 설명/최종 결과 갱신. 추가 기능 구현 없음. 다음 세션은 git status/문서/최신 PR HEAD Checks를 먼저 확인해 통과 검사를 반복하지 말 것.
+- 실제 Chrome 설치/OS/물리 모바일·iOS/실방송·실인증 스트림·Native 연결은 미검증 유지. 이 단계에서도 main 병합/배포/새 PR/Hooks/도구 변경 없음.
+
+- 최종 저장 직전 추가 확인: 기존 `test/glowme.browser.cjs` 전체 통과(독립 패널·PWA/SW·axe 포함). 원본 크기를 유지한 비교 HTML의 키보드 슬라이더/이미지 로드/브라우저 오류 없음 확인. HTML·기능 JS·Native·확장·PWA·로고·아이콘은 기준과 동일함을 재확인. 마지막으로 최신 커밋의 원격 회귀 CI만 확인하면 됨.
+
+
+### 최신 요청 — 사이드바 로고 사각 배경/테두리 제거
+
+- 기준 안전 커밋: `2ba8916806bcd0dbeea6a74feeee2ac9a5df2107` (Liquid Glass 최종 CI 4개 통과).
+- 사용자가 사진 속 로고의 테두리를 제거하도록 명시적으로 요청. 이전 로고 배경 유지 지침보다 이 최신 요청을 우선함.
+- 이미지 편집 도구로 밝은 사각 카드 배경을 제거한 투명 PNG로 `assets/glowme/logo.png` 교체. 478×263 캔버스/기존 표시 크기는 유지. 모서리 알파 0, 파일 113,692 bytes.
+- CSS 로고 border/border-radius/background/box-shadow 제거. 앱 아이콘(192/512/favicon/ICO), 다른 재료/배치/기능 JS/Native/확장은 변경 없음.
+- `sw.js`의 공개 아트워크 캐시 버전만 v1→v2로 갱신. 기존 이미지 4개 허용 목록/민감정보 캐시 금지/강제 skipWaiting 금지는 유지.
+- `/workspace/.fromm-env/node_modules/node/bin/node --test test/pwa.test.cjs`: 4/4 통과.
+- 기존 `test/glowme.browser.cjs`: 웹 320/390/844/1440, 독립 메뉴/검색, 앱 배치/좁은 창, PWA/SW/axe 검사 통과. `/tmp/fromm-logo-clear/`에 실제 Chromium 합성 화면 PNG 저장. 사각 카드 배경이 없음을 직접 확인.
+- `assets/glowme/README.md`의 로고 출처/수정 기록 갱신. 앞 단계의 로고/SW 불변 설명은 2ba8916까지의 기록이며 이 최신 요청에 한해 로고 자산·캐시 버전이 변경됨.
+- 같은 feature/pwa-glowme / PR #52에 저장. main 병합·공개 배포 없음. 새 커밋의 자동 CI는 최신 PR Checks에서 확인. 완료된 광범위 검사/물결 재료를 처음부터 재작성하지 말 것.
+
+
+### 최신 확정 요청 — 세로 3개 영역 분리 / 사이드바 중복 투표 제거
+
+- 사용자가 시안의 상단 정보·중간 필터/작업 바·하단 대화/검색 영역을 분리하도록 확인했고, 추가로 중간 바의 투표는 유지하되 햄버거/사이드바 투표만 제거하도록 승인.
+- 기준 안전 커밋 ea3c238. 기존 feature/pwa-glowme / Draft PR #52에서 이어서 작업. 새 브랜치·PR·main 병합·공개 배포 없음.
+- `glowme.css`: sticky 헤더는 투명 그룹으로 유지하고 상단/중간 패널에 각자 네 모서리 라운드 부여. 위·중간·아래 간격 PC 12px / 모바일 8px. 기존 광학 재료/유리 테두리를 상단 패널로 옮겨 합쳐진 카드처럼 보이지 않게 함. 로고 투명 배경 유지.
+- `web-glowme.js`: 사이드바 투표 항목/미사용 SVG만 제거. 중간 투표 탭과 기존 투표 기능은 그대로. 검색 패널 위치는 실제 헤더 간격으로 계산. 웹 독립 패널과 넓은 앱 3단 배치 유지.
+- `test/glowme.browser.cjs`: 패널 간격·네 모서리·사이드바 투표 없음/중간 투표 있음 검사 추가. 웹 320/390/844/1440 및 모의 앱/PWA/SW/axe 통과.
+- `test/liquid-glass.browser.cjs` 및 report helper: 전후 기준을 ea3c238의 CSS/셸로 갱신. 의도한 세로 간격 변경은 허용하고 열 너비/위치·가로 넘침·반사 재료·대비는 검증. 5개 화면 상태에서 실제 중간 투표 탭을 클릭해 투표 목록 표시 확인. 합성 빈 응답만 사용, Fromm 서버 접근 없음.
+- `test/player-settings.browser.cjs`: 844×390의 짧은 합성 stage에서 video.hover()의 기본 중앙 좌표가 sticky toolbar 뒤에 가려져 실패. 기존 실제 노출 지점 검사와 같은 방식으로 hover 좌표를 찾도록 수정. force 클릭/검사 생략 없이 설정 닫기·일반 클릭·회전·재생 상태·Escape·전체 화면·페이드·터치 유지·축소 모션 전체 재실행 통과. 앱 재생 코드는 변경하지 않음.
+- 로컬: `AGORA_TYPES_PATH=... node --test test/*.test.cjs native-live/test/*.test.cjs` 277/277 통과(실패/스킵 0). Replay/Channel 각각 기존 12개 뷰포트 MP4 재생·비율·스크롤 잠금·목록 복귀 통과. 위 Glow ME/비교/설정창 브라우저 검사 및 diff --check 통과.
+- 동일 조건 전후 각 3회 스크롤 표본: 웹/양쪽 패널/모의 앱/모바일/모바일 양쪽 패널 모두 중앙 프레임 간격 16.7→16.7ms, P95 16.7~16.8ms. 합성 가시 라벨 대비 최저 4.81:1. 실제 방송 FPS/물리 GPU 측정 아님. 새 이미지/서버 API/원본 미디어 요청 추가 없음.
+- 화면 증거: `/tmp/fromm-separated-checked/` (실제 Chromium), `/tmp/fromm-separated-comparison/` (같은 크기의 전후 PNG·JSON·comparison.html). 이 내부 HTML 경로는 사용자 공개 링크가 아님. 채팅에 PNG를 직접 표시하거나 최신 성공 CI의 스크린샷 artifact를 제공할 것.
+- 보존 확인: 이 단계의 `index.html`, Native, 확장, LIVE 보조 JS, manifest/SW/PWA JS 및 artwork는 ea3c238와 동일. 인증·수신·재생·화질·다운로드 핵심 변경 없음. Hooks 변경 없음.
+- 다음 작업: 현재 체크포인트 SHA와 PR #52 HEAD 일치 확인 → 새 CI 4개 결과 확인. 성공한 로컬 검사는 새 오류가 없는 한 반복하지 않음. 실제 Chrome OS 설치·Fromm 인증 스트림/실방송/Native·물리 모바일/iOS는 미검증 유지.
+
+
+### Liquid Glass 2차 — 시작 / 2026-10-31 KST
+
+- 최신 GitHub PR #52 OPEN/Draft, head f52d48c, CI 4개 SUCCESS. main 82e41b0, 기존 branch와 원격 일치(0/0), 미커밋 변경 없음. 같은 브랜치에서 계속 작업하며 main을 합치거나 재설정하지 않음.
+- ZIP 원본 및 추출 시안 재사용 가능: `/tmp/fromm-liquid-reference/01_UI_References/03_ChromeApp_Visual_Target.png`, `/tmp/fromm-glowme-package/`. 이번 메시지의 추가 시안은 가장 우선하는 **재질** 기준이며 가상 내용·메뉴·레이아웃은 복제하지 않음.
+- 비교 분석: 현재 탭 바 #ffffffeb, 검색 패널 #ffffffed 계열은 거의 불투명. 약한 1px 광택/균일한 민트 그라데이션 때문에 두꺼운 유리 가장자리·휘어진 반사광·패널 깊이감이 부족. 헤더의 광학 이미지도 밝은 veil에 눌려 물결 색과 굴절 대비가 약함.
+- 구현 계획: 기존 독창적 liquid-header.webp 재사용을 우선하고 표면/내부 경계/곡면 반사를 함께 조정. 헤더 강함, 탭 바·사이드바 중~강함, 검색·달력은 읽기 쉬운 조용한 중심, 선택 버튼만 강한 유리 캡슐. 필요할 경우에만 추가 정적 소재 사용. JS/레이아웃/기능은 변경하지 않음.
+- 성능 주의: 앞 단계의 큰 고정 패널 backdrop-filter 때문에 16.7→33.3ms 악화한 기록 있음. 고정 패널/검색의 blur:none 및 좁은 웹 사이드바 2px 유지. 새 반복 애니메이션/Canvas/WebGL/실시간 왜곡 금지. 반사광은 영상/대화 위에 덮지 않음.
+- 보존: 12px/8px 영역 간격, 독립 웹 서랍, 설치 앱 3단/햄버거 숨김, 중간 투표/사이드바 중복 제거, 로고 투명 배경, 재생 검정 면/컨트롤/PiP/회전/품질/다운로드 및 인증·Native·확장·Hooks.
+- 다음 순서: 소재 CSS 1차 → 동일 크기 f52d48c 전후 Chromium 캡처(웹1440/모바일390/가로 Channel844×390/모의 앱1440/확대) → 실제 시각 검토/조정 → 가독성·성능 각3회/회귀 → 단계 커밋/동일 PR CI 확인.
+- 현재 새 CSS/자산 수정은 아직 없음. 테스트는 기준 f52d48c의 통과 기록을 재사용하고, 변경 후 필요한 범위만 재실행. 실제 Chrome 설치/실방송/Native·실물 모바일·iOS는 기존 미검증.
+
+
+### Liquid Glass 2차 — 소재/비교 준비 WIP 체크포인트
+
+- `glowme.css`: 공통 유리 표면/두께 테두리 토큰, 상단 물결 아쿠아 조색과 굽은 모서리 반사, 중간 탭 바 반투명 광학 소재/내측 림, 사이드바/검색의 얇은 곡면 반사광, 선택 메뉴·날짜·검색·다운로드 캡슐 광택. 상단/중간/하단 간격 및 모든 배치 좌표는 유지. 영상/본문 효과 없음, 큰 고정 패널 blur:none 유지.
+- 기존 소재를 사이드바에 그대로 확대한 1차 화면은 어둡고 거칠어 폐기. 새 `assets/glowme/liquid-reflections.webp` 1200×675 / 41,986 bytes를 독창적으로 생성·인코딩해 조용한 반사광만 사용. 원래 `liquid-header.webp` 유지. 총 장식 103,796 bytes, 문서당 기존1→2요청. PWA 캐시/아이콘·로고 변경 없음.
+- 첫 PC 반사광 검사에서 header LIVE 라벨 대비 3.77:1 발견 → 헤더 작업 버튼 글자색을 진하게 조정. 2차 PC/모바일 미리보기 대비 통과. 세부 소재와 작은 버튼 캡슐 모양을 계속 조정한 뒤 전체 최종 검사 필요.
+- `test/liquid-glass.browser.cjs`: 기준 f52d48c CSS/셸, 주요 DOM 전체 경계 좌표 동일성 검사 복원. 실제 합성 Channel MP4를 기존 UI에서 선택·재생한 뒤 같은 1초 프레임의 844×390 비교 추가. 외곽/컨트롤 경계·contain·장식 요청2회 상한·대형 blur 없음·광학 디테일 원본 캡처 검사.
+- fixture 해결: Channel의 video 타입과 로컬 개발 proxy의 원 API 경로를 올바르게 모의. 테스트 HTTP 서버에 MP4 byte Range를 제공해 같은 프레임 탐색 가능하게 함. 대화 전용 하단 간격 조건은 플레이어 기존 viewport 배치에 적용하지 않고, 플레이어의 전후 경계 완전 동일성과 컨트롤이 헤더/뷰포트를 침범하지 않는지 검사. 앱 기능 코드는 바꾸지 않음.
+- `test/helpers/liquid-glass-report.cjs`: f52d48c 전후, 실제 Channel 844×390 및 헤더/탭/버튼 원본 확대 비교 항목 추가. PNG 실제 크기를 읽어 확대 자료 비율을 왜곡하지 않음.
+- 현재 증거: `/tmp/fromm-glass2-round1/`(폐기 1차), `/tmp/fromm-glass2-round2/`(PC/모바일2차), `/tmp/fromm-glass2-channel-review/`(실제 844×390 Channel 전후). 내부 HTML 링크를 공개 링크로 안내하지 않음.
+- **WIP**: 새 CSS의 전체 Node/PWA/axe/회귀, 전후3회 성능/메모리 최종 측정 및 CI는 아직 진행 전. 개별 미리보기 통과를 전체 검증 완료로 보지 말 것. 다음 세션은 이 CSS/자산을 덮지 말고 전체 비교/회귀부터 진행.
+
+
+### Liquid Glass 2차 — 최종 시각·로컬 검증 체크포인트
+
+- 구현 완료: 헤더 아쿠아/곡면 모서리 광택, 중간 탭 바의 조용한 광학 반사/이중 림, 사이드바·검색의 깊이감, 선택 탭/메뉴·날짜·검색·다운로드 유리 캡슐, 일반 탭·본문·입력은 조용하게 유지. 레이아웃·12px/8px 간격·투표 위치·투명 로고·PWA 구조 유지. 물리 기반 실시간 굴절 엔진이 아니라 정적 소재/CSS 근사.
+- 소재 최종 검토: f52d48c 동일 상태와 크기의 웹1440, 앱 배치1440, 모바일390, 좁은320, 가로844, **실제 MP4 Channel844×390** 전후 캡처. Channel 영상/컨트롤/검정 면 경계 좌표 모두 동일, 같은1초 프레임. 열린 좌/우 패널과 원본 해상도의 헤더·탭/선택 버튼 확대도 확인. 1차 거친 물결 확대를 폐기하고 조용한 41,986-byte 새 재료를 적용해 최종 조정.
+- 고대비/축소 설정: forced-colors에서는 패널 장식/그림자를 제거하고 시스템 Canvas/CanvasText 사용. 모의 고정 앱 실제 스타일 검사 통과. prefers-reduced-transparency는 불투명한 표면으로 전환, prefers-reduced-motion은 버튼 전환 제거. 일반 상태의 기존 한정 blur 정책은 유지.
+- 로컬 최종 명령/결과: `node --test test/*.test.cjs native-live/test/*.test.cjs` 277/277 PASS, skip0(AGORA_TYPES_PATH 제공); `node test/glowme.browser.cjs` 웹320/390/844/1440·독립 패널/고정 토글·모의 앱 넓음/좁음·실제 HTTP SW/PWA·axe PASS; `node test/liquid-glass.browser.cjs` 6개 화면 전후 주요 컨테이너 좌표 동일성·실제 Channel1초 프레임/contain/컨트롤·장식예산·대형blur없음·대비 PASS. 마지막 고대비 fallback 추가 후 app 한정 비교/고대비 검사를 재실행 PASS(일반 스타일 측정에 영향 없음).
+- 전후 성능은 다른 로컬 브라우저 작업 없이 각 조건3회: 웹/웹패널/모의앱/모바일/모바일패널 모두 중앙16.7→16.7ms. P95 16.7~16.8ms. JS heap 표본 각각2.99→3.05 / 3.29→3.37 / 2.86→2.93 / 2.98→3.05 / 3.28→3.39MiB. 최저 가시텍스트 대비4.87:1. 전체 접근성 인증/실제 방송 FPS/실기GPU/장기메모리를 의미하지 않음.
+- 추가전송: 41,986 bytes 최초장식1요청 추가, 총2개103,796 bytes. 패널마다 같은 파일 재다운로드하지 않음. 새디코딩면 약3.09MiB 추정; JS heap에 GPU/이미지메모리 미포함. 추가 API/원본미디어/렌더타이머/대형필터 없음.
+- 저장한 증거: `docs/LIQUID_GLASS_ROUND2_REVIEW.md` 및 `docs/design-review/glowme-glass2/`의 **원본PNG12장·measurements.json**. 앱에서 요청하지 않는 PR 검토용 문서/자료. 일반웹/앱/모바일/가로Channel/헤더/선택버튼 전후를 GitHub 보고서에서 바로 볼 수 있음. 로컬 전체산출물 `/tmp/fromm-glass2-final/`, 셸 `/tmp/fromm-glass2-shell/`, 고대비 `/tmp/fromm-glass2-accessibility/`. 내부 HTML경로는 사용자 공개링크가 아님.
+- 소스 보존: f52d48c 대비 index.html/web-glowme.js/Native/확장/LIVE보조JS/manifest/SW/PWA JS/로고·아이콘 모두 동일. 실생산 변경은 glowme.css 및 추가 정적 재료 한 개뿐. 대화·영상·인증·화질·저장 기능을 수정하지 않음. Hooks 변경 없음.
+- 남은 작업: **이 최종 커밋의 원격 CI4개 확인**, 오류 발생 시 필요한 부분만 수정. 성공 후 동일 PR 설명의 CI/스크린샷 링크 갱신. 코드 구현 미완료 없음. 다음 세션은 문서 커밋/실제 HEAD/PR Checks 대조부터 시작하고 성공 검사를 반복하지 않음. 실제Chrome설치/업데이트/실인증스트림·LIVE·Native/물리모바일·iOS는 미검증 유지.

@@ -208,7 +208,7 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
   const context = await browser.newContext({viewport: {width: 1280, height: 900}});
   const page = await context.newPage();
   await page.route('https://**/*', route => route.abort());
-  await page.goto(origin + '/index.html'); await configure(page, origin, {...options, title: name});
+  await require('./helpers/shell-assets.cjs')(page); await page.goto(origin + '/index.html'); await configure(page, origin, {...options, title: name});
   await page.locator('#saveSelectedBtn').click();
   await page.waitForFunction(() => qa.clickFinished, null, {timeout: nativePicker ? nativeWaitMs : 60000});
   let result = await summary(page); record(result);

@@ -47,7 +47,7 @@ async function fixture(browser,variant='after',width=1440){
   }
   return route.abort();
  });
- await page.goto('https://viewer.test/index.html');
+ await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
  await page.evaluate(()=>{
   setActiveAuth('synthetic-session','synthetic-device','synthetic-account');hideLoginGate();
   // Disable only automatic scroll intersection for this fixture: prove background without scrolling.

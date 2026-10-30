@@ -19,7 +19,7 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
         if(url.hostname==='viewer.test') return route.fulfill({contentType:url.pathname.endsWith('.js')?'text/javascript':'text/html',body:fs.readFileSync(path.join(root,url.pathname.endsWith('.js')?path.basename(url.pathname):'index.html'))});
         return route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{posts:[],isLast:true,channels:[],liveRooms:[]}})});
       });
-      await page.goto('https://viewer.test/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
       await page.evaluate(()=>{setActiveAuth('fixture','fixture','fixture');hideLoginGate();state.room={id:'a',host:{nick:'Test'}};state.chatHistoryComplete=true;state.hasMoreMessages=false;state.filter='all';syncLiveToolbarControls();render();});
       const centered=async selector=>{
         const b=page.locator(selector).first(); await b.waitFor({state:'attached'});

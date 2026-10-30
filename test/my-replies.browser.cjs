@@ -48,7 +48,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
     if(url.hostname==='cdn.example') return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#354c70"/></svg>'});
     return route.abort();
    });
-   await page.goto('http://viewer.test/index.html');
+   await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
    await page.evaluate(()=>{
     setActiveAuth('synthetic-a','synthetic-device','synthetic-account');hideLoginGate();
     state.rooms=[{hostChatRoomId:'room-a',host:{nick:'합성 아티스트 A'}},{hostChatRoomId:'room-b',host:{nick:'합성 아티스트 B'}}];
@@ -212,7 +212,9 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    profileStatus=503;
    await page.evaluate(()=>{resetReplyIdentity();render();});await page.evaluate(()=>ensureReplyIdentity());
    assert.equal(await page.locator('.reply-mine').count(),0);assert.equal(await page.locator('.msg').count(),1);
-   await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#myReplyRetry').isVisible(),true);
+   // The independent search panel may remain open across artist-menu actions.
+   if(await page.locator('#chatToolsPanel').getAttribute('aria-hidden')==='true')await page.locator('#chatToolsBtn').click();
+   assert.equal(await page.locator('#myReplyRetry').isVisible(),true);
    await page.locator('#myRepliesBtn').click();assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#chatMatchNext').isDisabled(),true);assert.equal(await page.locator('#counts').innerText(),'내 답장 확인 불가');
    profileStatus=200;await page.locator('#myReplyRetry').click();await page.waitForFunction(()=>currentReplyUserId()==='fan-b');
    assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#myReplyRetry').isVisible(),false);

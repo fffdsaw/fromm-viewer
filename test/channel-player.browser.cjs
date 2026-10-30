@@ -98,7 +98,7 @@ async function measure(page, label) {
         }
         return route.abort();
       });
-      await page.goto('http://viewer.test/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
       await page.locator('[data-live-center-mode="channel"]').click();
       await page.locator('[data-channel-video-play="landscape"]').waitFor();

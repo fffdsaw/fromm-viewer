@@ -1,7 +1,7 @@
 name: Channel videos regression
 on:
   pull_request:
-    paths: ['index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
+    paths: ['glowme.css', 'web-glowme.js', 'web-pwa.js', 'sw.js', 'manifest.webmanifest', 'assets/glowme/**', 'test/glowme*.cjs', 'test/liquid-glass*.cjs', 'test/pwa*.cjs', 'test/helpers/shell-assets.cjs', 'test/helpers/liquid-glass-report.cjs', 'index.html', 'web-live-pip.js', 'web-live-controls.js', 'web-native-live.js', 'test/native-diagnostics*.cjs', 'web-live-chat-probe.js', 'test/live-chat-probe*.cjs', 'test/votes*.cjs', 'test/my-replies*.cjs', 'test/live-ui-pip*.cjs', 'test/channel-videos*.cjs', 'test/channel-history*.cjs', 'test/channel-player*.cjs', 'test/replay-player*.cjs', 'test/video-quality*.cjs', 'test/player-settings*.cjs', 'test/helpers/player-controls-fade.cjs', 'test/video-startup*.cjs', 'test/direct-selection*.cjs', 'test/selection-gestures*.cjs', '.github/workflows/channel-videos.yml']
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -32,7 +34,7 @@ jobs:
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
-          npm install --no-save --package-lock=false playwright@1.62.1
+          npm install --no-save --package-lock=false playwright@1.62.1 axe-core@4.11.1
           npx playwright install --with-deps chromium
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg xvfb xdotool
@@ -44,12 +46,18 @@ jobs:
           REPLY_SCREENSHOT_DIR: screenshots
           UI_ICON_SCREENSHOT_DIR: screenshots
           QUALITY_SCREENSHOT_DIR: screenshots
+          GLOWME_SCREENSHOT_DIR: screenshots/glowme
+          LIQUID_SCREENSHOT_DIR: screenshots/liquid-glass
         run: |
+          node test/glowme.browser.cjs
+          node test/liquid-glass.browser.cjs
           node test/ui-icons.browser.cjs
           node test/video-list-autoload.browser.cjs
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
           node test/replay-player.browser.cjs
+          GLOWME_INSTALLED_MODE=1 CHANNEL_SCREENSHOT_DIR=screenshots/glowme-installed node test/channel-player.browser.cjs
+          GLOWME_INSTALLED_MODE=1 CHANNEL_SCREENSHOT_DIR=screenshots/glowme-installed node test/replay-player.browser.cjs
           node test/player-settings.browser.cjs
           node test/video-quality.browser.cjs
           STARTUP_RUNS=1 STARTUP_RESULTS_PATH=screenshots/video-startup.json node test/video-startup.browser.cjs

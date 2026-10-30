@@ -80,7 +80,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         }
         return route.abort();
       });
-      await page.goto('https://viewer.test/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
       await page.evaluate(()=>{setActiveAuth('synthetic-session','synthetic-device','synthetic-account');hideLoginGate();state.filter='live';renderLiveView();});
       await page.locator('[data-live-center-mode="replay"]').click();
       const select=kind=>page.locator(`#${kind}QualitySelect`);

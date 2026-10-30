@@ -57,7 +57,7 @@ async function shot(page, name) {
         }
         return route.abort();
       });
-      await page.goto('http://viewer.test/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {
         setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate();
         state.room = {id: 'artist-a', hostChatRoomId: 'artist-a', host: {nick: '테스트 아티스트'}};

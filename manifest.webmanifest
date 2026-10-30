@@ -1,0 +1,16 @@
+{
+  "id": "/fromm-viewer/",
+  "name": "Fromm Viewer",
+  "short_name": "Fromm Viewer",
+  "lang": "ko",
+  "description": "Fromm 대화와 미디어 뷰어",
+  "start_url": "/fromm-viewer/",
+  "scope": "/fromm-viewer/",
+  "display": "standalone",
+  "background_color": "#eafaf8",
+  "theme_color": "#d5f5f0",
+  "icons": [
+    {"src": "assets/glowme/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "assets/glowme/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}

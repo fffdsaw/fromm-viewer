@@ -8,6 +8,9 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
 <title>Fromm Viewer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#d5f5f0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/glowme/favicon-32.png">
 <style>:root { --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --text: #f5f6f8; --muted: #9da6b5; --line: #2a303b; --accent: #ff5b73; --accent2: #ff8798; --ok: #69d59a; --warn: #ffcb6b; }
 * { box-sizing: border-box; }
 button, input, textarea, select { font: inherit; }
@@ -1301,6 +1304,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
+<link rel="stylesheet" href="glowme.css">
 </head>
 <body>
 
@@ -6303,7 +6307,7 @@ function positionSidebarToggle(){
   const btn=$("#sidebarToggleBtn");
   const open=document.body.classList.contains("sidebar-open");
   btn.style.left=rect.left+"px";
-  btn.style.top=(open ? Math.max(11,rect.top) : rect.top)+"px";
+  btn.style.top=((window.FrommGlowME || !open) ? rect.top : Math.max(11,rect.top))+"px";
   btn.style.visibility=(!open && rect.bottom<=0) ? "hidden" : "visible";
 }
 function mountSidebarToggle(){
@@ -6320,6 +6324,7 @@ function mountSidebarToggle(){
   positionSidebarToggle();
 }
 function setSidebarOpen(open){
+  if(window.FrommGlowME?.pinned) open=true;
   const sidebar = $("#sidebar");
   const btn = $("#sidebarToggleBtn");
   const backdrop = $("#sidebarBackdrop");
@@ -6344,7 +6349,7 @@ function setSidebarOpen(open){
   );
 
   try{
-    localStorage.setItem(
+    if(!window.FrommGlowME?.pinned) localStorage.setItem(
       SIDEBAR_STATE_KEY,
       open ? "open" : "closed"
     );
@@ -7888,6 +7893,7 @@ function highlightText(text, query){
 }
 
 function fitChatToolsPanel(){
+  if(window.FrommGlowME) { window.FrommGlowME.fitPanel(); return; }
   const panel=$("#chatToolsPanel"), button=$("#chatToolsBtn");
   if(!panel || !button) return;
   panel.style.setProperty("--my-reply-panel-top",`${Math.max(0,button.getBoundingClientRect().bottom+8)}px`);
@@ -7911,6 +7917,7 @@ function openChatToolsPanel(){
 }
 
 function closeChatToolsPanel(){
+  if(window.FrommGlowME?.pinned) return;
   const panel = $("#chatToolsPanel");
   const btn = $("#chatToolsBtn");
   if(!panel || !btn) return;
@@ -9358,6 +9365,7 @@ function openDateCalendar(){
 }
 
 function closeDateCalendar(){
+  if(window.FrommGlowME?.pinned) return;
   const cal = $("#dateCalendar");
   const btn = $("#datePickerBtn");
   if(!cal || !btn) return;
@@ -11156,7 +11164,7 @@ $("#chatToolsPanel").onclick=(e)=>{
 
 document.addEventListener("click",(e)=>{
   const tools = $("#chatTools");
-  if(tools && !tools.contains(e.target)){
+  if(tools && !tools.contains(e.target) && !e.target.closest?.("#sidebar,#sidebarToggleBtn")){
     closeChatToolsPanel();
   }
 });
@@ -11267,5 +11275,7 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
+<script src="web-glowme.js"></script>
+<script src="web-pwa.js"></script>
 </body>
 </html>

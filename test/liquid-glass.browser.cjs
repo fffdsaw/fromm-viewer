@@ -1,11 +1,13 @@
 'use strict';
-// Same production UI/state/viewport, changing only the pre-refinement CSS.
+// Same production UI/state/viewport, comparing the pre-separation CSS and shell.
 // No real account, Fromm traffic, native bridge or personal conversation.
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {execFileSync}=require('node:child_process'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),out=process.env.LIQUID_SCREENSHOT_DIR||process.env.GLOWME_SCREENSHOT_DIR;
-const baseline=execFileSync('git',['show','0222acc:glowme.css'],{cwd:root});
+const baselineRef='ea3c238';
+const baseline=execFileSync('git',['show',baselineRef+':glowme.css'],{cwd:root});
+const baselineShell=execFileSync('git',['show',baselineRef+':web-glowme.js'],{cwd:root});
 const reports=[],benchmarks=[],audits=[],errors=[];
 const types={'.html':'text/html','.css':'text/css','.js':'application/javascript','.png':'image/png','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const server=http.createServer((req,res)=>{
@@ -32,7 +34,7 @@ async function seed(page){
 async function shot(page,name){if(out){fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,name+'.png'),animations:'disabled'});}}
 async function geometry(page){return page.evaluate(()=>{
  const r=selector=>{const b=document.querySelector(selector).getBoundingClientRect();return [b.x,b.y,b.width,b.height].map(x=>Math.round(x*100)/100);};
- return {header:r('.viewer-header'),sidebar:r('#sidebar'),content:r('#timeline'),search:r('#chatToolsPanel'),toggle:r('#sidebarToggleBtn'),overflow:document.documentElement.scrollWidth>innerWidth};
+ return {header:r('.viewer-header'),top:r('.topbar'),middle:r('.toolbar'),sidebar:r('#sidebar'),content:r('#timeline'),search:r('#chatToolsPanel'),toggle:r('#sidebarToggleBtn'),overflow:document.documentElement.scrollWidth>innerWidth};
 });}
 async function contrast(page){
  const labels=await page.evaluate(()=>{
@@ -115,13 +117,24 @@ async function benchmark(page,cdp){
     page.on('request',r=>{if(r.url().endsWith('/liquid-header.webp'))materialRequests.push(r.url());});
     await page.route('**/*',route=>{
      const url=new URL(route.request().url());
+     if(url.hostname.endsWith('frommyarti.com')&&url.pathname.startsWith('/v2/chat/votes/'))return route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{votes:[],nextCursor:null}})});
      if(url.origin!==origin)return route.abort();
      if(variant==='before'&&url.pathname.endsWith('/glowme.css'))return route.fulfill({contentType:'text/css',body:baseline});
+     if(variant==='before'&&url.pathname.endsWith('/web-glowme.js'))return route.fulfill({contentType:'text/javascript',body:baselineShell});
      return route.continue();
     });
     await page.goto(origin+'/fromm-viewer/');await seed(page);await page.waitForLoadState('networkidle');
     const g=await geometry(page);assert.equal(g.overflow,false,scene.name+' overflow');
-    if(variant==='before')beforeGeometry=g;else assert.deepEqual(g,beforeGeometry,'material must not move layout/controls');
+    if(variant==='before')beforeGeometry=g;else{
+     assert.deepEqual(g.header.slice(0,3),beforeGeometry.header.slice(0,3),'outer header width/position preserved');
+     assert.deepEqual(g.sidebar,beforeGeometry.sidebar,'sidebar geometry preserved');
+     assert.equal(g.content[0],beforeGeometry.content[0]);assert.equal(g.content[2],beforeGeometry.content[2]);
+     const gap=g.middle[1]-g.top[1]-g.top[3];
+     assert.ok(gap>=(scene.width<=700?8:12)-.1,'independent top/middle panels');
+     assert.ok(g.content[1]>=g.middle[1]+g.middle[3]+7,'separate bottom content');
+     assert.equal(await page.locator('[data-glow-nav="vote"]').count(),0);
+     assert.equal(await page.locator('.toolbar [data-filter="vote"]').count(),1);
+    }
     if(scene.installed){assert.equal(await page.locator('#sidebarToggleBtn').isVisible(),false);}
     await shot(page,`${scene.name}-${variant}-${scene.width}`);
     if(['web','app','mobile'].includes(scene.name)){
@@ -142,16 +155,20 @@ async function benchmark(page,cdp){
       const s=getComputedStyle(el,'::before');return {image:s.backgroundImage,animation:s.animationName,pointer:s.pointerEvents};
      });
      assert.ok(decoration.image.includes('liquid-header.webp'));assert.equal(decoration.animation,'none');assert.equal(decoration.pointer,'none');
-     assert.equal(materialRequests.length,1,'one bounded decorative texture request per document');
-    }else assert.equal(materialRequests.length,0);
+     await page.evaluate(()=>{setSidebarOpen(false);closeChatToolsPanel();});
+     await page.locator('.toolbar [data-filter="vote"]').click();
+     await page.waitForFunction(()=>state.filter==='vote');
+     await page.locator('.vote-list-heading h2').waitFor({state:'visible'});
+    }
+    assert.equal(materialRequests.length,1,'one bounded decorative texture request per document');
     reports.push({scene:scene.name,variant,geometry:g,materialRequests:materialRequests.length});
     await context.close();
    }
-   console.log(`${scene.name} ${scene.width}x${scene.height}: same-size before/after, identical geometry, visible-text contrast and static material PASS`);
+   console.log(`${scene.name} ${scene.width}x${scene.height}: separated bands, preserved column widths, toolbar-only voting, contrast and material PASS`);
   }
   assert.deepEqual(errors,[]);assert.ok(fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size<80*1024);
   if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'liquid-results.json'),JSON.stringify({reports,benchmarks,audits,assetBytes:fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size},null,2));require('./helpers/liquid-glass-report.cjs')(out);}
-  console.log(`Liquid Glass: ${benchmarks.length} three-run scrolling samples; one ${fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size}-byte static asset; no layout or production JS changes`);
+  console.log(`Liquid Glass: ${benchmarks.length} three-run scrolling samples; separate header/toolbar/content; original media engines retained`);
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{
  if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'liquid-results.json'),JSON.stringify({reports,benchmarks,audits,failure:error.message},null,2));}

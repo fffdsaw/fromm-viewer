@@ -33,9 +33,17 @@ async function geometry(page,label){
  const result=await page.evaluate(()=>{
   const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
   return {viewport:[innerWidth,innerHeight],overflow:document.documentElement.scrollWidth>innerWidth,
+   bands:(()=>{const top=rect('.topbar'),middle=rect('.toolbar'),content=rect('#timeline');
+    return {gap:middle.y-top.bottom,contentGap:content.y-middle.bottom,
+      radii:['.topbar','.toolbar'].map(s=>{const c=getComputedStyle(document.querySelector(s));return [c.borderTopLeftRadius,c.borderTopRightRadius,c.borderBottomLeftRadius,c.borderBottomRightRadius].map(parseFloat);})};})(),
    layout:document.documentElement.dataset.glowLayout,header:rect('.viewer-header'),content:rect('#timeline'),sidebar:rect('#sidebar'),panel:rect('#chatToolsPanel')};
  });
  assert.equal(result.overflow,false,label+' horizontal overflow');reports.push({label,...result});
+ assert.ok(result.bands.gap>=7,label+' independent top and middle panels');
+ assert.ok(result.bands.contentGap>=7,label+' separate bottom content');
+ assert.ok(result.bands.radii.flat().every(r=>r>=12),label+' all four panel corners rounded');
+ assert.equal(await page.locator('[data-glow-nav="vote"]').count(),0,'no duplicate vote in sidebar');
+ assert.equal(await page.locator('.toolbar [data-filter="vote"]').count(),1,'middle toolbar retains voting');
 }
 async function audit(page,label){
  await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});

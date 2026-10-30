@@ -22,12 +22,11 @@
   nav.className = 'glowme-nav'; nav.setAttribute('aria-label', '주요 화면');
   const paths = {
     all:'M5 5h14v10H9l-4 4V5Z', media:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5',
-    vote:'M4 20V9h4v11 M10 20V4h4v16 M16 20V12h4v8',
     live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',
     replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',
     channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'
   };
-  for (const [key, label] of [['all','전체 대화'],['media','미디어'],['vote','투표'],['live','LIVE'],['replay','Replay'],['channel','Channel']]) {
+  for (const [key, label] of [['all','전체 대화'],['media','미디어'],['live','LIVE'],['replay','Replay'],['channel','Channel']]) {
     const button = document.createElement('button');
     button.type='button'; button.dataset.glowNav=key;
     button.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[key]}"/></svg><span>${label}</span>`;
@@ -87,8 +86,9 @@
     const slot=searchSlot.getBoundingClientRect();
     search.style.left=`${slot.left}px`; search.style.top=`${slot.top}px`;
     search.style.visibility=slot.bottom>0 ? 'visible':'hidden';
-    const header=$('.viewer-header').getBoundingClientRect();
-    const top=Math.max(12, Math.min(header.bottom+12, innerHeight-180));
+    const headerElement=$('.viewer-header'),header=headerElement.getBoundingClientRect();
+    const gap=parseFloat(getComputedStyle(headerElement).rowGap)||12;
+    const top=Math.max(12, Math.min(header.bottom+gap, innerHeight-180));
     panel.style.setProperty('--glow-tools-top', `${top}px`);
   }
   function syncNavigation() {

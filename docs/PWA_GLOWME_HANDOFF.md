@@ -2,13 +2,13 @@
 
 ## 현재 상태 / 마지막 저장
 
-- 상태: **Liquid Glass CI 4개 통과 완료. 최신 로고 배경/테두리 제거 및 로컬 검증 완료**. 기존 `0222acc`의 CI 4개는 모두 성공했습니다. main 병합·공개 배포 없음. 아래 CI 상태는 이 체크포인트 작성 시점이며 최신 결과는 PR Checks를 우선합니다.
+- 상태: **상단·중간·하단 분리 및 사이드바 중복 투표 제거, 로컬 검증 완료**. 직전 `ea3c238`의 CI 4개 성공 확인. 이 변경의 원격 CI는 저장 후 확인하며 최신 PR HEAD Checks를 우선합니다. main 병합·공개 배포 없음.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
 - 동일 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/52
 - 현재 환경 작업 경로: `/workspace/fromm-viewer-glowme`
-- 직전 안전 저장 커밋: `206437cd470869d8b0f80b6114727a9800861ef6` (Liquid Glass 재료 WIP 체크포인트, CI 4개 통과).
+- 직전 안전 저장 커밋: `ea3c238469c077b0a4249bd3a898ff24c7eb7700` (투명 로고/캐시 갱신 체크포인트, CI 4개 통과).
 - 이 문서를 포함한 최신 체크포인트 SHA: `git log -1 --format=%H -- docs/PWA_GLOWME_HANDOFF.md`로 확인. 자기 SHA를 넣는 순환 커밋은 만들지 않습니다. 실제 branch HEAD와 문서 커밋을 함께 확인하세요.
 - PR #50/#51/#11, main 및 기존 worktree는 보존했습니다. Hooks/Native/확장프로그램 변경 없음.
 
@@ -178,3 +178,19 @@
 - 기존 `test/glowme.browser.cjs`: 웹 320/390/844/1440, 독립 메뉴/검색, 앱 배치/좁은 창, PWA/SW/axe 검사 통과. `/tmp/fromm-logo-clear/`에 실제 Chromium 합성 화면 PNG 저장. 사각 카드 배경이 없음을 직접 확인.
 - `assets/glowme/README.md`의 로고 출처/수정 기록 갱신. 앞 단계의 로고/SW 불변 설명은 2ba8916까지의 기록이며 이 최신 요청에 한해 로고 자산·캐시 버전이 변경됨.
 - 같은 feature/pwa-glowme / PR #52에 저장. main 병합·공개 배포 없음. 새 커밋의 자동 CI는 최신 PR Checks에서 확인. 완료된 광범위 검사/물결 재료를 처음부터 재작성하지 말 것.
+
+
+### 최신 확정 요청 — 세로 3개 영역 분리 / 사이드바 중복 투표 제거
+
+- 사용자가 시안의 상단 정보·중간 필터/작업 바·하단 대화/검색 영역을 분리하도록 확인했고, 추가로 중간 바의 투표는 유지하되 햄버거/사이드바 투표만 제거하도록 승인.
+- 기준 안전 커밋 ea3c238. 기존 feature/pwa-glowme / Draft PR #52에서 이어서 작업. 새 브랜치·PR·main 병합·공개 배포 없음.
+- `glowme.css`: sticky 헤더는 투명 그룹으로 유지하고 상단/중간 패널에 각자 네 모서리 라운드 부여. 위·중간·아래 간격 PC 12px / 모바일 8px. 기존 광학 재료/유리 테두리를 상단 패널로 옮겨 합쳐진 카드처럼 보이지 않게 함. 로고 투명 배경 유지.
+- `web-glowme.js`: 사이드바 투표 항목/미사용 SVG만 제거. 중간 투표 탭과 기존 투표 기능은 그대로. 검색 패널 위치는 실제 헤더 간격으로 계산. 웹 독립 패널과 넓은 앱 3단 배치 유지.
+- `test/glowme.browser.cjs`: 패널 간격·네 모서리·사이드바 투표 없음/중간 투표 있음 검사 추가. 웹 320/390/844/1440 및 모의 앱/PWA/SW/axe 통과.
+- `test/liquid-glass.browser.cjs` 및 report helper: 전후 기준을 ea3c238의 CSS/셸로 갱신. 의도한 세로 간격 변경은 허용하고 열 너비/위치·가로 넘침·반사 재료·대비는 검증. 5개 화면 상태에서 실제 중간 투표 탭을 클릭해 투표 목록 표시 확인. 합성 빈 응답만 사용, Fromm 서버 접근 없음.
+- `test/player-settings.browser.cjs`: 844×390의 짧은 합성 stage에서 video.hover()의 기본 중앙 좌표가 sticky toolbar 뒤에 가려져 실패. 기존 실제 노출 지점 검사와 같은 방식으로 hover 좌표를 찾도록 수정. force 클릭/검사 생략 없이 설정 닫기·일반 클릭·회전·재생 상태·Escape·전체 화면·페이드·터치 유지·축소 모션 전체 재실행 통과. 앱 재생 코드는 변경하지 않음.
+- 로컬: `AGORA_TYPES_PATH=... node --test test/*.test.cjs native-live/test/*.test.cjs` 277/277 통과(실패/스킵 0). Replay/Channel 각각 기존 12개 뷰포트 MP4 재생·비율·스크롤 잠금·목록 복귀 통과. 위 Glow ME/비교/설정창 브라우저 검사 및 diff --check 통과.
+- 동일 조건 전후 각 3회 스크롤 표본: 웹/양쪽 패널/모의 앱/모바일/모바일 양쪽 패널 모두 중앙 프레임 간격 16.7→16.7ms, P95 16.7~16.8ms. 합성 가시 라벨 대비 최저 4.81:1. 실제 방송 FPS/물리 GPU 측정 아님. 새 이미지/서버 API/원본 미디어 요청 추가 없음.
+- 화면 증거: `/tmp/fromm-separated-checked/` (실제 Chromium), `/tmp/fromm-separated-comparison/` (같은 크기의 전후 PNG·JSON·comparison.html). 이 내부 HTML 경로는 사용자 공개 링크가 아님. 채팅에 PNG를 직접 표시하거나 최신 성공 CI의 스크린샷 artifact를 제공할 것.
+- 보존 확인: 이 단계의 `index.html`, Native, 확장, LIVE 보조 JS, manifest/SW/PWA JS 및 artwork는 ea3c238와 동일. 인증·수신·재생·화질·다운로드 핵심 변경 없음. Hooks 변경 없음.
+- 다음 작업: 현재 체크포인트 SHA와 PR #52 HEAD 일치 확인 → 새 CI 4개 결과 확인. 성공한 로컬 검사는 새 오류가 없는 한 반복하지 않음. 실제 Chrome OS 설치·Fromm 인증 스트림/실방송/Native·물리 모바일/iOS는 미검증 유지.

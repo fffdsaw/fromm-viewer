@@ -35,8 +35,7 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
     await checkControlsFade(page,page.locator('.modern-video-controls'),video.locator('..'),{touch:viewport.width===844,cancelTouch:kind==='channel',resetPlayback:async()=>{await video.evaluate(async v=>{v.currentTime=0;await v.play();});}});
     console.log(`${kind} ${viewport.width}: real fade, interaction hold/release and reduced motion PASS`);
    }
-   const hitVideo=async()=>{
-    const point=await video.evaluate(v=>{
+   const exposedVideoPoint=()=>video.evaluate(v=>{
      const r=v.getBoundingClientRect();
      for(const fy of [.05,.2,.5,.8])for(const fx of [.05,.5,.9]){
       const x=r.x+r.width*fx,y=r.y+r.height*fy;
@@ -44,18 +43,23 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
      }
      throw new Error('No exposed video point: '+JSON.stringify({video:r.toJSON(),stage:v.closest('.modern-video-stage').getBoundingClientRect().toJSON(),parent:v.parentElement.parentElement.getBoundingClientRect().toJSON(),viewport:[innerWidth,innerHeight],top:document.elementFromPoint(r.x+r.width/2,Math.max(0,r.y+10))?.className}));
     });
+   // The short landscape fixture can leave the video's centre behind the sticky
+   // header. Use an actually exposed point for hover as well as clicks.
+   const hoverVideo=async()=>{const point=await exposedVideoPoint();await page.mouse.move(point.x,point.y);};
+   const hitVideo=async()=>{
+    const point=await exposedVideoPoint();
     if(mobile)await page.touchscreen.tap(point.x,point.y);else await page.mouse.click(point.x,point.y);
    };
    const dismiss=async paused=>{
     await video.evaluate(async(v,paused)=>{if(paused)v.pause();else await v.play();},paused);
-    await video.hover();await summary.click();assert.equal(await settings.evaluate(el=>el.open),true);
+    await hoverVideo();await summary.click();assert.equal(await settings.evaluate(el=>el.open),true);
     await hitVideo();assert.equal(await settings.evaluate(el=>el.open),false,'surface click dismisses settings');
     assert.equal(await video.evaluate(v=>v.paused),paused,'dismissing the menu must preserve playback state');
    };
    await dismiss(false);await dismiss(true);
    await hitVideo();assert.equal(await video.evaluate(v=>v.paused),false,'a later ordinary click still plays');
    await hitVideo();assert.equal(await video.evaluate(v=>v.paused),true,'ordinary surface click still pauses');
-   await video.hover();await summary.click();await page.locator('[data-mvc="right"]').click();await hitVideo();
+   await hoverVideo();await summary.click();await page.locator('[data-mvc="right"]').click();await hitVideo();
    assert.equal(await video.evaluate(v=>v.paused),true,'rotated surface dismissal keeps paused state');
    assert.equal(await video.evaluate(v=>v.closest('.modern-video-stage').style.getPropertyValue('--mvc-video-angle')),'90deg');
    await summary.click();await page.mouse.click(1,1);assert.equal(await settings.evaluate(el=>el.open),false,'outside-player click still dismisses');

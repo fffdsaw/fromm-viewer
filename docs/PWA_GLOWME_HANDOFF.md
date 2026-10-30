@@ -1,102 +1,120 @@
-# PWA · Glow ME 작업 인계
+# Fromm Viewer — PWA / Glow ME 인계
 
-## 상태 및 재개
+## 현재 상태 / 마지막 저장
 
-- 상태: WIP — PWA/기본 Glow ME 셸 구현 및 1차 브라우저 검사 완료. 미디어·접근성 최종 검증 진행 중.
+- 상태: **요청된 셸 구현과 로컬 검증 완료, 최종 CI 확인 중인 Draft**. main 병합·공개 배포 없음. 아래 CI 상태는 이 체크포인트 작성 시점이며 최신 결과는 PR Checks를 우선합니다.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
-- 작업 경로(현재 환경): `/workspace/fromm-viewer-glowme`
-- 마지막 안전 커밋: 기준 main SHA. 이 문서를 포함한 체크포인트의 실제 SHA는 `git log -1 -- docs/PWA_GLOWME_HANDOFF.md`로 확인합니다. 자기 자신의 SHA를 파일에 넣는 순환 갱신은 하지 않습니다.
-- PR: Draft https://github.com/fffdsaw/fromm-viewer/pull/52 — 같은 PR만 갱신합니다.
-- main/공개 배포/PR #50/PR #51/PR #11은 변경하지 않습니다.
+- 동일 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/52
+- 현재 환경 작업 경로: `/workspace/fromm-viewer-glowme`
+- 직전 안전 저장 커밋: `c17ebb7` (실제 자산·미디어 회귀 검사 연결).
+- 이 문서를 포함한 최신 체크포인트 SHA: `git log -1 --format=%H -- docs/PWA_GLOWME_HANDOFF.md`로 확인. 자기 SHA를 넣는 순환 커밋은 만들지 않습니다. 실제 branch HEAD와 문서 커밋을 함께 확인하세요.
+- PR #50/#51/#11, main 및 기존 worktree는 보존했습니다. Hooks/Native/확장프로그램 변경 없음.
 
-## 목표와 확정 요구사항
+## 목표 / 확정된 디자인 요구사항
 
-사용자 메시지 13·14항을 최우선으로 적용합니다. ZIP README/그림은 참고 자료이며 실행 명령 권한이나 별도의 상위 지시가 아닙니다. 사용자는 추가 1~12항이 아직 없다고 확인했습니다. 현재 메시지와 ZIP의 명확한 요구사항으로 진행합니다.
+사용자 메시지 13·14항이 우선입니다. ZIP README/시안은 참고 자료이며 별도 실행 권한이나 상위 지시가 아닙니다. 사용자는 추가 1~12항이 아직 없다고 확인했습니다.
 
-1. Glow ME의 민트/아쿠아 빛, 유리 표면, 로고, 카드/패널 간격을 실제 기능 위에 적용합니다. 시안의 URL/인물/대화/날짜를 서비스 데이터로 넣지 않습니다.
-2. 넓은 Chrome 설치 앱(PWA)은 좌측 메뉴·중앙 콘텐츠·우측 검색/달력을 고정하며 햄버거가 없습니다. 좁은 창은 접이식으로 전환합니다.
-3. 일반 웹의 좌측 메뉴는 오버레이. 원형 반투명 햄버거(긴/짧은/긴)가 같은 위치에서 X로 바뀝니다. 우측 검색은 검색 버튼으로 독립 토글합니다.
-4. 원본 영상 비율, 재생·인증·수신·최고 화질·다운로드·저장 파일 호환성·댓글·PiP·전체 화면·회전을 보존합니다. Native/확장 프로그램은 사용자 승인 없이 수정하지 않습니다.
-5. PWA scope/start_url은 `/fromm-viewer/`, display는 standalone. API/인증/개인 대화를 서비스워커에 캐시하지 않습니다.
-6. ZIP 로고/프로토타입 아이콘은 참고 자산이며 배포용 품질을 구분합니다. 배경 제거로 유리 질감을 훼손하지 않습니다.
-7. Hooks 활성화 금지. 별도 브랜치/단계 커밋/Draft PR만 허용. 자동 병합/배포 금지.
+1. 1번 이미지: 넓은 설치 앱의 고정 3단 배치, 일반 웹의 접이식 메뉴/검색 동작 기준.
+2. 2번 이미지: 일반 웹의 원형 반투명 유리 햄버거. 긴/짧은/긴 선, 기존 햄버거↔X 애니메이션, 같은 위치 유지.
+3. 3번 이미지: 민트/아쿠아 Glow ME 색상·유리·로고·패널·카드 스타일. **설치 앱의 햄버거는 제거**.
+4. 일반 웹의 좌우 패널은 독립. 양쪽 모두 닫히면 전체 콘텐츠 공간 사용. 320px에서도 메뉴를 연 뒤 검색 버튼에 접근 가능.
+5. 설치 앱은 `standalone` + 1200px 이상에서 고정 좌/우 패널. 좁은 창은 접이식. 전체 화면에 들어갈 때 앱의 배치 정체성을 유지.
+6. 시안의 가상 URL/인물/대화/날짜/샘플 데이터는 앱에 추가하지 않음. 테스트는 합성 자료만 사용.
+7. 기존 재생·인증·최고 화질·다운로드·저장 파일 호환성·댓글·PiP·전체 화면·회전·검색 상태 보존.
+8. PWA scope/start_url/id는 `/fromm-viewer/`, display는 standalone. API/인증/대화/미디어 캐시 금지.
+9. 단계 커밋/원격 체크포인트/동일 Draft PR 유지. main 직접 수정·자동 병합·배포·승인 없는 Native/확장 변경 금지.
 
-## 완료
+## 완료한 작업
 
-- ZIP 내용과 3개 UI 시안 확인. 실행 파일이 아닌 디자인 참고 자료임을 확인.
-- GitHub 최신 main과 미병합 PR 확인. main은 위 SHA, #50/#51/#11 OPEN.
-- 별도 worktree/기능 브랜치 생성. 기존 worktree는 보존.
+- 최신 main/열린 PR 재확인 후 새 worktree와 기능 브랜치 생성.
+- 원본 제공 가로형 로고/시험용 아이콘 적용. 유리 배경 제거·임의 선명도 향상 주장 없음.
+- 기존 DOM/이벤트/상태를 재사용하는 Glow ME 셸. 민트/유리 헤더·버튼·메뉴·카드·검색·달력·로그인.
+- 웹 원형 햄버거/X와 검색 버튼을 실제 헤더 슬롯에 고정. 메뉴/검색을 어느 순서로 열고 닫아도 다른 패널 상태 유지. 스크롤 후 위치도 검사.
+- 넓은 설치 앱의 3단 배치 및 햄버거 제거. 좁아졌을 때 웹 패널 상태 복원.
+- 기존 검색/달력 컨트롤을 실제 DOM 그대로 재배치. 비대화 화면은 검색 fieldset 비활성화로 재생을 방해하지 않음.
+- 영상/오류/로딩/LIVE 스테이지 및 컨트롤은 기존 어두운 배경과 밝은 글자 유지. 영상 비율·크롭·화질 정책 변경 없음.
+- 설치 manifest, 사용자가 누를 때만 실행하는 설치 안내 버튼, 경로 제한 SW 등록.
+- 서비스워커: 정확한 공개 이미지 URL 4개만 캐시. HTML/JS/CSS/API/미디어/쿼리 URL/Authorization/Range/비GET 요청을 가로채지 않음. 강제 skipWaiting/새로고침 없음. 오프라인 앱을 제공한다고 주장하지 않음.
+- 실제 정적 자산을 읽는 Chromium 검사, axe/캐시 검사, 기존 회귀 fixture/CI 연결, 수정 전후 스크린샷 생성.
 
-## 진행 중 / 미시작
+## 수정한 파일
 
-- 진행 중: 현행 sidebar/search/페이지 스크롤 구조 및 회귀 테스트 조사.
-- 미시작: 안전한 PWA 등록·정적 자산 정책, Glow ME 자산/스타일, 설치 앱 3단 및 웹 패널 제어, 브라우저/회귀 검사, Draft PR.
+- `index.html`: manifest/favicon/theme-color/CSS/JS 링크, 고정 패널 UI 가드, 토글 위치, 패널 위치 계산 위임, 독립 메뉴 클릭 처리만 변경.
+- `glowme.css`: 새 셸/민트·유리 스타일/반응형/플레이어 어두운 표면 보호.
+- `web-glowme.js`: DOM 재사용, 메뉴 내 기존 라우트 호출, standalone/창 크기 배치, 접근성 상태, 명시적 설치 버튼.
+- `manifest.webmanifest`, `web-pwa.js`, `sw.js`: 설치·정적 이미지 전용 캐시.
+- `assets/glowme/`: 제공 로고/시험용 192·512·favicon32·참고 ICO 및 출처/제약 문서. **정식 maskable/16px 아이콘은 아직 아님**.
+- `test/pwa.test.cjs`, `test/glowme.browser.cjs`, `test/helpers/shell-assets.cjs`: 새 안전성/실제 자산/셸 검사.
+- 기존 `test/*.browser.cjs`: API fixture와 별도로 실제 새 CSS/JS를 읽게 연결. 확장 CORS 전용 fixture는 앱을 렌더링하지 않으므로 원본 유지.
+- `test/helpers/player-controls-fade.cjs`: 강제 hover 대신 실제 노출 좌표로 검사.
+- `test/my-replies.browser.cjs`: 메뉴 동작 후 열린 상태를 유지한 검색 패널을 불필요하게 다시 닫지 않게 검사.
+- `.github/workflows/channel-videos.yml`: 자산/테스트 변경 감지, 전체 Git 이력(전후 화면 기준 필요), axe, 새 셸 및 설치 앱 모의 미디어 검사/스크린샷.
+- 본 문서: 요구/체크포인트/실패 원인/재개 기록.
 
-## 변경 파일
+## 실행한 테스트 / 결과
 
-- `docs/PWA_GLOWME_HANDOFF.md`: 요구사항/체크포인트/재개 절차. 앱 변경 없음(현재 체크포인트).
+로컬 명령은 Node 22 및 기존 Playwright Chromium, ffmpeg, axe-core 4.11.1 설치가 필요합니다. 이 환경의 node는 `/workspace/.fromm-env/node_modules/node/bin/node`, 의존 경로는 `NODE_PATH=/workspace/.fromm-env/node_modules:/tmp/fromm-ui-deps/node_modules`입니다. 새 환경에서 경로를 그대로 가정하지 마세요.
 
-## 테스트 / 오류
+- `node --test test/*.test.cjs native-live/test/*.test.cjs`: **277/277 통과, 실패/스킵 0**. `AGORA_TYPES_PATH=/tmp/agora-462/package/types/Private/IAgoraRtcEngine.d.ts`를 제공해 SDK 타입 검사 포함. CI에서는 기존 SDK 미설치 항목이 skip될 수 있음.
+- `node --test test/pwa.test.cjs`: **4/4 통과**(위 277에 포함). manifest/아이콘 크기·캐시 경계·인증/서명 요청 제외·자기 캐시만 정리.
+- `GLOWME_SCREENSHOT_DIR=... node test/glowme.browser.cjs`: 통과. 웹 320/390/844/1440, 양방향 독립 패널, 스크롤 후 토글 위치, 모의 standalone 넓음/좁음/표시 모드 전환, Chrome manifest 파서, 명시적 설치 이벤트, 실제 HTTP SW와 공개 이미지 4개 캐시 확인. JS 오류/가로 넘침 없음.
+- 위 검사 내 axe WCAG A/AA: 로그인390/메뉴390/설치 앱 대화1440 **위반 0**. 전체 제품·스크린리더 적합성 인증은 아님.
+- `node test/ui-icons.browser.cjs`: 1440/390 통과.
+- `node test/channel-player.browser.cjs`, `node test/replay-player.browser.cjs`: 각각 12개 뷰포트의 실제 로컬 MP4 가로·세로 재생/탐색/컨트롤/목록 복귀 통과.
+- `GLOWME_INSTALLED_MODE=1 node test/channel-player.browser.cjs`, 같은 Replay 명령: 설치 앱 배치 모의 모드에서 동일 MP4 검사 통과. 물리 Chrome 설치를 뜻하지 않음.
+- `node test/player-settings.browser.cjs`: PC/모바일 설정·회전·재생 상태·페이드·터치 유지·전체 화면·축소 모션 통과.
+- `node test/video-quality.browser.cjs`: 1920/1440/1366/390/844의 실제 합성 HLS 최고/수동/단일 화질·상태 유지 통과.
+- `STARTUP_RUNS=1 node test/video-startup.browser.cjs`: 기존 보통/느린 네트워크 시작·재개/요청 회귀 검사 통과. 이번 디자인 작업의 전후 성능 향상을 주장하지 않음.
+- `node test/channel-videos.browser.cjs`: 내비게이션/탭·필터·선택/오류/로그아웃/Replay·LIVE 분리 통과.
+- `node test/video-list-autoload.browser.cjs`: 페이지 추가·중복/스크롤/선택/아티스트 변경/로그아웃 통과.
+- `node test/direct-selection.browser.cjs`, `node test/selection-gestures.browser.cjs`, `node test/media-bulk-save.browser.cjs`: 선택·기존 파일/이름·저장 통과.
+- `node test/live-ui-pip.browser.cjs`, `node test/native-diagnostics.browser.cjs`: 합성 LIVE 컨트롤/프레임/PiP/복귀·정리 통과.
+- `node test/live-chat-probe.browser.cjs`, `node test/live-chat-probe-extension.browser.cjs`: 합성 댓글 및 실제 로컬 TLS/CORS/DNR/POST·ACK 통과. 프로덕션 확장 규칙 원본 사용.
+- `node test/votes.browser.cjs`, `node test/my-replies.browser.cjs`: 투표/검색·답장·날짜·오류·계정 전환 통과.
+- `git -c core.whitespace=cr-at-eol diff --check`: 통과.
+- 기준 main과 HLS/저장/연결/기존 라우트 핵심 14개 함수 및 Native/확장/LIVE 보조 JS 동일성 확인. UI 가드 외 핵심 로직 변경 없음.
 
-- `git status`, `git fetch origin main`, GitHub main/열린 PR 조회: 성공.
-- 자동/브라우저 검사: 구현 전이므로 아직 미실행. 기존 성공 기록을 이번 브랜치 검사로 간주하지 않습니다.
-- 알려진 실패: 없음. 추가 요구사항 1~12는 아직 없다는 사용자 확인을 받았습니다.
+## 실패 기록 / 해결
 
-## 직접 검증 필요
+- 초기 fixture의 없는 renderRooms 호출: 테스트 seed 수정, 해결.
+- 첫 CI: 새 JS 요청에 fixture가 HTML을 반환해 `Unexpected token '<'`. 실제 자산 helper 연결 후 로컬 해결.
+- 다음 CI: shallow checkout에 기준 main 객체가 없어 수정 전 화면 생성 실패. browser checkout을 fetch-depth 0으로 수정.
+- 새 공통 input 스타일이 seek 배경을 덮음: selector 우선순위 수정, 실제 화면에서 4px 트랙 확인.
+- 로그인 고급 옵션 대비 2.45:1: 민트 테마용 진한 텍스트로 수정, axe 재검사 통과.
+- LIVE 검정 스테이지가 밝은 셸의 진한 글자를 상속: 어두운 스테이지 전용 토큰 적용, 밝은 글자 회귀 검사 추가.
+- LIVE 페이드 강제 hover가 sticky 헤더 뒤를 가리킴: 실제 노출 지점으로 검사, 재실행 통과.
+- 답장 검사에서 이미 열린 검색을 다시 닫음: 독립 패널 정책에 맞게 조건부 열기, 재실행 통과.
+- 로컬 확장 preflight 검사: 불필요한 Playwright route가 실제 OPTIONS에 간섭. 앱 자산 연결이 필요 없는 확장 fixture를 원본으로 복원, 실제 OPTIONS/POST/ACK 재실행 통과.
+- 스크롤 직후 토글 좌표 비교: scroll 이벤트/rAF를 기다리게 수정. 기존 메뉴 top clamp도 새 셸에서는 적용하지 않아 고정 위치 유지.
+- 현재 알려진 로컬 차단 실패: 없음. 최종 원격 CI 결과는 PR Checks에서 확인 필요.
 
-- 실제 Chrome 설치·업데이트·독립창/OS 아이콘/모바일 설치 UX.
-- 인증한 실제 Fromm LIVE/Replay/Channel 스트림, Native/Chrome 확장 연결, 권한 확인, 실제 파일 저장.
-- 물리적 모바일/iOS/Safari, OS 전체 화면/PiP. 합성 데이터 검사를 실방송 검증으로 보고하지 않습니다.
+## 남은 작업 / 직접 검증 / 위험
 
-## 다음 작업 / 재개 절차
+- 진행 중: 이 체크포인트 commit의 GitHub CI. 이미 성공한 로컬 검사를 이유 없이 반복하지 말고 실패한 step만 우선 조사.
+- 미시작(실기/사용자 검토): 실제 Chrome 설치·업데이트·독립창·OS 아이콘, 물리 모바일/iOS/Safari, 실방송/실인증 Replay·Channel, Native/확장 연결 및 실제 파일 저장.
+- 프로토타입 아이콘: 원본 해상도/작은 favicon/Windows ICO 품질과 정식 maskable 안전 영역은 디자인 검토가 남음. 현재 `purpose:any`이며 maskable이라고 오인시키지 않음.
+- API/미디어/앱 HTML을 오프라인 캐시하지 않으므로 네트워크 없이 새 대화를 여는 기능은 제공하지 않음.
+- 공개 아트워크를 바꾸면 `sw.js` CACHE_NAME도 갱신할 것. 재생 중 강제 reload/skipWaiting/clients.claim을 추가하지 말 것.
+- PR #51 접근성 개선은 미병합 별도 작업. 이번 브랜치에 전체를 임의로 합치지 않았음. 나중에 두 PR을 통합할 때 공통 UI 부분을 비교해야 함.
+- 기존 전체 서비스 접근성/실기 동작까지 모두 검증했다고 보고하지 말 것.
 
-1. `git fetch origin` 후 `origin/feature/pwa-glowme`와 PR 상태 확인. 브랜치가 없으면 임의 대체 브랜치를 만들지 말고 복구 가능 여부 보고.
-2. 이 파일, `git status --short`, `git log -5 --oneline`을 대조. 미커밋 변경을 덮어쓰지 않습니다.
-3. 새 main과의 차이를 먼저 분석하며 무조건 reset/merge하지 않습니다. #51 변경을 임의로 섞지 않습니다.
-4. 위 진행 중 항목부터 이어서 구현. 각 단계 테스트 명령·결과·실패 원인·파일 목록을 여기 기록하고 커밋합니다.
-5. 부족한 검증만 실행합니다. 코드 변경 없이 이미 통과한 검사를 반복하지 않습니다.
-6. 중단할 때 WIP/완료/실패/미검증과 다음 단계를 구분하고 브랜치·커밋·동일 PR 주소를 보고합니다.
+## 다음 세션에서 가장 먼저 할 일
 
-인증 토큰·비밀번호·계정·개인 대화·API 응답은 이 문서/스크린샷/로그에 기록하지 않습니다.
+1. GitHub `feature/pwa-glowme`와 **기존 PR #52** 상태를 확인. 브랜치를 찾지 못하면 대체 브랜치 생성 전에 복구 가능 여부 보고.
+2. 이 문서, `git status --short`, `git log -5 --oneline`, PR 최신 HEAD/Checks를 대조. 저장된 변경을 덮어쓰지 말 것.
+3. 최종 CI가 성공이면 구현/검사 반복 없이 사용자 디자인 검토와 위 실기 미검증 항목만 정리. 실패하면 해당 step 로그만 읽고 필요한 부분 수정·검사·체크포인트.
+4. 새 main이 생겼어도 변경 차이를 먼저 분석. 무조건 reset/merge하지 않음. 같은 브랜치/같은 Draft PR에서 계속.
+5. main 직접 수정·자동 병합·공개 배포·승인 없는 Native/확장 변경·Hooks 활성화 금지.
+6. 끝나거나 중단할 때 브랜치·PR·실제 최신 SHA·완료/실패/미검증·다음 순서를 보고.
 
-## 체크포인트 1 — PWA 기반
+## 단계 기록
 
-- 이전 안전 커밋: `be09944` (초기 요구사항 기록). 이 단계 커밋은 아래 git 명령으로 확인합니다.
-- 추가: `manifest.webmanifest`, `web-pwa.js`, `sw.js`, `assets/glowme/*`, `test/pwa.test.cjs`.
-- `index.html`: manifest/favicon/theme-color 및 설치 전용 JS 링크만 추가. 인증·재생 로직은 그대로입니다.
-- 서비스워커는 정확한 공개 이미지 URL 4개만 취급합니다. HTML/JS/CSS/API/미디어/쿼리 URL/Authorization/Range/비GET 요청은 가로채지 않습니다. 강제 skipWaiting/재생 중 새로고침 없음. 오프라인 앱 제공을 주장하지 않습니다.
-- 테스트: `/workspace/.fromm-env/node_modules/node/bin/node --test test/pwa.test.cjs` → 4/4 통과, 실패/스킵 0.
-- 아이콘은 제공된 시험용 원본 그대로이며 maskable로 선언하지 않았습니다. 배포용 정제는 미완료로 표시합니다.
-- 다음: 실제 sidebar/검색 DOM을 재사용하는 설치 앱/웹 셸, Glow ME CSS 및 브라우저 검사.
+- `be09944`: 요구사항/복구 문서 초기화 후 원격 저장.
+- `e75e04f`: PWA 설치/공개 이미지 전용 캐시, 4개 테스트 통과.
+- `d8b21af`: Glow ME 셸/독립 패널, Node 277 및 1차 실제 자산 브라우저 검사.
+- `c17ebb7`: 미디어/실제 자산/접근성 회귀/CI 연결.
+- 현재 문서 포함 checkpoint: 양방향 패널 접근/스크롤 고정/전체 화면 배치 보호, 실기·아이콘 제약 기록, 최종 CI 대기.
 
-## 체크포인트 2 — 실제 UI 셸
-
-- 이전 안전 커밋: `e75e04f` (PWA 기반).
-- 추가: `glowme.css`, `web-glowme.js`, `test/glowme.browser.cjs`.
-- `index.html`: 외부 스타일/셸 링크, 설치 앱에서 패널을 닫지 않는 UI 가드, 패널 위치 계산 위임, 메뉴/검색 독립 토글만 변경. 재생/인증 구현은 변경하지 않음.
-- 일반 웹: 원형 긴/짧은/긴 → X 버튼, 고정 헤더, 독립 좌우 패널. 설치 앱(standalone + 1200px 이상): 왼쪽/오른쪽 고정, 햄버거 제거. 좁아지면 원래 웹 패널 상태 복원.
-- 실제 기존 검색 DOM/달력/이벤트 재사용. 비대화 화면에서 검색 fieldset을 비활성화해 재생 중 의도치 않은 화면 전환을 방지.
-- Glow ME 민트/유리 셸 적용. 영상/플레이어·라이트박스는 읽기 쉬운 검정 표면 유지. 원본 제공 로고 사용.
-- `/workspace/.fromm-env/node_modules/node/bin/node --check web-glowme.js`: 통과.
-- `AGORA_TYPES_PATH=/tmp/agora-462/package/types/Private/IAgoraRtcEngine.d.ts ...node --test test/*.test.cjs native-live/test/*.test.cjs`: 277/277 통과, 실패/스킵 0.
-- `NODE_PATH=/workspace/.fromm-env/node_modules:/tmp/fromm-ui-deps/node_modules GLOWME_SCREENSHOT_DIR=/tmp/fromm-glowme-check ...node test/glowme.browser.cjs`: 통과. 320/390/844/1440px 웹, 독립 패널, 버튼 위치, 모의 standalone 넓음/좁음, 실제 HTTP 서비스워커 범위 검증. JS 오류/가로 넘침 없음.
-- 화면 증거(현재 환경): `/tmp/fromm-glowme-check/`의 before/web/login/menu/search/installed PNG 및 geometry.json. 합성 데이터만 포함.
-- 초기 실패/수정: 테스트 seed의 존재하지 않는 renderRooms 호출 제거(테스트 오류); 844px 스크롤 후 기존 relative 헤더 때문에 토글이 숨는 문제를 sticky 헤더로 수정. 재실행 통과.
-- 다음: 실제 영상 재생/다크 컨트롤, 추가 로그인/카드/투표 표면 대비, 접근성 검사, CI 연결 및 Draft PR 검증.
-
-## 체크포인트 3 — 실제 자산 및 미디어 회귀 검사
-
-- 이전 안전 커밋: `d8b21af` (Glow ME 셸). PR #52 생성 완료. 현재 최종 CI 전 WIP.
-- 기존 브라우저 fixture가 새 JS에 HTML을 반환해 첫 CI 브라우저 job이 `Unexpected token '<'`로 실패했습니다. 공통 `test/helpers/shell-assets.cjs`로 실제 CSS/JS/로고를 읽도록 기존 브라우저 검사를 연결했습니다. 앱 오류를 무시/억제한 것이 아닙니다.
-- `.github/workflows/channel-videos.yml`: 새 자산/테스트 경로와 axe 4.11.1, Glow ME 실제 HTTP 브라우저 검사/스크린샷을 CI에 연결했습니다.
-- 새 스타일의 input selector 우선순위가 seek 트랙 배경에 간섭하는 것을 화면에서 발견해 :where로 범위를 바로잡았습니다. 영상 컨트롤은 기존 검정/흰색 대비를 유지합니다.
-- 로그인 고급 옵션 대비 2.45:1 문제를 수정. 새 Chromium/axe WCAG A/AA 검사에서 login-390, menu-390, installed-1440 위반 0. 전체 서비스의 접근성 완전성을 주장하지 않습니다.
-- 실제 worker CacheStorage는 공개 이미지 4개만 포함함을 확인. 비밀/대화/API/미디어 캐시 없음.
-- 완료: 실제 정적 자산으로 아이콘(1440/390), Channel MP4(12개 viewport, 가로·세로), Replay MP4(12개 viewport), 설정/회전/상태 유지/페이드(1440/390/844), 실제 합성 HLS 최고/수동 화질(5개 viewport), Channel 브라우저 내비게이션 검사 통과.
-- LIVE 페이드 검사의 강제 hover가 sticky 헤더 뒤의 좌표를 가리키던 테스트 문제를 수정: elementFromPoint로 실제 노출된 플레이어 지점을 사용. LIVE/PiP 재실행 통과(실방송 아님).
-- 메뉴 동작 후 검색 패널이 유지되므로 본인 답장 retry 검사는 닫혔을 때만 열도록 수정. 개인 식별/답장 로직은 변경하지 않았습니다.
-- main 대비 14개 핵심 함수(서명 HLS/화질/저장/연결/기존 라우트) 및 Native/확장/LIVE 보조 JS가 동일함을 확인. 증거: `/tmp/fromm-glowme-source-preservation.json`.
-- 진행 중: 나머지 기존 브라우저 회귀 배치와 설치 앱 모의 영상 검사. 원격 최종 CI는 다음 커밋 후 확인 필요.
-- 알려진 제약: 앱 설치/물리 기기/실방송은 미검증. 제공된 프로토타입 아이콘의 정식 16px/maskable 검수는 미완료. 기능 코드는 배포하지 않음.
+민감정보(인증 토큰·비밀번호·계정·개인 대화·API 응답)는 문서/로그/스크린샷에 기록하지 않습니다. 화면 증거는 합성 자료만 사용합니다.

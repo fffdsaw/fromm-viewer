@@ -8,6 +8,9 @@
   const toggle = $('#sidebarToggleBtn'), search = $('#chatToolsBtn');
   if (!sidebar || !panel || !toggle || !search) return;
   let pinned = false, wasAll = null, webLeft = document.body.classList.contains('sidebar-open');
+  // Fullscreen temporarily changes display-mode. It must not turn an app window
+  // into a browser-tab layout while its current video is playing.
+  let appWindow=installed.matches;
   let webRight = panel.classList.contains('open'), promptEvent = null;
   document.documentElement.classList.add('glowme');
 
@@ -74,8 +77,16 @@
   panel.setAttribute('role','complementary'); panel.setAttribute('aria-label','대화 검색 및 달력');
   $('.main').append(panel);
   search.setAttribute('aria-controls','chatToolsPanel');
+  // Like the hamburger, keep the search trigger above either independent drawer.
+  // A real slot preserves toolbar geometry while the button stays at that spot.
+  const searchSlot=document.createElement('span'); searchSlot.className='glowme-search-slot';
+  searchSlot.setAttribute('aria-hidden','true'); search.before(searchSlot);
+  document.body.append(search); search.classList.add('glowme-search-toggle');
 
   function fitPanel() {
+    const slot=searchSlot.getBoundingClientRect();
+    search.style.left=`${slot.left}px`; search.style.top=`${slot.top}px`;
+    search.style.visibility=slot.bottom>0 ? 'visible':'hidden';
     const header=$('.viewer-header').getBoundingClientRect();
     const top=Math.max(12, Math.min(header.bottom+12, innerHeight-180));
     panel.style.setProperty('--glow-tools-top', `${top}px`);
@@ -91,7 +102,8 @@
     panel.inert=!panel.classList.contains('open');
   }
   function syncLayout() {
-    const next=installed.matches && wide.matches;
+    if(installed.matches) appWindow=true;
+    const next=appWindow && wide.matches;
     if (next !== pinned) {
       if (next) { webLeft=document.body.classList.contains('sidebar-open'); webRight=panel.classList.contains('open'); }
       pinned=next;
@@ -101,12 +113,16 @@
     }
     document.documentElement.dataset.glowLayout=pinned ? 'pinned':'web';
     toggle.hidden=pinned; search.hidden=pinned;
-    installButton.hidden=installed.matches || !promptEvent;
+    installButton.hidden=appWindow || !promptEvent;
     fitPanel(); syncNavigation(); positionSidebarToggle();
   }
   window.FrommGlowME=Object.freeze({get pinned(){return pinned;},fitPanel,syncNavigation});
   installed.addEventListener('change',syncLayout); wide.addEventListener('change',syncLayout);
   window.addEventListener('resize',fitPanel,{passive:true});
+  let scrollFrame=0;
+  window.addEventListener('scroll',()=>{
+    if(!scrollFrame)scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;fitPanel();});
+  },{passive:true});
   new ResizeObserver(fitPanel).observe($('.viewer-header'));
   // Watch only toolbar presentation attributes, never incoming video frames/messages.
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});

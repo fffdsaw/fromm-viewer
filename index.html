@@ -6307,7 +6307,7 @@ function positionSidebarToggle(){
   const btn=$("#sidebarToggleBtn");
   const open=document.body.classList.contains("sidebar-open");
   btn.style.left=rect.left+"px";
-  btn.style.top=(open ? Math.max(11,rect.top) : rect.top)+"px";
+  btn.style.top=((window.FrommGlowME || !open) ? rect.top : Math.max(11,rect.top))+"px";
   btn.style.visibility=(!open && rect.bottom<=0) ? "hidden" : "visible";
 }
 function mountSidebarToggle(){

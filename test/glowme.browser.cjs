@@ -73,6 +73,11 @@ async function audit(page,label){
    await geometry(page,`web-search-${viewport.width}`);await screenshot(page,`search-${viewport.width}`);
    await page.locator('.glowme-search-close').click();
    await page.locator('#sidebarToggleBtn').click();
+   await page.locator('#chatToolsBtn').click();
+   assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'false','search does not close menu');
+   assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false','search trigger is reachable with menu open');
+   await page.locator('.glowme-search-close').click();
+   assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'false','closing search keeps menu open');
    await screenshot(page,`menu-${viewport.width}`);
    if(viewport.width===390)await audit(page,'menu-390');
    await page.keyboard.press('Escape');
@@ -83,18 +88,46 @@ async function audit(page,label){
    assert.equal(await page.evaluate(()=>state.filter),'media');
    await page.evaluate(()=>setFilter('all',{autoTop:false}));
    await page.evaluate(()=>window.scrollTo(0,500));
+   // Slot geometry must stay fixed even after the sticky header reaches y=0.
+   await page.waitForFunction(()=>scrollY>100);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const scrolled=await page.locator('#sidebarToggleBtn').boundingBox();
    await page.locator('#sidebarToggleBtn').click();
+   const scrolledOpen=await page.locator('#sidebarToggleBtn').boundingBox();
+   assert.ok(Math.abs(scrolledOpen.x-scrolled.x)<1&&Math.abs(scrolledOpen.y-scrolled.y)<1,'scrolled menu button does not jump: '+JSON.stringify({viewport,scrolled,scrolledOpen,scrollY:await page.evaluate(()=>scrollY)}));
    await screenshot(page,`scrolled-menu-${viewport.width}`);
    await page.keyboard.press('Escape');
+   if(viewport.width===390){
+    await page.evaluate(()=>{state.filter='live';state.live.centerMode='live';syncLiveToolbarControls();renderLiveView();});
+    await screenshot(page,'live-empty-390');
+    const colors=await page.locator('.live-stage').evaluate(el=>{
+     const s=getComputedStyle(el);return {foreground:s.color,background:s.backgroundColor};
+    });
+    assert.equal(colors.foreground,'rgb(245, 246, 248)','dark LIVE stage retains light text');
+   }
+   if(viewport.width===1440){
+    const cdp=await context.newCDPSession(page);
+    const manifest=await cdp.send('Page.getAppManifest');
+    assert.deepEqual(manifest.errors,[],'Chrome manifest parser');
+    assert.equal(JSON.parse(manifest.data).scope,'/fromm-viewer/');await cdp.detach();
+    await page.evaluate(()=>{
+     window.fixtureInstallPrompts=0;const event=new Event('beforeinstallprompt',{cancelable:true});
+     event.prompt=async()=>{window.fixtureInstallPrompts++;};event.userChoice=Promise.resolve({outcome:'dismissed'});window.dispatchEvent(event);
+    });
+    await page.locator('#sidebarToggleBtn').click();await page.locator('#installAppBtn').click();
+    assert.equal(await page.evaluate(()=>window.fixtureInstallPrompts),1,'install prompt requires explicit button click');
+    assert.equal(await page.locator('#installAppBtn').isVisible(),false);
+   }
    await context.close();
   }
   // display-mode is simulated; this verifies layout, not a physical Chrome install.
   const context=await browser.newContext({viewport:{width:1440,height:900}}),page=await context.newPage();
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
-   const original=window.matchMedia.bind(window),mode=new EventTarget();
-   Object.defineProperties(mode,{matches:{get:()=>true},media:{value:'(display-mode: standalone)'}});
+   const original=window.matchMedia.bind(window),mode=new EventTarget();let active=true;
+   Object.defineProperties(mode,{matches:{get:()=>active},media:{value:'(display-mode: standalone)'}});
    window.matchMedia=query=>query==='(display-mode: standalone)'?mode:original(query);
+   window.fixtureDisplayMode=value=>{active=value;mode.dispatchEvent(new Event('change'));};
   });
   await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
   await page.goto(origin+'/fromm-viewer/');await seed(page);
@@ -102,6 +135,8 @@ async function audit(page,label){
   assert.equal(await page.locator('#sidebarToggleBtn').isVisible(),false);
   assert.equal(await page.locator('.glowme-search-close').isVisible(),false);
   assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
+  await page.evaluate(()=>window.fixtureDisplayMode(false));
+  assert.equal(await page.evaluate(()=>window.FrommGlowME.pinned),true,'app layout survives fullscreen display-mode changes');
   assert.equal(await page.locator('#dateCalendar').getAttribute('aria-hidden'),'false');
   await geometry(page,'installed-1440');await screenshot(page,'installed-1440');
   await audit(page,'installed-1440');

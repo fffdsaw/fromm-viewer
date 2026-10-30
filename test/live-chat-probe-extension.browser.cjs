@@ -38,7 +38,7 @@ const root = path.resolve(__dirname, '..');
       args: ['--no-proxy-server', '--ignore-certificate-errors', '--disable-extensions-except=' + extension, '--load-extension=' + extension,
         '--host-resolver-rules=MAP fffdsaw.github.io:443 127.0.0.1:' + port + ', MAP live-chat-api.frommyarti.com:443 127.0.0.1:' + port + ', MAP other.test:443 127.0.0.1:' + port]});
     const page = await context.newPage();
-    await require('./helpers/shell-assets.cjs')(page); await page.goto('https://fffdsaw.github.io/fromm-viewer/');
+    await page.goto('https://fffdsaw.github.io/fromm-viewer/');
     assert.equal(await page.title(), 'Synthetic loopback CORS test', 'host mapping must reach the fixture before any POST');
     async function attempt(suffix) {
       return page.evaluate(async suffix => {
@@ -51,7 +51,7 @@ const root = path.resolve(__dirname, '..');
     }
     assert.deepEqual(await attempt('normal'), {status: 200, ack: true});
     assert.equal(posts.length, 1); assert.ok(preflights.length >= 1);
-    await require('./helpers/shell-assets.cjs')(page); await page.goto('https://other.test/');
+    await page.goto('https://other.test/');
     assert.equal(await page.title(), 'Synthetic loopback CORS test');
     assert.deepEqual(await attempt('normal'), {blocked: true});
     assert.equal(posts.length, 1, 'an unrelated initiator never sends a POST');

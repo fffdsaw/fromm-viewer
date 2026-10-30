@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -52,6 +54,8 @@ jobs:
           node test/channel-videos.browser.cjs
           node test/channel-player.browser.cjs
           node test/replay-player.browser.cjs
+          GLOWME_INSTALLED_MODE=1 CHANNEL_SCREENSHOT_DIR=screenshots/glowme-installed node test/channel-player.browser.cjs
+          GLOWME_INSTALLED_MODE=1 CHANNEL_SCREENSHOT_DIR=screenshots/glowme-installed node test/replay-player.browser.cjs
           node test/player-settings.browser.cjs
           node test/video-quality.browser.cjs
           STARTUP_RUNS=1 STARTUP_RESULTS_PATH=screenshots/video-startup.json node test/video-startup.browser.cjs

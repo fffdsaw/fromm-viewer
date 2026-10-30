@@ -36,17 +36,30 @@ async function geometry(page){return page.evaluate(()=>{
 });}
 async function contrast(page){
  const labels=await page.evaluate(()=>{
-  const selectors=['#artistTitle','#scanState','.header-live-btn span:last-child','.glowme-nav button span','.fixture-room-name','.chat-tools-title','.chat-tools-label','#dateCalendarTitle','.bubble .text'];
+  const selectors=['#artistTitle','#scanState','.header-live-btn span:last-child','.glowme-nav button span','.fixture-room-name','.chat-tools-title','.chat-tools-label','#dateCalendarTitle','#chatSearchInput','.bubble .text'];
   return selectors.flatMap(selector=>[...document.querySelectorAll(selector)].slice(0,8).map(el=>{
-   const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-   if(!el.checkVisibility()||r.x<0||r.y<0||r.right>innerWidth||r.bottom>innerHeight||!hit||(hit!==el&&!el.contains(hit)))return null;
-   return {selector,rect:{x:r.x,y:r.y,w:r.width,h:r.height},color:getComputedStyle(el).color.match(/[\d.]+/g).slice(0,3).map(Number)};
+   const box=el.getBoundingClientRect();let r=box;
+   if(el.matches('input')){
+    const s=getComputedStyle(el),x=box.x+parseFloat(s.paddingLeft),y=box.y+8;
+    r={x,y,width:box.width-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight),height:box.height-16};
+   }else{
+    const range=document.createRange();range.selectNodeContents(el);const text=range.getBoundingClientRect();
+    const x=Math.max(box.left,text.left),y=Math.max(box.top,text.top);
+    r={x,y,width:Math.min(box.right,text.right)-x,height:Math.min(box.bottom,text.bottom)-y};
+   }
+   r={...r,right:r.x+r.width,bottom:r.y+r.height};
+   const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+   if(!el.checkVisibility()||r.width<1||r.height<1||r.x<0||r.y<0||r.right>innerWidth||r.bottom>innerHeight||!hit||(hit!==el&&!el.contains(hit)))return null;
+   const color=getComputedStyle(el,el.matches('input')&&!el.value?'::placeholder':null).color.match(/[\d.]+/g).slice(0,3).map(Number);
+   el.classList.add('liquid-contrast-sample');
+   return {selector,rect:{x:r.x,y:r.y,w:r.width,h:r.height},color};
   }).filter(Boolean));
  });
  // Capture the actual layered background behind glyphs; do not infer contrast
  // from a translucent computed background or silently skip textured surfaces.
- const style=await page.addStyleTag({content:'*{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important} svg{visibility:hidden!important} input::placeholder{color:transparent!important}'});
+ const style=await page.addStyleTag({content:'.liquid-contrast-sample,.liquid-contrast-sample *,.liquid-contrast-sample::placeholder{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}'});
  const pixels=await page.screenshot({animations:'disabled'});await style.evaluate(el=>el.remove());
+ await page.evaluate(()=>document.querySelectorAll('.liquid-contrast-sample').forEach(el=>el.classList.remove('liquid-contrast-sample')));
  return page.evaluate(async({labels,png})=>{
   const image=new Image();image.src=png;await image.decode();
   const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
@@ -118,6 +131,8 @@ async function benchmark(page,cdp){
     if(scene.name==='web'||scene.name==='mobile'){
      await page.locator('#sidebarToggleBtn').click();await page.locator('#chatToolsBtn').click();await page.locator('#datePickerBtn').click();
      await shot(page,`${scene.name}-panels-${variant}-${scene.width}`);
+     const cdp=await context.newCDPSession(page);await cdp.send('Performance.enable');
+     benchmarks.push({scene:scene.name+'-panels',variant,...await benchmark(page,cdp)});await cdp.detach();
     }
     if(variant==='after'){
      const colors=await contrast(page);assert.ok(colors.length>=(scene.height<500?2:4),`${scene.name}: sampled actual visible text backgrounds (${colors.length})`);
@@ -135,7 +150,10 @@ async function benchmark(page,cdp){
    console.log(`${scene.name} ${scene.width}x${scene.height}: same-size before/after, identical geometry, visible-text contrast and static material PASS`);
   }
   assert.deepEqual(errors,[]);assert.ok(fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size<80*1024);
-  if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'liquid-results.json'),JSON.stringify({reports,benchmarks,audits,assetBytes:fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size},null,2));}
-  console.log('Liquid Glass: three-run scrolling samples for web/app/mobile; one 61,810-byte static asset; no layout or production JS changes');
+  if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'liquid-results.json'),JSON.stringify({reports,benchmarks,audits,assetBytes:fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size},null,2));require('./helpers/liquid-glass-report.cjs')(out);}
+  console.log(`Liquid Glass: ${benchmarks.length} three-run scrolling samples; one ${fs.statSync(path.join(root,'assets/glowme/liquid-header.webp')).size}-byte static asset; no layout or production JS changes`);
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
-})().catch(error=>{console.error(error);process.exitCode=1;server.close();});
+})().catch(error=>{
+ if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'liquid-results.json'),JSON.stringify({reports,benchmarks,audits,failure:error.message},null,2));}
+ console.error(error);process.exitCode=1;server.close();
+});

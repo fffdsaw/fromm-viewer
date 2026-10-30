@@ -45,7 +45,7 @@
   width:min(284px,88vw);
 }
 .glowme #sidebar .brand {margin-bottom:8px;}
-.glowme #sidebar .brand img {display:block;width:min(100%,210px);height:auto;border-radius:14px;margin:0 auto;}
+.glowme #sidebar .brand img {display:block;width:min(100%,210px);height:auto;border:0;border-radius:0;background:transparent;box-shadow:none;margin:0 auto;}
 .glowme #sidebar .sub {font-size:12px;margin:10px 4px 16px;}
 .glowme #sidebar .card {background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;padding:18px 0 0;margin-top:16px;}
 .glowme .room {background:#f5fffb88;color:var(--text);border-color:transparent;}

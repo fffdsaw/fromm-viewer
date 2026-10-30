@@ -2,7 +2,7 @@
 
 ## 현재 상태 / 마지막 저장
 
-- 상태: **Liquid Glass 구현·최적화·로컬 검증 완료, 최종 CI 확인 단계**. 기존 `0222acc`의 CI 4개는 모두 성공했습니다. main 병합·공개 배포 없음. 아래 CI 상태는 이 체크포인트 작성 시점이며 최신 결과는 PR Checks를 우선합니다.
+- 상태: **Liquid Glass CI 4개 통과 완료. 최신 로고 배경/테두리 제거 및 로컬 검증 완료**. 기존 `0222acc`의 CI 4개는 모두 성공했습니다. main 병합·공개 배포 없음. 아래 CI 상태는 이 체크포인트 작성 시점이며 최신 결과는 PR Checks를 우선합니다.
 - 저장소: `fffdsaw/fromm-viewer`
 - 기준 main: `82e41b0bf1f8d7b5c29bf9dbd357564b352d8172`
 - 작업 브랜치: `feature/pwa-glowme`
@@ -165,3 +165,16 @@
 - 실제 Chrome 설치/OS/물리 모바일·iOS/실방송·실인증 스트림·Native 연결은 미검증 유지. 이 단계에서도 main 병합/배포/새 PR/Hooks/도구 변경 없음.
 
 - 최종 저장 직전 추가 확인: 기존 `test/glowme.browser.cjs` 전체 통과(독립 패널·PWA/SW·axe 포함). 원본 크기를 유지한 비교 HTML의 키보드 슬라이더/이미지 로드/브라우저 오류 없음 확인. HTML·기능 JS·Native·확장·PWA·로고·아이콘은 기준과 동일함을 재확인. 마지막으로 최신 커밋의 원격 회귀 CI만 확인하면 됨.
+
+
+### 최신 요청 — 사이드바 로고 사각 배경/테두리 제거
+
+- 기준 안전 커밋: `2ba8916806bcd0dbeea6a74feeee2ac9a5df2107` (Liquid Glass 최종 CI 4개 통과).
+- 사용자가 사진 속 로고의 테두리를 제거하도록 명시적으로 요청. 이전 로고 배경 유지 지침보다 이 최신 요청을 우선함.
+- 이미지 편집 도구로 밝은 사각 카드 배경을 제거한 투명 PNG로 `assets/glowme/logo.png` 교체. 478×263 캔버스/기존 표시 크기는 유지. 모서리 알파 0, 파일 113,692 bytes.
+- CSS 로고 border/border-radius/background/box-shadow 제거. 앱 아이콘(192/512/favicon/ICO), 다른 재료/배치/기능 JS/Native/확장은 변경 없음.
+- `sw.js`의 공개 아트워크 캐시 버전만 v1→v2로 갱신. 기존 이미지 4개 허용 목록/민감정보 캐시 금지/강제 skipWaiting 금지는 유지.
+- `/workspace/.fromm-env/node_modules/node/bin/node --test test/pwa.test.cjs`: 4/4 통과.
+- 기존 `test/glowme.browser.cjs`: 웹 320/390/844/1440, 독립 메뉴/검색, 앱 배치/좁은 창, PWA/SW/axe 검사 통과. `/tmp/fromm-logo-clear/`에 실제 Chromium 합성 화면 PNG 저장. 사각 카드 배경이 없음을 직접 확인.
+- `assets/glowme/README.md`의 로고 출처/수정 기록 갱신. 앞 단계의 로고/SW 불변 설명은 2ba8916까지의 기록이며 이 최신 요청에 한해 로고 자산·캐시 버전이 변경됨.
+- 같은 feature/pwa-glowme / PR #52에 저장. main 병합·공개 배포 없음. 새 커밋의 자동 CI는 최신 PR Checks에서 확인. 완료된 광범위 검사/물결 재료를 처음부터 재작성하지 말 것.

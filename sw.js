@@ -1,7 +1,7 @@
 /* Public artwork only. No offline login/app shell or API/media caching. */
 'use strict';
 const CACHE_PREFIX = 'fromm-viewer-public-art-';
-const CACHE_NAME = CACHE_PREFIX + 'v1';
+const CACHE_NAME = CACHE_PREFIX + 'v2';
 const ARTWORK = [
   'assets/glowme/logo.png', 'assets/glowme/icon-192.png',
   'assets/glowme/icon-512.png', 'assets/glowme/favicon-32.png'

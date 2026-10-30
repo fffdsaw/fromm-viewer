@@ -63,6 +63,10 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
     state.messages=state.chatMessages;render();
    });
    assert.equal(await page.locator('.msg').count(),3);
+   // .msg uses content-visibility:auto. DOM insertion can precede its first
+   // rendered layout on a busy runner; verify the actual visible card text.
+   await page.locator('.vote-chat-card').scrollIntoViewIfNeeded();
+   await page.waitForFunction(()=>document.querySelector('.vote-chat-card')?.innerText.includes('합성 검색 질문'));
    assert.match(await page.locator('.vote-chat-card').innerText(),/합성 검색 질문/);
    if(process.env.VOTE_SCREENSHOT_DIR){fs.mkdirSync(process.env.VOTE_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.VOTE_SCREENSHOT_DIR,`chat-${width}.png`),fullPage:true});}
    assert.equal(requests.filter(r=>r.url.includes('/votes/')).length,0,'rendering a chat card makes no extra request');

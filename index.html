@@ -237,7 +237,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .date-weekdays span { padding: 4px 0px; text-align: center; color: var(--muted); font-size: 11px; }
 .date-day { position: relative; height: 34px; padding: 0px 0px 5px; border: 0px; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; font-size: 12px; }
 .date-day:hover { background: rgb(27, 34, 45); }
-.date-day.outside { color: rgb(88, 97, 112); }
+.date-day.outside { color: var(--muted); }
 .date-day.selected { background: rgb(40, 77, 117); color: rgb(255, 255, 255); }
 .date-day.today { outline: rgb(89, 101, 121) solid 1px; }
 .date-day.has-chat::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: rgb(74, 163, 255); transform: translateX(-50%); }
@@ -351,7 +351,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .login-subtitle { margin: 6px 0px 25px; text-align: center; color: rgb(152, 162, 178); font-size: 14px; }
 .login-panel label { display: block; margin: 14px 0px 7px; color: rgb(216, 222, 231); font-size: 13px; font-weight: 750; }
 .login-panel input { width: 100%; box-sizing: border-box; }
-.login-privacy-note { margin-top: 14px; text-align: center; color: rgb(119, 130, 146); font-size: 11px; line-height: 1.5; }
+.login-privacy-note { margin-top: 14px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .top-auth-controls { margin-left: auto; display: flex; align-items: center; gap: 7px; }
 .token-life-wrap { height: 38px; padding: 0px 12px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgb(52, 64, 82); border-radius: 999px; background: rgb(17, 23, 34); color: rgb(169, 200, 255); font-size: 12px; font-weight: 750; white-space: nowrap; }
 .token-life-wrap.expiring { border-color: rgba(255, 178, 92, 0.55); color: rgb(255, 195, 130); }
@@ -1161,6 +1161,15 @@ html.vote-dialog-open{overflow:hidden}
 .vote-error{color:var(--bad,#ff8393);line-height:1.6}
 @media(max-width:600px){.toolbar>.pill{font-size:12px;padding:0 7px !important}.vote-dialog{padding:16px}.vote-list-top strong{font-size:14px}.vote-list{padding-top:12px}.vote-chat-card h3{font-size:15px}}
 
+/* Selection and playback are sibling controls, never nested widgets. */
+.download-selectable{position:relative}
+.download-selection-toggle{position:absolute;right:6px;bottom:6px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.download-selection-toggle::before{content:"";width:16px;height:16px;border:1.5px solid currentColor;border-radius:4px;background:var(--panel)}
+.download-selection-toggle[aria-checked="true"]::before{background:var(--accent);border-color:var(--accent)}
+.download-selection-toggle[aria-checked="true"]::after{content:"";position:absolute;width:8px;height:5px;border-left:2px solid white;border-bottom:2px solid white;transform:translateY(-1px) rotate(-45deg)}
+.download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+.download-selectable .replay-body{padding-right:52px}
+.media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
 </style>
 <style id="channelVideosStyle">
 .channel-video-play{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}
@@ -1300,6 +1309,15 @@ body.download-marquee-active{user-select:none;cursor:default}
 .mvc-popover label.mvc-mobile-volume{display:none}.mvc-panel input.mvc-volume-extra{width:76px;height:4px;min-height:4px;padding:0;border:0;appearance:none;border-radius:9px;background:#ffffff40;accent-color:var(--accent2)}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
+/* Selection and playback are sibling controls, never nested widgets. */
+.download-selectable{position:relative}
+.download-selection-toggle{position:absolute;right:6px;bottom:6px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.download-selection-toggle::before{content:"";width:16px;height:16px;border:1.5px solid currentColor;border-radius:4px;background:var(--panel)}
+.download-selection-toggle[aria-checked="true"]::before{background:var(--accent);border-color:var(--accent)}
+.download-selection-toggle[aria-checked="true"]::after{content:"";position:absolute;width:8px;height:5px;border-left:2px solid white;border-bottom:2px solid white;transform:translateY(-1px) rotate(-45deg)}
+.download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+.download-selectable .replay-body{padding-right:52px}
+.media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
 </style>
 </head>
 <body>
@@ -3883,10 +3901,10 @@ function syncLiveToolbarControls(){
 
 function liveCenterTabsHtml(){
   const mode=state.live.centerMode;
-  return `<div class="live-center-tabs" role="tablist" aria-label="라이브 센터">
-    <button class="live-center-tab live ${mode==="live"?"active":""}" data-live-center-mode="live" type="button">LIVE</button>
-    <button class="live-center-tab ${mode==="replay"?"active":""}" data-live-center-mode="replay" type="button">Replay</button>
-    <button class="live-center-tab ${mode==="channel"?"active":""}" data-live-center-mode="channel" type="button">Channel</button>
+  return `<div class="live-center-tabs" role="group" aria-label="라이브 센터">
+    <button class="live-center-tab live ${mode==="live"?"active":""}" data-live-center-mode="live" aria-pressed="${mode==="live"}" type="button">LIVE</button>
+    <button class="live-center-tab ${mode==="replay"?"active":""}" data-live-center-mode="replay" aria-pressed="${mode==="replay"}" type="button">Replay</button>
+    <button class="live-center-tab ${mode==="channel"?"active":""}" data-live-center-mode="channel" aria-pressed="${mode==="channel"}" type="button">Channel</button>
   </div>`;
 }
 
@@ -8071,7 +8089,7 @@ function syncDownloadSelection(){
   for(const el of document.querySelectorAll("[data-download-selection-key]")){
     const checked=downloadSelectionSet(el.dataset.downloadSelectionKind).has(el.dataset.downloadSelectionKey);
     el.classList.toggle("selected",checked);
-    el.setAttribute("aria-checked",String(checked));
+    el.querySelector(".download-selection-toggle")?.setAttribute("aria-checked",String(checked));
   }
   updateSelectedCount();
 }
@@ -8144,12 +8162,20 @@ function bindDownloadSelection(el,kind,item){
   for(const img of el.querySelectorAll("img")) img.draggable=false;
   el.dataset.downloadSelectionKind=kind;
   el.dataset.downloadSelectionKey=downloadSelectionKey(kind,item);
-  el.setAttribute("role","checkbox");
-  el.setAttribute("tabindex","0");
+  el.setAttribute("role","group");
+  el.setAttribute("tabindex","-1");
   el.setAttribute("aria-label",`${item.title || (kind==="media" ? baseName(item) : "영상")} 선택`);
   const checked=downloadSelectionSet(kind).has(el.dataset.downloadSelectionKey);
+  const selectionButton=document.createElement("button");
+  selectionButton.type="button";
+  selectionButton.className="download-selection-toggle";
+  selectionButton.setAttribute("role","checkbox");
+  selectionButton.setAttribute("aria-label",el.getAttribute("aria-label"));
+  selectionButton.setAttribute("aria-checked",String(checked));
+  selectionButton.title="저장할 항목 선택";
+  selectionButton.addEventListener("click",event=>{event.stopPropagation();flushDownloadClick();chooseDownloadItem(kind,item,event);});
+  el.append(selectionButton);
   el.classList.toggle("selected",checked);
-  el.setAttribute("aria-checked",String(checked));
   el.addEventListener("click",e=>{
     if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
     if(e.detail>1 || downloadSelectionControl(e)) return;

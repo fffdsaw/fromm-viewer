@@ -8,6 +8,9 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
 <title>Fromm Viewer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#d5f5f0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/glowme/favicon-32.png">
 <style>:root { --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --text: #f5f6f8; --muted: #9da6b5; --line: #2a303b; --accent: #ff5b73; --accent2: #ff8798; --ok: #69d59a; --warn: #ffcb6b; }
 * { box-sizing: border-box; }
 button, input, textarea, select { font: inherit; }
@@ -11267,5 +11270,6 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
+<script src="web-pwa.js"></script>
 </body>
 </html>

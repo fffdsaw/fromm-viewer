@@ -8,7 +8,7 @@
 - 작업 브랜치: `feature/pwa-glowme`
 - 작업 경로(현재 환경): `/workspace/fromm-viewer-glowme`
 - 마지막 안전 커밋: 기준 main SHA. 이 문서를 포함한 체크포인트의 실제 SHA는 `git log -1 -- docs/PWA_GLOWME_HANDOFF.md`로 확인합니다. 자기 자신의 SHA를 파일에 넣는 순환 갱신은 하지 않습니다.
-- PR: 아직 없음. 생성 후 동일 Draft PR만 갱신합니다.
+- PR: Draft https://github.com/fffdsaw/fromm-viewer/pull/52 — 같은 PR만 갱신합니다.
 - main/공개 배포/PR #50/PR #51/PR #11은 변경하지 않습니다.
 
 ## 목표와 확정 요구사항
@@ -85,3 +85,18 @@
 - 화면 증거(현재 환경): `/tmp/fromm-glowme-check/`의 before/web/login/menu/search/installed PNG 및 geometry.json. 합성 데이터만 포함.
 - 초기 실패/수정: 테스트 seed의 존재하지 않는 renderRooms 호출 제거(테스트 오류); 844px 스크롤 후 기존 relative 헤더 때문에 토글이 숨는 문제를 sticky 헤더로 수정. 재실행 통과.
 - 다음: 실제 영상 재생/다크 컨트롤, 추가 로그인/카드/투표 표면 대비, 접근성 검사, CI 연결 및 Draft PR 검증.
+
+## 체크포인트 3 — 실제 자산 및 미디어 회귀 검사
+
+- 이전 안전 커밋: `d8b21af` (Glow ME 셸). PR #52 생성 완료. 현재 최종 CI 전 WIP.
+- 기존 브라우저 fixture가 새 JS에 HTML을 반환해 첫 CI 브라우저 job이 `Unexpected token '<'`로 실패했습니다. 공통 `test/helpers/shell-assets.cjs`로 실제 CSS/JS/로고를 읽도록 기존 브라우저 검사를 연결했습니다. 앱 오류를 무시/억제한 것이 아닙니다.
+- `.github/workflows/channel-videos.yml`: 새 자산/테스트 경로와 axe 4.11.1, Glow ME 실제 HTTP 브라우저 검사/스크린샷을 CI에 연결했습니다.
+- 새 스타일의 input selector 우선순위가 seek 트랙 배경에 간섭하는 것을 화면에서 발견해 :where로 범위를 바로잡았습니다. 영상 컨트롤은 기존 검정/흰색 대비를 유지합니다.
+- 로그인 고급 옵션 대비 2.45:1 문제를 수정. 새 Chromium/axe WCAG A/AA 검사에서 login-390, menu-390, installed-1440 위반 0. 전체 서비스의 접근성 완전성을 주장하지 않습니다.
+- 실제 worker CacheStorage는 공개 이미지 4개만 포함함을 확인. 비밀/대화/API/미디어 캐시 없음.
+- 완료: 실제 정적 자산으로 아이콘(1440/390), Channel MP4(12개 viewport, 가로·세로), Replay MP4(12개 viewport), 설정/회전/상태 유지/페이드(1440/390/844), 실제 합성 HLS 최고/수동 화질(5개 viewport), Channel 브라우저 내비게이션 검사 통과.
+- LIVE 페이드 검사의 강제 hover가 sticky 헤더 뒤의 좌표를 가리키던 테스트 문제를 수정: elementFromPoint로 실제 노출된 플레이어 지점을 사용. LIVE/PiP 재실행 통과(실방송 아님).
+- 메뉴 동작 후 검색 패널이 유지되므로 본인 답장 retry 검사는 닫혔을 때만 열도록 수정. 개인 식별/답장 로직은 변경하지 않았습니다.
+- main 대비 14개 핵심 함수(서명 HLS/화질/저장/연결/기존 라우트) 및 Native/확장/LIVE 보조 JS가 동일함을 확인. 증거: `/tmp/fromm-glowme-source-preservation.json`.
+- 진행 중: 나머지 기존 브라우저 회귀 배치와 설치 앱 모의 영상 검사. 원격 최종 CI는 다음 커밋 후 확인 필요.
+- 알려진 제약: 앱 설치/물리 기기/실방송은 미검증. 제공된 프로토타입 아이콘의 정식 16px/maskable 검수는 미완료. 기능 코드는 배포하지 않음.

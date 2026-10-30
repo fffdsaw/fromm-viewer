@@ -46,7 +46,7 @@ async function openFixture(browser, viewport, nativeWindowViewport = false) {
     externalRequests.push(url.origin + url.pathname);
     return route.abort();
   });
-  await page.goto('http://localhost:4173/index.html');
+  await require('./helpers/shell-assets.cjs')(page); await page.goto('http://localhost:4173/index.html');
   await page.evaluate(() => {
     hideLoginGate();
     state.filter = 'live';

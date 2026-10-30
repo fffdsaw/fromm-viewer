@@ -34,7 +34,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
      return await json({posts:Array.from({length:24},(_,i)=>post(channel,i+(cursor?23:0))),isLast:!!cursor});
     }finally{active--;}
    });
-   await page.goto('https://viewer.test/index.html');
+   await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
    await page.evaluate(({kind})=>{
     setActiveAuth('fixture','fixture','fixture');hideLoginGate();state.filter='live';
     state.live.channelsLoaded=true;state.live.channels=[{id:'a',channelName:'A'},{id:'b',channelName:'B'}];

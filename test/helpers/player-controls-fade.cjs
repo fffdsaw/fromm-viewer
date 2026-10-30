@@ -5,7 +5,18 @@ const assert=require('node:assert/strict');
 module.exports=async function checkControlsFade(page,controls,stage,{touch=false,cancelTouch=false,outsideQuiet=false,resetPlayback=async()=>{}}={}){
  const state=()=>controls.evaluate(el=>{const css=getComputedStyle(el);return {opacity:Number(css.opacity),visibility:css.visibility,hidden:el.classList.contains('mvc-hidden')};});
  const reveal=async()=>{
-  await stage.hover({force:true,position:{x:5,y:5}});
+  // A sticky header can cover the stage's top corner after touch scrolling.
+  // Move over a genuinely exposed point, matching what a user can reach.
+  const point=await stage.evaluate(el=>{
+   const r=el.getBoundingClientRect();
+   for(const fy of [.02,.25,.5,.75])for(const fx of [.02,.5,.9]){
+    const x=r.x+r.width*fx,y=r.y+r.height*fy;
+    if(x<0||y<0||x>=innerWidth||y>=innerHeight)continue;
+    const hit=document.elementFromPoint(x,y);if(hit&&(hit===el||el.contains(hit)))return {x,y};
+   }
+   throw new Error('Player has no exposed pointer target');
+  });
+  await page.mouse.move(point.x,point.y);
   await page.waitForFunction(()=>{const css=getComputedStyle(document.querySelector('.modern-video-controls'));return css.visibility==='visible'&&Number(css.opacity)>.99;});
  };
  await reveal();await controls.evaluate(el=>el.classList.add('mvc-hidden'));

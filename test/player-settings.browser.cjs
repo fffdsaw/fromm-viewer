@@ -21,7 +21,7 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
     if(u.pathname==='/fixture.mp4')return route.fulfill({body:media,contentType:'video/mp4'});
     return route.fulfill({body:fs.readFileSync(path.join(root,u.pathname.endsWith('.js')?path.basename(u.pathname):'index.html')),contentType:u.pathname.endsWith('.js')?'text/javascript':'text/html'});
    });
-   await page.goto('https://viewer.test/');
+   await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/');
    await page.evaluate(({kind,height})=>{
     hideLoginGate();const timeline=document.querySelector('#timeline');timeline.style.width='calc(100vw - 64px)';
     timeline.innerHTML=`<div class="${kind==='replay'?'replay-player-page':'channel-player'}" style="width:100%;flex:none"><div class="${kind==='replay'?'replay-page-stage':'channel-player-stage'}" style="flex:none;height:${Math.max(160,height-260)}px"><video id="menuTestVideo" muted playsinline loop src="/fixture.mp4"></video></div></div>`;

@@ -58,7 +58,7 @@ const root = path.resolve(__dirname, '..');
         }
         return route.abort();
       });
-      await page.goto('http://localhost:4175/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('http://localhost:4175/index.html');
       async function prepare(token = 'synthetic-chat-token', provider = 'fromm') {
         await page.evaluate(({token, provider}) => {
           hideLoginGate(); state.filter = 'live'; state.live.centerMode = 'live';

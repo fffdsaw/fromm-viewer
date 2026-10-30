@@ -51,7 +51,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
     if(url.hostname==='cdn.example') return route.fulfill({contentType:'image/svg+xml',headers:{'access-control-allow-origin':'*'},body:'<svg xmlns="http://www.w3.org/2000/svg" width="180" height="100"><rect width="180" height="100" fill="#355983"/></svg>'});
     return route.abort();
    });
-   await page.goto('http://viewer.test:4175/index.html');
+   await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test:4175/index.html');
    await page.evaluate(()=>{
     setActiveAuth('synthetic-token','synthetic-device','synthetic-account');hideLoginGate();
     state.rooms=[{hostChatRoomId:'room-a',host:{nick:'합성 아티스트 A',profileUrlThumbnail:'https://cdn.example/avatar-a.svg'}},{hostChatRoomId:'room-b',host:{nick:'합성 아티스트 B',profileUrlThumbnail:'https://cdn.example/avatar-b.svg'}}];

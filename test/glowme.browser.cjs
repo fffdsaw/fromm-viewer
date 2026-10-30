@@ -6,6 +6,7 @@ const {execFileSync}=require('node:child_process');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),out=process.env.GLOWME_SCREENSHOT_DIR;
 const reports=[],errors=[];
+const audits=[];
 const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.png':'image/png','.webmanifest':'application/manifest+json'};
 const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),rel=decodeURIComponent(url.pathname).replace(/^\/fromm-viewer\//,'');
@@ -36,6 +37,14 @@ async function geometry(page,label){
  });
  assert.equal(result.overflow,false,label+' horizontal overflow');reports.push({label,...result});
 }
+async function audit(page,label){
+ await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
+ const result=await page.evaluate(async()=>{
+  const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});
+  return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));
+ });
+ audits.push({label,violations:result});
+}
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const origin=`http://127.0.0.1:${server.address().port}`;
@@ -48,6 +57,7 @@ async function geometry(page,label){
    await page.goto(origin+'/fromm-viewer/index.html?baseline=1');await seed(page);await screenshot(page,`before-${viewport.width}`);
    await page.goto(origin+'/fromm-viewer/');
    await page.waitForFunction(()=>!!window.FrommGlowME);
+   if(viewport.width===390)await audit(page,'login-390');
    await screenshot(page,`login-${viewport.width}`);await seed(page);
    await geometry(page,`web-${viewport.width}`);await screenshot(page,`web-${viewport.width}`);
    const start=await page.locator('#sidebarToggleBtn').boundingBox();
@@ -64,6 +74,7 @@ async function geometry(page,label){
    await page.locator('.glowme-search-close').click();
    await page.locator('#sidebarToggleBtn').click();
    await screenshot(page,`menu-${viewport.width}`);
+   if(viewport.width===390)await audit(page,'menu-390');
    await page.keyboard.press('Escape');
    assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'true');
    // Existing filter dispatch remains the only entry to media, not a duplicate data path.
@@ -93,6 +104,7 @@ async function geometry(page,label){
   assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
   assert.equal(await page.locator('#dateCalendar').getAttribute('aria-hidden'),'false');
   await geometry(page,'installed-1440');await screenshot(page,'installed-1440');
+  await audit(page,'installed-1440');
   await page.locator('[data-glow-nav="media"]').click();
   assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'false','artist/filter action keeps installed menu');
   assert.equal(await page.locator('.glowme-search-fields').evaluate(e=>e.disabled),true,'non-chat search cannot disturb video');
@@ -107,8 +119,15 @@ async function geometry(page,label){
   assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
   const sw=await page.evaluate(async()=>{const r=await navigator.serviceWorker.ready;return {scope:r.scope,script:r.active.scriptURL};});
   assert.equal(sw.scope,origin+'/fromm-viewer/');
+  const cached=await page.evaluate(async()=>{
+   const result=[];
+   for(const key of await caches.keys())for(const request of await (await caches.open(key)).keys())result.push(request.url);
+   return result;
+  });
+  assert.equal(cached.length,4);assert.ok(cached.every(url=>url.startsWith(origin+'/fromm-viewer/assets/glowme/')));
+  assert.ok(audits.every(a=>a.violations.length===0),'axe WCAG A/AA checks for login, new navigation and installed chat');
   await context.close();assert.deepEqual(errors,[],'production JS errors');
-  if(out)fs.writeFileSync(path.join(out,'geometry.json'),JSON.stringify(reports,null,2));
+  if(out){fs.writeFileSync(path.join(out,'geometry.json'),JSON.stringify(reports,null,2));fs.writeFileSync(path.join(out,'axe.json'),JSON.stringify(audits,null,2));}
   console.log('Glow ME: 4 web viewports, independent drawers, fixed toggle, installed 3-column/narrow layout and real scoped worker PASS');
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

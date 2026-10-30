@@ -95,8 +95,8 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
         }
         return route.abort();
       });
-      await page.goto('http://viewer.test/outside.html');
-      await page.goto('http://viewer.test/index.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/outside.html');
+      await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
       assert.deepEqual(await page.locator('[data-live-center-mode]').allTextContents(), ['LIVE', 'Replay', 'Channel']);
       await page.locator('[data-live-center-mode="channel"]').click();

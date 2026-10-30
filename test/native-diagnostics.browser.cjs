@@ -14,7 +14,7 @@ for(const width of[1440,390]){
  await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.hostname==='viewer.test'){
   const f=u.pathname.split('/').pop()||'index.html';if(['index.html','web-native-live.js','web-live-pip.js', 'web-live-controls.js','web-live-chat-probe.js'].includes(f))return route.fulfill({contentType:f.endsWith('.js')?'text/javascript':'text/html',body:fs.readFileSync(path.join(root,f))});
  }return route.abort();});
- await page.goto('https://viewer.test/index.html');
+ await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
  await page.evaluate(async()=>{
   hideLoginGate();setActiveAuth('SYNTHETIC_ONLY','synthetic-device','synthetic-account');state.filter='live';state.live.centerMode='live';state.live.discoveryLoaded=true;state.live.status='ready';
   state.live.entry={kind:'ordinary',channelId:'synthetic-channel',liveRoomId:'synthetic-room'};

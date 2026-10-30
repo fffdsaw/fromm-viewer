@@ -84,7 +84,8 @@
 .glowme-sr {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
 .glowme-search-notice {font-size:13px;line-height:1.6;padding-right:24px;margin:4px 0 18px;color:var(--muted);}
 .glowme-search-unavailable .glowme-search-fields {opacity:.55;}
-.glowme :is(input,textarea,select,.chat-tools-row input[type="search"]) {background:#f8fcfd;color:var(--text);border-color:#b5d3d5;}
+.glowme :where(input,textarea,select) {background:#f8fcfd;color:var(--text);border-color:#b5d3d5;}
+.glowme .chat-tools-row input[type="search"] {background:#f8fcfd;color:var(--text);border-color:#b5d3d5;}
 .glowme input::placeholder {color:#5f737b;opacity:1;}
 .glowme :is(.my-replies-btn,.chat-context-btn) {background:#e8f7f3;color:#2b5962;border-color:#b5d8d4;}
 .glowme .my-replies-btn.active {background:#bdeee4;color:#174d52;}
@@ -119,6 +120,8 @@
 .glowme :is(.login-sub,.login-privacy-note,.login-build-label) {color:var(--muted);}
 .glowme .login-privacy-note {font-size:12px;}
 .glowme .login-input {background:#f8fcfc;color:var(--text);border-color:#b9d9d5;}
+.glowme .auth-advanced {background:#edf7f4;}
+.glowme #authAdvancedToggle {color:#216c77;}
 .glowme .scroll-top {background:#e3f9f3f0;color:#24616a;border-color:#a9d9d4;}
 /* Native player chrome remains readable on video/black, not mint on black. */
 .glowme :is(.modern-video-stage,.lightbox,.live-player-stage) {
@@ -126,6 +129,8 @@
   color:#f5f6f8;color-scheme:dark;
 }
 .glowme .modern-video-stage :is(.mvc-button,.mvc-settings-menu,.mvc-rotation-btn) {color:#f5f6f8;}
+.glowme :is(.modern-video-stage,.mvc-popover) select {background:#303946!important;color:#fff!important;border-color:#4a5566!important;}
+.glowme .mvc-popover {--text:#f5f6f8;--muted:#b4bdcb;--line:#3f4b5b;--accent:#ff5b73;--accent2:#ff8798;color-scheme:dark;}
 .glowme .modern-video-stage select {background:#303946;color:#fff;border-color:#4a5566;}
 .glowme .modern-video-stage input {color:#fff;}
 .glowme .modern-video-stage :focus-visible {outline-color:#8acacb;}

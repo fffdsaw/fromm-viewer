@@ -132,6 +132,7 @@ async function audit(page,label){
   await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
   await page.goto(origin+'/fromm-viewer/');await seed(page);
   await page.waitForFunction(()=>window.FrommGlowME?.pinned);
+  assert.equal(await page.evaluate(()=>localStorage.getItem(SIDEBAR_STATE_KEY)),'closed','pinned app does not overwrite browser menu preference');
   assert.equal(await page.locator('#sidebarToggleBtn').isVisible(),false);
   assert.equal(await page.locator('.glowme-search-close').isVisible(),false);
   assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');

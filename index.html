@@ -6349,7 +6349,7 @@ function setSidebarOpen(open){
   );
 
   try{
-    localStorage.setItem(
+    if(!window.FrommGlowME?.pinned) localStorage.setItem(
       SIDEBAR_STATE_KEY,
       open ? "open" : "closed"
     );
@@ -11164,7 +11164,7 @@ $("#chatToolsPanel").onclick=(e)=>{
 
 document.addEventListener("click",(e)=>{
   const tools = $("#chatTools");
-  if(tools && !tools.contains(e.target) && !e.target.closest("#sidebar,#sidebarToggleBtn")){
+  if(tools && !tools.contains(e.target) && !e.target.closest?.("#sidebar,#sidebarToggleBtn")){
     closeChatToolsPanel();
   }
 });

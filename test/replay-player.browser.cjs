@@ -44,7 +44,16 @@ async function measure(page, label) {
     assert.equal(geometry.scrollY, 0, `${label}: no scroll needed on open/resize`);
     assert.ok(geometry.video.top >= geometry.head.bottom - 1, `${label}: video below title`);
     assert.ok(geometry.player.bottom <= geometry.viewport.height - 8, `${label}: player bottom inside viewport`);
-    assert.ok(geometry.player.bottom >= geometry.viewport.height - 14, `${label}: player fills available viewport height`);
+    if(geometry.viewport.width>900){
+      assert.ok(geometry.player.bottom >= geometry.viewport.height - 14, `${label}: desktop player fills available viewport height`);
+    }else{
+      assert.equal(await page.locator('.viewer-header').isVisible(),false,`${label}: mobile watching hides global tools`);
+      const naturalHeight=geometry.video.width*geometry.intrinsic.height/geometry.intrinsic.width;
+      assert.ok(geometry.video.height<=Math.max(160,naturalHeight)+4,`${label}: mobile stage avoids excess letterboxing`);
+      if(naturalHeight<geometry.viewport.height-geometry.head.bottom-16){
+        assert.ok(Math.abs(geometry.video.height-Math.max(160,naturalHeight))<=4,`${label}: mobile landscape stage follows source ratio`);
+      }
+    }
     assert.ok(geometry.video.bottom <= geometry.viewport.height - 8, `${label}: native controls inside viewport`);
     assert.ok(geometry.video.height >= 60, `${label}: visible video/control area`);
     assert.ok(geometry.scrollHeight <= geometry.viewport.height + 1, `${label}: no vertical overflow`);

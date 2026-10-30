@@ -32,6 +32,7 @@ HLS, quality selection, download or save naming/duplicate detection logic.
 ## Before / after checks
 
 | Item | Before | After |
+| Login privacy text contrast | 4.34:1 | 6.89:1 |
 |---|---|---|
 | Mobile player buttons | 30 x 32 CSS px | 44 x 44 CSS px |
 | Rotation buttons | 30 x 30 | 44 x 44 on mobile/coarse pointers |
@@ -62,3 +63,7 @@ usability remain unverified. No actual startup/FPS improvement is claimed.
 
 Hooks were neither installed nor enabled. Impeccable is invoked manually from the
 existing tooling checkout; this PR does not include that separate installation.
+
+The existing Replay layout regression retains full-height checks on desktop,
+but checks source-ratio sizing and hidden global tools on mobile. Decode/advance,
+contain, controls, viewport bounds, scroll lock and Back restoration checks stay.

@@ -44,6 +44,7 @@ textarea { height: 66px; resize: vertical; }
 .media-wrap { display: flex; flex-direction: column; gap: 8px; }
 .media-wrap img, .media-wrap video { display: block; max-width: 100%; max-height: 560px; border-radius: 12px; background: rgb(9, 11, 15); }
 .media-wrap audio { width: min(100%, 520px); }
+.media-wrap audio,.media-card audio { color-scheme: dark; }
 .media-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .check { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }
 a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55, 68); padding: 7px 9px; border-radius: 8px; font-size: 12px; }
@@ -237,7 +238,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .date-weekdays span { padding: 4px 0px; text-align: center; color: var(--muted); font-size: 11px; }
 .date-day { position: relative; height: 34px; padding: 0px 0px 5px; border: 0px; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; font-size: 12px; }
 .date-day:hover { background: rgb(27, 34, 45); }
-.date-day.outside { color: rgb(88, 97, 112); }
+.date-day.outside { color: var(--muted); }
 .date-day.selected { background: rgb(40, 77, 117); color: rgb(255, 255, 255); }
 .date-day.today { outline: rgb(89, 101, 121) solid 1px; }
 .date-day.has-chat::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: rgb(74, 163, 255); transform: translateX(-50%); }
@@ -351,7 +352,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .login-subtitle { margin: 6px 0px 25px; text-align: center; color: rgb(152, 162, 178); font-size: 14px; }
 .login-panel label { display: block; margin: 14px 0px 7px; color: rgb(216, 222, 231); font-size: 13px; font-weight: 750; }
 .login-panel input { width: 100%; box-sizing: border-box; }
-.login-privacy-note { margin-top: 14px; text-align: center; color: rgb(119, 130, 146); font-size: 11px; line-height: 1.5; }
+.login-privacy-note { margin-top: 14px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .top-auth-controls { margin-left: auto; display: flex; align-items: center; gap: 7px; }
 .token-life-wrap { height: 38px; padding: 0px 12px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgb(52, 64, 82); border-radius: 999px; background: rgb(17, 23, 34); color: rgb(169, 200, 255); font-size: 12px; font-weight: 750; white-space: nowrap; }
 .token-life-wrap.expiring { border-color: rgba(255, 178, 92, 0.55); color: rgb(255, 195, 130); }
@@ -1161,6 +1162,54 @@ html.vote-dialog-open{overflow:hidden}
 .vote-error{color:var(--bad,#ff8393);line-height:1.6}
 @media(max-width:600px){.toolbar>.pill{font-size:12px;padding:0 7px !important}.vote-dialog{padding:16px}.vote-list-top strong{font-size:14px}.vote-list{padding-top:12px}.vote-chat-card h3{font-size:15px}}
 
+/* Selection and playback are sibling controls, never nested widgets. */
+.download-selectable{position:relative}
+.download-selection-toggle{position:absolute;right:6px;bottom:6px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.download-selection-toggle::before{content:"";width:16px;height:16px;border:1.5px solid currentColor;border-radius:4px;background:var(--panel)}
+.download-selection-toggle[aria-checked="true"]::before{background:var(--accent);border-color:var(--accent)}
+.download-selection-toggle[aria-checked="true"]::after{content:"";position:absolute;width:8px;height:5px;border-left:2px solid white;border-bottom:2px solid white;transform:translateY(-1px) rotate(-45deg)}
+.download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+.download-selectable .replay-body{padding-right:52px}
+.media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
+/* Keep thin tracks and 20px icons, enlarge only their input surfaces. */
+.mvc-panel input.mvc-volume,.mvc-panel input.mvc-volume-extra{height:32px;min-height:32px;background:transparent;touch-action:none}
+.mvc-panel input.mvc-seek{height:32px;min-height:32px;touch-action:none}
+.mvc-panel input.mvc-volume::-webkit-slider-runnable-track,.mvc-panel input.mvc-volume-extra::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-moz-range-track,.mvc-panel input.mvc-volume-extra::-moz-range-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-webkit-slider-thumb,.mvc-panel input.mvc-volume-extra::-webkit-slider-thumb{margin-top:-3.5px}
+:is(.replay-player-page,.channel-player) .replay-page-meta,.replay-meta{font-size:12px}
+.replay-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.4;max-height:2.8em;overflow:hidden}
+@media(max-width:900px),(pointer:coarse){
+  .modern-video-controls .mvc-button,.modern-video-controls #livePipBtn{width:44px;height:44px;min-width:44px;min-height:44px;flex-basis:44px}
+  .mvc-rotation-actions .mvc-button{width:44px;height:44px;flex-basis:44px}
+  .live-controls-enabled .live-comments-overlay{bottom:64px!important;max-height:calc(100% - 64px)!important}
+}
+@media(max-width:600px){
+  .mvc-time{font-size:12px;position:absolute;left:12px;bottom:86px}
+  .mvc-panel{padding-top:28px}
+  .live-player-controls .mvc-panel{padding-top:20px}
+  :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:12px}
+}
+/* Watching a video does not reset the list's filters, selection or scroll. */
+@media(max-width:900px){
+  .main:has(.replay-player-page)>.viewer-header,.main:has(.channel-player)>.viewer-header{display:none}
+  .main:has(.live-player-stage)>.viewer-header .toolbar{display:none}
+  .main:has(.replay-player-page),.main:has(.channel-player){padding-top:8px;padding-bottom:8px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-stage,.channel-player-stage):not(:fullscreen){flex:0 1 auto!important;aspect-ratio:var(--mvc-aspect-ratio,16/9);min-height:160px!important;max-height:100%}
+  .modern-video-stage:fullscreen{aspect-ratio:auto!important}
+  :is(.replay-player-page,.channel-player) .replay-page-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35;max-height:2.7em;overflow:hidden}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){min-height:44px}
+}
+@media(max-width:600px){
+  :is(.replay-player-page,.channel-player)>.replay-page-head{grid-template-columns:1fr auto;gap:6px 10px;padding:6px 10px}
+  :is(.replay-player-page,.channel-player) .replay-page-back{grid-column:1;grid-row:1;justify-self:start}
+  :is(.replay-player-page,.channel-player) .video-player-actions{grid-column:2;grid-row:1}
+  :is(.replay-player-page,.channel-player) .replay-page-copy{grid-column:1/-1;grid-row:2}
+}
+@media(max-width:900px){
+  .replay-player-page{height:auto;max-height:calc(100dvh - 16px);flex:0 1 auto!important}
+  .live-timeline:has(>.replay-player-page){flex:0 1 auto!important}
+}
 </style>
 <style id="channelVideosStyle">
 .channel-video-play{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}
@@ -1270,6 +1319,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 .live-player-stage.mvc-menu-fallback{z-index:500}.live-control-badge{font-size:11px;font-weight:700;letter-spacing:.04em;display:flex;align-items:center;gap:6px}.live-control-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff6486}
 .live-player-controls [hidden]{display:none!important}
 .modern-video-stage{position:relative;isolation:isolate;outline:none}
+.modern-video-stage:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
 .modern-video-stage:fullscreen{width:100vw;height:100dvh;max-height:none;border:0!important;border-radius:0!important;background:#080b10}
 .modern-video-stage:fullscreen video{width:100%;height:100%;max-height:none!important;object-fit:contain}
 .modern-video-controls{position:absolute;inset:0;z-index:4;display:flex;align-items:flex-end;pointer-events:none;color:#f7f9fc;opacity:1;visibility:visible;transition:opacity .15s ease,visibility 0s linear}
@@ -1300,6 +1350,50 @@ body.download-marquee-active{user-select:none;cursor:default}
 .mvc-popover label.mvc-mobile-volume{display:none}.mvc-panel input.mvc-volume-extra{width:76px;height:4px;min-height:4px;padding:0;border:0;appearance:none;border-radius:9px;background:#ffffff40;accent-color:var(--accent2)}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
+/* Selection and playback are sibling controls, never nested widgets. */
+.download-selectable{position:relative}
+.download-selection-toggle{position:absolute;right:6px;bottom:6px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.download-selection-toggle::before{content:"";width:16px;height:16px;border:1.5px solid currentColor;border-radius:4px;background:var(--panel)}
+.download-selection-toggle[aria-checked="true"]::before{background:var(--accent);border-color:var(--accent)}
+.download-selection-toggle[aria-checked="true"]::after{content:"";position:absolute;width:8px;height:5px;border-left:2px solid white;border-bottom:2px solid white;transform:translateY(-1px) rotate(-45deg)}
+.download-selection-toggle:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+.download-selectable .replay-body{padding-right:52px}
+.media-wrap>.download-selection-toggle{position:static;align-self:flex-end;flex:none}
+/* Keep thin tracks and 20px icons, enlarge only their input surfaces. */
+.mvc-panel input.mvc-volume,.mvc-panel input.mvc-volume-extra{height:32px;min-height:32px;background:transparent;touch-action:none}
+.mvc-panel input.mvc-seek{height:32px;min-height:32px;touch-action:none}
+.mvc-panel input.mvc-volume::-webkit-slider-runnable-track,.mvc-panel input.mvc-volume-extra::-webkit-slider-runnable-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-moz-range-track,.mvc-panel input.mvc-volume-extra::-moz-range-track{height:4px;border-radius:9px;background:#ffffff40}
+.mvc-panel input.mvc-volume::-webkit-slider-thumb,.mvc-panel input.mvc-volume-extra::-webkit-slider-thumb{margin-top:-3.5px}
+:is(.replay-player-page,.channel-player) .replay-page-meta,.replay-meta{font-size:12px}
+.replay-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.4;max-height:2.8em;overflow:hidden}
+@media(max-width:900px),(pointer:coarse){
+  .modern-video-controls .mvc-button,.modern-video-controls #livePipBtn{width:44px;height:44px;min-width:44px;min-height:44px;flex-basis:44px}
+  .mvc-rotation-actions .mvc-button{width:44px;height:44px;flex-basis:44px}
+  .live-controls-enabled .live-comments-overlay{bottom:64px!important;max-height:calc(100% - 64px)!important}
+}
+@media(max-width:600px){
+  .mvc-time{font-size:12px;position:absolute;left:12px;bottom:86px}
+  .mvc-panel{padding-top:28px}
+  .live-player-controls .mvc-panel{padding-top:20px}
+  :is(.replay-player-page,.channel-player) .replay-page-meta{font-size:12px}
+}
+/* Watching a video does not reset the list's filters, selection or scroll. */
+@media(max-width:900px){
+  .main:has(.replay-player-page)>.viewer-header,.main:has(.channel-player)>.viewer-header{display:none}
+  .main:has(.live-player-stage)>.viewer-header .toolbar{display:none}
+  .main:has(.replay-player-page),.main:has(.channel-player){padding-top:8px;padding-bottom:8px}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-stage,.channel-player-stage):not(:fullscreen){flex:0 1 auto!important;aspect-ratio:var(--mvc-aspect-ratio,16/9);min-height:160px!important;max-height:100%}
+  .modern-video-stage:fullscreen{aspect-ratio:auto!important}
+  :is(.replay-player-page,.channel-player) .replay-page-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35;max-height:2.7em;overflow:hidden}
+  :is(.replay-player-page,.channel-player) :is(.replay-page-back,.replay-page-download){min-height:44px}
+}
+@media(max-width:600px){
+  :is(.replay-player-page,.channel-player)>.replay-page-head{grid-template-columns:1fr auto;gap:6px 10px;padding:6px 10px}
+  :is(.replay-player-page,.channel-player) .replay-page-back{grid-column:1;grid-row:1;justify-self:start}
+  :is(.replay-player-page,.channel-player) .video-player-actions{grid-column:2;grid-row:1}
+  :is(.replay-player-page,.channel-player) .replay-page-copy{grid-column:1/-1;grid-row:2}
+}
 </style>
 </head>
 <body>
@@ -3883,10 +3977,10 @@ function syncLiveToolbarControls(){
 
 function liveCenterTabsHtml(){
   const mode=state.live.centerMode;
-  return `<div class="live-center-tabs" role="tablist" aria-label="라이브 센터">
-    <button class="live-center-tab live ${mode==="live"?"active":""}" data-live-center-mode="live" type="button">LIVE</button>
-    <button class="live-center-tab ${mode==="replay"?"active":""}" data-live-center-mode="replay" type="button">Replay</button>
-    <button class="live-center-tab ${mode==="channel"?"active":""}" data-live-center-mode="channel" type="button">Channel</button>
+  return `<div class="live-center-tabs" role="group" aria-label="라이브 센터">
+    <button class="live-center-tab live ${mode==="live"?"active":""}" data-live-center-mode="live" aria-pressed="${mode==="live"}" type="button">LIVE</button>
+    <button class="live-center-tab ${mode==="replay"?"active":""}" data-live-center-mode="replay" aria-pressed="${mode==="replay"}" type="button">Replay</button>
+    <button class="live-center-tab ${mode==="channel"?"active":""}" data-live-center-mode="channel" aria-pressed="${mode==="channel"}" type="button">Channel</button>
   </div>`;
 }
 
@@ -4003,7 +4097,7 @@ function renderLiveView(){
   }else if(state.live.status==="error"){
     stageHtml=`<div class="live-stage-empty"><div class="big">LIVE 재생을 시작하지 못했습니다</div><div class="small">아래 연결 상태를 확인하고 새로고침으로 다시 시도해주세요.</div></div>`;
   }else{
-    stageHtml=`<div id="liveVideoGrid" class="live-video-grid" tabindex="0" aria-label="LIVE 영상">${videoLoadingIndicator().replace('<div class="video-loading"','<div id="liveWaiting" class="video-loading"')}</div>`;
+    stageHtml=`<div id="liveVideoGrid" class="live-video-grid" role="group" tabindex="0" aria-label="LIVE 영상">${videoLoadingIndicator().replace('<div class="video-loading"','<div id="liveWaiting" class="video-loading"')}</div>`;
   }
 
   const footerText=state.live.lastError || (mockStreaming ? "TEST · 과거 LIVE 로그 Mock · 실제 영상 연결 생략" : streaming ? "방송 정보 확인됨" : "");
@@ -4833,7 +4927,9 @@ function installModernVideoControls(player) {
       if(!settings.open||dead)return;
       if(popup.showPopover&&popup.hasAttribute('popover')&&!popup.matches(':popover-open'))try{popup.showPopover();}catch{popup.removeAttribute('popover');}
       stage.classList.toggle('mvc-menu-fallback',!popup.hasAttribute('popover'));
-      const r=settings.getBoundingClientRect();popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;
+      const r=settings.getBoundingClientRect();
+      popup.style.maxHeight=`${Math.max(44,Math.min(player.owner.innerHeight-24,r.top-22))}px`;
+      popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;
     };
     const closePopup=()=>{try{popup.hidePopover?.();}catch{}stage.classList.remove('mvc-menu-fallback');};removers.push(closePopup);
     controls.append($('.video-quality-status'));syncQuality();
@@ -4841,10 +4937,11 @@ function installModernVideoControls(player) {
       if(dead)return;
       stage.classList.toggle('mvc-rotated',rotation!==0);
       const odd=rotation%180!==0;
+      if(video.videoWidth && video.videoHeight)stage.style.setProperty('--mvc-aspect-ratio',`${odd?video.videoHeight:video.videoWidth} / ${odd?video.videoWidth:video.videoHeight}`);
       stage.style.setProperty('--mvc-video-width',`${odd?stage.clientHeight:stage.clientWidth}px`);stage.style.setProperty('--mvc-video-height',`${odd?stage.clientWidth:stage.clientHeight}px`);stage.style.setProperty('--mvc-video-angle',`${rotation}deg`);
       $('.mvc-angle').textContent=`${rotation}°`;placeSettings();
     };
-    const clearRotation=()=>{stage.classList.remove('mvc-rotated');for(const name of ['--mvc-video-width','--mvc-video-height','--mvc-video-angle'])stage.style.removeProperty(name);};
+    const clearRotation=()=>{stage.classList.remove('mvc-rotated');for(const name of ['--mvc-video-width','--mvc-video-height','--mvc-video-angle','--mvc-aspect-ratio'])stage.style.removeProperty(name);};
     removers.push(clearRotation);
     for(const [name,delta] of [['left',-90],['right',90]])listen($(`[data-mvc="${name}"]`),'click',()=>{rotation=(rotation+delta+360)%360;rotateLayout();});
     if(player.owner.ResizeObserver){const observer=new player.owner.ResizeObserver(rotateLayout);observer.observe(stage);removers.push(()=>observer.disconnect());}
@@ -8071,7 +8168,7 @@ function syncDownloadSelection(){
   for(const el of document.querySelectorAll("[data-download-selection-key]")){
     const checked=downloadSelectionSet(el.dataset.downloadSelectionKind).has(el.dataset.downloadSelectionKey);
     el.classList.toggle("selected",checked);
-    el.setAttribute("aria-checked",String(checked));
+    el.querySelector(".download-selection-toggle")?.setAttribute("aria-checked",String(checked));
   }
   updateSelectedCount();
 }
@@ -8144,12 +8241,20 @@ function bindDownloadSelection(el,kind,item){
   for(const img of el.querySelectorAll("img")) img.draggable=false;
   el.dataset.downloadSelectionKind=kind;
   el.dataset.downloadSelectionKey=downloadSelectionKey(kind,item);
-  el.setAttribute("role","checkbox");
-  el.setAttribute("tabindex","0");
+  el.setAttribute("role","group");
+  el.setAttribute("tabindex","-1");
   el.setAttribute("aria-label",`${item.title || (kind==="media" ? baseName(item) : "영상")} 선택`);
   const checked=downloadSelectionSet(kind).has(el.dataset.downloadSelectionKey);
+  const selectionButton=document.createElement("button");
+  selectionButton.type="button";
+  selectionButton.className="download-selection-toggle";
+  selectionButton.setAttribute("role","checkbox");
+  selectionButton.setAttribute("aria-label",el.getAttribute("aria-label"));
+  selectionButton.setAttribute("aria-checked",String(checked));
+  selectionButton.title="저장할 항목 선택";
+  selectionButton.addEventListener("click",event=>{event.stopPropagation();flushDownloadClick();chooseDownloadItem(kind,item,event);});
+  el.append(selectionButton);
   el.classList.toggle("selected",checked);
-  el.setAttribute("aria-checked",String(checked));
   el.addEventListener("click",e=>{
     if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
     if(e.detail>1 || downloadSelectionControl(e)) return;

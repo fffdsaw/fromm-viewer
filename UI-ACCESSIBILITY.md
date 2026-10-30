@@ -67,3 +67,10 @@ existing tooling checkout; this PR does not include that separate installation.
 The existing Replay layout regression retains full-height checks on desktop,
 but checks source-ratio sizing and hidden global tools on mobile. Decode/advance,
 contain, controls, viewport bounds, scroll lock and Back restoration checks stay.
+
+Short-stage rotation also exposed a settings popover covering its own toggle.
+The popover now caps its scrollable height to the space above that toggle.
+The viewport suite checks the gap plus click-to-close and Escape after rotation.
+The existing surface-click test waits for toggle/ResizeObserver placement frames
+before computing a real exposed video hit point. No click or playback assertion
+is removed. Local real HLS mobile quality/rotation/state regressions passed.

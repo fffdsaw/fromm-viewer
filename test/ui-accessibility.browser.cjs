@@ -50,7 +50,9 @@ execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','tes
    if(process.env.ACCESSIBILITY_SCREENSHOT_DIR){fs.mkdirSync(process.env.ACCESSIBILITY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.ACCESSIBILITY_SCREENSHOT_DIR,`${kind}-${orientation}-${viewport.width}-normal.png`)});}
    await page.locator('.mvc-settings summary').click();await page.locator('[data-mvc="right"]').click();await page.waitForTimeout(100);
    const menu=await page.locator('.mvc-popover').boundingBox();assert.ok(menu&&menu.x>=0&&menu.y>=0&&menu.x+menu.width<=viewport.width+1&&menu.y+menu.height<=viewport.height+1,'settings fit');
-   await page.keyboard.press('Escape');assert.equal(await page.locator('.mvc-settings').evaluate(e=>e.open),false);
+   const trigger=await page.locator('.mvc-settings summary').boundingBox();assert.ok(menu.y+menu.height<=trigger.y-8,'settings never covers its own toggle');
+   await page.locator('.mvc-settings summary').click();assert.equal(await page.locator('.mvc-settings').evaluate(e=>e.open),false,'settings can close with its own toggle after rotation');
+   await page.locator('.mvc-settings summary').click();await page.keyboard.press('Escape');assert.equal(await page.locator('.mvc-settings').evaluate(e=>e.open),false);
    assert.equal(await page.locator('.mvc-pip').evaluate(e=>!!e.closest('.mvc-settings')),false,'PiP remains separate');
    await audit(kind+' '+orientation);
    if(process.env.ACCESSIBILITY_SCREENSHOT_DIR){fs.mkdirSync(process.env.ACCESSIBILITY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.ACCESSIBILITY_SCREENSHOT_DIR,`${kind}-${orientation}-${viewport.width}.png`)});}

@@ -36,6 +36,8 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
     console.log(`${kind} ${viewport.width}: real fade, interaction hold/release and reduced motion PASS`);
    }
    const hitVideo=async()=>{
+    // Popover placement and aspect sizing finish in toggle/ResizeObserver frames.
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const point=await video.evaluate(v=>{
      const r=v.getBoundingClientRect();
      for(const fy of [.05,.2,.5,.8])for(const fx of [.05,.5,.9]){
@@ -49,7 +51,7 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    const dismiss=async paused=>{
     await video.evaluate(async(v,paused)=>{if(paused)v.pause();else await v.play();},paused);
     await video.locator('..').hover({position:{x:5,y:5}});await summary.click();assert.equal(await settings.evaluate(el=>el.open),true);
-    await hitVideo();assert.equal(await settings.evaluate(el=>el.open),false,'surface click dismisses settings');
+    await hitVideo();await page.waitForFunction(()=>!document.querySelector('.mvc-settings').open);assert.equal(await settings.evaluate(el=>el.open),false,'surface click dismisses settings');
     assert.equal(await video.evaluate(v=>v.paused),paused,'dismissing the menu must preserve playback state');
    };
    await dismiss(false);await dismiss(true);

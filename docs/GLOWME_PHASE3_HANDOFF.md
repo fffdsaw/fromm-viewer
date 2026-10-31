@@ -3,7 +3,7 @@
 ## 현재 체크포인트
 - 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-10-31 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.
-- Draft PR: 최초 체크포인트 푸시 후 생성하여 아래 기록.
+- Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/53 (Draft, 동일 PR 유지).
 - 마지막 완료 커밋: 기준 main. 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
 - 상태: 준비 완료, P1 접근성부터 진행. 1차 진행 중 / 2·3·4차 미시작.
 
@@ -36,3 +36,9 @@
 3. 단계마다 테스트·문서·커밋·푸시. 실패/미완성 체크포인트는 WIP 명시.
 
 재개 프롬프트: `fffdsaw/fromm-viewer의 feature/glowme-uiux-phase3와 기존 Draft PR에서 docs/GLOWME_PHASE3_HANDOFF.md를 읽고 마지막 체크포인트부터 이어서 1~4차 구현·검증을 완료해 줘. 기존 변경 보존, 새 PR/기존 PR 병합/main 병합/공개 배포/Hooks·Native·확장 변경 금지.`
+
+## P1 체크포인트
+- `web-ui-a11y.js`: 로그인 gate의 dialog 의미/초기 초점/Tab 순환/배경 inert/복귀. `index.html`은 UI 표시 함수에서 동기화 및 스크립트 연결만 변경. 인증·토큰 흐름 동일.
+- `glowme.css`: 인용 원문 #244c42. 보수적인 밝은 배경 #d2e6dc 대비 계산 및 실제 Chromium computed color 확인.
+- `test/glowme-phase3-a11y.browser.cjs`: 390px 초기 초점·양방향 Tab·재개방/복귀·inert 해제·인용 대비·로그인 axe 통과. 로그 `/tmp/fromm-phase3/p1.log`.
+- 다음: 플로팅 레일/헤더/독립 스크롤, Meapri 소형 컨트롤 시험.

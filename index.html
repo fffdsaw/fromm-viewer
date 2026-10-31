@@ -6441,6 +6441,7 @@ function showLoginGate(message="",type=""){
 
   gate.classList.remove("hidden");
   gate.setAttribute("aria-hidden","false");
+  window.FrommA11y?.syncLogin();
 
   if($("#tokenLifeWrap")) $("#tokenLifeWrap").style.display = "none";
   if($("#logoutMiniBtn")) $("#logoutMiniBtn").style.display = "none";
@@ -6458,6 +6459,7 @@ function hideLoginGate(){
 
   gate.classList.add("hidden");
   gate.setAttribute("aria-hidden","true");
+  window.FrommA11y?.syncLogin();
 
   if($("#tokenLifeWrap")) $("#tokenLifeWrap").style.display = "inline-flex";
   if($("#logoutMiniBtn")) $("#logoutMiniBtn").style.display = "inline-flex";
@@ -11275,6 +11277,7 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
+<script src="web-ui-a11y.js"></script>
 <script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
 </body>

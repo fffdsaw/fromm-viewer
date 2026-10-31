@@ -7273,6 +7273,11 @@ function selectRoom(i, btn){
 
   state.chatQuery = "";
   state.onlyMyReplies = false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
+  // Clear the previous artist's reply/count label immediately, before any
+  // room history fetch or a possible network error. render() replaces this
+  // temporary text with fresh media/reply totals for the new artist.
+  const artistCounts = $("#counts");
+  if(artistCounts) artistCounts.textContent="대화 불러오는 중…";
   syncMyReplyTools();
   state.selectedDate = "";
   state.calendarMonth = null;

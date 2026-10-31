@@ -615,3 +615,24 @@ html.glowme.glowme-phase3-experiment #rooms .glowme-demo-name {
     transition:none!important;
   }
 }
+
+
+/* Rail starts directly below the complete sticky viewer header (artist topbar
+ * + middle toolbar). JS updates --glow-rail-top from their rendered positions.
+ * The 8px lower gap is part of that measured offset. */
+html.glowme.glowme-phase3-experiment #sidebar,
+html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] #sidebar {
+  top:var(--glow-rail-top, 176px)!important;
+  bottom:8px!important;
+  height:auto!important;
+  max-height:calc(100dvh - var(--glow-rail-top, 176px) - 8px);
+}
+/* The nav stays fixed inside the rail; only #rooms consumes the remaining
+ * vertical space and scrolls. Keep the rail stable during menu transitions. */
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav {
+  flex-shrink:0;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section {
+  min-height:0;
+  flex:1 1 auto;
+}

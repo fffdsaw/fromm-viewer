@@ -326,3 +326,6 @@
   .glowme .topbar,.glowme .toolbar,.glowme #sidebar,.glowme #chatToolsPanel {background:Canvas;border-color:CanvasText;}
   .glowme .topbar::before,.glowme .topbar::after,.glowme .toolbar::before,.glowme #sidebar::before,.glowme #sidebar::after,.glowme #chatToolsPanel::before {display:none;}
 }
+
+/* P1: quoted content must use the light surface foreground, not legacy dark UI grey. */
+html.glowme .reply-content{color:#244c42}

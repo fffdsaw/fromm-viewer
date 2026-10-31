@@ -211,7 +211,11 @@
     actionHost.append(selection,selectAll,save);
     main.append(actionHost);
     const syncSelection = () => {
-      actionHost.hidden = !selection.classList.contains('has-selection');
+      // The selection count is the original app's authoritative state.
+      // In particular, this works for gallery cards AND Replay/Channel posts.
+      const hasSelection = selection.classList.contains('has-selection');
+      actionHost.hidden = !hasSelection;
+      actionHost.setAttribute('aria-hidden',String(!hasSelection));
     };
     new MutationObserver(syncSelection).observe(selection,{
       attributes:true,attributeFilter:['class'],childList:true,subtree:true
@@ -219,12 +223,35 @@
     syncSelection();
   }
 
-  // Move match navigation into the floating search panel alongside its input.
+  // The floating search panel owns keyword/calendar/replies inputs. A separate
+  // contextual dock (not inside the panel) keeps ↑·↓ usable while reading.
+  // Reparent the REAL controls: their existing core event handlers survive.
   const searchButton = $('#chatToolsBtn');
   const searchPanel = $('#chatToolsPanel');
-  const searchFields = searchPanel?.querySelector('.glowme-search-fields');
   const matchNavigation = $('#chatMatchNav');
-  if (searchFields && matchNavigation) searchFields.append(matchNavigation);
+  const matchDock = document.createElement('div');
+  matchDock.className = 'glowme-chat-match-dock';
+  matchDock.hidden = true;
+  const matchLabel = document.createElement('span');
+  matchLabel.className = 'glowme-chat-match-label';
+  matchLabel.textContent = '검색 결과 이동';
+  if (main && matchNavigation) {
+    matchDock.setAttribute('role','group');
+    matchDock.setAttribute('aria-label','대화 검색 및 답장 결과 이동');
+    matchDock.append(matchLabel,matchNavigation);
+    main.append(matchDock);
+    function syncMatchDock() {
+      const active = !matchNavigation.hidden && state.filter === 'all';
+      matchDock.hidden = !active;
+      const label = state.onlyMyReplies ? '내 글에 온 답장 이동' : '검색 결과 이동';
+      if (matchLabel.textContent !== label) matchLabel.textContent = label;
+    }
+    new MutationObserver(syncMatchDock).observe(matchNavigation,{
+      attributes:true,attributeFilter:['hidden'],childList:true,subtree:true
+    });
+    // A filter switch may hide this dock even if matchNavigation remained open.
+    syncMatchDock();
+  }
   const searchTitle = searchPanel?.querySelector('.chat-tools-title');
   if (searchTitle) searchTitle.textContent = '대화 찾기';
 
@@ -405,6 +432,7 @@
     };
     if (context) context.textContent = '현재 보고 있는 ' + (labels[key] || '대화');
     if (searchButton) searchButton.hidden = state.filter !== 'all';
+    if (matchDock) matchDock.hidden = state.filter !== 'all' || !!matchNavigation?.hidden;
     if (state.filter !== 'all' && searchPanel?.classList.contains('open')) {
       setSearchOpen(false);
     }

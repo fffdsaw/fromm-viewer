@@ -100,3 +100,13 @@
 - 사이드바 상단 좌표는 전체 `.viewer-header`의 실제 하단을 측정. 이제 바 하나만 남았으므로 **상단 아티스트 헤더 아래**에서 시작
 - 수정 커밋: `00524a9` (독립 컨트롤 JS), `a053347` (CSS), `b7f505b` (원래 shell의 실험 분기).
 - 실험 모드에만 적용, 원본 Draft PR #53과 `main` 불변. 실제 브라우저/UI 테스트는 미실행이므로 PWA/모바일/검색 열고 닫기/선택 저장/정렬 검증 필요
+
+## 2026-10-31 19시대 — 전체 너비 상단바 + 로컬 전용 Chrome 실험 연결
+
+- 사용자 요청: **상단 헤더를 뷰포트 좌우에 꽉 차게** 만들고, 실험 UI에서도 기존 확장프로그램을 활용한 실제 로그인/미디어 확인 가능성을 열 것
+- `glowme-phase3-experiment.css`: 메인 대화 영역은 왼쪽 축소 레일용 margin을 유지하되, `main > .viewer-header`만 viewport 가장자리(데스크톱 12px, 모바일 8px)까지 넓힘. `100vw` 오버플로 대신 부모 width/여백 기반 CSS 산식 사용. PWA pinned 레이아웃의 기존 넓이 제약도 override
+- `index.html`: 로컬 `http://127.0.0.1`에서 **명시적으로 `?previewBridge=1`** 로 실행할 때만 기존 `/__fromm_proxy` 라우팅 우회. 공식 배포 사이트 및 스위치 없는 Live Server는 기존 코드 그대로
+- `devtools/local-preview-extension/manifest.json` + `rules.json`: 배포용 `chrome_extension/` 수정 없이, 기존 DNR 규칙 4개의 initiatorDomains를 `127.0.0.1`로 제한하고 Access-Control-Allow-Origin을 `http://127.0.0.1:5500`으로 변경한 별도 DEV 확장 작성. Native bridge/백그라운드/content-script 없음. 독립 확장 ID
+- `devtools/local-preview-extension/README.md`: 설치·테스트·해제 절차와 광범위 권한 위험/실행 미검증 상태 표시
+- **주의:** 실제 Chrome 확장 설치 및 Fromm 서비스 인증 결과는 확인되지 않았음. 실제 로그인이나 미디어·LIVE 완전 동작을 보장하지 말 것. DNR/확장 권한 에러와 CORS 문제를 Chrome DevTools Network에서 사용자 직접 검증 필요
+- PR #53과 main 절대 수정하지 않았으며, 실험 브랜치에서만 작업. 병합 전 반드시 로컬 확장 파일을 실제 배포에 포함할 것인지 보안 검토하고 devtools 경로를 보호해야 함

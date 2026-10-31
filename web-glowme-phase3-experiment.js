@@ -64,6 +64,76 @@
   });
   sidebar.querySelector('.sub').after(nav);
 
+  // A single optical selection lens follows the cursor between navigation
+  // rows, then returns to the actually selected filter when the pointer leaves.
+  // It is decorative; keyboard focus and aria-current still carry the state.
+  const bubble = document.createElement('span');
+  bubble.className = 'glowme-follow-bubble';
+  bubble.setAttribute('aria-hidden', 'true');
+  nav.prepend(bubble);
+  const motionDisabled = matchMedia('(prefers-reduced-motion: reduce)');
+  let hoveredButton = null;
+  let focusedButton = null;
+  let pointerX = null;
+  let pointerY = null;
+  let bubbleFrame = 0;
+
+  function scheduleBubble() {
+    if (bubbleFrame) return;
+    bubbleFrame = requestAnimationFrame(() => {
+      bubbleFrame = 0;
+      const selected = nav.querySelector('button[aria-current="page"]');
+      const target = hoveredButton || focusedButton || selected || nav.querySelector('button');
+      if (!target) return;
+      const navBox = nav.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const pointing = hoveredButton === target && pointerX !== null;
+      const fractionX = pointing ? Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width)) : .5;
+      const fractionY = pointing ? Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height)) : .36;
+      const drift = pointing ? (fractionX - .5) * Math.min(9, rect.width * .06) : 0;
+      bubble.style.width = Math.max(0, rect.width - 2) + 'px';
+      bubble.style.height = rect.height + 'px';
+      bubble.style.transform = 'translate3d(' +
+        Math.round(rect.left - navBox.left + 1 + drift) + 'px,' +
+        Math.round(rect.top - navBox.top) + 'px,0)';
+      bubble.style.setProperty('--bubble-light-x', Math.round(fractionX * 100) + '%');
+      bubble.style.setProperty('--bubble-light-y', Math.round(fractionY * 100) + '%');
+      bubble.style.opacity = '1';
+    });
+  }
+  nav.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
+    const button = event.target.closest('button[data-glow-nav]');
+    if (!button || !nav.contains(button)) return;
+    hoveredButton = button;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    scheduleBubble();
+  });
+  nav.addEventListener('pointerleave', () => {
+    hoveredButton = null;
+    pointerX = pointerY = null;
+    scheduleBubble();
+  });
+  nav.addEventListener('focusin', event => {
+    const button = event.target.closest('button[data-glow-nav]');
+    if (button) {
+      focusedButton = button;
+      scheduleBubble();
+    }
+  });
+  nav.addEventListener('focusout', () => {
+    queueMicrotask(() => {
+      focusedButton = nav.contains(document.activeElement)
+        ? document.activeElement.closest('button[data-glow-nav]') : null;
+      scheduleBubble();
+    });
+  });
+  const sizeObserver = new ResizeObserver(scheduleBubble);
+  sizeObserver.observe(nav);
+  motionDisabled.addEventListener('change', scheduleBubble);
+
   // B v3.3: retain only the artist's name, with the existing live media-count
   // element immediately below it. Its owner renderCountsOnly() keeps updating it.
   const artistCopy = title.closest('.artist-copy');
@@ -88,7 +158,13 @@
   trigger.type = 'button';
   trigger.className = 'glowme-rail-trigger';
   trigger.setAttribute('aria-controls', 'sidebar');
-  trigger.textContent = 'f';
+  // Reuse the existing project logo, not a second letter-mark. The same
+  // button remains the expand/collapse control for touch and keyboard users.
+  const triggerLogo = document.createElement('img');
+  triggerLogo.src = 'assets/glowme/logo.png';
+  triggerLogo.alt = '';
+  triggerLogo.decoding = 'async';
+  trigger.append(triggerLogo);
   sidebar.prepend(trigger);
   const lowHeight = matchMedia('(max-height: 540px)');
   let expanded = false;
@@ -181,8 +257,9 @@
 
   function syncNavigation() {
     const key = state.filter === 'live' ? state.live.centerMode : state.filter;
-    for (const button of nav.children)
+    for (const button of nav.querySelectorAll('button[data-glow-nav]'))
       button.setAttribute('aria-current',button.dataset.glowNav === key ? 'page' : 'false');
+    scheduleBubble();
     const context = $('.glowme-artist-context');
     const labels = {
       all:'대화',media:'미디어',image:'사진',video:'영상',sound:'음성',
@@ -196,4 +273,8 @@
   const artistTitle = $('#artistTitle');
   if (artistTitle) new MutationObserver(syncNavigation).observe(artistTitle,{childList:true});
   syncNavigation();
+  // Logo/sidebar transitions can change row positions without a navigation event.
+  sidebar.addEventListener('transitionend', event => {
+    if (event.propertyName === 'width') scheduleBubble();
+  });
 })();

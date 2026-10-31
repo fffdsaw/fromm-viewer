@@ -471,3 +471,147 @@ html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button:focus-vi
     box-shadow:none;
   }
 }
+
+
+/* Phase 3 compact rail refinement: rail and liquid selection resize as one. */
+html.glowme.glowme-phase3-experiment #sidebar {
+  gap:2px;
+  transition:width .22s cubic-bezier(.2,.75,.2,1);
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger,
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-rail-trigger {
+  display:grid;
+  place-items:center;
+  width:100%;
+  max-width:100%;
+  height:42px;
+  flex:0 0 42px;
+  padding:0;
+  margin:0 0 2px;
+  border:0!important;
+  border-radius:0;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger:hover,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger:focus-visible {
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger img,
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-rail-trigger img {
+  width:clamp(42px,53%,136px);
+  max-width:100%;
+  height:40px;
+  padding:0;
+  border:0;
+  object-fit:contain;
+  object-position:center;
+  transition:width .22s cubic-bezier(.2,.75,.2,1);
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav {
+  gap:1px;
+  flex:0 0 auto;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button:hover,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button[aria-current="page"] {
+  height:33px;
+  min-height:33px;
+  padding-top:0;
+  padding-bottom:0;
+  border-radius:11px!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav svg {
+  width:20px;
+  height:20px;
+  flex-basis:20px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+  width:calc(100% - 2px)!important;
+  max-width:none!important;
+  min-width:0;
+  border-radius:11px;
+  /* Percentage width tracks the flexing rail on the same layout frame.
+     Never transition its width separately; this prevents delayed shrink. */
+  transition:transform .22s cubic-bezier(.2,.75,.2,1),opacity .15s ease;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section {
+  margin-top:3px;
+  padding-top:7px;
+  gap:4px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section > strong {
+  padding:0 7px;
+  font-size:11px;
+}
+html.glowme.glowme-phase3-experiment #rooms {
+  gap:3px;
+}
+html.glowme.glowme-phase3-experiment #rooms .glowme-demo-note {
+  position:sticky;
+  top:0;
+  z-index:2;
+  padding:5px 6px 7px;
+  color:#437565;
+  background:#edf9f1f2;
+  font-size:10px;
+  line-height:1.4;
+  border-bottom:1px solid #a7d5c3;
+}
+html.glowme.glowme-phase3-experiment #rooms .glowme-demo-room {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex:0 0 39px;
+  min-height:39px;
+  padding:3px 7px;
+  border-left:2px solid transparent;
+  color:#365e50;
+  font-size:12.5px;
+  cursor:default;
+  user-select:none;
+}
+html.glowme.glowme-phase3-experiment #rooms .glowme-demo-room:nth-child(5n+2) {
+  background:#e1f3e9a1;
+}
+html.glowme.glowme-phase3-experiment #rooms .glowme-demo-avatar {
+  display:grid;
+  place-items:center;
+  width:29px;
+  height:29px;
+  flex:0 0 29px;
+  border:1px solid #b0d9c7;
+  border-radius:50%;
+  color:#3c7662;
+  background:linear-gradient(135deg,#e9fff1,#b3dec9);
+  font-size:10px;
+  font-weight:650;
+}
+html.glowme.glowme-phase3-experiment #rooms .glowme-demo-name {
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media(max-height:540px) {
+  html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-phase3-nav button,
+  html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-phase3-nav button:hover {
+    height:43px;
+    min-height:43px;
+    padding:2px;
+  }
+}
+@media(pointer:coarse) and (min-height:541px) {
+  /* Keep touch hit targets accessible while desktop rows stay compact. */
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button {
+    height:44px;
+    min-height:44px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html.glowme.glowme-phase3-experiment #sidebar,
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger img,
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+    transition:none!important;
+  }
+}

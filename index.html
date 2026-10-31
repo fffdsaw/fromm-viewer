@@ -7263,7 +7263,10 @@ function selectRoom(i, btn){
   $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter==="all"));
   syncLiveToolbarControls();
 
-  if(document.body.classList.contains("sidebar-open")){
+  // Phase-3 uses an always-visible floating rail. Closing the legacy
+  // drawer here would set #sidebar.inert and break all navigation buttons.
+  if(!document.documentElement.classList.contains("glowme-phase3-experiment") &&
+     document.body.classList.contains("sidebar-open")){
     setSidebarOpen(false);
   }
 

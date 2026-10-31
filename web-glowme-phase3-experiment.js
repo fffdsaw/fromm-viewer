@@ -92,72 +92,63 @@
   });
   sidebar.querySelector('.sub').after(nav);
 
-  // A single optical selection lens follows the cursor between navigation
-  // rows, then returns to the actually selected filter when the pointer leaves.
-  // It is decorative; keyboard focus and aria-current still carry the state.
+  // Calm navigation highlight: change target only when the hovered item
+  // changes, not at every pixel of mouse movement. This also avoids repeated
+  // layout reads/repaints caused by the old cursor-based light variables.
   const bubble = document.createElement('span');
   bubble.className = 'glowme-follow-bubble';
   bubble.setAttribute('aria-hidden', 'true');
   nav.prepend(bubble);
   const motionDisabled = matchMedia('(prefers-reduced-motion: reduce)');
   let hoveredButton = null;
-  let focusedButton = null;
-  let pointerX = null;
-  let pointerY = null;
   let bubbleFrame = 0;
-
+  let previousBubbleTarget = null;
+  let previousBubbleY = null;
   function scheduleBubble() {
     if (bubbleFrame) return;
     bubbleFrame = requestAnimationFrame(() => {
       bubbleFrame = 0;
+      const focused = nav.contains(document.activeElement) &&
+        document.activeElement.matches(':focus-visible')
+        ? document.activeElement.closest('button[data-glow-nav]') : null;
       const selected = nav.querySelector('button[aria-current="page"]');
-      const target = hoveredButton || focusedButton || selected || nav.querySelector('button');
+      const target = hoveredButton || focused || selected || nav.querySelector('button[data-glow-nav]');
       if (!target) return;
       const navBox = nav.getBoundingClientRect();
       const rect = target.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const pointing = hoveredButton === target && pointerX !== null;
-      const fractionX = pointing ? Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width)) : .5;
-      const fractionY = pointing ? Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height)) : .36;
-      // Width belongs to CSS as a percentage of the rail. A fixed inline
-      // pixel width causes the lens to shrink *after* its parent has closed.
-      // Only the row position animates; both glass and rail resize together.
+      const y = Math.round(rect.top - navBox.top);
+      if (target !== previousBubbleTarget || y !== previousBubbleY) {
+        bubble.style.transform = 'translate3d(1px,' + y + 'px,0)';
+        previousBubbleTarget = target;
+        previousBubbleY = y;
+      }
       bubble.style.height = rect.height + 'px';
-      bubble.style.transform = 'translate3d(1px,' +
-        Math.round(rect.top - navBox.top) + 'px,0)';
-      bubble.style.setProperty('--bubble-light-x', Math.round(fractionX * 100) + '%');
-      bubble.style.setProperty('--bubble-light-y', Math.round(fractionY * 100) + '%');
       bubble.style.opacity = '1';
     });
   }
-  nav.addEventListener('pointermove', event => {
+  nav.addEventListener('pointerover', event => {
     if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
     const button = event.target.closest('button[data-glow-nav]');
-    if (!button || !nav.contains(button)) return;
-    hoveredButton = button;
-    pointerX = event.clientX;
-    pointerY = event.clientY;
-    scheduleBubble();
-  });
-  nav.addEventListener('pointerleave', () => {
-    hoveredButton = null;
-    pointerX = pointerY = null;
-    scheduleBubble();
-  });
-  nav.addEventListener('focusin', event => {
-    const button = event.target.closest('button[data-glow-nav]');
-    if (button) {
-      focusedButton = button;
+    if (button && nav.contains(button) && hoveredButton !== button) {
+      hoveredButton = button;
       scheduleBubble();
     }
   });
-  nav.addEventListener('focusout', () => {
-    queueMicrotask(() => {
-      focusedButton = nav.contains(document.activeElement)
-        ? document.activeElement.closest('button[data-glow-nav]') : null;
+  nav.addEventListener('pointerout', event => {
+    const previous = event.target.closest?.('button[data-glow-nav]');
+    if (previous && hoveredButton === previous &&
+        !previous.contains(event.relatedTarget)) {
+      hoveredButton = null;
       scheduleBubble();
-    });
+    }
   });
+  nav.addEventListener('pointerleave', () => {
+    hoveredButton = null;
+    scheduleBubble();
+  });
+  nav.addEventListener('focusin', scheduleBubble);
+  nav.addEventListener('focusout', () => queueMicrotask(scheduleBubble));
   const sizeObserver = new ResizeObserver(scheduleBubble);
   sizeObserver.observe(nav);
   motionDisabled.addEventListener('change', scheduleBubble);
@@ -434,6 +425,50 @@
   new MutationObserver(decorateRooms).observe(rooms,{childList:true});
   decorateRooms();
 
+  // Missing room rows are not a reason to fabricate subscribed artists.
+  // Explicitly explain the empty state and offer a scoped retry using the
+  // application's original room loader. This status is outside #rooms so the
+  // original position-based click handlers remain untouched.
+  const roomsStatus = document.createElement('div');
+  roomsStatus.className = 'glowme-room-empty-status';
+  roomsStatus.hidden = true;
+  const roomsStatusText = document.createElement('span');
+  const roomsRetry = document.createElement('button');
+  roomsRetry.type = 'button';
+  roomsRetry.className = 'glowme-room-retry';
+  roomsRetry.textContent = '목록 다시 불러오기';
+  roomsStatus.append(roomsStatusText,roomsRetry);
+  roomSection?.append(roomsStatus);
+  function syncRoomStatus() {
+    if (!roomSection) return;
+    const count = rooms.querySelectorAll(':scope > .room').length;
+    const authenticated = Boolean(currentAuth()?.token);
+    // The existing local-only scrolling fixture is not an account error.
+    const fixture = !!rooms.querySelector('.glowme-demo-room');
+    roomsStatus.hidden = count > 0 || fixture;
+    roomsStatusText.textContent = authenticated
+      ? '아티스트 목록이 비어 있습니다. 연결 상태를 확인해 주세요.'
+      : '로그인 후 구독 아티스트가 표시됩니다.';
+    roomsRetry.hidden = !authenticated;
+  }
+  roomsRetry.addEventListener('click', async () => {
+    if (!currentAuth()?.token || roomsRetry.disabled) return;
+    roomsRetry.disabled = true;
+    roomsStatusText.textContent = '아티스트 목록을 확인하는 중…';
+    try {
+      await loadRooms();
+      decorateRooms();
+      syncRoomStatus();
+    } catch (error) {
+      console.warn('Glow ME artist list refresh failed', error);
+      roomsStatusText.textContent = '목록을 불러오지 못했습니다. 로그인·확장프로그램 연결을 확인해 주세요.';
+    } finally {
+      roomsRetry.disabled = false;
+    }
+  });
+  new MutationObserver(syncRoomStatus).observe(rooms,{childList:true});
+  syncRoomStatus();
+
   // A clearly labeled *local-only* scroll fixture, never real account data.
   // This is intentionally rendered only on localhost without an auth token,
   // and is removed automatically when loadRooms() replaces #rooms.
@@ -458,6 +493,8 @@
       rooms.append(item);
     }
   }
+
+  syncRoomStatus();
 
   function syncNavigation() {
     const key = state.filter === 'live' ? state.live.centerMode : state.filter;

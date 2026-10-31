@@ -6328,7 +6328,9 @@ function mountSidebarToggle(){
   positionSidebarToggle();
 }
 function setSidebarOpen(open){
-  if(window.FrommGlowME?.pinned) open=true;
+  // Phase-3 has an always-mounted rail. Legacy room selection must not
+  // mark it inert/aria-hidden when it switches back to the chat tab.
+  if(window.FrommGlowME?.pinned || document.documentElement.classList.contains("glowme-phase3-experiment")) open=true;
   const sidebar = $("#sidebar");
   const btn = $("#sidebarToggleBtn");
   const backdrop = $("#sidebarBackdrop");
@@ -7923,7 +7925,8 @@ function openChatToolsPanel(){
 }
 
 function closeChatToolsPanel(){
-  if(window.FrommGlowME?.pinned) return;
+  // The v3.3 popup (including PWA) must close via Escape/outside click.
+  if(window.FrommGlowME?.pinned && !document.documentElement.classList.contains("glowme-phase3-experiment")) return;
   const panel = $("#chatToolsPanel");
   const btn = $("#chatToolsBtn");
   if(!panel || !btn) return;
@@ -11170,7 +11173,7 @@ $("#chatToolsPanel").onclick=(e)=>{
 
 document.addEventListener("click",(e)=>{
   const tools = $("#chatTools");
-  if(tools && !tools.contains(e.target) && !e.target.closest?.("#sidebar,#sidebarToggleBtn")){
+  if(tools && !tools.contains(e.target) && !e.target.closest?.("#sidebar,#sidebarToggleBtn,#chatToolsBtn,#chatToolsPanel,#chatMatchNav")){
     closeChatToolsPanel();
   }
 });

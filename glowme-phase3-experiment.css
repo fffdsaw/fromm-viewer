@@ -827,3 +827,48 @@ html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] #sidebar {
     background:#edf8f0;
   }
 }
+
+
+/* Phase 3 v3.3 — full-viewport artist header.
+ * The main timeline keeps its narrow-rail margin, while the artist header
+ * bleeds across that margin to both viewport edges independently.
+ * Use a 100%-relative width (not 100vw) to avoid scrollbar-gutter overflow. */
+html.glowme.glowme-phase3-experiment {
+  --glow-phase3-main-offset:76px;
+  --glow-phase3-header-edge:12px;
+}
+html.glowme.glowme-phase3-experiment .main,
+html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] .main {
+  margin-left:var(--glow-phase3-main-offset)!important;
+}
+html.glowme.glowme-phase3-experiment .main > .viewer-header,
+html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] .main > .viewer-header {
+  box-sizing:border-box;
+  width:calc(100% + var(--glow-phase3-main-offset) + 2 * var(--viewer-gutter) - 2 * var(--glow-phase3-header-edge))!important;
+  max-width:none!important;
+  margin-left:calc(var(--glow-phase3-header-edge) - var(--glow-phase3-main-offset) - var(--viewer-gutter))!important;
+  margin-right:0!important;
+  padding:0;
+  border-radius:20px;
+  background:#edf8f0;
+}
+html.glowme.glowme-phase3-experiment .main > .viewer-header::before {
+  inset:0!important;
+  border-radius:inherit;
+  background:#edf8f0;
+}
+html.glowme.glowme-phase3-experiment .main > .viewer-header .topbar {
+  width:100%;
+  box-sizing:border-box;
+  border-radius:inherit;
+}
+@media(max-width:700px) {
+  html.glowme.glowme-phase3-experiment {
+    --glow-phase3-main-offset:69px;
+    --glow-phase3-header-edge:8px;
+  }
+  html.glowme.glowme-phase3-experiment .main > .viewer-header,
+  html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] .main > .viewer-header {
+    border-radius:15px;
+  }
+}

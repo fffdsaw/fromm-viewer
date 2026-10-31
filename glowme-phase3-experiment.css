@@ -872,3 +872,135 @@ html.glowme.glowme-phase3-experiment .main > .viewer-header .topbar {
     border-radius:15px;
   }
 }
+
+
+/* Phase 3 functional regression fixes — contextual ↑·↓ and mint selections. */
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+  position:fixed;
+  z-index:455;
+  bottom:clamp(12px,3vh,24px);
+  left:calc(50% + 38px);
+  transform:translateX(-50%);
+  max-width:calc(100vw - 92px);
+  padding:9px 13px;
+  border:1px solid #9ed3bb;
+  border-radius:999px;
+  background:#f4fff8f2;
+  color:#326853;
+  box-shadow:inset 0 1px 0 #fff,0 8px 26px #356d5030;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock[hidden],
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock #chatMatchNav[hidden] {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-label {
+  color:#366d58;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock #chatMatchNav {
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock :is(#chatMatchPrev,#chatMatchNext) {
+  display:grid;
+  place-items:center;
+  width:39px;
+  min-width:39px;
+  height:39px;
+  min-height:39px;
+  border:1px solid #aedbc7;
+  border-radius:50%;
+  background:linear-gradient(140deg,#fafffd,#d8f2e5);
+  color:#326f59;
+  font-size:21px;
+  box-shadow:inset 0 1px 0 #fff;
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock :is(#chatMatchPrev,#chatMatchNext):disabled {
+  opacity:.4;
+  cursor:not-allowed;
+}
+html.glowme.glowme-phase3-experiment .glowme-chat-match-dock #chatMatchPosition {
+  min-width:48px;
+  text-align:center;
+  color:#3c715d;
+  font-variant-numeric:tabular-nums;
+  font-size:12px;
+}
+html.glowme.glowme-phase3-experiment #timeline .media-card.selected {
+  outline:2px solid #428e7a!important;
+  outline-offset:1px;
+  border-color:#80c5a5!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .media-card.selected .card-footer-select,
+html.glowme.glowme-phase3-experiment #timeline .chat-select-pill.selected {
+  border-color:#85c5a6!important;
+  background:#d9f2e5!important;
+  color:#286b51!important;
+  box-shadow:0 0 0 3px #428e7a1c!important;
+}
+html.glowme.glowme-phase3-experiment #timeline :is(.media-card.selected,.chat-select-pill.selected) .card-select-box {
+  border-color:#428e7a!important;
+  background:#428e7a!important;
+  color:#fff!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .download-selectable.selected {
+  border-color:#80c5a5!important;
+  outline:2px solid #428e7a!important;
+  outline-offset:-2px;
+}
+html.glowme.glowme-phase3-experiment #timeline .download-selectable.selected :is(.card-body,.replay-body) {
+  background:#d5f0e35e!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-selection-actions .selected-count.has-selection {
+  background:#d8f1e4!important;
+  color:#245f49!important;
+  border:1px solid #a8d7bf!important;
+  border-radius:999px;
+  padding:7px 10px;
+}
+html.glowme.glowme-phase3-experiment .glowme-search-toggle.reply-filter-active,
+html.glowme.glowme-phase3-experiment #chatToolsPanel :is(.my-replies-btn.active,.chat-context-btn[aria-pressed="true"]) {
+  color:#286d52!important;
+  border-color:#83c7a5!important;
+  background:#ccebd9!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .reply-quote.reply-mine {
+  border-left-color:#428e7a!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .reply-mine .reply-label {
+  color:#34785b!important;
+}
+@media(max-width:700px) {
+  html.glowme.glowme-phase3-experiment .glowme-chat-match-dock {
+    left:calc(50% + 29px);
+    padding:7px 9px;
+    border-radius:18px;
+    gap:5px;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-chat-match-label {
+    font-size:11px;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-chat-match-dock :is(#chatMatchPrev,#chatMatchNext) {
+    width:38px;
+    min-width:38px;
+    height:38px;
+    min-height:38px;
+  }
+}
+@media(prefers-reduced-transparency:reduce) {
+  html.glowme.glowme-phase3-experiment .glowme-chat-match-dock {
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    background:#edf8f0;
+  }
+}

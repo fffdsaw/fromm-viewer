@@ -1377,3 +1377,52 @@ html.glowme.glowme-phase3-experiment #scrollTopBtn:hover {
     color:CanvasText!important;
   }
 }
+
+
+/* Fromm Viewer 3 follow-up: stable, row-based hover and clear empty state.
+   No per-pixel highlights or photo texture: preserve reduced-motion support. */
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+  transition:transform .2s cubic-bezier(.2,.7,.2,1),opacity .12s ease!important;
+  will-change:auto!important;
+  background:#d8f1e4!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button {
+  transition:color .16s ease!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section .glowme-room-empty-status {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:8px;
+  padding:12px 8px;
+  color:#4a7563;
+  line-height:1.5;
+  font-size:12px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section .glowme-room-empty-status[hidden],
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) .glowme-room-empty-status {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-room-retry {
+  border:1px solid #b8e6cd;
+  border-radius:999px;
+  padding:8px 11px;
+  background:#eafbe8;
+  color:#265946;
+  font-size:12px;
+  cursor:pointer;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-room-retry:focus-visible {
+  outline:2px solid #64dc9f;
+  outline-offset:2px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-room-retry:disabled {
+  opacity:.55;
+  cursor:wait;
+}
+@media(prefers-reduced-motion:reduce) {
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble,
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button {
+    transition:none!important;
+  }
+}

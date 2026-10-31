@@ -8376,7 +8376,13 @@ function updateSelectedCount(){
 }
 
 function renderCountsOnly(){
-  if(state.filter === "vote") return;
+  if(state.filter === "vote"){
+    // The toolbar count now lives below the artist name in Phase 3.
+    // Never carry a stale reply/search count into the vote screen.
+    if(document.documentElement.classList.contains("glowme-phase3-experiment"))
+      $("#counts").textContent = "투표 목록";
+    return;
+  }
   if(state.filter === "live"){
     syncLiveToolbarControls();
     return;

@@ -169,9 +169,10 @@
   if (artistCopy && countNode) {
     const context = document.createElement('span');
     context.className = 'glowme-artist-context';
-    context.textContent = '현재 보고 있는 대화';
-    title.before(context);
-    title.after(countNode);
+    context.textContent = '전체 대화';
+    // Name first, then state and the original live count beneath it.
+    title.after(context);
+    context.after(countNode);
   }
   // Preserve status announcements without a visual middle bar.
   // It appears below the counts only while records are actively loading.
@@ -203,6 +204,7 @@
   const selectAll = $('#selectAllBtn');
   const save = $('#saveSelectedBtn');
   const actionHost = document.createElement('div');
+  let syncSelectionControls = () => {};
   actionHost.className = 'glowme-selection-actions';
   actionHost.setAttribute('role','group');
   actionHost.setAttribute('aria-label','선택한 미디어 저장');
@@ -211,12 +213,16 @@
     actionHost.append(selection,selectAll,save);
     main.append(actionHost);
     const syncSelection = () => {
-      // The selection count is the original app's authoritative state.
-      // In particular, this works for gallery cards AND Replay/Channel posts.
+      const mode = state.filter === 'live' ? state.live.centerMode : state.filter;
+      const selectable = ['media','image','video','sound'].includes(mode) ||
+        (state.filter === 'live' && ['replay','channel'].includes(mode));
       const hasSelection = selection.classList.contains('has-selection');
-      actionHost.hidden = !hasSelection;
-      actionHost.setAttribute('aria-hidden',String(!hasSelection));
+      const visible = selectable || hasSelection;
+      actionHost.hidden = !visible;
+      actionHost.setAttribute('aria-hidden',String(!visible));
+      if (!save.dataset.glowSelectionInProgress) save.disabled = !hasSelection;
     };
+    syncSelectionControls = syncSelection;
     new MutationObserver(syncSelection).observe(selection,{
       attributes:true,attributeFilter:['class'],childList:true,subtree:true
     });
@@ -264,6 +270,7 @@
     searchPanel.setAttribute('aria-hidden',String(!open));
     searchButton.classList.toggle('active',open);
     searchButton.setAttribute('aria-expanded',String(open));
+    searchPanel.inert = !open;
     window.FrommGlowME?.syncNavigation();
     if (open) {
       window.FrommGlowME?.fitPanel();
@@ -273,19 +280,30 @@
   if (searchButton && searchPanel) {
     // Never leave a legacy pinned panel auto-open after initializing v3.3.
     setSearchOpen(false);
+    // Handle both normal Chrome and installed/PWA layouts in one place.
+    // Capture before the legacy toolbar click handler can double-toggle.
     searchButton.addEventListener('click', event => {
-      if (!window.FrommGlowME?.pinned) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      setSearchOpen(!searchPanel.classList.contains('open'));
+      if (state.filter === 'all') setSearchOpen(!searchPanel.classList.contains('open'));
     },true);
     searchPanel.querySelector('.glowme-search-close')?.addEventListener('click',event => {
-      if (!window.FrommGlowME?.pinned) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       setSearchOpen(false);
       searchButton.focus({preventScroll:true});
     },true);
+    document.addEventListener('pointerdown',event => {
+      if (searchPanel.classList.contains('open') &&
+          !searchPanel.contains(event.target) && !searchButton.contains(event.target))
+        setSearchOpen(false);
+    },{passive:true});
+    document.addEventListener('keydown',event => {
+      if (event.key === 'Escape' && searchPanel.classList.contains('open')) {
+        setSearchOpen(false);
+        searchButton.focus({preventScroll:true});
+      }
+    });
   }
 
   const roomSection = rooms.closest('.card');
@@ -314,7 +332,8 @@
     scheduleBubble();
     trigger.setAttribute('aria-expanded', String(expanded));
     trigger.setAttribute('aria-label', expanded ? '아티스트 메뉴 접기' : '아티스트 메뉴 펼치기');
-    if (roomSection) roomSection.inert = !expanded;
+    // A collapsed rail still contains clickable profile avatars.
+    if (roomSection) roomSection.inert = false;
     const install = $('#installAppBtn');
     if (install) install.inert = !expanded;
   }
@@ -360,7 +379,18 @@
       setExpanded(false);
   });
   lowHeight.addEventListener('change', () => setExpanded(false));
+  // Legacy setSidebarOpen(false) makes #sidebar inert, even when the floating
+  // rail remains visible. Undo this in case any old code path runs.
+  function keepRailInteractive() {
+    if (sidebar.inert) sidebar.inert = false;
+    if (sidebar.getAttribute('aria-hidden') !== 'false')
+      sidebar.setAttribute('aria-hidden','false');
+  }
+  new MutationObserver(keepRailInteractive).observe(sidebar,{
+    attributes:true,attributeFilter:['inert','aria-hidden']
+  });
   setSidebarOpen(true);
+  keepRailInteractive();
   setExpanded(false);
 
   function decorateRooms() {
@@ -427,11 +457,14 @@
     scheduleBubble();
     const context = $('.glowme-artist-context');
     const labels = {
-      all:'대화',media:'미디어',image:'사진',video:'영상',sound:'음성',
+      all:'전체 대화',media:'미디어',image:'사진',video:'영상',sound:'음성',
       vote:'투표',live:'LIVE',replay:'Replay',channel:'Channel'
     };
-    if (context) context.textContent = '현재 보고 있는 ' + (labels[key] || '대화');
+    if (context) context.textContent = state.filter === 'all'
+      ? (state.onlyMyReplies ? '내 글에 온 답장' : (state.chatQuery?.trim() ? '대화 검색 중' : labels.all))
+      : (labels[key] || labels.all);
     if (searchButton) searchButton.hidden = state.filter !== 'all';
+    syncSelectionControls();
     if (matchDock) matchDock.hidden = state.filter !== 'all' || !!matchNavigation?.hidden;
     if (state.filter !== 'all' && searchPanel?.classList.contains('open')) {
       setSearchOpen(false);
@@ -442,6 +475,9 @@
   });
   const artistTitle = $('#artistTitle');
   if (artistTitle) new MutationObserver(syncNavigation).observe(artistTitle,{childList:true});
+  if (countNode) new MutationObserver(syncNavigation).observe(countNode,{
+    childList:true,subtree:true,characterData:true
+  });
   syncNavigation();
   window.FrommGlowME.fitPanel();
   scheduleRailTop();

@@ -109,10 +109,10 @@
       pinned=next;
       document.documentElement.dataset.glowLayout=pinned ? 'pinned':'web';
       if (pinned) {setSidebarOpen(true); openChatToolsPanel(); openDateCalendar();}
-      else {setSidebarOpen(webLeft); if(webRight) openChatToolsPanel(); else closeChatToolsPanel();}
+      else {setSidebarOpen(true); if(webRight) openChatToolsPanel(); else closeChatToolsPanel();}
     }
     document.documentElement.dataset.glowLayout=pinned ? 'pinned':'web';
-    toggle.hidden=pinned; search.hidden=pinned;
+    toggle.hidden=true; search.hidden=pinned;
     installButton.hidden=appWindow || !promptEvent;
     fitPanel(); syncNavigation(); positionSidebarToggle();
   }
@@ -128,4 +128,12 @@
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
   new MutationObserver(syncNavigation).observe(panel,{attributes:true,attributeFilter:['class']});
   syncLayout();
+  // This experiment is isolated in separate files so Codex can compare or
+  // cherry-pick it without rewriting the existing shell or touching PR #53.
+  const phase3Css=document.createElement('link');
+  phase3Css.rel='stylesheet'; phase3Css.href='glowme-phase3-experiment.css';
+  document.head.append(phase3Css);
+  const phase3Script=document.createElement('script');
+  phase3Script.src='web-glowme-phase3-experiment.js';
+  document.body.append(phase3Script);
 })();

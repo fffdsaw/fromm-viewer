@@ -2832,6 +2832,10 @@ function isLocalViewer(){
 
 function shouldUseLocalProxy(rawUrl){
   if(!isLocalViewer()) return false;
+  // Experiment-only opt-in for a local Chrome development extension.
+  // Never affects the deployed Viewer: localhost + explicit query is required.
+  if(location.hostname === "127.0.0.1" &&
+     new URLSearchParams(location.search).get("previewBridge") === "1") return false;
   try{
     const url=new URL(String(rawUrl || ""),location.href);
     if(url.origin===location.origin) return false;

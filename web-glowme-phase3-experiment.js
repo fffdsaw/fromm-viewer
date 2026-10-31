@@ -12,6 +12,38 @@
   if (!sidebar || !toolbar || !rooms || !title || !window.FrommGlowME) return;
   document.documentElement.classList.add('glowme-phase3-experiment');
 
+  // The rail begins *below* both the top artist header and its middle toolbar.
+  // Measure the actual rendered bottom: those bars wrap on narrow screens and
+  // may change height with account state, LIVE or media selection.
+  const header = $('.viewer-header');
+  let railTopFrame = 0;
+  let previousRailTop = -1;
+  function updateRailTop() {
+    railTopFrame = 0;
+    if (!header?.isConnected || !sidebar.isConnected) return;
+    const headerBottom = header.getBoundingClientRect().bottom;
+    const toolbarBottom = toolbar.getBoundingClientRect().bottom;
+    // If a short-height layout scrolls the nonsticky header away, let the
+    // rail use the freed space instead of following it off screen.
+    const desired = Math.max(8, Math.ceil(Math.max(headerBottom, toolbarBottom) + 8));
+    const top = Math.min(desired, Math.max(8, window.innerHeight - 120));
+    if (Math.abs(top - previousRailTop) < 1) return;
+    previousRailTop = top;
+    document.documentElement.style.setProperty('--glow-rail-top', top + 'px');
+  }
+  function scheduleRailTop() {
+    if (!railTopFrame) railTopFrame = requestAnimationFrame(updateRailTop);
+  }
+  if (header) {
+    const heightObserver = new ResizeObserver(scheduleRailTop);
+    heightObserver.observe(header);
+    heightObserver.observe(toolbar);
+    window.addEventListener('resize', scheduleRailTop, {passive:true});
+    window.addEventListener('scroll', scheduleRailTop, {passive:true});
+    document.fonts?.ready?.then(scheduleRailTop);
+    scheduleRailTop();
+  }
+
   // Keep the original filter buttons in the DOM for their existing listeners.
   // Only remove the previous duplicate five-item navigation created by Glow ME.
   sidebar.querySelector('.glowme-nav')?.remove();

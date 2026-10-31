@@ -83,6 +83,19 @@
   document.body.append(search); search.classList.add('glowme-search-toggle');
 
   function fitPanel() {
+    if (document.documentElement.classList.contains('glowme-phase3-experiment')) {
+      // The phase 3 layout has no toolbar. Anchor the one floating magnifier
+      // to the current header edge, never to its now-hidden toolbar slot.
+      const header=$('.viewer-header').getBoundingClientRect();
+      const searchTop=Math.max(8,Math.min(Math.ceil(header.bottom+10),innerHeight-112));
+      search.style.left='auto';
+      search.style.right='max(12px, var(--viewer-gutter))';
+      search.style.top=searchTop+'px';
+      search.style.visibility='visible';
+      const panelTop=Math.max(8,Math.min(searchTop+52,innerHeight-160));
+      panel.style.setProperty('--glow-tools-top',panelTop+'px');
+      return;
+    }
     const slot=searchSlot.getBoundingClientRect();
     search.style.left=`${slot.left}px`; search.style.top=`${slot.top}px`;
     search.style.visibility=slot.bottom>0 ? 'visible':'hidden';
@@ -94,7 +107,16 @@
   function syncNavigation() {
     const key=state.filter==='live' ? state.live.centerMode : state.filter;
     for (const button of nav.children) button.setAttribute('aria-current', button.dataset.glowNav===key ? 'page':'false');
-    const all=state.filter==='all'; fields.disabled=!all; unavailable.hidden=all;
+    const all=state.filter==='all';
+    if (document.documentElement.classList.contains('glowme-phase3-experiment')) {
+      search.hidden=!all;
+      if (!all && panel.classList.contains('open')) {
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden','true');
+        search.classList.remove('active');
+      }
+    }
+    fields.disabled=!all; unavailable.hidden=all;
     panel.classList.toggle('glowme-search-unavailable', !all);
     if (pinned && all && wasAll!==true) openDateCalendar();
     wasAll=all;
@@ -108,11 +130,18 @@
       if (next) { webLeft=document.body.classList.contains('sidebar-open'); webRight=panel.classList.contains('open'); }
       pinned=next;
       document.documentElement.dataset.glowLayout=pinned ? 'pinned':'web';
-      if (pinned) {setSidebarOpen(true); openChatToolsPanel(); openDateCalendar();}
+      if (pinned) {
+        setSidebarOpen(true);
+        if (!document.documentElement.classList.contains('glowme-phase3-experiment')) {
+          openChatToolsPanel(); openDateCalendar();
+        }
+      }
       else {setSidebarOpen(true); if(webRight) openChatToolsPanel(); else closeChatToolsPanel();}
     }
     document.documentElement.dataset.glowLayout=pinned ? 'pinned':'web';
-    toggle.hidden=true; search.hidden=pinned;
+    toggle.hidden=true;
+    search.hidden=document.documentElement.classList.contains('glowme-phase3-experiment')
+      ? state.filter!=='all' : pinned;
     installButton.hidden=appWindow || !promptEvent;
     fitPanel(); syncNavigation(); positionSidebarToggle();
   }

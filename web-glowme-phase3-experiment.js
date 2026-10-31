@@ -187,47 +187,51 @@
   const main = $('.main');
   const timeline = $('#timeline');
   const sort = $('#sortControls');
-  const sortHost = document.createElement('div');
-  sortHost.className = 'glowme-context-sort';
-  sortHost.hidden = true;
-  if (sort && main && timeline) {
-    sortHost.append(sort);
-    main.insertBefore(sortHost,timeline);
-    const syncSort = () => {
-      sortHost.hidden = sort.style.display === 'none' || !sort.style.display;
-    };
-    new MutationObserver(syncSort).observe(sort,{attributes:true,attributeFilter:['style']});
-    syncSort();
-  }
-
   const selection = $('#selectedCount');
   const selectAll = $('#selectAllBtn');
   const save = $('#saveSelectedBtn');
+  const sortHost = document.createElement('div');
+  sortHost.className = 'glowme-context-sort';
+  sortHost.setAttribute('role','group');
+  sortHost.setAttribute('aria-label','미디어 정렬 및 선택 도구');
+  sortHost.hidden = true;
+  if (main && timeline) main.insertBefore(sortHost,timeline);
+  if (sort) sortHost.append(sort);
+
+  // The existing sorting button always remains at the far right. Selection
+  // tools expand to its left instead of covering content at the bottom.
   const actionHost = document.createElement('div');
-  let syncSelectionControls = () => {};
   actionHost.className = 'glowme-selection-actions';
   actionHost.setAttribute('role','group');
   actionHost.setAttribute('aria-label','선택한 미디어 저장');
-  actionHost.hidden = true;
-  if (main && selection && selectAll && save) {
+  if (selection && selectAll && save) {
     actionHost.append(selection,selectAll,save);
-    main.append(actionHost);
-    const syncSelection = () => {
-      const mode = state.filter === 'live' ? state.live.centerMode : state.filter;
-      const selectable = ['media','image','video','sound'].includes(mode) ||
-        (state.filter === 'live' && ['replay','channel'].includes(mode));
-      const hasSelection = selection.classList.contains('has-selection');
-      const visible = selectable || hasSelection;
-      actionHost.hidden = !visible;
-      actionHost.setAttribute('aria-hidden',String(!visible));
-      if (!save.dataset.glowSelectionInProgress) save.disabled = !hasSelection;
-    };
-    syncSelectionControls = syncSelection;
-    new MutationObserver(syncSelection).observe(selection,{
-      attributes:true,attributeFilter:['class'],childList:true,subtree:true
-    });
-    syncSelection();
+    sortHost.insertBefore(actionHost,sort || null);
   }
+  const sortVisible = () => !!sort && sort.style.display !== 'none' && !!sort.style.display;
+  let syncSelectionControls = () => {};
+  function syncContextToolbar() {
+    const mode = state.filter === 'live' ? state.live.centerMode : state.filter;
+    const selectable = ['media','image','video','sound'].includes(mode) ||
+      (state.filter === 'live' && ['replay','channel'].includes(mode));
+    const hasSelection = !!selection?.classList.contains('has-selection');
+    const available = !!(selection && selectAll && save);
+    const showActions = available && (selectable || hasSelection);
+    actionHost.classList.toggle('is-open',showActions);
+    actionHost.inert = !showActions;
+    actionHost.setAttribute('aria-hidden',String(!showActions));
+    if (save && !save.dataset.glowSelectionInProgress)
+      save.disabled = !hasSelection;
+    sortHost.hidden = !sortVisible() && !showActions;
+  }
+  syncSelectionControls = syncContextToolbar;
+  if (sort) new MutationObserver(syncContextToolbar).observe(sort,{
+    attributes:true,attributeFilter:['style']
+  });
+  if (selection) new MutationObserver(syncContextToolbar).observe(selection,{
+    attributes:true,attributeFilter:['class'],childList:true,subtree:true
+  });
+  syncContextToolbar();
 
   // The floating search panel owns keyword/calendar/replies inputs. A separate
   // contextual dock (not inside the panel) keeps ↑·↓ usable while reading.
@@ -340,7 +344,11 @@
   function deferCollapse() {
     clearTimeout(closeTimer);
     closeTimer = setTimeout(() => {
-      if (!sidebar.matches(':hover') && !sidebar.contains(document.activeElement))
+      // A mouse-clicked item may retain DOM focus after the pointer leaves.
+      // Keep expanded only for real keyboard focus, not incidental mouse focus.
+      const active = document.activeElement;
+      const keyboardFocus = sidebar.contains(active) && active?.matches(':focus-visible');
+      if (!sidebar.matches(':hover') && !keyboardFocus)
         setExpanded(false);
     }, 240);
   }
@@ -407,7 +415,8 @@
       const url = raw ? normalizeMediaUrl(raw) : '';
       if (url) {
         const img = document.createElement('img');
-        img.loading = 'lazy';
+        img.loading = index < 8 ? 'eager' : 'lazy';
+        img.decoding = 'async';
         img.alt = '';
         img.addEventListener('load', () => avatar.classList.add('has-photo'));
         img.addEventListener('error', () => img.remove());

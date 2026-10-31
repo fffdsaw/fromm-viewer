@@ -349,3 +349,125 @@ html.glowme.glowme-phase3-experiment :is(button,input,select,textarea):focus-vis
 @media(prefers-reduced-transparency:reduce) {
   html.glowme.glowme-phase3-experiment #sidebar {background:#edf8f0;}
 }
+
+/* Phase 3 visual refinement (2026-10-31):
+ * one real project logo, one mobile-accessible expand control,
+ * and a pointer-following glass lens shared across the nine nav items. */
+html.glowme.glowme-phase3-experiment #sidebar .brand,
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .brand {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger {
+  overflow:hidden;
+  flex:0 0 46px;
+  align-items:center;
+  justify-items:center;
+  color:#285e4e;
+  border-radius:16px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-rail-trigger img {
+  display:block;
+  max-width:100%;
+  width:44px;
+  height:40px;
+  padding:1px;
+  object-fit:contain;
+  object-position:center;
+  box-sizing:border-box;
+  pointer-events:none;
+}
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-rail-trigger {
+  width:165px;
+  max-width:calc(100% - 6px);
+  height:52px;
+  flex-basis:52px;
+  margin:0 0 3px 2px;
+  border-radius:18px;
+}
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] .glowme-rail-trigger img {
+  width:146px;
+  height:48px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav {
+  position:relative;
+  isolation:isolate;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+  display:block;
+  position:absolute;
+  left:0;
+  top:0;
+  width:calc(100% - 2px);
+  height:37px;
+  border-radius:14px;
+  z-index:0;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(ellipse 80% 90% at var(--bubble-light-x,50%) var(--bubble-light-y,36%), #ffffffa8 0%,#f3fff994 26%,#ffffff00 78%),
+    linear-gradient(143deg,#ffffff9c 0%,#d0f1e3ba 31%,#a7d9c5bd 69%,#e9fff4ce 100%);
+  border:1px solid #a2d4c0;
+  box-shadow:
+    inset 0 1.5px 1px #ffffffea,
+    inset 1.5px 0 2px #ffffffa8,
+    inset -2px -1px 3px #5d9d8352,
+    0 3px 10px #3d8f6d30;
+  transition:
+    transform .22s cubic-bezier(.2,.75,.2,1),
+    width .2s ease,
+    height .2s ease,
+    opacity .16s ease;
+  will-change:transform;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble::after {
+  content:"";
+  position:absolute;
+  inset:2px;
+  border-radius:inherit;
+  border-top:1px solid #ffffffd9;
+  border-left:1px solid #ffffff87;
+  pointer-events:none;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button:hover,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button[aria-current="page"] {
+  position:relative;
+  z-index:1;
+  color:#285847;
+  background:transparent!important;
+  border-color:transparent!important;
+  border-radius:13px!important;
+  box-shadow:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button[aria-current="page"] {
+  color:#24523f;
+  font-weight:750;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button[aria-current="page"]::after {
+  content:"";
+  position:absolute;
+  left:1px;
+  top:25%;
+  bottom:25%;
+  width:3px;
+  border-radius:99px;
+  background:#428e7a;
+  pointer-events:none;
+}
+/* Keyboard users receive the same lens movement on focus. */
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button:focus-visible {
+  outline:2px solid #428e7a;
+  outline-offset:-2px;
+}
+@media(prefers-reduced-motion:reduce) {
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+    transition:none;
+    will-change:auto;
+  }
+}
+@media(prefers-reduced-transparency:reduce) {
+  html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble {
+    background:#cfecdd;
+    box-shadow:none;
+  }
+}

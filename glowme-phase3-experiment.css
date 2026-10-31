@@ -1102,3 +1102,278 @@ html.glowme.glowme-phase3-experiment .glowme-selection-actions .btn:disabled {
   opacity:.48;
   cursor:not-allowed;
 }
+
+
+/* Glow ME minimal direction, 2026-10-31: the supplied album artwork is the
+ * sole hue reference. Keep Meapri Regular reserved for the final polish. */
+html.glowme.glowme-phase3-experiment {
+  --bg:#eafbe8;
+  --panel:#f7fff9;
+  --panel2:#e6f8ed;
+  --text:#265946;
+  --muted:#4a7563;
+  --line:#b8e6cd;
+  --accent:#64dc9f;
+  --accent2:#64dc9f;
+}
+html.glowme.glowme-phase3-experiment body {
+  background:linear-gradient(160deg,#f7fff9 0%,#eafbe8 64%,#e8f7f4 100%)!important;
+  background-attachment:fixed!important;
+}
+/* Remove water-photo layers and simulated heavy glass from both shell bars. */
+html.glowme.glowme-phase3-experiment .topbar {
+  min-height:88px!important;
+  padding:12px 16px!important;
+  background:#eafbe8!important;
+  border:1px solid #b8e6cd!important;
+  border-radius:20px!important;
+  box-shadow:0 4px 16px #397a5f12!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow:visible!important;
+}
+html.glowme.glowme-phase3-experiment .topbar::before,
+html.glowme.glowme-phase3-experiment .topbar::after,
+html.glowme.glowme-phase3-experiment #sidebar::before,
+html.glowme.glowme-phase3-experiment #sidebar::after {
+  content:none!important;
+  display:none!important;
+  background:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar,
+html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] #sidebar {
+  background:#f3fcf6!important;
+  border:1px solid #b8e6cd!important;
+  box-shadow:0 5px 16px #397a5f16!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble,
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble::after {
+  background:#d8f1e4!important;
+  border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px #b8e6cd!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble::after {
+  content:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button[aria-current="page"]::after {
+  background:#64dc9f!important;
+}
+/* The artist name no longer gets clipped by the legacy fixed 48px title row. */
+html.glowme.glowme-phase3-experiment .topbar > .title-line {
+  height:auto!important;
+  min-height:62px!important;
+  overflow:visible!important;
+  align-items:center!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+}
+html.glowme.glowme-phase3-experiment .artist-copy {
+  height:auto!important;
+  min-height:62px!important;
+  flex:1 1 auto;
+  gap:2px!important;
+  overflow:visible!important;
+  justify-content:center!important;
+}
+html.glowme.glowme-phase3-experiment .artist-copy #artistTitle {
+  display:block!important;
+  height:auto!important;
+  min-height:0!important;
+  line-height:1.3!important;
+  padding:1px 0!important;
+  margin:0!important;
+  font-size:clamp(17px,1.45vw,21px)!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+html.glowme.glowme-phase3-experiment .artist-copy .glowme-artist-context {
+  line-height:1.25;
+}
+html.glowme.glowme-phase3-experiment .artist-copy #counts {
+  line-height:1.3!important;
+  font-size:11px!important;
+}
+/* Compressed rail: clearly separated nav and independently scrolling faces. */
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav {
+  gap:3px!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button {
+  min-height:36px;
+  height:36px;
+}
+html.glowme.glowme-phase3-experiment #sidebar .glowme-artist-section {
+  margin-top:9px!important;
+  padding-top:11px!important;
+  border-top:1px solid #c1e2d2;
+  gap:6px;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms {
+  gap:6px!important;
+  padding:4px 0 8px!important;
+  scrollbar-width:none;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms::-webkit-scrollbar {
+  display:none;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room {
+  min-height:46px!important;
+  flex:0 0 46px!important;
+  border-radius:13px;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room .glowme-room-avatar {
+  width:36px;
+  height:36px;
+  flex:0 0 36px;
+}
+html.glowme.glowme-phase3-experiment #sidebar #rooms .room.active .glowme-room-avatar {
+  box-shadow:0 0 0 2px #64dc9f,0 0 0 4px #eafbe8;
+}
+/* A single sticky selection/sorting toolbar; sort button remains at right.
+ * The current original handlers continue to own the actual operations. */
+html.glowme.glowme-phase3-experiment .glowme-context-sort {
+  position:sticky;
+  top:calc(var(--glow-rail-top,108px) + 2px);
+  z-index:445;
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  padding:2px 2px 7px;
+  margin:0 0 6px;
+  min-width:0;
+  isolation:isolate;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort[hidden] {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort #sortControls {
+  display:flex;
+  flex:0 0 auto;
+  order:2;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort #sortControls[style*="display: none"] {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .sort-btn {
+  min-height:38px;
+  white-space:nowrap;
+  background:#f7fff9!important;
+  border:1px solid #b8e6cd!important;
+  color:#265946!important;
+  box-shadow:0 2px 8px #397a5f10!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions {
+  position:static!important;
+  order:1;
+  z-index:auto;
+  bottom:auto!important;
+  right:auto!important;
+  display:flex!important;
+  flex:0 1 auto;
+  flex-wrap:nowrap!important;
+  align-items:center;
+  gap:7px;
+  border:0!important;
+  padding:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  border-radius:0;
+  max-width:0;
+  min-width:0;
+  overflow:hidden;
+  opacity:0;
+  transform:translateX(9px);
+  pointer-events:none;
+  white-space:nowrap;
+  transition:max-width .27s cubic-bezier(.22,.75,.28,1),opacity .2s ease,transform .27s ease;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions.is-open {
+  max-width:530px;
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:auto;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions .selected-count {
+  flex:0 0 auto;
+  padding:7px 9px;
+  border:1px solid #b8e6cd;
+  border-radius:999px;
+  color:#265946;
+  background:#eafbe8;
+  font-size:12px;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions .btn {
+  flex:0 0 auto;
+  min-height:38px;
+  height:38px;
+  padding:7px 12px;
+  border:1px solid #b8e6cd;
+  border-radius:999px;
+  background:#f7fff9;
+  color:#265946;
+  box-shadow:none;
+}
+html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions .btn.good {
+  background:#64dc9f;
+  border-color:#64dc9f;
+  color:#20533f;
+}
+html.glowme.glowme-phase3-experiment #scrollTopBtn {
+  right:clamp(14px,2vw,28px);
+  bottom:22px;
+  z-index:465;
+  border:1px solid #b8e6cd;
+  background:#f7fff9;
+  color:#265946;
+  box-shadow:0 4px 14px #397a5f18;
+}
+html.glowme.glowme-phase3-experiment #scrollTopBtn:hover {
+  background:#eafbe8;
+}
+@media(max-width:700px) {
+  html.glowme.glowme-phase3-experiment .topbar {
+    padding:10px!important;
+    min-height:76px!important;
+    border-radius:16px!important;
+  }
+  html.glowme.glowme-phase3-experiment .topbar > .title-line,
+  html.glowme.glowme-phase3-experiment .artist-copy {
+    min-height:54px!important;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-context-sort {
+    gap:5px;
+    max-width:calc(100vw - 78px);
+    overflow-x:auto;
+    scrollbar-width:none;
+    margin-left:auto;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-context-sort::-webkit-scrollbar {
+    display:none;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions {
+    gap:4px;
+  }
+  html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions .btn {
+    padding:7px 9px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html.glowme.glowme-phase3-experiment .glowme-context-sort .glowme-selection-actions {
+    transition:none!important;
+  }
+}
+@media(forced-colors:active) {
+  html.glowme.glowme-phase3-experiment .topbar,
+  html.glowme.glowme-phase3-experiment #sidebar,
+  html.glowme.glowme-phase3-experiment #scrollTopBtn {
+    border:1px solid CanvasText!important;
+    background:Canvas!important;
+    color:CanvasText!important;
+  }
+}

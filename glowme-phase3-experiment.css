@@ -1004,3 +1004,101 @@ html.glowme.glowme-phase3-experiment #timeline .reply-mine .reply-label {
     background:#edf8f0;
   }
 }
+
+
+/* Phase 3 real-account fixes: real subscribed artists stay available in the
+ * 64px rail. Only labels collapse; avatar buttons never become inert. */
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) .glowme-artist-section {
+  display:flex!important;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  gap:0;
+  margin-top:5px;
+  padding-top:7px;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) .glowme-artist-section > strong {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar #rooms {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  flex:1 1 auto;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms {
+  gap:4px;
+  padding:1px 0 5px;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room {
+  flex:0 0 42px;
+  min-height:42px;
+  width:100%;
+  padding:3px 0;
+  gap:0;
+  justify-content:center;
+  text-align:center;
+  border:0!important;
+  border-radius:12px;
+  background:transparent;
+  pointer-events:auto;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room.active {
+  background:#d9f1e4b2;
+  box-shadow:inset 0 0 0 1px #a6d9c2;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room .glowme-room-avatar {
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .room .glowme-room-name {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .glowme-demo-note,
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .glowme-demo-name {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment #sidebar:not([data-rail-expanded="true"]) #rooms .glowme-demo-room {
+  justify-content:center;
+  padding:3px 0;
+  gap:0;
+  flex:0 0 41px;
+}
+/* Retain real labels after expansion and distinguish the current artist. */
+html.glowme.glowme-phase3-experiment #sidebar[data-rail-expanded="true"] #rooms .room .glowme-room-name {
+  display:block;
+  min-width:0;
+}
+html.glowme.glowme-phase3-experiment #sidebar #rooms .room:focus-visible {
+  outline:2px solid #428e7a;
+  outline-offset:-2px;
+}
+html.glowme.glowme-phase3-experiment #sidebar #rooms .room.active .glowme-room-avatar {
+  box-shadow:0 0 0 2px #438e75,0 0 0 4px #c5ead7;
+}
+/* Keep the original selection functionality but replace old pink overlays. */
+html.glowme.glowme-phase3-experiment .download-selection-box {
+  border-color:#428e7a!important;
+  background:#428e7a29!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .chat-match-active {
+  outline:2px solid #428e7a!important;
+  border-color:#428e7a!important;
+  box-shadow:inset 0 0 0 1px #428e7a42!important;
+  background-image:linear-gradient(#428e7a12,#428e7a12)!important;
+}
+html.glowme.glowme-phase3-experiment #timeline .bubble mark {
+  background:#94d9c47a!important;
+  color:#245442!important;
+}
+html.glowme.glowme-phase3-experiment :is(.card-footer-select,.chat-select-pill):focus-visible {
+  outline-color:#428e7a!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-selection-actions .btn:disabled {
+  opacity:.48;
+  cursor:not-allowed;
+}

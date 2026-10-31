@@ -91,11 +91,11 @@
       const pointing = hoveredButton === target && pointerX !== null;
       const fractionX = pointing ? Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width)) : .5;
       const fractionY = pointing ? Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height)) : .36;
-      const drift = pointing ? (fractionX - .5) * Math.min(9, rect.width * .06) : 0;
-      bubble.style.width = Math.max(0, rect.width - 2) + 'px';
+      // Width belongs to CSS as a percentage of the rail. A fixed inline
+      // pixel width causes the lens to shrink *after* its parent has closed.
+      // Only the row position animates; both glass and rail resize together.
       bubble.style.height = rect.height + 'px';
-      bubble.style.transform = 'translate3d(' +
-        Math.round(rect.left - navBox.left + 1 + drift) + 'px,' +
+      bubble.style.transform = 'translate3d(1px,' +
         Math.round(rect.top - navBox.top) + 'px,0)';
       bubble.style.setProperty('--bubble-light-x', Math.round(fractionX * 100) + '%');
       bubble.style.setProperty('--bubble-light-y', Math.round(fractionY * 100) + '%');
@@ -173,6 +173,8 @@
   function setExpanded(open) {
     expanded = Boolean(open || lowHeight.matches);
     sidebar.dataset.railExpanded = String(expanded);
+    // The remaining vertical lens movement stays synchronized to its row.
+    scheduleBubble();
     trigger.setAttribute('aria-expanded', String(expanded));
     trigger.setAttribute('aria-label', expanded ? '아티스트 메뉴 접기' : '아티스트 메뉴 펼치기');
     if (roomSection) roomSection.inert = !expanded;
@@ -199,9 +201,10 @@
   sidebar.addEventListener('pointerleave', event => {
     if (event.pointerType === 'mouse') deferCollapse();
   });
-  sidebar.addEventListener('focusin', () => {
+  sidebar.addEventListener('focusin', event => {
     clearTimeout(closeTimer);
-    setExpanded(true);
+    // Focusing the collapse/logo trigger itself must not reopen the rail.
+    if (event.target !== trigger) setExpanded(true);
   });
   sidebar.addEventListener('focusout', () => {
     queueMicrotask(() => {
@@ -254,6 +257,31 @@
   }
   new MutationObserver(decorateRooms).observe(rooms,{childList:true});
   decorateRooms();
+
+  // A clearly labeled *local-only* scroll fixture, never real account data.
+  // This is intentionally rendered only on localhost without an auth token,
+  // and is removed automatically when loadRooms() replaces #rooms.
+  const previewHost = ['127.0.0.1','localhost','::1'].includes(location.hostname);
+  const hasRealSession = Boolean(currentAuth()?.token);
+  if (previewHost && !hasRealSession && !rooms.children.length && !state.rooms?.length) {
+    const note = document.createElement('div');
+    note.className = 'glowme-demo-note';
+    note.textContent = '샘플 목록 · 스크롤 테스트 전용';
+    rooms.append(note);
+    for (let i = 1; i <= 32; i++) {
+      const item = document.createElement('div');
+      item.className = 'glowme-demo-room';
+      const avatar = document.createElement('span');
+      avatar.className = 'glowme-demo-avatar';
+      avatar.setAttribute('aria-hidden','true');
+      avatar.textContent = String(i).padStart(2,'0');
+      const label = document.createElement('span');
+      label.className = 'glowme-demo-name';
+      label.textContent = '샘플 아티스트 ' + String(i).padStart(2,'0');
+      item.append(avatar,label);
+      rooms.append(item);
+    }
+  }
 
   function syncNavigation() {
     const key = state.filter === 'live' ? state.live.centerMode : state.filter;

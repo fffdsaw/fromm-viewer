@@ -12,9 +12,8 @@
   if (!sidebar || !toolbar || !rooms || !title || !window.FrommGlowME) return;
   document.documentElement.classList.add('glowme-phase3-experiment');
 
-  // The rail begins *below* both the top artist header and its middle toolbar.
-  // Measure the actual rendered bottom: those bars wrap on narrow screens and
-  // may change height with account state, LIVE or media selection.
+  // Glow ME v3.3 has NO middle toolbar. The floating rail starts below only
+  // the artist header. Measure that header because artist counts can wrap.
   const header = $('.viewer-header');
   let railTopFrame = 0;
   let previousRailTop = -1;
@@ -22,10 +21,8 @@
     railTopFrame = 0;
     if (!header?.isConnected || !sidebar.isConnected) return;
     const headerBottom = header.getBoundingClientRect().bottom;
-    const toolbarBottom = toolbar.getBoundingClientRect().bottom;
-    // If a short-height layout scrolls the nonsticky header away, let the
-    // rail use the freed space instead of following it off screen.
-    const desired = Math.max(8, Math.ceil(Math.max(headerBottom, toolbarBottom) + 8));
+    // Below the *artist header alone*; never use the removed toolbar's bounds.
+    const desired = Math.max(8, Math.ceil(headerBottom + 8));
     const top = Math.min(desired, Math.max(8, window.innerHeight - 120));
     if (Math.abs(top - previousRailTop) < 1) return;
     previousRailTop = top;
@@ -37,7 +34,6 @@
   if (header) {
     const heightObserver = new ResizeObserver(scheduleRailTop);
     heightObserver.observe(header);
-    heightObserver.observe(toolbar);
     window.addEventListener('resize', scheduleRailTop, {passive:true});
     window.addEventListener('scroll', scheduleRailTop, {passive:true});
     document.fonts?.ready?.then(scheduleRailTop);
@@ -177,12 +173,94 @@
     title.before(context);
     title.after(countNode);
   }
-  // Operational history/loading messages are retained outside the identity block.
+  // Preserve status announcements without a visual middle bar.
+  // It appears below the counts only while records are actively loading.
   const runtimeStatus = $('#scanState');
-  if (runtimeStatus) {
+  if (runtimeStatus && artistCopy) {
     runtimeStatus.classList.add('glowme-runtime-status');
-    toolbar.append(runtimeStatus);
+    artistCopy.append(runtimeStatus);
   }
+
+  // Keep the core app's original controls and click handlers, but relocate
+  // them to contextual surfaces rather than retaining a visible toolbar.
+  const main = $('.main');
+  const timeline = $('#timeline');
+  const sort = $('#sortControls');
+  const sortHost = document.createElement('div');
+  sortHost.className = 'glowme-context-sort';
+  sortHost.hidden = true;
+  if (sort && main && timeline) {
+    sortHost.append(sort);
+    main.insertBefore(sortHost,timeline);
+    const syncSort = () => {
+      sortHost.hidden = sort.style.display === 'none' || !sort.style.display;
+    };
+    new MutationObserver(syncSort).observe(sort,{attributes:true,attributeFilter:['style']});
+    syncSort();
+  }
+
+  const selection = $('#selectedCount');
+  const selectAll = $('#selectAllBtn');
+  const save = $('#saveSelectedBtn');
+  const actionHost = document.createElement('div');
+  actionHost.className = 'glowme-selection-actions';
+  actionHost.setAttribute('role','group');
+  actionHost.setAttribute('aria-label','선택한 미디어 저장');
+  actionHost.hidden = true;
+  if (main && selection && selectAll && save) {
+    actionHost.append(selection,selectAll,save);
+    main.append(actionHost);
+    const syncSelection = () => {
+      actionHost.hidden = !selection.classList.contains('has-selection');
+    };
+    new MutationObserver(syncSelection).observe(selection,{
+      attributes:true,attributeFilter:['class'],childList:true,subtree:true
+    });
+    syncSelection();
+  }
+
+  // Move match navigation into the floating search panel alongside its input.
+  const searchButton = $('#chatToolsBtn');
+  const searchPanel = $('#chatToolsPanel');
+  const searchFields = searchPanel?.querySelector('.glowme-search-fields');
+  const matchNavigation = $('#chatMatchNav');
+  if (searchFields && matchNavigation) searchFields.append(matchNavigation);
+  const searchTitle = searchPanel?.querySelector('.chat-tools-title');
+  if (searchTitle) searchTitle.textContent = '대화 찾기';
+
+  // The legacy pinned PWA search drawer could never be closed through the
+  // regular close function. Allow this experiment's floating magnifier to
+  // toggle it explicitly while leaving the original app listeners untouched.
+  function setSearchOpen(open) {
+    if (!searchButton || !searchPanel) return;
+    searchPanel.classList.toggle('open',open);
+    searchPanel.setAttribute('aria-hidden',String(!open));
+    searchButton.classList.toggle('active',open);
+    searchButton.setAttribute('aria-expanded',String(open));
+    window.FrommGlowME?.syncNavigation();
+    if (open) {
+      window.FrommGlowME?.fitPanel();
+      requestAnimationFrame(() => $('#chatSearchInput')?.focus({preventScroll:true}));
+    }
+  }
+  if (searchButton && searchPanel) {
+    // Never leave a legacy pinned panel auto-open after initializing v3.3.
+    setSearchOpen(false);
+    searchButton.addEventListener('click', event => {
+      if (!window.FrommGlowME?.pinned) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setSearchOpen(!searchPanel.classList.contains('open'));
+    },true);
+    searchPanel.querySelector('.glowme-search-close')?.addEventListener('click',event => {
+      if (!window.FrommGlowME?.pinned) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setSearchOpen(false);
+      searchButton.focus({preventScroll:true});
+    },true);
+  }
+
   const roomSection = rooms.closest('.card');
   roomSection?.classList.add('glowme-artist-section');
 
@@ -326,6 +404,10 @@
       vote:'투표',live:'LIVE',replay:'Replay',channel:'Channel'
     };
     if (context) context.textContent = '현재 보고 있는 ' + (labels[key] || '대화');
+    if (searchButton) searchButton.hidden = state.filter !== 'all';
+    if (state.filter !== 'all' && searchPanel?.classList.contains('open')) {
+      setSearchOpen(false);
+    }
   }
   new MutationObserver(syncNavigation).observe(toolbar,{
     subtree:true,attributes:true,attributeFilter:['class','style']
@@ -333,6 +415,8 @@
   const artistTitle = $('#artistTitle');
   if (artistTitle) new MutationObserver(syncNavigation).observe(artistTitle,{childList:true});
   syncNavigation();
+  window.FrommGlowME.fitPanel();
+  scheduleRailTop();
   // Logo/sidebar transitions can change row positions without a navigation event.
   sidebar.addEventListener('transitionend', event => {
     if (event.propertyName === 'width') scheduleBubble();

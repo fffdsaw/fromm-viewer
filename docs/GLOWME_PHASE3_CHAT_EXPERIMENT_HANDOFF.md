@@ -78,3 +78,12 @@
 - JS 정적 구문 검사 통과, CSS 중괄호 개수 검사 통과. 실제 Chrome/Edge/모바일 회귀 및 스크롤·모션 시각 검증은 아직 미실행
 
 커밋: `b38b3ab` (JS), `42d0244` (CSS). 이 문서 변경 후 마지막 HEAD는 별도 확인.
+
+## 2026-10-31 레이아웃 위치 수정 — 사이드바를 **상단 헤더+중간바 아래**로
+
+- 사용자의 의도는 메뉴 간격만 축소하는 게 아니라 사이드바 **전체의 시작 위치를 위쪽 두 개 바 아래로 이동**하는 것임
+- `web-glowme-phase3-experiment.js`에서 `.viewer-header`와 `.toolbar`의 실제 `getBoundingClientRect().bottom` 값을 비교해 아래 8px부터 `--glow-rail-top`을 설정함. 헤더/툴바 ResizeObserver 및 창 resize/scroll에서도 requestAnimationFrame으로 재동기화
+- `glowme-phase3-experiment.css` 끝에서 기존 `top:10px` 및 모바일/pinned 예외를 덮어쓰도록 `top:var(--glow-rail-top,176px)!important`, `bottom:8px!important` 적용
+- 탐색 메뉴는 사이드바 상단에 고정하고 `#rooms`만 남는 높이에서 별도 스크롤
+- 작은 화면에서 헤더가 화면 바깥으로 스크롤되면 top 값을 화면 안에 제한함. `innerHeight - 120px` 안전한도이므로 *아주 낮은 화면에서는 헤더 아래에 완전히 못 놓일 수 있음*; 추가 브라우저 검증 필요
+- 커밋: JS `1983fb3`, CSS `a46f167`. JS 정적 파싱 및 CSS 구조 점검. 실제 레이아웃 렌더링/스크린샷 미검증

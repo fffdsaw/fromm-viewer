@@ -438,7 +438,7 @@
   roomsRetry.className = 'glowme-room-retry';
   roomsRetry.textContent = '목록 다시 불러오기';
   roomsStatus.append(roomsStatusText,roomsRetry);
-  roomSection?.append(roomsStatus);
+  roomSection?.insertBefore(roomsStatus, rooms);
   function syncRoomStatus() {
     if (!roomSection) return;
     const count = rooms.querySelectorAll(':scope > .room').length;

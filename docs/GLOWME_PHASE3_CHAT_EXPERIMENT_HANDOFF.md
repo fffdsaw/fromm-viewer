@@ -110,3 +110,17 @@
 - `devtools/local-preview-extension/README.md`: 설치·테스트·해제 절차와 광범위 권한 위험/실행 미검증 상태 표시
 - **주의:** 실제 Chrome 확장 설치 및 Fromm 서비스 인증 결과는 확인되지 않았음. 실제 로그인이나 미디어·LIVE 완전 동작을 보장하지 말 것. DNR/확장 권한 에러와 CORS 문제를 Chrome DevTools Network에서 사용자 직접 검증 필요
 - PR #53과 main 절대 수정하지 않았으며, 실험 브랜치에서만 작업. 병합 전 반드시 로컬 확장 파일을 실제 배포에 포함할 것인지 보안 검토하고 devtools 경로를 보호해야 함
+
+## 2026-10-31 사용자의 실로그인 UI 검증에서 발견한 기능 회귀 수정
+
+실제 사용자 Chrome/Live Server `127.0.0.1:5500/index.html?previewBridge=1`에서 **로그인과 채팅 기록이 표시된 스크린샷**을 바탕으로 확인한 문제: 아티스트 선택 직후 좌측 9개 메뉴 반응 없음, 상단 상태 문자열 잔류, 검색/내 답장 기능 탐색 곤란, 검색/답장 ↑·↓ 이동바 부재, 미디어 선택 도구 부재, 선택 분홍색 잔류. 실제 사용자 계정/토큰은 저장하거나 조회하지 않음.
+
+수정/원인:
+- `index.html`의 원래 `selectRoom()`는 `setSidebarOpen(false)`를 호출함. 원래 `setSidebarOpen`은 `#sidebar.inert=true`, `aria-hidden=true`까지 만들어 **새 9개 메뉴가 보이지만 클릭/키보드 사용 불가**인 결정적 원인. 실험 클래스가 있을 때 `setSidebarOpen`이 레일을 항상 열려 있는 상태로 유지하고, 별도 `data-rail-expanded`가 64px⇄298px 모션만 제어하게 수정 (`90cde2b`).
+- `index.html` 검색 밖 클릭 조건에 독립 플로팅 검색 버튼/패널/결과 독을 추가하여 새 구조의 outside-click 이벤트 보호. 설치형 PWA에서는 검색 패널을 완전히 닫을 수 있도록 실험에서만 기존 `pinned` 제한 해제 (`90cde2b`).
+- 아티스트 변경 때 이전 아티스트의 `#counts` 문구(예: 내 글에 온 답장 n개)가 네트워크 작업 중 잠시 남지 않도록 새 방 선택 시 "대화 불러오는 중…"으로 즉시 초기화. 이후 기존 `renderCountsOnly()`가 갱신 (`2115e4e`).
+- `web-glowme-phase3-experiment.js`: 기존 검색 매칭 ↑·↓ `#chatMatchNav` 컨트롤을 팝업 내부에서 **항상 읽기 화면에 남는 하단 플로팅 문맥 독**으로 분리. `syncChatMatchControls()`의 `hidden` 속성으로 자동 노출/숨김. 기존 `onclick`은 그대로 유지. 선택 시 기존 `#selectedCount`의 `has-selection`을 기준으로 `#selectAllBtn`/`#saveSelectedBtn` 포함 독 표시 (`8ecb491`).
+- `glowme-phase3-experiment.css`: 채팅 키워드 검색/내 글에 온 답장 매칭 독에 화살표, 건수, 버튼 스타일. 미디어 카드 선택·채팅 선택·Replay/Channel 선택에서 분홍 잔재를 민트색 `#428e7a` 톤으로 override. 내 답장 활성화 상태/인용 강조도 민트색 (`48899fd`).
+- **검증 상태**: 변환된 인라인 3개 JS 코드 구문 파싱 통과, CSS 괄호 균형 통과. 사용자 브라우저의 수정된 버전에서 직접 클릭/실제 Fromm 응답 테스트는 아직 하지 못했으므로 "완전 해결"이라고 단정하지 말 것.
+
+다음 재검증 체크리스트: (1) 아티스트 클릭 후 좌측 사진·영상 탭 진입, (2) 전체대화로 돌아오기, (3) 돋보기 눌러 키워드 입력하고 하단 ↑·↓ 표시·이동, (4) 내 글 답장 on/off 확인 및 헤더 문구 복귀, (5) 미디어 카드 클릭 선택 → 하단 저장 독 노출/전체 선택/취소, (6) 선택 시 민트색, (7) Replay/Channel 컨텍스트 저장, (8) macOS Chrome/PWA 및 모바일/터치 키보드 시나리오. 기존 PR #53/`main`는 손대지 않음.

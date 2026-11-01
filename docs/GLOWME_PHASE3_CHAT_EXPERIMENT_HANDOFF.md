@@ -194,3 +194,16 @@
 - 기본 OFF이므로 원래 시험판 UI 그대로 시작한다. 화면/네트워크/아티스트 인증/성능 테스트는 **사용자 실제 Chrome에서 미검증**. 공식 upstream 빌드 성공과 정적 파일 존재 확인만 완료.
 - 실제 테스트: 최신 실험 브랜치 ZIP을 열어 Live Server 5500에서 실행, 하단 중앙 `Regular: OFF` 클릭. ON 상태로 상단 바/사이드바 굴절 확인하고 OFF하여 비교. 안 보이면 콘솔 오류/네트워크 404 확인. 정상 GPU 체감은 배경 콘텐츠에 따라 약할 수 있음.
 - 이 코드는 참고용 임시 체험이며 본 작업 PR #53에 병합할 계획 없음.
+
+
+## 2026-11-01 Regular 엔진 강도 비교 슬라이더 — 참고용 추가
+사용자 요청에 따라 Meapri 실제 엔진의 Regular 시각적 강도를 시험판에서 **약하게(18%), 중간(50%), 강하게(90%)**, 0~100% 조절할 수 있게 함. 절대 본 작업 PR #53 병합 대상이 아님.
+
+- `web-glowme-regular-preview.js`: 기존 하단 `Regular: OFF/ON` 토글을 유지하며 ON에서만 별도 슬라이더/세 단계 프리셋 표시. Range 입력(마우스/터치/키보드)에서 매 animation frame에 한 번 `LiquidGlass.update({ refraction, blur, tint })` 호출. 이는 실제 광학 효과 조절이며 합성 이미지/흉내낸 그라데이션이 아님. OFF일 때 세부 패널 숨김, 원래 UI/DOM 복구.
+- `glowme-phase3-experiment.css`: 반응형 패널, 세 버튼, 강조된 range thumb 및 높은 대비 설명.
+- 추가 체크박스 `굴절 확인용 테스트 배경 표시`: **기본 OFF**. 클릭하면 실제 굴절 비교를 위한 밝은 민트/아쿠아 줄무늬를 페이지 배경으로 임시 적용. 보기 싫으면 체크 해제하거나 Regular OFF로 복원 가능. 실제 최종 Glow ME 디자인에 이 줄무늬를 넣는 것이 아님.
+- `test/meapri-regular-levels.browser.cjs`, `.github/workflows/meapri-levels.yml`: 실제 Playwright Chromium 브라우저에서 외부 네트워크/실계정 없이 합성 대화 데이터를 고정해 OFF/18/50/90% 캡처 및 세 강도별 테스트 패턴 캡처. `docs/design-review/meapri-regular-levels/` 아래 screenshot들과 `metrics.json` 저장. 정적 비교는 브라우저에서 실제 엔진을 작동해 촬영하지만, 18%와 50% 사이의 이미지 크로스페이딩이 실제 연속 광학 계산과 동일하다는 뜻은 아님. 실시간 광학 확인은 실험판 슬라이더를 조절.
+- 동일 색 바탕에서 서로의 차이가 매우 미세한 점을 재확인. 테스트 패턴은 시각적인 굴절 확인 도구이며 사용성·성능 평가가 아님.
+- Chrome 실제 사용자 계정 데이터/네트워크, GPU 성능 측정은 아직 미검증. 기존 아티스트 리스트 연결 오류와 별도 사안.
+
+테스트용 브랜치만 수정했으며 Codex 원본, Draft PR #53, main 및 공개 배포는 변경 없음.

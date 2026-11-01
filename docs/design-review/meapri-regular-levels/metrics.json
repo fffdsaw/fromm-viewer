@@ -1,0 +1,127 @@
+{
+  "method": "real Playwright Chromium, synthetic UI fixture, blocked external requests",
+  "timestamp": "2026-11-01T06:59:30.670Z",
+  "engineSvgFilterObserved": true,
+  "renderingMode": "SVG optical filter",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "off": {
+    "topbar": {
+      "background": "rgb(234, 251, 232)",
+      "backdrop": "none",
+      "width": 1406,
+      "height": 105,
+      "engine": null
+    },
+    "sidebar": {
+      "background": "rgb(243, 252, 246)",
+      "backdrop": "none",
+      "width": 298,
+      "height": 767,
+      "engine": null
+    },
+    "on": "false",
+    "errors": ""
+  },
+  "on": {
+    "topbar": {
+      "background": "rgba(234, 251, 232, 0.463)",
+      "backdrop": "url(\"#lg-filter-1\")",
+      "width": 1406,
+      "height": 105,
+      "engine": "bar"
+    },
+    "sidebar": {
+      "background": "rgba(234, 251, 232, 0.463)",
+      "backdrop": "url(\"#lg-filter-2\")",
+      "width": 298,
+      "height": 767,
+      "engine": "panel"
+    },
+    "on": "true",
+    "errors": "Meapri Regular 적용 중 · 슬라이더로 강도 조절"
+  },
+  "full": {
+    "file": "comparison.png",
+    "pixelChangeFraction": 0.1098,
+    "meanRgbDelta": 2.829
+  },
+  "detail": {
+    "file": "comparison-detail.png",
+    "pixelChangeFraction": 0.0738,
+    "meanRgbDelta": 3.166
+  },
+  "levelsFull": "comparison-levels.png",
+  "levelsDetail": "comparison-levels-detail.png",
+  "capturedLevels": [
+    {
+      "label": "weak",
+      "strength": 18,
+      "computed": {
+        "topbar": {
+          "background": "rgba(234, 251, 232, 0.463)",
+          "backdrop": "url(\"#lg-filter-1\")",
+          "width": 1406,
+          "height": 105,
+          "engine": "bar"
+        },
+        "sidebar": {
+          "background": "rgba(234, 251, 232, 0.463)",
+          "backdrop": "url(\"#lg-filter-2\")",
+          "width": 298,
+          "height": 767,
+          "engine": "panel"
+        },
+        "on": "true",
+        "errors": "Meapri Regular 적용 중 · 슬라이더로 강도 조절"
+      }
+    },
+    {
+      "label": "medium",
+      "strength": 50,
+      "computed": {
+        "topbar": {
+          "background": "rgba(234, 251, 232, 0.33)",
+          "backdrop": "url(\"#lg-filter-1\")",
+          "width": 1406,
+          "height": 105,
+          "engine": "bar"
+        },
+        "sidebar": {
+          "background": "rgba(234, 251, 232, 0.33)",
+          "backdrop": "url(\"#lg-filter-2\")",
+          "width": 298,
+          "height": 767,
+          "engine": "panel"
+        },
+        "on": "true",
+        "errors": "Meapri Regular 적용 중 · 슬라이더로 강도 조절"
+      }
+    },
+    {
+      "label": "strong",
+      "strength": 90,
+      "computed": {
+        "topbar": {
+          "background": "rgba(234, 251, 232, 0.16)",
+          "backdrop": "url(\"#lg-filter-1\")",
+          "width": 1406,
+          "height": 105,
+          "engine": "bar"
+        },
+        "sidebar": {
+          "background": "rgba(234, 251, 232, 0.16)",
+          "backdrop": "url(\"#lg-filter-2\")",
+          "width": 298,
+          "height": 767,
+          "engine": "panel"
+        },
+        "on": "true",
+        "errors": "Meapri Regular 적용 중 · 슬라이더로 강도 조절"
+      }
+    }
+  ],
+  "uncaughtPageErrors": []
+}

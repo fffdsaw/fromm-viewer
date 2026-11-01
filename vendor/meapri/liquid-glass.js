@@ -2244,4 +2244,3 @@ export {
   cs as clearMapCache,
   Dt as resolveLiquidGlassAutoProfile
 };
-//# sourceMappingURL=liquid-glass.js.map

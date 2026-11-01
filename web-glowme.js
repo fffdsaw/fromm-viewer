@@ -165,4 +165,9 @@
   const phase3Script=document.createElement('script');
   phase3Script.src='web-glowme-phase3-experiment.js';
   document.body.append(phase3Script);
+  // Separate, opt-in real Meapri Regular preview. No effect until switched ON.
+  const regularPreview=document.createElement('script');
+  regularPreview.src='web-glowme-regular-preview.js';
+  regularPreview.defer=true;
+  document.body.append(regularPreview);
 })();

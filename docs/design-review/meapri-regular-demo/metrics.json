@@ -1,0 +1,57 @@
+{
+  "method": "real Playwright Chromium, synthetic UI fixture, blocked external requests",
+  "timestamp": "2026-11-01T06:48:11.747Z",
+  "engineSvgFilterObserved": true,
+  "renderingMode": "SVG optical filter",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "off": {
+    "topbar": {
+      "background": "rgb(234, 251, 232)",
+      "backdrop": "none",
+      "width": 1406,
+      "height": 105,
+      "engine": null
+    },
+    "sidebar": {
+      "background": "rgb(243, 252, 246)",
+      "backdrop": "none",
+      "width": 298,
+      "height": 767,
+      "engine": null
+    },
+    "on": "false",
+    "errors": ""
+  },
+  "on": {
+    "topbar": {
+      "background": "rgba(234, 251, 232, 0.26)",
+      "backdrop": "url(\"#lg-filter-1\")",
+      "width": 1406,
+      "height": 105,
+      "engine": "bar"
+    },
+    "sidebar": {
+      "background": "rgba(234, 251, 232, 0.26)",
+      "backdrop": "url(\"#lg-filter-2\")",
+      "width": 298,
+      "height": 767,
+      "engine": "panel"
+    },
+    "on": "true",
+    "errors": "Meapri Regular 적용됨 · 버튼으로 원래 화면과 비교"
+  },
+  "full": {
+    "file": "comparison.png",
+    "pixelChangeFraction": 0.1238,
+    "meanRgbDelta": 1.965
+  },
+  "detail": {
+    "file": "comparison-detail.png",
+    "pixelChangeFraction": 0.1478,
+    "meanRgbDelta": 2.231
+  },
+  "uncaughtPageErrors": []
+}

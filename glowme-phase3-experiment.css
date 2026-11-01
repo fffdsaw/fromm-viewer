@@ -1516,3 +1516,87 @@ html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass::aft
     transparent 46%
   ) border-box!important;
 }
+
+
+/* Meapri Regular real-time optical-strength controls (experiment only). */
+html.glowme.glowme-phase3-experiment #glowme-regular-controls {
+  position:fixed;
+  left:50%;
+  bottom:66px;
+  transform:translateX(-50%);
+  z-index:482;
+  box-sizing:border-box;
+  width:min(340px,calc(100vw - 32px));
+  display:grid;
+  gap:10px;
+  padding:14px 16px 12px;
+  border:1px solid #a5d8bb;
+  border-radius:18px;
+  background:#f7fff9f2;
+  box-shadow:0 8px 28px #346d532b;
+  color:#265946;
+  font:500 13px/1.35 system-ui,sans-serif;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-controls[hidden] {
+  display:none!important;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-heading-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-heading {font-weight:700;}
+html.glowme.glowme-phase3-experiment #glowme-regular-value {
+  color:#1e6a4a;
+  font-weight:750;
+  font-variant-numeric:tabular-nums;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-presets {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-preset {
+  padding:8px 7px;
+  border:1px solid #b8e6cd;
+  border-radius:999px;
+  color:#265946;
+  background:#eafbe8;
+  font:650 12px/1.35 system-ui,sans-serif;
+  cursor:pointer;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-preset[aria-pressed="true"] {
+  background:#64dc9f;
+  border-color:#3daf78;
+  color:#174b35;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-range {
+  display:block;
+  width:100%;
+  margin:2px 0;
+  accent-color:#329974;
+  cursor:pointer;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-hint {
+  margin:0;
+  font-size:11px;
+  color:#4a7563;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-status:not([hidden]) {
+  bottom:250px;
+}
+html.glowme.glowme-phase3-experiment .glowme-regular-preset:focus-visible,
+html.glowme.glowme-phase3-experiment #glowme-regular-range:focus-visible {
+  outline:2px solid #21694d;
+  outline-offset:3px;
+}
+@media(max-width:540px){
+  html.glowme.glowme-phase3-experiment #glowme-regular-controls {
+    bottom:55px;
+    padding:11px 13px 10px;
+  }
+  html.glowme.glowme-phase3-experiment #glowme-regular-status:not([hidden]) {bottom:225px;}
+}

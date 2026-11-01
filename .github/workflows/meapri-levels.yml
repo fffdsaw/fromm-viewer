@@ -1,0 +1,49 @@
+name: Render Meapri Regular strength comparison (experiment only)
+on:
+  push:
+    branches:
+      - experiment/glowme-phase3-chat-layout
+    paths:
+      - .github/workflows/meapri-levels.yml
+      - test/meapri-regular-levels.browser.cjs
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/experiment/glowme-phase3-chat-layout'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout experiment branch
+        uses: actions/checkout@v4
+        with:
+          ref: experiment/glowme-phase3-chat-layout
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capture real Meapri Regular intensity variations
+        run: node test/meapri-regular-levels.browser.cjs
+      - name: Upload comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meapri-regular-weak-medium-strong
+          path: docs/design-review/meapri-regular-levels/
+          if-no-files-found: warn
+      - name: Save screenshots to experiment only
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/experiment/glowme-phase3-chat-layout"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/design-review/meapri-regular-levels/
+          if ! git diff --cached --quiet; then
+            git commit -m "test(experiment): publish weak medium strong real engine screenshots"
+            git push origin HEAD:refs/heads/experiment/glowme-phase3-chat-layout
+          fi

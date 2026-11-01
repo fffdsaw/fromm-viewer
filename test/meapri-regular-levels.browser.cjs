@@ -77,7 +77,7 @@ async function patternComparison(browser,suffix){
   const scale=suffix?.66:.38;
   const renderedWidth=Math.round(width*scale),renderedHeight=Math.round(height*scale);
   const wrapperWidth=renderedWidth*3+55;
-  await page.setViewportSize({width:wrapperWidth+24,height:renderedHeight*2+220});
+  await page.setViewportSize({width:wrapperWidth+24,height:renderedHeight+125});
   await page.setContent(`<!doctype html><html lang="ko"><meta charset="utf-8"><style>
   *{box-sizing:border-box}body{margin:0;padding:12px;background:#eef8f3;color:#265946;font:600 15px/1.4 system-ui}
   h1{margin:0 0 9px;font-size:22px}.grid{display:grid;grid-template-columns:repeat(3,${renderedWidth}px);gap:12px}

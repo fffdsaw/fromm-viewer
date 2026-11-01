@@ -71,7 +71,18 @@
   const hint = document.createElement('p');
   hint.className = 'glowme-regular-hint';
   hint.textContent = '슬라이더를 움직이면 실제 엔진이 변경됩니다.';
-  controls.append(headingRow, steps, slider, hint);
+  const patternLabel=document.createElement('label');
+  patternLabel.className='glowme-regular-pattern-label';
+  const patternCheck=document.createElement('input');
+  patternCheck.id='glowme-regular-pattern';
+  patternCheck.type='checkbox';
+  const patternText=document.createElement('span');
+  patternText.textContent='굴절 확인용 테스트 배경 표시';
+  patternLabel.append(patternCheck,patternText);
+  controls.append(headingRow,steps,slider,hint,patternLabel);
+  patternCheck.addEventListener('change',()=>{
+    document.documentElement.classList.toggle('glowme-regular-test-pattern',patternCheck.checked);
+  });
   document.body.append(controls);
 
   function optics(value) {
@@ -129,6 +140,8 @@
     if (updateFrame) cancelAnimationFrame(updateFrame);
     updateFrame = 0;
     controls.hidden = true;
+    patternCheck.checked = false;
+    document.documentElement.classList.remove('glowme-regular-test-pattern');
     for (const item of instances.reverse()) {
       try { item.glass.destroy(); } catch (error) { console.warn('Meapri cleanup', error); }
       for (const name of fields) item.element.style[name] = item.before[name];

@@ -180,3 +180,17 @@
 - 새 화면 실제 렌더 및 네트워크 인증 테스트는 **미실행**. 브라우저에서는 1) 헤더의 로그인 상태 2) 로컬 Chrome 확장프로그램 정상 활성화 3) 같은 URL `127.0.0.1:5500/index.html?previewBridge=1` 4) 확장된 레일의 '목록 다시 불러오기' 클릭 결과 5) hover/click 시 선택 위치 흔들림 6) 선택 아티스트 사진 확인.
 - 기존 ZIP 디렉터리 삭제/이동 시 unpacked Chrome 확장프로그램의 참조 경로도 사라질 수 있음. 설치된 확장 위치 유지 여부 확인.
 - `main`, 원본 Draft PR #53, 배포, 기존 확장프로그램 소스 변경 없음. 최신 HEAD는 GitHub 브랜치에서 확인.
+
+
+## 2026-11-01 Meapri Liquid Glass Regular 실제 엔진 임시 체험
+**실험 브랜치 전용**, 기본 OFF, 기존 Codex `feature/glowme-uiux-phase3`·Draft PR #53·main에는 미반영. 이전 CSS 기반 유리 표현과 다른 **실제 Meapri 엔진**을 정식 upstream MIT 소스에서 빌드하고 별도 파일로 탑재했다.
+
+- upstream: `https://github.com/Meapri/liquid-glass-web`, 고정 커밋 `1613f8311dbc31bc2331afcfe51a143c56dd6308`, MIT 저작권·라이선스 보존.
+- `.github/workflows/meapri-regular-preview.yml`: 실험 브랜치에서만 `npm ci && npm run build:lib` 실행, 실제 JS·CSS·Worker·MIT 라이선스를 `vendor/meapri/`에 커밋. Github Actions 두 번째 빌드 [run #41278452089](https://github.com/fffdsaw/fromm-viewer/actions/runs/41278452089) 성공.
+- 실제 실행 파일: `vendor/meapri/liquid-glass.js`, `vendor/meapri/liquid-glass.css`, `vendor/meapri/assets/MapWorker-tpM-Txsc.js`, `vendor/meapri/LICENSE` 및 `UPSTREAM.txt`. 런타임 제3자 CDN 의존 없음.
+- `web-glowme-regular-preview.js`: 오른쪽 하단 스크롤 버튼과 겹치지 않는 하단 중앙 `Regular: OFF / ON` 토글. ON 최초 클릭 시에만 실제 엔진 모듈 동적 로드. `.topbar` (profile bar), `#sidebar` (profile panel), `variant: 'regular'`에만 적용. 인스턴스 `destroy()` 후 OFF 시 기존 스타일 속성 복원. 실패 시 UI에 경고하고 기본 모습 유지.
+- `web-glowme.js`: 실험판 부팅 끝에서 비교 스크립트만 추가 로드.
+- `glowme-phase3-experiment.css`: 기존 불투명 `!important` 배경·`backdrop-filter:none`을 해당 바에서 해제하여 엔진의 실제 GPU 필터가 동작하도록 허용. 원래 물결 텍스처는 항상 숨김. ON에서만 Meapri 조명·림 pseudo-layer 복원.
+- 기본 OFF이므로 원래 시험판 UI 그대로 시작한다. 화면/네트워크/아티스트 인증/성능 테스트는 **사용자 실제 Chrome에서 미검증**. 공식 upstream 빌드 성공과 정적 파일 존재 확인만 완료.
+- 실제 테스트: 최신 실험 브랜치 ZIP을 열어 Live Server 5500에서 실행, 하단 중앙 `Regular: OFF` 클릭. ON 상태로 상단 바/사이드바 굴절 확인하고 OFF하여 비교. 안 보이면 콘솔 오류/네트워크 404 확인. 정상 GPU 체감은 배경 콘텐츠에 따라 약할 수 있음.
+- 이 코드는 참고용 임시 체험이며 본 작업 PR #53에 병합할 계획 없음.

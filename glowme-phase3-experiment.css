@@ -1600,3 +1600,33 @@ html.glowme.glowme-phase3-experiment #glowme-regular-range:focus-visible {
   }
   html.glowme.glowme-phase3-experiment #glowme-regular-status:not([hidden]) {bottom:225px;}
 }
+
+
+/* Explicitly optional optics test pattern, never the default Glow ME surface.
+   Thin aqua/mint stripes create edges to refract; disable at any time. */
+html.glowme.glowme-phase3-experiment .glowme-regular-pattern-label {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font:500 11px/1.4 system-ui,sans-serif;
+  color:#346852;
+  cursor:pointer;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-pattern {
+  margin:0;
+  accent-color:#329974;
+  width:14px;
+  height:14px;
+  cursor:pointer;
+}
+html.glowme.glowme-phase3-experiment.glowme-regular-test-pattern body {
+  background:repeating-linear-gradient(
+    122deg,
+    #f7fff9 0px,#f7fff9 12px,
+    #6ed2cc 12px,#6ed2cc 15px,
+    #eafbe8 15px,#eafbe8 34px,
+    #7ee3b2 34px,#7ee3b2 37px,
+    #f7fff9 37px,#f7fff9 55px
+  )!important;
+  background-attachment:fixed!important;
+}

@@ -1,6 +1,6 @@
 {
   "method": "real Playwright Chromium, synthetic UI fixture, blocked external requests",
-  "timestamp": "2026-11-01T06:59:30.670Z",
+  "timestamp": "2026-11-01T07:01:44.859Z",
   "engineSvgFilterObserved": true,
   "renderingMode": "SVG optical filter",
   "viewport": {
@@ -45,16 +45,17 @@
   },
   "full": {
     "file": "comparison.png",
-    "pixelChangeFraction": 0.1098,
-    "meanRgbDelta": 2.829
+    "pixelChangeFraction": 0.1148,
+    "meanRgbDelta": 2.864
   },
   "detail": {
     "file": "comparison-detail.png",
-    "pixelChangeFraction": 0.0738,
-    "meanRgbDelta": 3.166
+    "pixelChangeFraction": 0.0803,
+    "meanRgbDelta": 3.298
   },
   "levelsFull": "comparison-levels.png",
   "levelsDetail": "comparison-levels-detail.png",
+  "patternDetail": "comparison-pattern-detail.png",
   "capturedLevels": [
     {
       "label": "weak",

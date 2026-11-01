@@ -50,6 +50,13 @@ jobs:
           set -euo pipefail
           mkdir -p vendor/meapri
           cp /tmp/meapri-liquid/dist/liquid-glass.js vendor/meapri/liquid-glass.js
+          # Vite emits a module Worker under dist/assets; without it the
+          # engine falls back to expensive main-thread rasterization.
+          if [ -d /tmp/meapri-liquid/dist/assets ]; then
+            mkdir -p vendor/meapri/assets
+            cp -a /tmp/meapri-liquid/dist/assets/. vendor/meapri/assets/
+          fi
+          sed -i '/^\/\/# sourceMappingURL=/d' vendor/meapri/liquid-glass.js
           cp /tmp/meapri-liquid/src/styles/liquid-glass.css vendor/meapri/liquid-glass.css
           cp /tmp/meapri-liquid/LICENSE vendor/meapri/LICENSE
           printf 'Meapri/liquid-glass-web\\nCommit: 1613f8311dbc31bc2331afcfe51a143c56dd6308\\nLicense: MIT\\n' > vendor/meapri/UPSTREAM.txt

@@ -152,7 +152,13 @@ async function comparison(browser,suffix){
     // Block all real external traffic. All fixture data remain in memory.
     await page.route('**/*',route=>route.request().url().startsWith(origin+'/')?route.continue():route.abort());
     await page.goto(origin+'/index.html?previewBridge=1',{waitUntil:'domcontentloaded',timeout:30000});
-    await page.locator('#glowme-regular-toggle').waitFor({timeout:20000});
+    try {
+      await page.locator('#glowme-regular-toggle').waitFor({timeout:18000});
+    } catch (error) {
+      console.warn('Experiment boot delayed; retrying after reload',errors);
+      await page.reload({waitUntil:'domcontentloaded',timeout:30000});
+      await page.locator('#glowme-regular-toggle').waitFor({timeout:35000});
+    }
     await page.evaluate(()=>{
       hideLoginGate();
       setActiveAuth('fixture-only','fixture-only','fixture-only');

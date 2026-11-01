@@ -114,6 +114,8 @@ async function comparison(browser,suffix){
       const sidebar=document.querySelector('#sidebar');
       sidebar.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse',bubbles:false}));
     });
+    await page.mouse.move(1200,800);
+    await page.evaluate(()=>document.querySelector('#sidebar').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse',bubbles:false})));
     await page.waitForTimeout(1300);
     const off=await optics(page);
     assert.equal(off.on,'false','Regular must be off by default');
@@ -125,6 +127,8 @@ async function comparison(browser,suffix){
       const filter=getComputedStyle(document.querySelector('.topbar')).backdropFilter;
       return filter && filter!=='none' && filter!=='';
     },null,{timeout:22000});
+    await page.mouse.move(1200,800);
+    await page.evaluate(()=>document.querySelector('#sidebar').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse',bubbles:false})));
     await page.waitForTimeout(1200);
     const on=await optics(page);
     assert.equal(on.on,'true');

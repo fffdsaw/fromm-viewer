@@ -1,0 +1,68 @@
+name: Build Meapri Regular preview (experiment only)
+
+on:
+  push:
+    branches:
+      - experiment/glowme-phase3-chat-layout
+    paths:
+      - .github/workflows/meapri-regular-preview.yml
+      - web-glowme-regular-preview.js
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Neither this job nor its final push may target main or the Codex branch.
+    if: github.ref == 'refs/heads/experiment/glowme-phase3-chat-layout'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out experiment (not main)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: experiment/glowme-phase3-chat-layout
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch pinned upstream MIT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/Meapri/liquid-glass-web.git /tmp/meapri-liquid
+          cd /tmp/meapri-liquid
+          git checkout --detach 1613f8311dbc31bc2331afcfe51a143c56dd6308
+          test "$(git rev-parse HEAD)" = "1613f8311dbc31bc2331afcfe51a143c56dd6308"
+      - name: Build genuine LiquidGlass library
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/meapri-liquid
+          npm ci
+          npm run build:lib
+          test -s dist/liquid-glass.js
+          test -s src/styles/liquid-glass.css
+      - name: Vendor only the generated runtime and MIT attribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p vendor/meapri
+          cp /tmp/meapri-liquid/dist/liquid-glass.js vendor/meapri/liquid-glass.js
+          cp /tmp/meapri-liquid/src/styles/liquid-glass.css vendor/meapri/liquid-glass.css
+          cp /tmp/meapri-liquid/LICENSE vendor/meapri/LICENSE
+          printf 'Meapri/liquid-glass-web\\nCommit: 1613f8311dbc31bc2331afcfe51a143c56dd6308\\nLicense: MIT\\n' > vendor/meapri/UPSTREAM.txt
+          ls -lh vendor/meapri/
+      - name: Save generated vendor files to experiment only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/experiment/glowme-phase3-chat-layout"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vendor/meapri/
+          if ! git diff --cached --quiet; then
+            git commit -m "build(experiment): vendor pinned Meapri Regular engine"
+            git push origin HEAD:refs/heads/experiment/glowme-phase3-chat-layout
+          fi

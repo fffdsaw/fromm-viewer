@@ -67,6 +67,34 @@ async function levelsComparison(browser,suffix){
   await page.close();
   return name;
 }
+async function patternComparison(browser,suffix){
+  const names=['pattern-weak','pattern-medium','pattern-strong'];
+  const titles=['약하게 · 18%','중간 · 50%','강하게 · 90%'];
+  const width=suffix ? clip.width : view.width;
+  const height=suffix ? clip.height : view.height;
+  const page=await browser.newPage({viewport:{width:1500,height:600},deviceScaleFactor:1});
+  const images=names.map((name,i)=>fs.readFileSync(path.join(out,name+suffix+'.png')).toString('base64'));
+  const scale=suffix?.66:.38;
+  const renderedWidth=Math.round(width*scale),renderedHeight=Math.round(height*scale);
+  const wrapperWidth=renderedWidth*3+55;
+  await page.setViewportSize({width:wrapperWidth+24,height:renderedHeight*2+220});
+  await page.setContent(`<!doctype html><html lang="ko"><meta charset="utf-8"><style>
+  *{box-sizing:border-box}body{margin:0;padding:12px;background:#eef8f3;color:#265946;font:600 15px/1.4 system-ui}
+  h1{margin:0 0 9px;font-size:22px}.grid{display:grid;grid-template-columns:repeat(3,${renderedWidth}px);gap:12px}
+  .item{background:#dff3e7;border-radius:11px;padding:7px}
+  .item strong{display:block;padding:3px 7px 8px}
+  img{display:block;width:100%;height:${renderedHeight}px;object-fit:fill;border-radius:8px}
+  p{color:#567b68;margin:9px 0;font-size:12px}
+  </style><h1>Fromm Viewer · Meapri Regular 굴절 강도별 실제 Chrome 비교</h1>
+  <div class="grid">${images.map((data,i)=>`<div class="item"><strong>${titles[i]}</strong><img src="data:image/png;base64,${data}" alt="${titles[i]}"></div>`).join('')}</div>
+  <p>동일한 1440×900 Chrome 합성 데이터 · 실제 Meapri 엔진 · 색 보정 없음</p></html>`);
+  await page.locator('img').first().evaluate(async img=>img.decode());
+  for(const img of await page.locator('img').all())await img.evaluate(el=>el.decode());
+  const name='comparison-pattern'+suffix+'.png';
+  await page.screenshot({path:path.join(out,name),fullPage:true,animations:'disabled'});
+  await page.close();
+  return name;
+}
 async function comparison(browser,suffix){
   const left = fs.readFileSync(path.join(out,'regular-off'+suffix+'.png')).toString('base64');
   const right = fs.readFileSync(path.join(out,'regular-on'+suffix+'.png')).toString('base64');
@@ -184,14 +212,27 @@ async function comparison(browser,suffix){
       capturedLevels.push({label:name,strength:value,computed:current});
       await capture(page,'regular-'+name);
     }
+    // Optical diagnosis only: an explicit test pattern beneath the glass
+    // makes refraction changes visible without changing the default UI.
+    await page.locator('#glowme-regular-pattern').check();
+    for (const [name,value] of [['weak',18],['medium',50],['strong',90]]) {
+      await page.locator('#glowme-regular-range').evaluate((el,v)=>{
+        el.value=String(v);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+      },value);
+      await page.waitForTimeout(1100);
+      await capture(page,'pattern-'+name);
+    }
+    await page.locator('#glowme-regular-pattern').uncheck();
     const full=await comparison(browser,'');
     const detail=await comparison(browser,'-detail');
     const levelsFull=await levelsComparison(browser,'');
     const levelsDetail=await levelsComparison(browser,'-detail');
+    const patternDetail=await patternComparison(browser,'-detail');
     const result={method:'real Playwright Chromium, synthetic UI fixture, blocked external requests',
       timestamp:new Date().toISOString(),engineSvgFilterObserved:engineSvg,
       renderingMode:engineSvg?'SVG optical filter':'CSS frost fallback',
-      viewport:view,off,on,full,detail,levelsFull,levelsDetail,capturedLevels,uncaughtPageErrors:errors};
+      viewport:view,off,on,full,detail,levelsFull,levelsDetail,patternDetail,capturedLevels,uncaughtPageErrors:errors};
     fs.writeFileSync(path.join(out,'metrics.json'),JSON.stringify(result,null,2)+'\n');
     console.log(JSON.stringify(result,null,2));
   }finally{

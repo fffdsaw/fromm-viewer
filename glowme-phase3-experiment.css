@@ -1492,3 +1492,27 @@ html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass {
   html.glowme.glowme-phase3-experiment #glowme-regular-toggle { bottom:12px; padding:8px 12px; }
   html.glowme.glowme-phase3-experiment #glowme-regular-status { bottom:51px; }
 }
+
+/* Restore the real engine's pointer illumination and rim light. The earlier
+ * water-texture reset intentionally used background:none!important on the
+ * same pseudo-elements, so the genuine Meapri overlays need scoped overrides
+ * exclusively while the real Regular engine is switched ON. */
+html.glowme.glowme-phase3-experiment.glowme-engine-on .topbar.liquid-glass::before,
+html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass::before {
+  background:radial-gradient(
+    calc(34% + var(--lg-illum, 0) * 85%) circle
+    at calc(var(--lg-illum-x, .5) * 100%) calc(var(--lg-illum-y, .5) * 100%),
+    rgba(255,255,255,.26),transparent 70%
+  )!important;
+}
+html.glowme.glowme-phase3-experiment.glowme-engine-on .topbar.liquid-glass::after,
+html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass::after {
+  background:radial-gradient(
+    220px circle at
+    calc(var(--lg-pointer-x, .5) * 100%)
+    calc(var(--lg-pointer-y, .5) * 100%),
+    rgba(255,255,255,.95) 0%,
+    rgba(255,255,255,.5) 18%,
+    transparent 46%
+  ) border-box!important;
+}

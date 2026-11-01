@@ -1124,12 +1124,12 @@ html.glowme.glowme-phase3-experiment body {
 html.glowme.glowme-phase3-experiment .topbar {
   min-height:88px!important;
   padding:12px 16px!important;
-  background:#eafbe8!important;
+  background:#eafbe8;
   border:1px solid #b8e6cd!important;
   border-radius:20px!important;
-  box-shadow:0 4px 16px #397a5f12!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
+  box-shadow:0 4px 16px #397a5f12;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
   overflow:visible!important;
 }
 html.glowme.glowme-phase3-experiment .topbar::before,
@@ -1142,11 +1142,11 @@ html.glowme.glowme-phase3-experiment #sidebar::after {
 }
 html.glowme.glowme-phase3-experiment #sidebar,
 html.glowme.glowme-phase3-experiment[data-glow-layout="pinned"] #sidebar {
-  background:#f3fcf6!important;
+  background:#f3fcf6;
   border:1px solid #b8e6cd!important;
-  box-shadow:0 5px 16px #397a5f16!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
+  box-shadow:0 5px 16px #397a5f16;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble,
 html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav > .glowme-follow-bubble::after {
@@ -1425,4 +1425,70 @@ html.glowme.glowme-phase3-experiment #sidebar .glowme-room-retry:disabled {
   html.glowme.glowme-phase3-experiment #sidebar .glowme-phase3-nav button {
     transition:none!important;
   }
+}
+
+/* Isolated real-engine preview: OFF by default; not a Liquid Glass simulation.
+ * The real Meapri engine controls inline backdrop filters and tint only when ON.
+ * Existing feature branch / main are not involved. */
+html.glowme.glowme-phase3-experiment #glowme-regular-toggle {
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:480;
+  display:block;
+  width:auto;
+  padding:9px 16px;
+  border:1px solid #8fc7ae;
+  border-radius:999px;
+  background:#effdf3;
+  box-shadow:0 3px 14px #37695126;
+  color:#265946;
+  font:600 12px/1.3 system-ui,sans-serif;
+  cursor:pointer;
+  white-space:nowrap;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-toggle[aria-pressed="true"] {
+  background:#b9efd2;
+  border-color:#64dc9f;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-toggle:disabled { opacity:.7; cursor:wait; }
+html.glowme.glowme-phase3-experiment #glowme-regular-toggle:focus-visible {
+  outline:2px solid #28634a;
+  outline-offset:3px;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-status {
+  position:fixed;
+  z-index:480;
+  left:50%;
+  bottom:63px;
+  transform:translateX(-50%);
+  max-width:min(90vw,350px);
+  padding:6px 10px;
+  border-radius:9px;
+  background:#f7fff9f2;
+  border:1px solid #b8e6cd;
+  color:#265946;
+  font:500 11px/1.4 system-ui,sans-serif;
+  text-align:center;
+  pointer-events:none;
+}
+html.glowme.glowme-phase3-experiment #glowme-regular-status[hidden] { display:none!important; }
+/* Restore engine-generated optical overlays. In ordinary OFF mode existing
+ * ::before/::after are hidden to suppress the former water-photo decoration. */
+html.glowme.glowme-phase3-experiment.glowme-engine-on .topbar.liquid-glass::before,
+html.glowme.glowme-phase3-experiment.glowme-engine-on .topbar.liquid-glass::after,
+html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass::before,
+html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass::after {
+  content:""!important;
+  display:block!important;
+}
+html.glowme.glowme-phase3-experiment.glowme-engine-on .topbar.liquid-glass,
+html.glowme.glowme-phase3-experiment.glowme-engine-on #sidebar.liquid-glass {
+  color:#265946;
+  text-shadow:none;
+}
+@media (max-width:540px) {
+  html.glowme.glowme-phase3-experiment #glowme-regular-toggle { bottom:12px; padding:8px 12px; }
+  html.glowme.glowme-phase3-experiment #glowme-regular-status { bottom:51px; }
 }

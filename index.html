@@ -11273,6 +11273,10 @@ autoConnectSaved();
   var mobileTest = document.createElement("script");
   mobileTest.src = "mobile-sync-test.js?v=2";
   document.body.appendChild(mobileTest);
+  // Private collector is loaded ONLY on mobile. It never collects until tapped.
+  var privateCollector = document.createElement("script");
+  privateCollector.src = "mobile-private-collector.js?v=1";
+  document.body.appendChild(privateCollector);
 })();
 </script>
 <script src="web-glowme.js"></script>

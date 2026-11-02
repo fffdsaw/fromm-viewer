@@ -1,0 +1,24 @@
+name: Verify mobile private collector
+
+on:
+  push:
+    branches:
+      - feature/mobile-private-analysis-export
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collector-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check mobile-private-collector.js
+      - name: Private collector synthetic tests
+        run: node --test tests/mobile-private-collector.test.cjs

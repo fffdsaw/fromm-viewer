@@ -428,3 +428,40 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 .meapri-control{background-image:none!important;isolation:isolate}
 .glowme-phase3 .meapri-control::after{content:"";position:absolute;inset:0;border:1px solid transparent;border-radius:inherit;pointer-events:none;opacity:var(--lg-glow,0);background:radial-gradient(100px circle at calc(var(--lg-pointer-x,.5)*100%) calc(var(--lg-pointer-y,.5)*100%),#ffffffcc,transparent 65%) border-box;mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0) border-box;mask-composite:exclude}
 @media(hover:none),(prefers-reduced-motion:reduce){.glowme-phase3 .meapri-control::after{display:none}}
+/* Batch actions float in a reserved overlay, so selection never moves content. */
+.glowme-phase3 .toolbar{min-height:0;height:0;margin:0;padding:0;border:0;background:none;box-shadow:none;overflow:visible}
+.glowme-phase3 .toolbar::before{display:none}
+.glowme-phase3 .toolbar .spacer{display:none}
+.glowme-phase3 .toolbar :is(#selectedCount,#selectAllBtn,#saveSelectedBtn)[hidden]{display:none!important}
+.glowme-phase3 .toolbar.has-download-selection{position:fixed;bottom:18px;left:50%;top:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 80px);height:auto;min-height:48px;padding:6px 10px;display:flex;flex-wrap:wrap;gap:6px;border:1px solid #fff;border-radius:18px;background:#e6f4ebf5;box-shadow:0 6px 24px #214b3b33;z-index:460}
+.glowme-phase3 .toolbar #sortControls{position:absolute;right:0;top:0;transform:translateY(-4px)}
+.glowme-phase3 .toolbar.has-download-selection #sortControls{position:static;transform:none}
+.glowme-phase3 .toolbar #chatMatchNav{position:fixed;bottom:20px;right:80px;background:#edf8f0;border:1px solid #a5cbbb;border-radius:14px;padding:4px;box-shadow:0 3px 12px #244b3a1a}
+.glowme-phase3 .viewer-header{gap:0}
+.glowme-phase3 .toolbar:has(#sortControls[style*="flex"]){height:36px;margin-top:8px}
+.glowme-phase3 .toolbar.has-download-selection{margin-top:0}
+.glowme-phase3 .date-day.selected{color:#173f32;background:#a9d9c4;border-color:#428e7a;box-shadow:inset 0 1px 1px #fff}
+.glowme-phase3 .date-day.has-chat::after{background:#428e7a}
+.glowme-phase3 .date-day.selected.has-chat::after{background:#214f3f}
+.glowme-phase3 :is(.chat-match-active,.chat-jump-highlight){outline-color:#428e7a!important;box-shadow:inset 0 0 0 2px #428e7a!important}
+.glowme-phase3 mark{background:#b2dec8;color:#143c2e}
+@media(pointer:coarse),(max-width:700px),(max-height:500px){
+ .glowme-phase3 .mvc-button{min-width:44px;min-height:44px;flex-basis:44px}
+ .glowme-phase3 .mvc-seek{height:28px;min-height:28px;margin:0;cursor:pointer}
+ .glowme-phase3 .mvc-volume{height:28px!important;min-height:28px!important;background:transparent!important}
+ .glowme-phase3 .mvc-volume::-webkit-slider-runnable-track{height:4px;background:#ffffff60;border-radius:4px}
+ .glowme-phase3 .mvc-volume::-webkit-slider-thumb{margin-top:-3.5px}
+ .glowme-phase3 .mvc-volume::-moz-range-track{height:4px;background:#ffffff60;border-radius:4px}
+ .glowme-phase3 .mvc-time{font-size:12px;font-variant-numeric:tabular-nums}
+ .glowme-phase3 .modern-video-controls{padding-top:10px;padding-bottom:8px}
+ .glowme-phase3 .mvc-bottom{gap:4px}
+}
+/* These lists already compensate prepends explicitly. Browser scroll anchoring
+   must not apply a second offset while an old view is rebuilt. */
+.glowme-phase3 #timeline{overflow-anchor:none}
+@media(pointer:coarse),(max-width:700px),(max-height:500px){
+ .glowme-phase3 .mvc-panel input.mvc-seek{height:28px;min-height:28px;margin:0;background:transparent!important}
+ .glowme-phase3 .mvc-panel input.mvc-seek::-webkit-slider-runnable-track{height:4px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%));border-radius:4px}
+ .glowme-phase3 .mvc-panel input.mvc-seek::-moz-range-track{height:4px;background:linear-gradient(to right,var(--accent2) var(--played,0%),#ffffff40 var(--played,0%));border-radius:4px}
+ .glowme-phase3 .mvc-panel .mvc-row{gap:4px;flex-wrap:wrap}
+}

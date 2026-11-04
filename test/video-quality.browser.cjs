@@ -82,7 +82,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
       });
       await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/index.html');
       await page.evaluate(()=>{setActiveAuth('synthetic-session','synthetic-device','synthetic-account');hideLoginGate();state.filter='live';renderLiveView();});
-      await page.locator('[data-live-center-mode="replay"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'replay');
       const select=kind=>page.locator(`#${kind}QualitySelect`);
       const video=kind=>page.locator(kind==='replay'?'#replayVideo':'#channelVideo');
       const ready=async(kind,size)=>{
@@ -311,7 +311,7 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         for(let i=0;!lowStarted&&i<100;i++)await wait(10);assert.ok(lowStarted);await openReplay('portrait');delayLow=false;await ready('replay',dimensions['portrait-1080']);await wait(550);assert.equal(await video('replay').evaluate(v=>v.videoHeight),1920,'new-video highest selection survives stale response');
       }
       await openReplay('portrait');await ready('replay',dimensions['portrait-1080']);assert.equal(await video('replay').evaluate(v=>v.closest('.modern-video-stage').classList.contains('mvc-rotated')),false,'new video resets rotation');await fixed('replay',['1080p','720p']);await modernControls('replay');await layout('replay','portrait-highest');await stateSwitch('replay','720p',dimensions['portrait-720']);
-      await page.locator('#replayBackToList').click();await page.locator('[data-live-center-mode="channel"]').click();await page.locator('[data-channel-video-play="channel"]').click();
+      await page.locator('#replayBackToList').click();await require('./helpers/center-navigation.cjs')(page,'channel');await page.locator('[data-channel-video-play="channel"]').click();
       await ready('channel',dimensions['land-1080']);await fixed('channel',['1080p','720p','360p']);await modernControls('channel');await layout('channel','landscape-highest');await stateSwitch('channel','360p',dimensions['land-360']);
       if(viewport.width===1440)await downloadHighest('channel');
       assert.ok(requests.filter(x=>x.path.endsWith('.ts')).every(x=>/^fixture-\d+$/.test(x.signature)&&x.keyPair==='fixture'),'signature propagation to actual segments retained');

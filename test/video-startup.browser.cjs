@@ -58,7 +58,7 @@ const post=(id,kind)=>({id,type:kind==='channel'?'video':'live_record',title:`Sy
    });
    await require('./helpers/shell-assets.cjs')(page); await page.goto('https://viewer.test/');
    await page.evaluate(()=>{setActiveAuth('synthetic','synthetic-device','synthetic-account');hideLoginGate();state.filter='live';renderLiveView();});
-   const listStart=Date.now();await page.locator(`[data-live-center-mode="${kind}"]`).click();
+   const listStart=Date.now();await require('./helpers/center-navigation.cjs')(page,kind);
    const cards=kind==='channel'?'[data-channel-video-card]':'[data-replay-post]';
    await page.locator(cards).first().waitFor();
    await page.waitForFunction(()=>[...document.querySelectorAll('.replay-thumb img')].filter(img=>{const r=img.getBoundingClientRect();return r.top<innerHeight&&r.bottom>0;}).every(img=>img.complete&&img.naturalWidth>0));

@@ -3310,6 +3310,7 @@ async function readVoteData(path,query,owner){
   }finally{clearTimeout(timer);}
 }
 function renderVoteList(){
+  window.FrommViewState?.beforeRender();
   ensureVoteContext(); disconnectInfiniteObserver();
   const timeline=$("#timeline"); timeline.className="vote-list-view";
   const busy=!!voteView.owner;
@@ -6487,6 +6488,7 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  window.FrommViewState?.clear();
   stopHistoryWork();
   resetPreviewWork();
   resetReplyIdentity();
@@ -7232,6 +7234,7 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
+  window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
   resetVoteView();
@@ -7242,6 +7245,7 @@ function selectRoom(i, btn){
   const wasLive = state.filter === "live";
 
   state.room = state.rooms[i];
+  const restorePosition=window.FrommViewState?.enter("all");
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7302,7 +7306,7 @@ function selectRoom(i, btn){
 
   restoreFullChatCache();
   ensureReplyIdentity();
-  state.chatAutoTopPending = true;
+  state.chatAutoTopPending = !restorePosition;
 
   startLivePolling();
   setTimeout(()=>probeLiveIndicator().catch(()=>{}),0);
@@ -8361,6 +8365,7 @@ function updateSelectedCount(){
   const n = scope.kind==="media" ? state.selected.size : scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p))).length;
   el.textContent = `선택 ${n.toLocaleString()}개`;
   el.classList.toggle("has-selection", n > 0);
+  window.FrommGlowME?.syncSelection(n);
   if(typeof updateSelectAllButton === "function") updateSelectAllButton();
 }
 
@@ -8638,6 +8643,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  window.FrommViewState?.beforeRender();
   syncMyReplyTools();
   if(state.filter === "vote"){updateChatSearchCount();renderVoteList();return;}
   renderCountsOnly();
@@ -9650,12 +9656,14 @@ function chatHeaderInset(){
   return Math.max(0,parseFloat(style.top) || 0)+header.getBoundingClientRect().height;
 }
 function scrollElementBelowToolbar(el,behavior="smooth"){
+  window.FrommViewState?.cancel();
   if(!el) return;
   const top=el.getBoundingClientRect().top+window.scrollY-chatHeaderInset()-12;
   window.scrollTo({top:Math.max(0,top),behavior});
 }
 
 async function jumpToDate(targetDate){
+  window.FrommViewState?.cancel();
   if(!targetDate) return;
   const generation=state.scanGeneration;
 
@@ -9787,11 +9795,12 @@ async function scrollToOriginalMessage(messageId){
 }
 
 async function setFilter(f, options={}){
+  const restorePosition=window.FrommViewState?.navigate(f,options);
   invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
   if(f === "all"){state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";}
-  const autoTop = options.autoTop !== false;
+  const autoTop = options.autoTop !== false && !restorePosition;
 
   if(was === "live" && f !== "live"){
     state.live.requestSeq++;
@@ -11282,6 +11291,7 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-ui-a11y.js"></script>
+<script src="web-view-state.js"></script>
 <script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
 <script type="module" src="web-glass.js"></script>

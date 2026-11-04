@@ -100,7 +100,7 @@ async function measure(page, label) {
       });
       await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
-      await page.locator('[data-live-center-mode="channel"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-channel-video-play="landscape"]').waitFor();
       for (const id of Object.keys(sizes)) {
         await page.locator(`[data-channel-video-play="${id}"]`).click();
@@ -131,7 +131,7 @@ async function measure(page, label) {
         }
         await page.locator('#channelBackToList').click();
         assert.equal(await page.locator('.channel-video-card').count(), 2);
-        assert.equal(await page.locator('.live-center-tabs').isVisible(), true, 'Back restores LIVE → Replay → Channel tabs');
+        assert.equal(await page.locator('.glowme-nav').isVisible(), true, 'Back restores LIVE → Replay → Channel tabs');
         assert.equal(await page.locator('.replay-toolbar').isVisible(), true, 'Back restores channel filters/count/refresh');
         assert.equal(await page.locator('.main').evaluate(e => getComputedStyle(e).display), 'block', 'list returns to its ordinary scrolling layout');
       }

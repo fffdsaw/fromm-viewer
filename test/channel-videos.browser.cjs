@@ -99,14 +99,12 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
       assert.deepEqual(await page.locator('[data-live-center-mode]').allTextContents(), ['LIVE', 'Replay', 'Channel']);
-      await page.locator('[data-live-center-mode="channel"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-channel-video-play="v1"]').waitFor();
       assert.equal(await page.locator('.channel-video-card').count(), 2);
       assert.equal(await page.locator('[data-channel-video-filter="locked"]').count(), 0);
       assert.equal(await page.getByText('Replay 전용', {exact: true}).count(), 0);
-      const positions = await page.locator('[data-live-center-mode]').evaluateAll(els => els.map(e => ({text: e.textContent, x: e.getBoundingClientRect().x, y: e.getBoundingClientRect().y})));
-      assert.ok(positions[0].x < positions[1].x && positions[1].x < positions[2].x);
-      assert.equal(positions[0].y, positions[2].y);
+      assert.equal(await page.locator('.glowme-nav [data-glow-nav]').count(),9,'all navigation remains available in rail');
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
       if (output) {fs.mkdirSync(output, {recursive: true}); await page.screenshot({path: path.join(output, `channel-${mobile ? 'mobile' : 'desktop'}.png`), fullPage: true});}
       await page.locator('#channelLoadMore').click();
@@ -159,7 +157,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       // Forward restores the route even after choosing another tab/filter.
       await page.locator('[data-channel-video-filter="b"]').click();
       await page.getByText('이 페이지에 업로드된 비디오가 없습니다.').waitFor();
-      await page.locator('[data-live-center-mode="replay"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'replay');
       await forward(page);
       await page.locator('#channelVideo').waitFor();
       assert.equal(await page.evaluate(() => channelVideoState.channelId), 'a');
@@ -177,7 +175,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       // a list again, rather than using that stale player as its predecessor.
       await page.reload();
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
-      await page.locator('[data-live-center-mode="channel"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-channel-video-play="v1"]').click();
       await page.waitForFunction(() => channelVideoState.hls);
       await back(page);
@@ -194,8 +192,8 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.equal(await page.locator('.live-center-tabs').isVisible(), false, 'player keeps only Back/title/video');
       await page.locator('#channelBackToList').click();
       await page.locator('[data-channel-video-play="v1"]').waitFor();
-      assert.equal(await page.locator('.live-center-tabs').isVisible(), true, 'error Back restores tab navigation');
-      await page.locator('[data-live-center-mode="replay"]').click();
+      assert.equal(await page.locator('.glowme-nav').isVisible(), true, 'error Back restores tab navigation');
+      await require('./helpers/center-navigation.cjs')(page,'replay');
       await page.getByText('Replay 전용', {exact: true}).waitFor();
       assert.equal(await page.getByText('아티스트의 새로운 영상', {exact: true}).count(), 0);
       await page.locator('[data-replay-post="replay-cursor"] .replay-play').click();
@@ -204,9 +202,9 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       await page.waitForFunction(() => state.live.replaySelected === null);
       assert.equal(await page.evaluate(() => state.live.centerMode), 'replay', 'Channel history must not hijack Replay Back');
       await page.locator('[data-replay-post="replay-cursor"]').waitFor();
-      await page.locator('[data-live-center-mode="live"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'live');
       assert.equal(await page.locator('[data-live-center-mode="live"].active').count(), 1);
-      await page.locator('[data-live-center-mode="channel"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-channel-video-play="v1"]').waitFor();
       await page.evaluate(() => forgetSavedAuth());
       assert.equal(await page.evaluate(() => channelVideoState.pages.size), 0);

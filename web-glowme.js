@@ -97,6 +97,10 @@
     const header=$('.viewer-header').getBoundingClientRect();const top=Math.max(12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
+  function syncSelection(n){
+    const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);
+    for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=n===0;el.inert=n===0;}
+  }
   function syncNavigation(){
     const key=state.filter==='live'?state.live.centerMode:state.filter,all=state.filter==='all',pinned=isSearchPinned();
     for(const button of nav.children){const selected=button.dataset.glowNav===key;button.setAttribute('aria-current',selected?'page':'false');button.classList.toggle('active',selected);}
@@ -109,12 +113,12 @@
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();fitPanel();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms});
+  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});
   new ResizeObserver(fitPanel).observe($('.viewer-header'));
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
   new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));}).observe(panel,{attributes:true,attributeFilter:['class']});
-  setRailOpen(false);syncNavigation();
+  setRailOpen(false);syncNavigation();updateSelectedCount();
 })();

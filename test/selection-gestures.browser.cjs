@@ -273,7 +273,7 @@ async function shot(page, name) {
         state.live.replayPosts = posts.map(p => ({...p, id: p.id.replace('v', 'r'), type: 'live_record'})); state.live.replayFilter = 'all'; renderLiveView(); scrollTo(0, 0);
       });
       for (const kind of ['channel', 'replay']) {
-        if (kind === 'replay') await page.locator('[data-live-center-mode="replay"]').click();
+        if (kind === 'replay') await require('./helpers/center-navigation.cjs')(page,'replay');
         const cards = page.locator(`[data-download-selection-kind="${kind}"]`);
         await cards.first().locator('img').waitFor({state:'visible'});
         await page.waitForFunction(kind=>{

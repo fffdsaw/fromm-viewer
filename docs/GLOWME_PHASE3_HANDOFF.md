@@ -42,3 +42,15 @@
 - `glowme.css`: 인용 원문 #244c42. 보수적인 밝은 배경 #d2e6dc 대비 계산 및 실제 Chromium computed color 확인.
 - `test/glowme-phase3-a11y.browser.cjs`: 390px 초기 초점·양방향 Tab·재개방/복귀·inert 해제·인용 대비·로그인 axe 통과. 로그 `/tmp/fromm-phase3/p1.log`.
 - 다음: 플로팅 레일/헤더/독립 스크롤, Meapri 소형 컨트롤 시험.
+
+## 1차 레이아웃 체크포인트 (2026-11-04 재개)
+- `/tmp` 파일은 실행 환경 갱신으로 사라짐. 추적 파일/커밋은 보존되었으며 최신 원격은 여전히 main 552bc55 / Draft #53. 새 증거는 `/workspace/scratch/fromm-phase3/`에 기록. 이전 검사를 완료했다고 새로 주장하지 않음.
+- `web-glowme.js`: 9개 고정 탐색 레일, hover 지연/터치/키보드/Escape, 아티스트 프로필·독립 스크롤, 실제 데이터 헤더, 중복 상단 탭 제거. 넓은 PWA도 레일 정책 사용, 대화에서만 오른쪽 검색 고정.
+- `index.html`: 셸 초점/헤더/탐색 연결만 추가. 인증·영상·다운로드 코어 미변경. 헤더는 문서 흐름을 사용하여 유리 모서리 아래 비침 제거. 창 스크롤 기반 날짜/미디어 이동을 유지하며 불투명 마스크/사진 클리핑을 추가하지 않음.
+- `glowme.css`: 고정된 좁은 레일/겹쳐 확장/낮은 화면 3×3 탐색/남은 아티스트 공간. 민트·그린 헤더, 실 통계. 단순 색상 모의가 아닌 Meapri Regular SVG 굴절은 현재 레일 토글/검색 버튼에만 시험 적용.
+- `vendor/meapri/`: MIT LICENSE 및 출처/재현 빌드 기록. 고정 upstream 1613f831. ESM/Worker 정적 자산. WebGL/backdropSource/인증 콘텐츠 캡처 없음. SW의 공개 이미지 allowlist는 유지, 엔진을 오프라인 캐시한다고 주장하지 않음.
+- `web-glass.js`: 2개 소형 컨트롤, balanced 단일 굴절·색수차0, 감소 모션/투명도/고대비/숨김 문서 제외. 브라우저 fallback 유지.
+- `test/glowme-phase3.browser.cjs` + fixture: 실제 HTTP Chromium 320/390/844×390/1440/설치 배치 모의 통과. 본문 너비 불변, 9개 메뉴, 아티스트 스크롤 복원, 키보드 진입/복귀, 실제 SVG filter 적용, 모션 감소 해제 확인. 가로 넘침/JS 오류 없음.
+- P1 재검증 통과: 새 레일 초기 inert 상태가 로그인 복귀를 막던 문제 수정. quote 7.36:1 계산/로그인 axe 0.
+- 화면 `/workspace/scratch/fromm-phase3/layout-*.png` 확인. 초기에 기존 CSS 고정 height가 헤더 통계를 잘랐고 hidden span이 아이콘을 밀었음 → auto height/접힌 span display:none으로 수정 후 재촬영.
+- 다음: 2차 스크롤 복원/실 선택 도구/검색 초점·가로 터치. 기존 브라우저 검사의 삭제된 중복 탭 selector는 새 레일로 갱신 필요(기능 기대는 유지).

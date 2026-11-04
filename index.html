@@ -3314,7 +3314,7 @@ function renderVoteList(){
   const timeline=$("#timeline"); timeline.className="vote-list-view";
   const busy=!!voteView.owner;
   $("#counts").textContent=`${voteView.cursor !== null ? "불러온 " : ""}투표 ${voteView.items.length}개`;
-  $("#scanState").textContent=busy ? "투표 불러오는 중…" : "투표 · 읽기 전용";
+  $("#scanState").textContent=busy ? "투표 불러오는 중…" : "투표";
   timeline.innerHTML=`<section class="vote-list" aria-label="투표 목록" aria-busy="${busy}">
     <header class="vote-list-heading"><h2>투표 목록</h2><span class="vote-note">${esc(state.room?.host?.nick || "아티스트")}</span></header>
     ${!state.room ? `<p class="empty">아티스트를 선택해 주세요.</p>` : ""}
@@ -3901,6 +3901,7 @@ function bindLiveCenterTabs(){
 }
 
 function syncLiveCenterHeader(){
+  if(window.FrommGlowME?.syncHeader){window.FrommGlowME.syncHeader();$("#scanBtn").disabled=false;return;}
   if(state.filter!=="live") return;
   const wrap=$("#artistProfileWrap");
   if(wrap) wrap.style.display="none";
@@ -6302,6 +6303,7 @@ const SIDEBAR_STATE_KEY = "fromm_local_sidebar_collapsed_v1";
 
 let sidebarToggleSlot = null;
 function positionSidebarToggle(){
+  if(window.FrommGlowME?.rail) return;
   if(!sidebarToggleSlot) return;
   const rect=sidebarToggleSlot.getBoundingClientRect();
   const btn=$("#sidebarToggleBtn");
@@ -6324,6 +6326,7 @@ function mountSidebarToggle(){
   positionSidebarToggle();
 }
 function setSidebarOpen(open){
+  if(window.FrommGlowME?.setRailOpen) return window.FrommGlowME.setRailOpen(open);
   if(window.FrommGlowME?.pinned) open=true;
   const sidebar = $("#sidebar");
   const btn = $("#sidebarToggleBtn");
@@ -7021,6 +7024,7 @@ function isCurrentTabLoading(){
 }
 
 function syncLoadingUI(){
+  window.FrommGlowME?.syncNavigation();
   const loading = isCurrentTabLoading();
 
   document.body.classList.toggle("data-loading", loading);
@@ -11280,5 +11284,6 @@ autoConnectSaved();
 <script src="web-ui-a11y.js"></script>
 <script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
+<script type="module" src="web-glass.js"></script>
 </body>
 </html>

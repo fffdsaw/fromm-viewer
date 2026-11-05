@@ -4,8 +4,8 @@
 - 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-11-05 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.
 - Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/53 (Draft, 동일 PR 유지).
-- 직전 원격 체크포인트: `0605cdd320e6b2f02b9270d76bbeb6353b03dd24` (모바일 설정·전후 화면·성능 검증 저장). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
-- 상태: P1·1차·2차 저장 완료. 3차 기본 구현·시험 적용 저장 완료 / 4차 최종 검증 진행 중. 아래 최신 기록 우선.
+- 직전 원격 체크포인트: `a88b0711a48713d7be7a387352d688716e817209` (전체 CI 통과한 구현·검사 커밋). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
+- 상태: P1·1차·2차 저장 완료. 3차 기본 구현·시험 적용 저장 완료 / 4차 최종 검증 완료. Meapri 본격 적용·시각 마감은 별도 미완료. 아래 최신 기록 우선.
 
 ## 목표와 경계
 - #EDF8F0 배경 / #94D9C4 물결 / #428E7A 강조 / 흰 반사광. 민트·그린의 자연스러운 Meapri Regular 유리. 상대 실험값을 CSS에 그대로 복사하지 않음.
@@ -25,8 +25,8 @@
 2. 1차: 레일/아티스트/헤더/겹침/Meapri 시험 — 완료·저장.
 3. 2차: 검색/스크롤/선택/터치 — 완료·저장.
 4. 3차: 미니멀 표면/투표/보조 스타일 — 기본 구현 완료·저장. **Meapri 제한적 시험 적용이며 최종 본격 적용·시각 마감은 별도 미완료.**
-5. 4차: 실제 Chromium 전후 화면, 3회 성능 비교, 독립 Impeccable 평가 완료. 모바일 설정 팝업 회귀 수정 완료. IntersectionObserver 미지원 대체 수정 후 최종 CI 확인 중.
-- 테스트: Node 276 통과/1skip/실패0, 주요 브라우저 회귀 통과. 최신 CI 브라우저는 IntersectionObserver 미지원 fixture에서 새 렌즈 감시가 실패; 대체 처리 수정 후 Channel 전체 검사는 통과. 최종 전체 CI는 아직 성공으로 기록하지 않음.
+5. 4차: 실제 Chromium 전후 화면, 3회 성능 비교, 독립 Impeccable 평가 완료. 모바일 설정/미지원 대체/비동기 검사 보완 후 전체 CI 통과.
+- 테스트: Node 276 통과/1skip/실패0, 전체 브라우저 CI 및 Media bulk save CI 통과. 검증 SHA `a88b071`와 아래 최종 CI 링크를 참조. 과거 실패 기록은 해결 경위로 보존.
 - 미검증: 실제 인증 서버·실방송·Windows Native/확장 연결, 물리 모바일/iOS, Windows Edge/macOS Safari, OS PWA 설치/업데이트, 실제 GPU 사용량.
 - 스크린샷/측정은 합성 데이터만 사용. 토큰·계정·개인 대화 저장 금지.
 
@@ -128,3 +128,15 @@
 - 새 화면의 데이터 DOM이 나타난 시점과 async 메뉴 핸들러의 finally(메뉴 닫기/초점 복귀) 완료 시점은 다름. `test/helpers/center-navigation.cjs`에서 대상 버튼 활성화, aria-expanded=false, 실제 축소 너비를 모두 기다린 후 다음 검사를 진행하도록 수정. 실제 UI·데이터 코드는 변경하지 않음. 레일이 닫히지 않으면 여전히 실패하므로 기능 검사를 우회하지 않음.
 - 캡처 활성화 조건의 기존 Channel 전체 검사1440/390 통과: `verified-rail-transition.log`, `final-channel-screens/`. 이전 캡처 켠 검사도 로컬 통과해 CI와 로컬 속도 차이에 민감했던 경계임을 확인.
 - 다음: 새 체크포인트 CI 전체 결과를 확인하고 같은 Draft PR #53의 최종 상태를 갱신. 이미 완료한 1~3차/독립 critique/화면·성능 비교 재실행 불필요. Meapri 본격 적용은 별도 미완료.
+
+## 4차 최종 완료 기록 — 2026-11-06 KST
+- **검증한 구현·검사 SHA: `a88b0711a48713d7be7a387352d688716e817209`.**
+- Channel/UI CI https://github.com/fffdsaw/fromm-viewer/actions/runs/42073136663 : Node regression 및 전체 browser 모두 SUCCESS. PWA/신규 phase3/전후·성능/아이콘/자동 로딩/Channel·Replay 일반·설치 배치/설정/화질/startup/선택/LIVE UI·진단·댓글/투표/답장/확장 합성 통신과 데스크톱 브라우저 뒤로·앞으로 검사 완료.
+- Media bulk save CI https://github.com/fffdsaw/fromm-viewer/actions/runs/42073137082 : Node 및 browser SUCCESS. 기존 파일명/중복 방지 회귀 보존.
+- 1~3차 기존 구현과 4차 검증 범위 완료. 독립 Impeccable 평가/최종 전후 PNG/3회 성능 비교/가독성·접근성 대상 회귀 완료. 정적 검사 incomplete는 전체 WCAG 적합 판정으로 사용하지 않음.
+- 마지막 기록 커밋은 이 문서와 디자인 검증 README만 변경한다. `[skip ci]`로 동일 기능 검사의 불필요한 반복을 막았으며, 앱·테스트·설정 코드는 위 통과 SHA와 동일하다. 이 문서의 커밋 SHA는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`로 확인.
+- main 552bc55 유지, 동일 Draft PR #53 유지. PR50/51·Hooks·Native/확장 코어·공개 배포 변경 없음.
+- **Meapri Regular는 최대5개 소형 컨트롤의 제한적 시험 적용. 본격 적용 범위 결정 및 최종 시각 마감은 별도 미완료 작업.** 4차 검증 완료와 혼동 금지.
+- 남은 실기: 실제 Fromm 인증 스트림/실방송/Windows Native 수신, 물리 모바일·iOS, Windows Chrome/Edge 및 macOS Safari, OS 설치 PWA, GPU/전체 프로세스 메모리·발열·배터리. 로컬 Agora 타입 미설치 skip1 유지.
+- 다음 작업 권고: 사용자의 별도 요청에 따라 Meapri 시각 마감 또는 실제 계정/실기 검증을 수행. 기존 1~4차를 다시 구현하지 않음. 병합·배포 승인 없음.
+- 재개 프롬프트: `fffdsaw/fromm-viewer의 feature/glowme-uiux-phase3와 Draft PR #53, docs/GLOWME_PHASE3_HANDOFF.md의 최종 완료 기록을 확인해 줘. a88b071의 전체 CI 통과 및 문서만 후속 갱신된 상태를 보존하고, 기존 1~4차를 재구현하지 마. Meapri 본격 적용·시각 마감은 별도 미완료이며 다음 명시된 작업만 진행해 줘. main 병합·공개 배포 금지.`

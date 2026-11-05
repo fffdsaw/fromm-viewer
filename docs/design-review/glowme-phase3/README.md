@@ -90,3 +90,11 @@ Linux Headless Chromium, 동일 합성180메시지/30아티스트, 각각3회 �
 - OS 설치형 PWA의 실제 설치/업데이트, 실제 GPU/전체 프로세스 메모리·발열·배터리, 보조공학 실기/모든 브라우저 확대 조합.
 - **Meapri Regular의 본격 적용 범위와 최종 시각 마감은 별도 작업**. 실제 콘텐츠와 물리 저사양 기기에서 비용을 보고 강도를 결정해야 한다.
 - main 병합·공개 배포는 수행하지 않았다. PR #50/#51의 겹치는 접근성/CSS는 향후 병합 때 수동 대조가 필요하다.
+
+## 최종 CI 확인
+
+검증한 구현·검사 커밋은 `a88b0711a48713d7be7a387352d688716e817209`이다.
+
+- [Channel/UI 전체 CI](https://github.com/fffdsaw/fromm-viewer/actions/runs/42073136663): Node 및 browser **SUCCESS**.
+- [Media bulk save CI](https://github.com/fffdsaw/fromm-viewer/actions/runs/42073137082): Node 및 browser **SUCCESS**.
+- 이후 최종 기록 커밋은 Markdown 두 파일만 변경하며 앱/검사 코드가 동일하므로 CI를 반복하지 않는다. 과거 실패는 모두 수정되어 위 전체 검사에서 통과했다. Meapri 본격 적용·시각 마감 및 명시된 실기 검증은 여전히 별도 미완료이다.

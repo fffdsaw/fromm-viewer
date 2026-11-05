@@ -20,7 +20,10 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.equal(geometry.overflow,false);assert.ok(geometry.artists.height>=40);assert.ok(geometry.nav.bottom<=geometry.artists.top);
  if(process.env.PHASE3_SCREENSHOT_DIR){fs.mkdirSync(process.env.PHASE3_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PHASE3_SCREENSHOT_DIR,`rail-${viewport.width}${viewport.installed?'-pwa':''}.png`)});}
  await page.keyboard.press('Escape');
- if(!viewport.installed){await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}
+ if(!viewport.installed){await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
+ const panelBox=await page.locator('#chatToolsPanel').boundingBox(),railBox=await page.locator('#sidebar').boundingBox();
+ assert.ok(panelBox.x>=railBox.x+railBox.width,'search preserves access to collapsed rail');
+ await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}
  await page.waitForTimeout(400);
  const optics=await page.locator('#sidebarToggleBtn').evaluate(e=>getComputedStyle(e).backdropFilter);assert.match(optics,/url\(/,'Chromium uses actual SVG refraction');
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.FrommGlass.count),0);

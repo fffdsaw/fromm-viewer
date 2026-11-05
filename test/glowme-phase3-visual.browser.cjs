@@ -11,10 +11,10 @@ const output=path.resolve(process.env.PHASE3_VISUAL_DIR||path.join(temp,'screens
 fs.mkdirSync(output,{recursive:true});
 const median=xs=>[...xs].sort((a,b)=>a-b)[Math.floor(xs.length/2)];
 async function capture(page,name){await page.waitForTimeout(260);await page.screenshot({path:path.join(output,name+'.png')});}
-async function benchmark(browser,url,label){
+async function benchmark(browser,url,label,options={}){
  const rows=[];
  for(let run=0;run<3;run++){
-  const start=performance.now(),{page,context,errors}=await open(browser,url);
+  const start=performance.now(),{page,context,errors}=await open(browser,url,options);
   await page.waitForFunction(()=>document.querySelector('.msg'));
   const readyMs=performance.now()-start,cdp=await context.newCDPSession(page);
   await cdp.send('Performance.enable');
@@ -41,7 +41,7 @@ async function benchmark(browser,url,label){
  const results={baseline,note:'Linux headless Chromium; synthetic local data, three serial runs. JS task/heap and rAF intervals are proxies, not physical GPU/CPU usage or authenticated server timing.',screens:[],performance:[]};
  try{
   for(const [label,server] of [['before',before],['after',after]]){
-   for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:844,height:390},{width:1440,height:900,installed:true}]){
+   if(!process.env.PHASE3_PERF_ONLY)for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:844,height:390},{width:1440,height:900,installed:true}]){
     const {page,context,errors}=await open(browser,server.url,viewport),suffix=`${viewport.width}x${viewport.height}${viewport.installed?'-pwa':''}`;
     // The old shell updated its header only through this existing presentation hook.
     await page.evaluate(()=>{restoreArtistHeaderAfterLive();scrollTo(0,0);});
@@ -68,9 +68,10 @@ async function benchmark(browser,url,label){
     }
     assert.deepEqual(errors,[]);await context.close();
    }
-   results.performance.push(await benchmark(browser,server.url,label));
+   if(!process.env.PHASE3_SKIP_PERF)results.performance.push(await benchmark(browser,server.url,label));
   }
-  fs.writeFileSync(path.join(output,'metrics.json'),JSON.stringify(results,null,2));
+  if(!process.env.PHASE3_SKIP_PERF)results.performance.push(await benchmark(browser,after.url,'after-no-optics',{lowPower:true}));
+  fs.writeFileSync(path.join(output,process.env.PHASE3_SKIP_PERF?'screens.json':'metrics.json'),JSON.stringify(results,null,2));
   console.log(JSON.stringify({screens:output,performance:results.performance.map(({label,median})=>({label,...median}))}));
  }finally{await browser.close();await before.close();await after.close();fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

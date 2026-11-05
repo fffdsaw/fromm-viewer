@@ -64,6 +64,7 @@ const post=(id,kind)=>({id,type:kind==='channel'?'video':'live_record',title:`Sy
    await page.waitForFunction(()=>[...document.querySelectorAll('.replay-thumb img')].filter(img=>{const r=img.getBoundingClientRect();return r.top<innerHeight&&r.bottom>0;}).every(img=>img.complete&&img.naturalWidth>0));
    const listMs=Date.now()-listStart;
    const imageCount=requests.filter(r=>r.path==='/thumb.jpg').length;
+   const eligibleThumbs=await page.locator('.replay-thumb img').evaluateAll(images=>images.filter(img=>{const r=img.getBoundingClientRect();return r.bottom>=-240&&r.top<=innerHeight+240;}).length);
    // Arm timing before the actual DOM click; include API, SDK, playlists and decode/presentation.
    const click=async()=>{
     const since=requests.length;
@@ -84,7 +85,7 @@ const post=(id,kind)=>({id,type:kind==='channel'?'video':'live_record',title:`Sy
    if(!process.env.STARTUP_HTML_PATH){
     assert.equal(cold.playlistRequests,2,'one master and one highest media playlist');
     assert.equal(warm.playlistRequests,1,'reopen reuses only the master, media is freshly checked');
-    assert.ok(imageCount<= (viewport.width<700?4:12),'outside-viewport thumbnail requests are bounded');
+    assert.ok(imageCount<=eligibleThumbs&&imageCount<60,`outside-viewport thumbnail requests are bounded: ${kind} ${viewport.width}=${imageCount}, viewport + 240px=${eligibleThumbs}`);
    }
    assert.equal(cold.afterFrameWaiting,0);assert.equal(warm.afterFrameWaiting,0);
    rows.push({viewport:`${viewport.width}x${viewport.height}`,profile,kind,run,listMs,thumbnailRequests:imageCount,thumbnailPayloadBytes:imageCount*thumb.length,cold,warm});

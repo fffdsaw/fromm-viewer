@@ -5,8 +5,9 @@ let scheduled=false;
 function sync(){
  if(scheduled)return;scheduled=true;
  requestAnimationFrame(()=>{scheduled=false;
-  const enabled=!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
-  const targets=enabled?[...document.querySelectorAll('#sidebarToggleBtn,#chatToolsBtn')].filter(el=>!el.hidden&&el.getClientRects().length):[];
+  const lowPower=(navigator.deviceMemory>0&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2);
+  const enabled=!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
+  const targets=enabled?[...document.querySelectorAll('#sidebarToggleBtn,#chatToolsBtn,.glowme-nav [aria-current="page"],#scanBtn,#logoutMiniBtn')].filter(el=>!el.hidden&&!el.disabled&&el.getClientRects().length):[];
   for(const [el,glass] of instances)if(!targets.includes(el)){glass.destroy();instances.delete(el);el.classList.remove('meapri-control');}
   for(const el of targets)if(!instances.has(el)){
    try{el.classList.add('meapri-control');instances.set(el,new LiquidGlass(el,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',refraction:16,thickness:18,blur:2.5,saturation:110,chromaticAberration:0,mapPixelRatio:1,tint:'rgba(222,245,232,.42)',specularIntensity:.3,edges:false,applyRadius:false,fallbackFilter:'blur(3px) saturate(1.1)',respectReducedMotion:true}));}

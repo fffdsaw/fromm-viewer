@@ -8,6 +8,8 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.equal(await page.locator('.glowme-nav button').count(),9);assert.equal(await page.locator('.toolbar [data-filter]').count(),0);
  assert.match(await page.locator('#artistMediaStats').textContent(),/미디어 71 · 사진 45 · 영상 15 · 음성 11/);
  assert.equal(await page.locator('#artistTitle').textContent(),'테스트 아티스트');
+ await page.waitForFunction(()=>document.querySelector('.rail-avatar img')?.naturalWidth>0);
+ assert.equal(await page.locator('#rooms .room').count(),30);
  await page.locator('#sidebarToggleBtn').focus();await page.keyboard.press('Enter');await page.waitForTimeout(230);
  assert.equal(await page.evaluate(()=>document.activeElement.dataset.glowNav),'all');
  const after=await page.locator('#timeline').boundingBox();assert.ok(Math.abs(after.width-base.width)<1);
@@ -23,5 +25,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const optics=await page.locator('#sidebarToggleBtn').evaluate(e=>getComputedStyle(e).backdropFilter);assert.match(optics,/url\(/,'Chromium uses actual SVG refraction');
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.FrommGlass.count),0);
  assert.deepEqual(errors,[]);results.push({viewport,geometry,optics:'SVG',keyboard:'pass'});await context.close();
- }console.log(JSON.stringify(results));
+ }
+ for(const options of [{lowPower:true},{userAgent:'Mozilla/5.0 Version/18.0 Safari/605.1.15'}]){
+  const {page,context,errors}=await open(browser,server.url,options);await page.waitForTimeout(150);
+  const filter=await page.locator('#sidebarToggleBtn').evaluate(e=>getComputedStyle(e).backdropFilter);
+  assert.ok(!filter.includes('url('),'low-power and Safari-UA fallback avoids SVG backdrop');
+  if(options.lowPower)assert.equal(await page.evaluate(()=>FrommGlass.count),0);
+  assert.deepEqual(errors,[]);await context.close();
+ }
+ console.log(JSON.stringify(results));
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

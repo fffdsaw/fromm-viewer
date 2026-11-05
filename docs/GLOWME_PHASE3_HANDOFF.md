@@ -4,8 +4,8 @@
 - 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-10-31 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.
 - Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/53 (Draft, 동일 PR 유지).
-- 마지막 완료 커밋: 기준 main. 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
-- 상태: 준비 완료, P1 접근성부터 진행. 1차 진행 중 / 2·3·4차 미시작.
+- 마지막 원격 완료 커밋: `e1a5540053cb4e75a19d2ed4a0ad717fe7b0ad74` (2차). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
+- 상태: P1·1차·2차 저장 완료. 3차 복구 및 마무리 진행 / 4차 회귀 검증 진행 중. 아래 최신 기록 우선.
 
 ## 목표와 경계
 - #EDF8F0 배경 / #94D9C4 물결 / #428E7A 강조 / 흰 반사광. 민트·그린의 자연스러운 Meapri Regular 유리. 상대 실험값을 CSS에 그대로 복사하지 않음.
@@ -65,3 +65,21 @@
 - 기존 Channel 12개/Replay 13개 뷰포트 가로·세로 MP4 디코딩/컨트롤/목록 복귀 통과(터치 입력영역 최종 CSS 후 조작 회귀는 4차에서 재확인). 로그 channel.log/replay.log.
 - 기존 검사 클릭 경로만 새 레일 helper로 변경. 삭제된 상단 중복 탭 대신 실제 레일 내비게이션을 검증. 모든 핵심 재생/저장 assertions 유지.
 - 다음: 3차 제한된 Meapri 확대/투표/색상·테두리 정리 후 4차 전체 회귀 및 화면·성능 비교.
+
+## 중단 작업 복구 (2026-11-04)
+- 로컬 HEAD/원격 e1a5540, main 552bc55, Draft #53 재확인. 7개 파일 미커밋 변경을 보존하고 `/workspace/scratch/fromm-phase3/recovered-e1a5540.patch`로 별도 저장.
+- 최신 디자인: 헤더·사이드바의 복잡한 물결 텍스처 제거. 차분한 민트/아쿠아 단색·최소 그라데이션, 소형 컨트롤에만 Meapri Regular. 이전 물결 중심 요구보다 우선.
+- 복구된 변경: Meapri 최대 5개 작은 컨트롤, 투표/보조 글자/스크롤바, 실제 헤더 통계 재동기화, 카드 선택 버튼을 독립시킨 접근성 개선, 최신 레이아웃에 맞춘 PWA 검사.
+- CI e1a5540 실패: 기존 glowme.browser의 분리형 중간 탭 바 전제. 최신 설계에서는 중복 탭이 제거되어 해당 기대가 무효. 새 레일·가변 선택 도구·실제 320px 기하/접근성/PWA 검증으로 대체하며 기능 검사는 유지. 로컬 PWA+axe 통과.
+- 추가 브라우저 회귀: ui-icons, video-list-autoload, channel-videos, direct-selection, media-bulk-save, live-ui-pip, native-diagnostics, live-chat-probe, background-media, video-quality 통과. selection-gestures(드래그), votes(스크롤바 기대), my-replies(이전 파란색 기대), video-startup(썸네일 요청 상한) 실패 분석 중.
+- 아직 미완료: 최신 미니멀 스타일, 4개 회귀 원인 해결, 전후 화면/성능 비교, 최종 Node·브라우저·CI 및 Critique, 체크포인트 푸시.
+- `/tmp` 이전 결과 대신 `/workspace/scratch/fromm-phase3` 로그를 사용. 실제 서버/Native/물리 모바일/OS 설치 PWA/GPU는 미검증.
+
+## 2026-11-05 복구 WIP 체크포인트
+- 마지막 완료 원격은 e1a5540. 이 체크포인트는 3차 미커밋 구현을 보존하는 WIP이며 최종 검증 완료가 아님. main/PR50/PR51 미변경.
+- 복구 확인: 헤더 물결 제거, 저사양(메모리/코어 2 이하) Meapri 대체 표현, 선택 도구 별도 오버레이(정렬바 위치 보존), 독립 선택 버튼으로 중첩 인터랙션 해소, 아티스트 lazy 이미지 DOM 삽입, 날짜 이동 12프레임 이내 보정과 사용자 입력 취소.
+- 추가 실제 결함: 모바일 검색 패널이 좁은 레일을 가려 `my-replies` 미디어 전환 클릭 실패. 다음 수정 대상. 날짜 1440px 검사는 수정 후 통과.
+- 완료 검사: Node 277 중276 통과/skip1/실패0 (마지막 날짜 보정 이전 실행); votes, thumbnail startup(8조건), selection gestures(데스크톱/모바일), phase3 5개뷰포트 및 저사양/Safari-UA 대체, navigation 1440/390, P1 대비/초점, PWA/axe. 로그는 `/workspace/scratch/fromm-phase3/`에 보존.
+- Chromium 전후 1440/390/844×390/PWA 모의 캡처와 3회 비교 스크립트 추가. 마지막 프로필/날짜 수정 이전 캡처는 최종 증거로 사용하지 않고 재촬영할 것. 예비 측정은 visual/metrics.json.
+- Impeccable A는 사용량 한도 오류로 미완료. B는 critique-b/detect.raw.json 등 중간 파일만 존재; 완성된 dual-agent 보고서 없음. CLI 결과 유효성 확인 후 재사용하고 A/브라우저 증거를 마무리할 것. Hooks 미변경.
+- 다음: 검색 패널-레일 겹침 수정 → my-replies/접근성 → 최종 화면/성능 → Impeccable → 영향받은 회귀 및 정확한 HEAD CI → 최종 문서·동일 Draft53 업데이트.

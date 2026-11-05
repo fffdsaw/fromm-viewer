@@ -12,6 +12,7 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
  const browser=await chromium.launch({headless:true});
  try{
   for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:844,height:390}])for(const kind of ['replay','channel']){
+   if(process.env.PLAYER_VIEWPORT&&viewport.width!==Number(process.env.PLAYER_VIEWPORT))continue;
    const mobile=viewport.width<700||viewport.height<500;
    const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile}),page=await context.newPage(),errors=[];
    page.on('pageerror',e=>errors.push(e.message));

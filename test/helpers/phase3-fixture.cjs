@@ -16,8 +16,9 @@ async function seed(page){await page.evaluate(()=>{
  state.chatMessages=state.messages;state.live.discoveryLoaded=true;state.live.channelsLoaded=true;state.live.channels=[{id:'fixture-channel',channelName:'테스트 채널',isSubscribed:true}];
  const rooms=document.querySelector('#rooms');rooms.replaceChildren();state.rooms.forEach((room,i)=>{const b=document.createElement('button');b.className='room'+(i?'':' active');b.textContent=room.host.nick;b.onclick=()=>selectRoom(i,b);rooms.append(b);});render();scrollTo(0,0);
  });await page.waitForTimeout(120);}
-async function open(browser,url,{width=1440,height=900,installed=false,login=false}={}){
- const context=await browser.newContext({viewport:{width,height},isMobile:width<700||height<500,hasTouch:width<700||height<500,serviceWorkers:'block'});
+async function open(browser,url,{width=1440,height=900,installed=false,login=false,serviceWorkers="block",lowPower=false,userAgent}={}){
+ const context=await browser.newContext({viewport:{width,height},isMobile:width<700||height<500,hasTouch:width<700||height<500,serviceWorkers,...(userAgent?{userAgent}:{})});
+ if(lowPower)await context.addInitScript(()=>Object.defineProperty(navigator,'deviceMemory',{get:()=>2}));
  if(installed)await context.addInitScript(()=>{const original=matchMedia.bind(window),m=new EventTarget();Object.defineProperties(m,{matches:{get:()=>true},media:{value:'(display-mode: standalone)'}});window.matchMedia=q=>q==='(display-mode: standalone)'?m:original(q);});
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{

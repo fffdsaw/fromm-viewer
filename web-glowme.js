@@ -4,7 +4,7 @@
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),panel=$('#chatToolsPanel'),toggle=$('#sidebarToggleBtn'),search=$('#chatToolsBtn');
   if(!sidebar||!panel||!toggle||!search)return;
   const installed=matchMedia('(display-mode: standalone)'),wide=matchMedia('(min-width:1200px)'),hover=matchMedia('(hover:hover) and (pointer:fine)');
-  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',profileKey='',searchWasOpen=false;
+  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false;
   document.documentElement.classList.add('glowme','glowme-phase3');
   const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
   const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 6h12v12H3z M15 10l6-3v10l-6-3',sound:'M9 18V5l11-2v13 M9 9l11-2 M9 18a3 2 0 1 1-3-2h3 M20 16a3 2 0 1 1-3-2h3',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
@@ -30,6 +30,9 @@
   railHead.after(nav);
   // Remove duplicate controls, keeping their existing filters and routes on the rail.
   $('.toolbar').querySelectorAll(':scope > [data-filter]').forEach(el=>el.remove());
+  const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.hidden=true;
+  $('.toolbar').append(batchTools);
+  for(const id of ['selectedCount','selectAllBtn','saveSelectedBtn'])batchTools.append($('#'+id));
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');
   function decorateRooms(){
@@ -40,7 +43,7 @@
       button.dataset.railArtist='1';button.title=name;button.setAttribute('aria-label',name);
       const avatar=document.createElement('span');avatar.className='rail-avatar';avatar.innerHTML=svg('M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8');
       const url=normalizeMediaUrl(host.profileUrlThumbnail||host.profileUrl||host.defaultProfileUrl||'');
-      if(url){const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';img.src=url;img.onload=()=>avatar.replaceChildren(img);}
+      if(url){const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';img.onerror=()=>img.remove();img.src=url;avatar.append(img);}
       const text=document.createElement('span');text.className='rail-artist-name';text.textContent=name;button.replaceChildren(avatar,text);
     });rooms.scrollTop=scroll;
   }
@@ -79,7 +82,7 @@
     const profile=String(state.room?.hostChatRoomId||state.room?.id||'')+'|'+(host.profileUrlThumbnail||host.profileUrl||host.defaultProfileUrl||'');
     if(profile!==profileKey){profileKey=profile;syncArtistHeaderProfile();}$('#artistProfileWrap').style.display=name?'':'none';
     const signature=[profile,state.messages.length,state.hasMoreMessages,state.loadingMessages,state.historyError,state.scanGeneration].join('|');
-    if(signature!==headerKey){headerKey=signature;const counts={image:0,video:0,sound:0};
+    if(signature!==headerKey||headerMessages!==state.messages){headerKey=signature;headerMessages=state.messages;const counts={image:0,video:0,sound:0};
       for(const message of state.messages)if(isArtist(message)&&isMedia(message)){const type=normType(message.type);if(type in counts)counts[type]++;}
       const total=counts.image+counts.video+counts.sound,fmt=n=>n.toLocaleString();
       setText(stats,!state.room?'아티스트 선택 후 미디어 통계를 표시합니다.':state.loadingMessages&&!state.messages.length?'미디어 통계 불러오는 중…':`${state.hasMoreMessages?'현재 ':''}미디어 ${fmt(total)} · 사진 ${fmt(counts.image)} · 영상 ${fmt(counts.video)} · 음성 ${fmt(counts.sound)}`);
@@ -98,7 +101,7 @@
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){
-    const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);
+    const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);batchTools.hidden=n===0;
     for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=n===0;el.inert=n===0;}
   }
   function syncNavigation(){

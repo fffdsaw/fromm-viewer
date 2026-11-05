@@ -44,10 +44,20 @@
    pending=null;
   }finally{restoring=false;}
  }
+ function settleAnchor(el,inset,valid=()=>true){
+  cancel();const ticket=serial;let count=0;
+  // content-visibility resolves nearby estimated rows over several frames.
+  // Bound the correction and stop immediately for navigation or user movement.
+  const align=()=>{if(ticket!==serial||!el?.isConnected||!valid())return;
+   const delta=el.getBoundingClientRect().top-inset()-12;
+   if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});
+   if(++count<12)requestAnimationFrame(align);
+  };requestAnimationFrame(align);
+ }
  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;void restore();});}
  new MutationObserver(schedule).observe(document.querySelector('#timeline'),{childList:true,subtree:true});
  // User-directed movement always wins over an asynchronous restore.
- for(const type of ['wheel','touchstart'])window.addEventListener(type,()=>{cancel();},{passive:true});
+ for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,clear(){positions.clear();pending=null;active='';serial++;},get pending(){return !!pending;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,clear(){positions.clear();pending=null;active='';serial++;},get pending(){return !!pending;}});
 })();

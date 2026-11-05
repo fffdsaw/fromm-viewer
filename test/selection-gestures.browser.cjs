@@ -147,7 +147,7 @@ async function shot(page, name) {
       if (!mobile) {
         await page.evaluate(() => {state.filter = 'image'; state.selected.clear(); state.selectionAnchor = null; syncLiveToolbarControls(); render(); scrollTo(0, 0);});
         const cards = page.locator('.media-card'); await cards.nth(5).waitFor();
-        const first = await cards.nth(0).boundingBox(), second = await cards.nth(1).boundingBox();
+        let first = await cards.nth(0).boundingBox(), second = await cards.nth(1).boundingBox();
         const firstEight=await cards.evaluateAll(items=>items.slice(0,8).map(card=>card.dataset.downloadSelectionKey));
         await page.evaluate(keys=>{state.selected=new Set(keys);syncDownloadSelection();},firstEight);
         await shot(page,'before-single-photo-deselect');
@@ -215,6 +215,8 @@ async function shot(page, name) {
         await page.keyboard.press('Escape');await page.mouse.up();
         assert.deepEqual(await selection(page),[...beforeScrollRemove].sort(),'Escape restores auto-scroll deselection');
         await page.evaluate(()=>{scrollTo(0,0);state.selected.clear();syncDownloadSelection();});
+        // Header/statistics and selection tools have settled after auto-scroll.
+        first=await cards.nth(0).boundingBox();second=await cards.nth(1).boundingBox();
         const start = {x: first.x + 10, y: first.y + first.height + 7};
         const end = {x: second.x + second.width - 10, y: first.y + 10};
         async function beginDrag(expected=2) {
@@ -251,7 +253,7 @@ async function shot(page, name) {
         // Start in the vertical grid gap at the current scroll position.
         const adjacent=await cards.nth(13).boundingBox();
         await page.mouse.move(visibleCard.x+visibleCard.width+7,Math.min(850,Math.max(160,visibleCard.y+20)));await page.mouse.down();
-        await page.mouse.move(adjacent.x+30,100,{steps:5});
+        await page.mouse.move(adjacent.x+30,20,{steps:5});
         await page.waitForFunction(priorY=>scrollY<priorY-100,priorY);await page.mouse.up();
         // A context change must end the drag without restoring another artist's selection.
         await page.evaluate(() => scrollTo(0, 0));

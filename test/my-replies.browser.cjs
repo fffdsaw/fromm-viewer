@@ -75,9 +75,9 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    const day=d=>page.locator(`.date-day[data-date="2026-10-${d}"]`);
    assert.equal(await page.locator('.has-my-reply,.date-legend').count(),0);
    const dotColor=loc=>loc.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-   assert.equal(await dotColor(day('23')),'rgb(74, 163, 255)');assert.equal(await dotColor(day('22')),'rgb(74, 163, 255)');
+   assert.equal(await dotColor(day('23')),'rgb(66, 142, 122)');assert.equal(await dotColor(day('22')),'rgb(66, 142, 122)');
    assert.equal(await day('23').getAttribute('aria-label'),'2026-10-23, 대화 있음');
-   await page.evaluate(()=>setSelectedDate('2026-10-23'));assert.equal(await dotColor(day('23')),'rgb(159, 208, 255)');
+   await page.evaluate(()=>setSelectedDate('2026-10-23'));assert.equal(await dotColor(day('23')),'rgb(33, 79, 63)');
    await page.locator('#dateCalendarTitle').click();assert.equal(await page.locator('.has-my-reply').count(),0);
    await page.getByRole('button',{name:'2026',exact:true}).click();assert.equal(await page.locator('.has-my-reply').count(),0);
    await page.getByRole('button',{name:'10월',exact:true}).click();
@@ -129,7 +129,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.locator('#chatSearchClear').click();assert.equal(await page.locator('.msg').count(),2);
    await page.locator('#chatSearchInput').fill('원문');await page.waitForFunction(()=>state.chatQuery==='원문');
    const quoteMarkColor=await page.locator('.reply-content mark').first().evaluate(el=>getComputedStyle(el).backgroundColor);
-   assert.equal(quoteMarkColor,'rgba(255, 143, 168, 0.22)');
+   assert.equal(quoteMarkColor,'rgb(178, 222, 200)');
    assert.equal(await page.locator('.reply-content mark').first().evaluate(el=>getComputedStyle(el).boxDecorationBreak),'clone');
    await page.locator('#chatSearchClear').click();
 

@@ -10,7 +10,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(180);console.log('chat restore',original,await page.evaluate(()=>scrollY));assert.ok(Math.abs(await page.evaluate(()=>scrollY)-original)<5,'conversation position restored');
  await page.evaluate(()=>setFilter('image'));await page.waitForTimeout(180);console.log('gallery restore',gallery,await page.evaluate(()=>scrollY));assert.ok(Math.abs(await page.evaluate(()=>scrollY)-gallery)<5,'gallery position restored');
  assert.equal(await page.locator('#chatToolsBtn').isVisible(),false);assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false);
- await page.evaluate(()=>{state.selected.add('m0');updateSelectedCount();});assert.equal(await page.locator('#saveSelectedBtn').isVisible(),true);
+ const cardTop=await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top);
+ await page.evaluate(()=>{state.selected.add('m0');updateSelectedCount();});
+ assert.equal(await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top),cardTop,'batch tools never move the sorting row or cards');assert.equal(await page.locator('#saveSelectedBtn').isVisible(),true);
  const pos=await page.evaluate(()=>scrollY);await page.evaluate(()=>{state.selected.clear();updateSelectedCount();});assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false);assert.equal(await page.evaluate(()=>scrollY),pos);
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(150);await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('인용');await page.waitForTimeout(500);assert.equal(await page.locator('#chatSearchInput').inputValue(),'인용');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');

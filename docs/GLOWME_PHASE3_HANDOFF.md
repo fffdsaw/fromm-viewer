@@ -4,7 +4,7 @@
 - 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-11-05 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.
 - Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/53 (Draft, 동일 PR 유지).
-- 직전 원격 체크포인트: `2be3eade2f37f6b5c29494322cd320b105d9bf33` (독립 평가 결함 수정). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
+- 직전 원격 체크포인트: `0605cdd320e6b2f02b9270d76bbeb6353b03dd24` (모바일 설정·전후 화면·성능 검증 저장). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
 - 상태: P1·1차·2차 저장 완료. 3차 기본 구현·시험 적용 저장 완료 / 4차 최종 검증 진행 중. 아래 최신 기록 우선.
 
 ## 목표와 경계
@@ -25,8 +25,8 @@
 2. 1차: 레일/아티스트/헤더/겹침/Meapri 시험 — 완료·저장.
 3. 2차: 검색/스크롤/선택/터치 — 완료·저장.
 4. 3차: 미니멀 표면/투표/보조 스타일 — 기본 구현 완료·저장. **Meapri 제한적 시험 적용이며 최종 본격 적용·시각 마감은 별도 미완료.**
-5. 4차: 실제 Chromium 전후 화면, 3회 성능 비교, 독립 Impeccable 평가 완료. 모바일 설정 팝업 회귀 수정 및 최종 CI 확인 중.
-- 테스트: Node 276 통과/1skip/실패0, 주요 브라우저 회귀 통과. 최신 CI 브라우저는 설정 팝업이 재생 버튼을 가려 실패; 원인 수정 후 해당 390px 검사는 통과. 최종 전체 CI는 아직 성공으로 기록하지 않음.
+5. 4차: 실제 Chromium 전후 화면, 3회 성능 비교, 독립 Impeccable 평가 완료. 모바일 설정 팝업 회귀 수정 완료. IntersectionObserver 미지원 대체 수정 후 최종 CI 확인 중.
+- 테스트: Node 276 통과/1skip/실패0, 주요 브라우저 회귀 통과. 최신 CI 브라우저는 IntersectionObserver 미지원 fixture에서 새 렌즈 감시가 실패; 대체 처리 수정 후 Channel 전체 검사는 통과. 최종 전체 CI는 아직 성공으로 기록하지 않음.
 - 미검증: 실제 인증 서버·실방송·Windows Native/확장 연결, 물리 모바일/iOS, Windows Edge/macOS Safari, OS PWA 설치/업데이트, 실제 GPU 사용량.
 - 스크린샷/측정은 합성 데이터만 사용. 토큰·계정·개인 대화 저장 금지.
 
@@ -116,3 +116,9 @@
 - 성능 각각3회 중앙값(최종 `verified-optics/metrics.json`): main→현재 준비765→731ms, rAF 중앙값16.7→16.7ms/p95 33.3→16.8ms, JS TaskDuration351.53→393.21ms, JS힙2.43→2.97MiB. 같은 UI에서 굴절 끔은306.92ms/2.70MiB. 속도 향상 단정 금지, JS 비용 증가/물리 GPU·배터리 미검증을 명시.
 - `verified-final-live-ui.log`: 변경된 fade helper를 사용하는 LIVE UI/PiP 합성 브라우저 검사도 통과. LIVE 인증·수신 코드 미변경.
 - 다음 시작: 현재 체크포인트 GitHub CI를 확인해 남은 실패만 해결. 통과하면 같은 Draft #53 설명/최종 증거를 갱신. **Meapri 본격 적용·최종 시각 마감은 미완료 별도 후속 작업으로 유지.**
+
+## 4차 미지원 브라우저 대체 회귀 수정
+- 저장된 구현/증거 SHA: `0605cdd320e6b2f02b9270d76bbeb6353b03dd24`. Media Node/브라우저 및 Channel Node CI 성공. Channel browser: https://github.com/fffdsaw/fromm-viewer/actions/runs/42027060162 에서 기존 `channel-videos.browser.cjs`가 IntersectionObserver를 제거한 환경을 검사하다 실패.
+- 원인: 화면 밖 렌즈 해제용 새 Observer 생성에 지원 검사가 없었음. `web-glass.js`에서 미지원 시 렌즈만 정적 대체 표현으로 전환; 목록의 기존 미지원 경로/검사는 그대로 유지.
+- 수정 후 `node test/channel-videos.browser.cjs` 데스크톱1440/모바일390 전체 통과. 실제 Back/Forward/재진입/연속 재생/필터·페이지/선택/403·503/정리/Replay·LIVE 격리/로그아웃/헤더 검사 유지. `verified-observer-fallback.log` 보존.
+- 정상 Chromium 경로·픽셀 결과·성능은 이전 체크포인트와 동일해 불필요한 스크린샷/3회 측정을 반복하지 않음. 다음: 이 체크포인트의 전체 CI 확인 후 최종 문서 갱신. Draft/별도 시각 마감 상태 유지.

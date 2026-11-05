@@ -2,14 +2,14 @@
 import {LiquidGlass} from './vendor/meapri/liquid-glass.js';
 const instances=new Map(),reduce=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 let scheduled=false;
-const watched=new WeakSet(),visibility=new IntersectionObserver(()=>sync());
+const watched=new WeakSet(),visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(()=>sync()):null;
 function sync(){
  if(scheduled)return;scheduled=true;
  requestAnimationFrame(()=>{scheduled=false;
   const lowPower=(navigator.deviceMemory>0&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2);
-  const enabled=!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
+  const enabled=!!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
   const controls=[...document.querySelectorAll('#sidebarToggleBtn,#chatToolsBtn,.glowme-nav [aria-current="page"],#scanBtn,#logoutMiniBtn')];
-  for(const el of controls)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
+  for(const el of controls)if(visibility&&!watched.has(el)){watched.add(el);visibility.observe(el);}
   const targets=enabled?controls.filter(el=>{const r=el.getBoundingClientRect();return !el.hidden&&!el.disabled&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;}):[];
   for(const [el,glass] of instances)if(!targets.includes(el)){glass.destroy();instances.delete(el);el.classList.remove('meapri-control');}
   for(const el of targets)if(!instances.has(el)){

@@ -55,7 +55,7 @@ Method: dual-agent (A: `/root/phase3_final_design_a` · B: `/root/phase3_final_e
 
 [고정 upstream에서 직접 빌드한 Regular 데모](meapri-regular-reference.png)와 실제 앱을 비교했다. 데모는 큰 색면과 움직이는 배경으로 렌즈 효과를 강조한다. 앱은 사용자 최신 요구에 맞춰 물결 이미지를 제거하고 읽기 표면을 조용하게 유지했다. 따라서 데모와 같은 강한 굴절 외관을 구현했다고 주장하지 않는다.
 
-현재 시험 범위는 레일 토글/현재 메뉴/검색/헤더의 작은 조작 버튼(최대5개)이다. 실제 Chromium computed backdrop-filter의 SVG URL을 확인했다. 전체 헤더·대화·영상·대량 미디어 카드에는 엔진을 적용하지 않는다. 화면 밖/숨김 문서/감소 모션·투명도/고대비/저사양 조건에서는 효과를 중단한다. Safari-UA 대체 경로는 Chromium에서 분기만 확인했으며 Safari 실기 검증이 아니다.
+현재 시험 범위는 레일 토글/현재 메뉴/검색/헤더의 작은 조작 버튼(최대5개)이다. 실제 Chromium computed backdrop-filter의 SVG URL을 확인했다. 전체 헤더·대화·영상·대량 미디어 카드에는 엔진을 적용하지 않는다. 화면 밖/숨김 문서/감소 모션·투명도/고대비/저사양 조건에서는 효과를 중단한다. IntersectionObserver가 없는 환경에서도 정적 대체 표현으로 전환한다. Safari-UA 대체 경로는 Chromium에서 분기만 확인했으며 Safari 실기 검증이 아니다.
 
 원본 MIT LICENSE, 고정 소스 SHA, 정적 번들 및 빌드 기록은 [vendor/meapri](../../../vendor/meapri/README.md)에 있다. 색수차0, 작은 렌즈, 제한된 반사광으로 시작한 시험 값이며 최종 시각 마감 값은 아니다. 날짜 버튼 등 일부 기존 장식의 재질 일관성도 후속 시각 마감에서 다룬다.
 

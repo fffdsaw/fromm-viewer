@@ -494,3 +494,11 @@ html.glowme .reply-content{color:#244c42}
    playback and download controls; the existing card click gestures stay intact. */
 .selection-toggle{position:absolute;left:8px;top:8px;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);border:0;padding:0}
 .selection-toggle:focus-visible{width:auto;height:36px;clip-path:none;padding:6px 12px;z-index:8;background:#edf8f0;color:#194735;border:1px solid #428e7a;border-radius:10px}
+
+/* Final review: readable edge states and reachable result navigation. */
+.glowme-phase3 :is(.media-missing,.reply-media-label,.artist-select-prompt){color:#48675e}
+.glowme-phase3 #artistLoadStatus{font-size:12px;line-height:1.5;color:#345c4f;margin-top:3px}
+.glowme-phase3 #artistLoadStatus:empty{display:none}
+.glowme-phase3 #chatToolsPanel #chatMatchNav{position:static;justify-content:center;margin-top:12px;padding:4px;gap:10px;border:1px solid #bddbcc;border-radius:12px;background:#edf8f0}
+.glowme-phase3 #chatToolsPanel #chatMatchNav[hidden]{display:none}
+.glowme-phase3 #chatToolsPanel #chatMatchNav .btn{min-width:40px;min-height:40px}

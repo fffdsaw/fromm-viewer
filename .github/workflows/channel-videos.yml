@@ -53,6 +53,7 @@ jobs:
           node test/glowme-phase3-a11y.browser.cjs
           node test/glowme-phase3.browser.cjs
           node test/glowme-phase3-navigation.browser.cjs
+          node test/glowme-phase3-review.browser.cjs
           PHASE3_VISUAL_DIR=screenshots/phase3 node test/glowme-phase3-visual.browser.cjs
           node test/ui-icons.browser.cjs
           node test/video-list-autoload.browser.cjs

@@ -13,6 +13,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  await page.locator('#sidebarToggleBtn').focus();await page.keyboard.press('Enter');await page.waitForTimeout(230);
  assert.equal(await page.evaluate(()=>document.activeElement.dataset.glowNav),'all');
  const after=await page.locator('#timeline').boundingBox();assert.ok(Math.abs(after.width-base.width)<1);
+ const pageY=await page.evaluate(()=>scrollY),navY=(await page.locator('.glowme-nav').boundingBox()).y;
+ await page.locator('#rooms').hover();await page.mouse.wheel(0,250);await page.waitForTimeout(120);
+ assert.ok(await page.locator('#rooms').evaluate(e=>e.scrollTop)>0,'wheel scrolls artists');
+ await page.locator('#rooms').evaluate(e=>e.scrollTop=e.scrollHeight);await page.mouse.wheel(0,300);await page.waitForTimeout(120);
+ assert.equal(await page.evaluate(()=>scrollY),pageY,'artist boundary does not scroll the conversation');
+ assert.equal((await page.locator('.glowme-nav').boundingBox()).y,navY,'nine navigation entries remain fixed');
  const scroll=await page.evaluate(()=>{const e=document.querySelector('#rooms');e.scrollTop=200;return e.scrollTop;});assert.ok(scroll>0);
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'sidebarToggleBtn');
  await page.keyboard.press('Enter');await page.waitForTimeout(230);assert.equal(await page.locator('#rooms').evaluate(e=>e.scrollTop),scroll);
@@ -21,6 +27,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  if(process.env.PHASE3_SCREENSHOT_DIR){fs.mkdirSync(process.env.PHASE3_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PHASE3_SCREENSHOT_DIR,`rail-${viewport.width}${viewport.installed?'-pwa':''}.png`)});}
  await page.keyboard.press('Escape');
  if(!viewport.installed){await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
+ await page.waitForFunction(()=>document.querySelector('#sidebar').getBoundingClientRect().width<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-width'))+1);
  const panelBox=await page.locator('#chatToolsPanel').boundingBox(),railBox=await page.locator('#sidebar').boundingBox();
  assert.ok(panelBox.x>=railBox.x+railBox.width,'search preserves access to collapsed rail');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}

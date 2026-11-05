@@ -1,0 +1,118 @@
+{
+  "baseline": "552bc556d8eaacbcc589cb9bfabab6383b9d4dba",
+  "note": "Linux headless Chromium; synthetic local data, three serial runs. JS task/heap and rAF intervals are proxies, not physical GPU/CPU usage or authenticated server timing.",
+  "screens": [],
+  "performance": [
+    {
+      "label": "before",
+      "runs": [
+        {
+          "readyMs": 904,
+          "scrollFrameMedianMs": 16.699999999999932,
+          "scrollFrameP95Ms": 16.799999999999955,
+          "scrollTaskMs": 194.603,
+          "heapMB": 2.443004608154297,
+          "menuSettledMs": 246
+        },
+        {
+          "readyMs": 712,
+          "scrollFrameMedianMs": 16.700000000000045,
+          "scrollFrameP95Ms": 33.29999999999973,
+          "scrollTaskMs": 444.10900000000004,
+          "heapMB": 2.4050331115722656,
+          "menuSettledMs": 249
+        },
+        {
+          "readyMs": 765,
+          "scrollFrameMedianMs": 16.700000000000045,
+          "scrollFrameP95Ms": 33.299999999999955,
+          "scrollTaskMs": 351.53299999999996,
+          "heapMB": 2.4337158203125,
+          "menuSettledMs": 249
+        }
+      ],
+      "median": {
+        "readyMs": 765,
+        "scrollFrameMedianMs": 16.7,
+        "scrollFrameP95Ms": 33.3,
+        "scrollTaskMs": 351.53,
+        "heapMB": 2.43,
+        "menuSettledMs": 249
+      }
+    },
+    {
+      "label": "after",
+      "runs": [
+        {
+          "readyMs": 1690,
+          "scrollFrameMedianMs": 16.699999999999818,
+          "scrollFrameP95Ms": 33.399999999999864,
+          "scrollTaskMs": 543.74,
+          "heapMB": 2.9727783203125,
+          "menuSettledMs": 237
+        },
+        {
+          "readyMs": 731,
+          "scrollFrameMedianMs": 16.700000000000045,
+          "scrollFrameP95Ms": 16.700000000000273,
+          "scrollTaskMs": 393.20500000000004,
+          "heapMB": 2.8903350830078125,
+          "menuSettledMs": 233
+        },
+        {
+          "readyMs": 673,
+          "scrollFrameMedianMs": 16.699999999999818,
+          "scrollFrameP95Ms": 16.799999999999955,
+          "scrollTaskMs": 226.62800000000001,
+          "heapMB": 3.329853057861328,
+          "menuSettledMs": 233
+        }
+      ],
+      "median": {
+        "readyMs": 731,
+        "scrollFrameMedianMs": 16.7,
+        "scrollFrameP95Ms": 16.8,
+        "scrollTaskMs": 393.21,
+        "heapMB": 2.97,
+        "menuSettledMs": 233
+      }
+    },
+    {
+      "label": "after-no-optics",
+      "runs": [
+        {
+          "readyMs": 631,
+          "scrollFrameMedianMs": 16.699999999999818,
+          "scrollFrameP95Ms": 16.799999999999955,
+          "scrollTaskMs": 196.10100000000003,
+          "heapMB": 2.67864990234375,
+          "menuSettledMs": 233
+        },
+        {
+          "readyMs": 869,
+          "scrollFrameMedianMs": 16.699999999999818,
+          "scrollFrameP95Ms": 66.60000000000014,
+          "scrollTaskMs": 1526.22,
+          "heapMB": 2.698516845703125,
+          "menuSettledMs": 237
+        },
+        {
+          "readyMs": 1586,
+          "scrollFrameMedianMs": 16.699999999999818,
+          "scrollFrameP95Ms": 16.700000000000273,
+          "scrollTaskMs": 306.917,
+          "heapMB": 2.713470458984375,
+          "menuSettledMs": 233
+        }
+      ],
+      "median": {
+        "readyMs": 869,
+        "scrollFrameMedianMs": 16.7,
+        "scrollFrameP95Ms": 16.8,
+        "scrollTaskMs": 306.92,
+        "heapMB": 2.7,
+        "menuSettledMs": 233
+      }
+    }
+  ]
+}

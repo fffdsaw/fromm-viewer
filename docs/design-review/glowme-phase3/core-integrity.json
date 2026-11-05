@@ -1,0 +1,18 @@
+{
+  "setActiveAuth": "unchanged",
+  "currentAuth": "unchanged",
+  "parseAgoraToken": "unchanged",
+  "decodeLiveEncryptionSalt": "unchanged",
+  "attachReplayVideo": "unchanged",
+  "attachChannelVideo": "unchanged",
+  "attachVideoQualityPlayer": "unchanged",
+  "stopReplayPlayback": "unchanged",
+  "stopChannelVideoPlayback": "unchanged",
+  "downloadReplayStream": "unchanged",
+  "downloadChannelVideo": "unchanged",
+  "stableSelectedMediaForSave": "unchanged",
+  "ensureAllHistory": "unchanged",
+  "replayVariantFromMaster": "unchanged",
+  "resolveReplayMediaPlaylist": "unchanged",
+  "prepareReplayMediaPlaylist": "unchanged"
+}

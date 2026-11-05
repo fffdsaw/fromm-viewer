@@ -12,6 +12,7 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
  const browser=await chromium.launch({headless:true});
  try{
   for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:844,height:390}])for(const kind of ['replay','channel']){
+   if(process.env.PLAYER_KIND&&kind!==process.env.PLAYER_KIND)continue;
    if(process.env.PLAYER_VIEWPORT&&viewport.width!==Number(process.env.PLAYER_VIEWPORT))continue;
    const mobile=viewport.width<700||viewport.height<500;
    const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile}),page=await context.newPage(),errors=[];
@@ -65,7 +66,9 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    assert.equal(await video.evaluate(v=>v.closest('.modern-video-stage').style.getPropertyValue('--mvc-video-angle')),'90deg');
    await summary.click();await page.mouse.click(1,1);assert.equal(await settings.evaluate(el=>el.open),false,'outside-player click still dismisses');
    await summary.click();await page.keyboard.press('Escape');assert.equal(await settings.evaluate(el=>el.open),false);
-   await summary.click();await page.locator('[data-mvc="play"]').click();
+   await summary.click();
+   await page.waitForFunction(()=>{const popup=document.querySelector('.mvc-popover'),row=document.querySelector('.mvc-row');return popup.getBoundingClientRect().bottom<=row.getBoundingClientRect().top-6;});
+   await page.locator('[data-mvc="play"]').click();
    assert.equal(await video.evaluate(v=>v.paused),false,'the explicit play button still acts while dismissing settings');
    assert.equal(await settings.evaluate(el=>el.open),false);
    if(viewport.width===1440){

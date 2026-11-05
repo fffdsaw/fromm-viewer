@@ -43,5 +43,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(options.lowPower)assert.equal(await page.evaluate(()=>FrommGlass.count),0);
   assert.deepEqual(errors,[]);await context.close();
  }
+ const accessibility=await open(browser,server.url);
+ const cdp=await accessibility.context.newCDPSession(accessibility.page);
+ await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
+ await accessibility.page.waitForFunction(()=>matchMedia('(prefers-reduced-transparency: reduce)').matches&&FrommGlass.count===0);
+ await accessibility.page.emulateMedia({forcedColors:'active'});await accessibility.page.waitForTimeout(80);
+ assert.equal(await accessibility.page.evaluate(()=>FrommGlass.count),0);
+ await accessibility.context.close();
  console.log(JSON.stringify(results));
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,10 +1,10 @@
 # Glow ME UI·UX 3차 — 재개 기록
 
 ## 현재 체크포인트
-- 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-10-31 원격 재확인; PR #52 병합 완료).
+- 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-11-05 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.
 - Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/53 (Draft, 동일 PR 유지).
-- 마지막 원격 완료 커밋: `e1a5540053cb4e75a19d2ed4a0ad717fe7b0ad74` (2차). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
+- 직전 원격 체크포인트: `2be3eade2f37f6b5c29494322cd320b105d9bf33` (독립 평가 결함 수정). 이 문서를 포함한 체크포인트는 `git log -1 --format=%H -- docs/GLOWME_PHASE3_HANDOFF.md`와 실제 HEAD를 함께 확인. 자기 SHA를 넣는 순환 커밋을 만들지 않음.
 - 상태: P1·1차·2차 저장 완료. 3차 기본 구현·시험 적용 저장 완료 / 4차 최종 검증 진행 중. 아래 최신 기록 우선.
 
 ## 목표와 경계
@@ -21,12 +21,12 @@
 - #52 MERGED: 기존 브랜치/인계 기록은 과거 증거로 보존, 새 변경 추가하지 않음.
 
 ## 단계·검증 기록
-1. P1: 인용문 대비 및 로그인 모달 focus/inert — 진행 예정.
-2. 1차: 레일/아티스트/헤더/겹침/Meapri 시험 — 미시작.
-3. 2차: 검색/스크롤/선택/터치 — 미시작.
-4. 3차: 유리/투표/보조 스타일 — 미시작.
-5. 4차: 실제 Chromium 비교, 회귀/성능/Impeccable — 미시작.
-- 테스트: 기존 검사는 기준 기록만 확인했으며 새 코드에 대해 아직 실행하지 않음. 실패 없음(미실행).
+1. P1: 인용문 대비 및 로그인 모달 focus/inert — 완료·저장.
+2. 1차: 레일/아티스트/헤더/겹침/Meapri 시험 — 완료·저장.
+3. 2차: 검색/스크롤/선택/터치 — 완료·저장.
+4. 3차: 미니멀 표면/투표/보조 스타일 — 기본 구현 완료·저장. **Meapri 제한적 시험 적용이며 최종 본격 적용·시각 마감은 별도 미완료.**
+5. 4차: 실제 Chromium 전후 화면, 3회 성능 비교, 독립 Impeccable 평가 완료. 모바일 설정 팝업 회귀 수정 및 최종 CI 확인 중.
+- 테스트: Node 276 통과/1skip/실패0, 주요 브라우저 회귀 통과. 최신 CI 브라우저는 설정 팝업이 재생 버튼을 가려 실패; 원인 수정 후 해당 390px 검사는 통과. 최종 전체 CI는 아직 성공으로 기록하지 않음.
 - 미검증: 실제 인증 서버·실방송·Windows Native/확장 연결, 물리 모바일/iOS, Windows Edge/macOS Safari, OS PWA 설치/업데이트, 실제 GPU 사용량.
 - 스크린샷/측정은 합성 데이터만 사용. 토큰·계정·개인 대화 저장 금지.
 
@@ -103,3 +103,16 @@
 - 9afb22c CI 실패는 레일 닫힘 200ms 애니메이션 도중 폭을 읽은 테스트 경쟁 상태. 실제 축소 완료 조건을 기다리도록 수정하고 동일 기하 조건 유지.
 - 플레이어 설정 전체(1440/390/844)와 기존 확장프로그램 로컬 TLS/POST/ACK/CORS 경계 검사 통과. 실제 Native/서버 연결 통과로 해석하지 말 것.
 - 남은 4차: 수정 후 최종 PNG/3회 성능 비교/최신 HEAD CI. 기존 인증·LIVE·저장 핵심 보존 검사는 유효. main 병합·배포 금지.
+
+## 4차 최종 화면·성능 및 CI 결함 수정 체크포인트
+- 직전 안전 SHA `2be3eade2f37f6b5c29494322cd320b105d9bf33`를 확인한 뒤 미커밋 화면/성능 자료와 코드를 모두 보존했다.
+- `docs/design-review/glowme-phase3/README.md`, 실제 전후 PNG 12개, `performance.json`, `core-integrity.json`, 독립 critique A/B 보고서에 최종 증거를 통합. 이미지 자료는 실제 Chromium에 동일 합성 자료를 렌더링한 결과이며 설치 PWA는 배치 모의이다.
+- `web-glass.js`: IntersectionObserver로 화면 밖 작은 헤더 렌즈를 해제. 기존 최대5개/저사양/숨김/감소 모션·투명도/고대비 대체 유지. `test/glowme-phase3-review.browser.cjs`에서 해제 확인. `test/glowme-phase3.browser.cjs`에 감소 투명도/강제 색상 검사 추가, 모두 통과.
+- 독립 평가와 최종 대비/검색/달력 회귀 완료. CLI 재실행이나 1~3차 재구현 없음. Hooks 미변경.
+- 최신 CI 2be3ead: Media bulk save Node/브라우저 성공, Channel Node 성공, browser 실패. https://github.com/fffdsaw/fromm-viewer/actions/runs/41985463178 . 원인은 실제 두 줄 모바일 컨트롤에서 설정 팝업이 재생 버튼을 덮은 것.
+- `index.html`의 UI `placeSettings()`만 수정: 전체 컨트롤 행 위로 팝업을 배치하고 남는 높이로 제한, 메뉴 내부 스크롤. 인증·HLS·화질·재생 코어는 미변경.
+- `test/player-settings.browser.cjs`는 팝업이 컨트롤을 가리지 않는 기하 조건과 실제 재생 클릭 모두 검증. `test/helpers/player-controls-fade.cjs`는 초기 미디어 이벤트와 충돌하는 강제 숨김/고정80ms 대신 실제 idle fade의 중간 프레임을 관찰. 테스트 기대를 완화하지 않음.
+- 로컬 최신 `verified-popup-fade.log`: Replay/Channel 1440×900,390×844,844×390 설정 닫기/재생 유지/보통 클릭/회전/Escape/정리 및 fade/터치 유지·해제/감소 모션 통과. `verified-final-node.log`:277 중276 통과/1skip/실패0. Agora 타입 미설치 skip이며 실제 Native SDK 재검증 아님.
+- 성능 각각3회 중앙값(최종 `verified-optics/metrics.json`): main→현재 준비765→731ms, rAF 중앙값16.7→16.7ms/p95 33.3→16.8ms, JS TaskDuration351.53→393.21ms, JS힙2.43→2.97MiB. 같은 UI에서 굴절 끔은306.92ms/2.70MiB. 속도 향상 단정 금지, JS 비용 증가/물리 GPU·배터리 미검증을 명시.
+- `verified-final-live-ui.log`: 변경된 fade helper를 사용하는 LIVE UI/PiP 합성 브라우저 검사도 통과. LIVE 인증·수신 코드 미변경.
+- 다음 시작: 현재 체크포인트 GitHub CI를 확인해 남은 실패만 해결. 통과하면 같은 Draft #53 설명/최종 증거를 갱신. **Meapri 본격 적용·최종 시각 마감은 미완료 별도 후속 작업으로 유지.**

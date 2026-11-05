@@ -19,8 +19,15 @@ module.exports=async function checkControlsFade(page,controls,stage,{touch=false
   await page.mouse.move(point.x,point.y);
   await page.waitForFunction(()=>{const css=getComputedStyle(document.querySelector('.modern-video-controls'));return css.visibility==='visible'&&Number(css.opacity)>.99;});
  };
- await reveal();await controls.evaluate(el=>el.classList.add('mvc-hidden'));
- await page.waitForTimeout(80);const fading=await state();
+ await reveal();
+ // Observe the actual idle fade rather than forcing a class while initial
+ // media/pointer events can still reveal the controls. Sample a rendered frame
+ // instead of assuming that a fixed 80ms delay lands inside the transition.
+ const sample=await page.waitForFunction(()=>{
+  const el=document.querySelector('.modern-video-controls'),css=getComputedStyle(el),opacity=Number(css.opacity);
+  return el.classList.contains('mvc-hidden')&&opacity>0&&opacity<1?{opacity,visibility:css.visibility}:false;
+ },null,{timeout:7000});
+ const fading=await sample.jsonValue();await sample.dispose();
  assert.equal(fading.visibility,'visible','visibility stays on during the opacity fade');
  assert.ok(fading.opacity>0&&fading.opacity<1,`a visible intermediate frame exists: ${fading.opacity}`);
  await controls.waitFor({state:'hidden'});assert.equal((await state()).opacity,0);

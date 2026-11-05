@@ -85,7 +85,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    await page.waitForFunction(()=>document.querySelector('.vote-option img')?.naturalWidth>0);
    if(process.env.VOTE_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.VOTE_SCREENSHOT_DIR,`detail-${width}.png`)});
    assert.equal(await page.locator('.vote-close').count(),0,'explicit close button removed');
-   assert.equal(await page.locator('#voteDetailDialog').evaluate(el=>getComputedStyle(el).scrollbarWidth),'none');
+   assert.equal(await page.locator('#voteDetailDialog').evaluate(el=>getComputedStyle(el).scrollbarWidth),'thin');
    assert.equal(await page.evaluate(()=>document.documentElement.classList.contains('vote-dialog-open')),true);
    await page.locator('#voteDetailTitle').click();assert.equal(await page.locator('#voteDetailDialog').evaluate(el=>el.open),true,'inside click stays open');
    const [photo]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'선택지 1 사진 저장'}).click()]);

@@ -146,7 +146,7 @@ async function selectionSize(page) {
         }});
       }, mobile);
       for (const kind of ['channel', 'replay']) {
-        if (kind === 'replay') await page.locator('[data-live-center-mode="replay"]').click();
+        if (kind === 'replay') await require('./helpers/center-navigation.cjs')(page,'replay');
         const cards = page.locator(`[data-download-selection-kind="${kind}"]`);
         await cards.first().locator('img').click();
         await cards.nth(2).locator('img').click({modifiers: ['Shift']});
@@ -184,7 +184,7 @@ async function selectionSize(page) {
         await page.locator(kind === 'channel' ? '#channelBackToList' : '#replayBackToList').click();
         await page.locator(`[data-download-selection-kind="${kind}"]`).first().waitFor();
       }
-      await page.locator('[data-live-center-mode="channel"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-download-selection-kind="channel"]').first().locator('img').click();
       await page.locator('[data-channel-video-filter="b"]').click();
       assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개', 'channel IDs isolate same post IDs');

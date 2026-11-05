@@ -123,7 +123,7 @@ async function assertScrollLocked(page, label) {
       await require('./helpers/shell-assets.cjs')(page); await page.goto('http://viewer.test/index.html');
       await page.evaluate(() => {prepareReplayMediaPlaylist=async url=>url;});
       await page.evaluate(() => {setActiveAuth('synthetic-session', 'synthetic-device', 'synthetic-account'); hideLoginGate(); state.filter = 'live'; renderLiveView();});
-      await page.locator('[data-live-center-mode="replay"]').click();
+      await require('./helpers/center-navigation.cjs')(page,'replay');
       await page.locator('[data-replay-post="landscape"][data-replay-channel="a"] .replay-play').waitFor();
       for (const id of Object.keys(sizes)) {
         await page.locator(`[data-replay-post="${id}"][data-replay-channel="a"] .replay-play`).click();

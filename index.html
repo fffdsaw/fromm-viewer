@@ -3310,11 +3310,12 @@ async function readVoteData(path,query,owner){
   }finally{clearTimeout(timer);}
 }
 function renderVoteList(){
+  window.FrommViewState?.beforeRender();
   ensureVoteContext(); disconnectInfiniteObserver();
   const timeline=$("#timeline"); timeline.className="vote-list-view";
   const busy=!!voteView.owner;
   $("#counts").textContent=`${voteView.cursor !== null ? "불러온 " : ""}투표 ${voteView.items.length}개`;
-  $("#scanState").textContent=busy ? "투표 불러오는 중…" : "투표 · 읽기 전용";
+  $("#scanState").textContent=busy ? "투표 불러오는 중…" : "투표";
   timeline.innerHTML=`<section class="vote-list" aria-label="투표 목록" aria-busy="${busy}">
     <header class="vote-list-heading"><h2>투표 목록</h2><span class="vote-note">${esc(state.room?.host?.nick || "아티스트")}</span></header>
     ${!state.room ? `<p class="empty">아티스트를 선택해 주세요.</p>` : ""}
@@ -3901,6 +3902,7 @@ function bindLiveCenterTabs(){
 }
 
 function syncLiveCenterHeader(){
+  if(window.FrommGlowME?.syncHeader){window.FrommGlowME.syncHeader();$("#scanBtn").disabled=false;return;}
   if(state.filter!=="live") return;
   const wrap=$("#artistProfileWrap");
   if(wrap) wrap.style.display="none";
@@ -4837,7 +4839,12 @@ function installModernVideoControls(player) {
       if(!settings.open||dead)return;
       if(popup.showPopover&&popup.hasAttribute('popover')&&!popup.matches(':popover-open'))try{popup.showPopover();}catch{popup.removeAttribute('popover');}
       stage.classList.toggle('mvc-menu-fallback',!popup.hasAttribute('popover'));
-      const r=settings.getBoundingClientRect();popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;
+      const r=settings.getBoundingClientRect(),row=controls.querySelector('.mvc-row').getBoundingClientRect();
+      // Touch controls can wrap: keep the popup above BOTH rows, including play.
+      const anchorTop=Math.min(r.top,row.top);
+      popup.style.maxHeight=`${Math.max(44,Math.min(520,anchorTop-22))}px`;
+      popup.style.left=`${Math.max(12,Math.min(player.owner.innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;
+      popup.style.top=`${Math.max(12,anchorTop-popup.offsetHeight-10)}px`;
     };
     const closePopup=()=>{try{popup.hidePopover?.();}catch{}stage.classList.remove('mvc-menu-fallback');};removers.push(closePopup);
     controls.append($('.video-quality-status'));syncQuality();
@@ -6302,6 +6309,7 @@ const SIDEBAR_STATE_KEY = "fromm_local_sidebar_collapsed_v1";
 
 let sidebarToggleSlot = null;
 function positionSidebarToggle(){
+  if(window.FrommGlowME?.rail) return;
   if(!sidebarToggleSlot) return;
   const rect=sidebarToggleSlot.getBoundingClientRect();
   const btn=$("#sidebarToggleBtn");
@@ -6324,6 +6332,7 @@ function mountSidebarToggle(){
   positionSidebarToggle();
 }
 function setSidebarOpen(open){
+  if(window.FrommGlowME?.setRailOpen) return window.FrommGlowME.setRailOpen(open);
   if(window.FrommGlowME?.pinned) open=true;
   const sidebar = $("#sidebar");
   const btn = $("#sidebarToggleBtn");
@@ -6441,6 +6450,7 @@ function showLoginGate(message="",type=""){
 
   gate.classList.remove("hidden");
   gate.setAttribute("aria-hidden","false");
+  window.FrommA11y?.syncLogin();
 
   if($("#tokenLifeWrap")) $("#tokenLifeWrap").style.display = "none";
   if($("#logoutMiniBtn")) $("#logoutMiniBtn").style.display = "none";
@@ -6458,6 +6468,7 @@ function hideLoginGate(){
 
   gate.classList.add("hidden");
   gate.setAttribute("aria-hidden","true");
+  window.FrommA11y?.syncLogin();
 
   if($("#tokenLifeWrap")) $("#tokenLifeWrap").style.display = "inline-flex";
   if($("#logoutMiniBtn")) $("#logoutMiniBtn").style.display = "inline-flex";
@@ -6482,6 +6493,7 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  window.FrommViewState?.clear();
   stopHistoryWork();
   resetPreviewWork();
   resetReplyIdentity();
@@ -7019,6 +7031,7 @@ function isCurrentTabLoading(){
 }
 
 function syncLoadingUI(){
+  window.FrommGlowME?.syncNavigation();
   const loading = isCurrentTabLoading();
 
   document.body.classList.toggle("data-loading", loading);
@@ -7226,6 +7239,7 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
+  window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
   resetVoteView();
@@ -7236,6 +7250,7 @@ function selectRoom(i, btn){
   const wasLive = state.filter === "live";
 
   state.room = state.rooms[i];
+  const restorePosition=window.FrommViewState?.enter("all");
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7296,7 +7311,7 @@ function selectRoom(i, btn){
 
   restoreFullChatCache();
   ensureReplyIdentity();
-  state.chatAutoTopPending = true;
+  state.chatAutoTopPending = !restorePosition;
 
   startLivePolling();
   setTimeout(()=>probeLiveIndicator().catch(()=>{}),0);
@@ -8078,7 +8093,7 @@ function syncDownloadSelection(){
   for(const el of document.querySelectorAll("[data-download-selection-key]")){
     const checked=downloadSelectionSet(el.dataset.downloadSelectionKind).has(el.dataset.downloadSelectionKey);
     el.classList.toggle("selected",checked);
-    el.setAttribute("aria-checked",String(checked));
+    el.querySelector(".selection-toggle")?.setAttribute("aria-pressed",String(checked));
   }
   updateSelectedCount();
 }
@@ -8151,12 +8166,18 @@ function bindDownloadSelection(el,kind,item){
   for(const img of el.querySelectorAll("img")) img.draggable=false;
   el.dataset.downloadSelectionKind=kind;
   el.dataset.downloadSelectionKey=downloadSelectionKey(kind,item);
-  el.setAttribute("role","checkbox");
-  el.setAttribute("tabindex","0");
+  const selectionButton=document.createElement("button");
+  selectionButton.type="button";selectionButton.className="selection-toggle";
+  selectionButton.textContent="선택";
+  selectionButton.setAttribute("aria-label",`${item.title || (kind==="media" ? baseName(item) : "영상")} 선택`);
+  selectionButton.onclick=e=>{e.stopPropagation();flushDownloadClick();chooseDownloadItem(kind,item,e);};
+  el.append(selectionButton);
+  el.setAttribute("role","group");
+  el.setAttribute("tabindex","-1");
   el.setAttribute("aria-label",`${item.title || (kind==="media" ? baseName(item) : "영상")} 선택`);
   const checked=downloadSelectionSet(kind).has(el.dataset.downloadSelectionKey);
   el.classList.toggle("selected",checked);
-  el.setAttribute("aria-checked",String(checked));
+  el.querySelector(".selection-toggle")?.setAttribute("aria-pressed",String(checked));
   el.addEventListener("click",e=>{
     if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
     if(e.detail>1 || downloadSelectionControl(e)) return;
@@ -8355,6 +8376,7 @@ function updateSelectedCount(){
   const n = scope.kind==="media" ? state.selected.size : scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p))).length;
   el.textContent = `선택 ${n.toLocaleString()}개`;
   el.classList.toggle("has-selection", n > 0);
+  window.FrommGlowME?.syncSelection(n);
   if(typeof updateSelectAllButton === "function") updateSelectAllButton();
 }
 
@@ -8632,6 +8654,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  window.FrommViewState?.beforeRender();
   syncMyReplyTools();
   if(state.filter === "vote"){updateChatSearchCount();renderVoteList();return;}
   renderCountsOnly();
@@ -9644,12 +9667,14 @@ function chatHeaderInset(){
   return Math.max(0,parseFloat(style.top) || 0)+header.getBoundingClientRect().height;
 }
 function scrollElementBelowToolbar(el,behavior="smooth"){
+  window.FrommViewState?.cancel();
   if(!el) return;
   const top=el.getBoundingClientRect().top+window.scrollY-chatHeaderInset()-12;
   window.scrollTo({top:Math.max(0,top),behavior});
 }
 
 async function jumpToDate(targetDate){
+  window.FrommViewState?.cancel();
   if(!targetDate) return;
   const generation=state.scanGeneration;
 
@@ -9715,11 +9740,10 @@ async function jumpToDate(targetDate){
       if(generation!==state.scanGeneration || result.version!==state.infiniteVersion || !result.dateAnchor.isConnected) return;
       state.chatAutoTopPending=false;
       scrollElementBelowToolbar(result.dateAnchor,"auto");
-      // content-visibility can replace estimated row heights after the first
-      // scroll. Align once more after that layout, using the full sticky header.
-      requestAnimationFrame(()=>{
-        if(generation===state.scanGeneration && result.version===state.infiniteVersion && result.dateAnchor.isConnected) scrollElementBelowToolbar(result.dateAnchor,"auto");
-      });
+      // Nearby virtual rows can settle over several frames. The UI helper
+      // stops on user input/navigation and never keeps an unbounded scroll lock.
+      window.FrommViewState?.settleAnchor(result.dateAnchor,chatHeaderInset,
+        ()=>generation===state.scanGeneration && result.version===state.infiniteVersion);
 
       if(firstEl){
         firstEl.classList.add("date-target-flash");
@@ -9781,11 +9805,12 @@ async function scrollToOriginalMessage(messageId){
 }
 
 async function setFilter(f, options={}){
+  const restorePosition=window.FrommViewState?.navigate(f,options);
   invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
   if(f === "all"){state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";}
-  const autoTop = options.autoTop !== false;
+  const autoTop = options.autoTop !== false && !restorePosition;
 
   if(was === "live" && f !== "live"){
     state.live.requestSeq++;
@@ -11275,7 +11300,10 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
+<script src="web-ui-a11y.js"></script>
+<script src="web-view-state.js"></script>
 <script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
+<script type="module" src="web-glass.js"></script>
 </body>
 </html>

@@ -122,3 +122,9 @@
 - 원인: 화면 밖 렌즈 해제용 새 Observer 생성에 지원 검사가 없었음. `web-glass.js`에서 미지원 시 렌즈만 정적 대체 표현으로 전환; 목록의 기존 미지원 경로/검사는 그대로 유지.
 - 수정 후 `node test/channel-videos.browser.cjs` 데스크톱1440/모바일390 전체 통과. 실제 Back/Forward/재진입/연속 재생/필터·페이지/선택/403·503/정리/Replay·LIVE 격리/로그아웃/헤더 검사 유지. `verified-observer-fallback.log` 보존.
 - 정상 Chromium 경로·픽셀 결과·성능은 이전 체크포인트와 동일해 불필요한 스크린샷/3회 측정을 반복하지 않음. 다음: 이 체크포인트의 전체 CI 확인 후 최종 문서 갱신. Draft/별도 시각 마감 상태 유지.
+
+## 4차 탐색 검사 비동기 경계 보완
+- 직전 원격 안전 SHA `a083faeaa8d7a5d9a9eabc2491e398380f1f1df7`. Observer 미지원 오류는 해결됨. Media CI 성공, Channel browser는 모바일 `channelLoadMore` 클릭 시 열린 레일에 막혀 실패: https://github.com/fffdsaw/fromm-viewer/actions/runs/42027781502 .
+- 새 화면의 데이터 DOM이 나타난 시점과 async 메뉴 핸들러의 finally(메뉴 닫기/초점 복귀) 완료 시점은 다름. `test/helpers/center-navigation.cjs`에서 대상 버튼 활성화, aria-expanded=false, 실제 축소 너비를 모두 기다린 후 다음 검사를 진행하도록 수정. 실제 UI·데이터 코드는 변경하지 않음. 레일이 닫히지 않으면 여전히 실패하므로 기능 검사를 우회하지 않음.
+- 캡처 활성화 조건의 기존 Channel 전체 검사1440/390 통과: `verified-rail-transition.log`, `final-channel-screens/`. 이전 캡처 켠 검사도 로컬 통과해 CI와 로컬 속도 차이에 민감했던 경계임을 확인.
+- 다음: 새 체크포인트 CI 전체 결과를 확인하고 같은 Draft PR #53의 최종 상태를 갱신. 이미 완료한 1~3차/독립 critique/화면·성능 비교 재실행 불필요. Meapri 본격 적용은 별도 미완료.

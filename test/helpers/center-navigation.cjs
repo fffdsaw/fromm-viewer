@@ -5,7 +5,8 @@ module.exports=async(page,mode)=>{
   await page.locator('#sidebarToggleBtn').focus();
   if(await page.locator('#sidebarToggleBtn').getAttribute('aria-expanded')!=='true')await page.keyboard.press('Enter');
   const target=page.locator(`[data-glow-nav="${mode}"]`);
-  await target.click();
+  if(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches))await target.tap();
+  else await target.click();
   // Route data can render before the async navigation handler's finally block.
   // Wait for the real close animation before inspecting/clicking the new page.
   await target.waitFor({state:'visible'});

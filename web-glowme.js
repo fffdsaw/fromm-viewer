@@ -4,7 +4,7 @@
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),panel=$('#chatToolsPanel'),toggle=$('#sidebarToggleBtn'),search=$('#chatToolsBtn');
   if(!sidebar||!panel||!toggle||!search)return;
   const installed=matchMedia('(display-mode: standalone)'),wide=matchMedia('(min-width:1200px)'),hover=matchMedia('(hover:hover) and (pointer:fine)');
-  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false,railMotionUntil=0;
+  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false,railMotionUntil=0,keyboardFocus=false;
   document.documentElement.classList.add('glowme','glowme-phase3');
   const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
   const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M9 18V5l11-2v13 M9 9l11-2 M9 18a3 2 0 1 1-3-2h3 M20 16a3 2 0 1 1-3-2h3',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
@@ -53,7 +53,7 @@
   window.addEventListener('appinstalled',()=>{promptEvent=null;installButton.hidden=true;});
   installButton.onclick=async()=>{const pending=promptEvent;if(!pending)return;promptEvent=null;installButton.hidden=true;await pending.prompt();await pending.userChoice;};
   function setRailOpen(open,{focus=false,restore=false}={}){
-    clearTimeout(closeTimer);if(expanded!==!!open)railMotionUntil=performance.now()+220;expanded=!!open;document.body.classList.toggle('sidebar-open',expanded);document.documentElement.classList.toggle('sidebar-open',expanded);
+    clearTimeout(closeTimer);if(!open)keyboardFocus=false;if(expanded!==!!open)railMotionUntil=performance.now()+220;expanded=!!open;document.body.classList.toggle('sidebar-open',expanded);document.documentElement.classList.toggle('sidebar-open',expanded);
     sidebar.inert=false;sidebar.setAttribute('aria-hidden','false');
     toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-controls','sidebar');toggle.setAttribute('aria-label',expanded?'탐색 메뉴 접기':'탐색 메뉴 펼치기');toggle.title=expanded?'메뉴 접기':'메뉴 펼치기';
     if(focus&&expanded)(nav.querySelector('[aria-current="page"]')||nav.firstElementChild).focus({preventScroll:true});
@@ -62,8 +62,11 @@
   }
   toggle.onclick=event=>setRailOpen(!expanded,{focus:event.detail===0,restore:expanded});
   sidebar.addEventListener('pointerenter',event=>{if(hover.matches&&event.pointerType!=='touch')setRailOpen(true);});
-  sidebar.addEventListener('pointerleave',()=>{if(hover.matches)closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)||document.activeElement===toggle)setRailOpen(false);},260);});
-  sidebar.addEventListener('focusin',event=>{clearTimeout(closeTimer);if(event.target!==toggle)setRailOpen(true);});
+  sidebar.addEventListener('pointerleave',()=>{if(hover.matches)closeTimer=setTimeout(()=>{if(!keyboardFocus||!sidebar.contains(document.activeElement)||document.activeElement===toggle)setRailOpen(false);},260);});
+  // Restoring an old item focus after selection must not reopen the rail.
+  document.addEventListener('keydown',()=>{keyboardFocus=true;},true);
+  document.addEventListener('pointerdown',()=>{keyboardFocus=false;},{capture:true,passive:true});
+  sidebar.addEventListener('focusin',event=>{clearTimeout(closeTimer);if(event.target!==toggle&&(expanded||keyboardFocus))setRailOpen(true);});
   sidebar.addEventListener('focusout',()=>{closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)&&!sidebar.matches(':hover'))setRailOpen(false);},160);});
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;

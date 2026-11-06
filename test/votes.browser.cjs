@@ -70,8 +70,10 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    assert.match(await page.locator('.vote-chat-card').innerText(),/합성 검색 질문/);
    if(process.env.VOTE_SCREENSHOT_DIR){fs.mkdirSync(process.env.VOTE_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.VOTE_SCREENSHOT_DIR,`chat-${width}.png`),fullPage:true});}
    assert.equal(requests.filter(r=>r.url.includes('/votes/')).length,0,'rendering a chat card makes no extra request');
-   await page.evaluate(()=>{state.chatQuery='검색 선택지';render();});
-   assert.equal(await page.locator('.msg').count(),1,'vote question/options participate in chat search');
+   await page.evaluate(async()=>{state.chatQuery='검색 선택지';render();await navigateChatMatch(0,{first:true});});
+   assert.equal(await page.locator('.msg').count(),3,'vote search retains the surrounding conversation');
+   assert.deepEqual(await page.evaluate(()=>chatMatches().map(messageStableKey)),['vote-message'],'vote question/options participate in chat search');
+   assert.equal(await page.locator('.chat-match-active').getAttribute('data-message-id'),'vote-message','search navigation reaches the matching vote');
    assert.equal(await page.locator('#chatSearchCount').textContent(),'1개');
    await page.evaluate(()=>{state.chatQuery='';render();});
    const opener=page.locator('.vote-open');await opener.click();

@@ -1448,7 +1448,6 @@ body.download-marquee-active{user-select:none;cursor:default}
                     type="button" title="검색 지우기" aria-label="검색 지우기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </div>
 
-          <label class="search-panel-option"><input id="chatContextBtn" type="checkbox" disabled>전체 대화 함께 보기</label>
           <div class="chat-tools-divider"></div>
 
           <div class="chat-tools-label">날짜 찾기</div>
@@ -2190,7 +2189,6 @@ const state = {
   sortDirection: "desc",
   chatQuery: "",
   onlyMyReplies: false,
-  chatContext: false,
   chatMatchKey: "",
   // Restore the previous visual batch size; gallery work is sliced across frames.
   chunkSize: 120,
@@ -7279,7 +7277,7 @@ function selectRoom(i, btn){
   syncHeaderLiveIndicator();
 
   state.chatQuery = "";
-  state.onlyMyReplies = false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
+  state.onlyMyReplies = false;state.chatMatchKey="";chatMatchCache=null;
   syncMyReplyTools();
   state.selectedDate = "";
   state.calendarMonth = null;
@@ -7685,7 +7683,7 @@ function resetReplyIdentity(){
   replyIdentity.owner?.abort();
   Object.assign(replyIdentity,{context:null,id:"",status:"idle",owner:null,promise:null});
   state.replyFilterSequence=(state.replyFilterSequence||0)+1;
-  state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
+  state.onlyMyReplies=false;state.chatMatchKey="";chatMatchCache=null;
   document.querySelectorAll(".chat-match-active").forEach(el=>el.classList.remove("chat-match-active"));
   // Remove personal markers immediately, including during account transitions.
   document.querySelectorAll(".reply-mine").forEach(el=>{
@@ -7707,7 +7705,7 @@ function syncMyReplyTools(){
   syncChatMatchControls();
   status.textContent=replyIdentity.status === "loading" ? "본인 답장을 확인하는 중…" :
     replyIdentity.status === "error" ? "본인 정보를 확인하지 못했습니다. 일반 대화는 계속 볼 수 있습니다." :
-    ready ? (state.onlyMyReplies && state.chatContext ? "전체 대화에서 ↑·↓로 내 답장을 찾습니다." : "확인된 답장을 찾거나 모아볼 수 있습니다.") : "아티스트를 선택하면 본인 답장을 확인합니다.";
+    ready ? (state.onlyMyReplies ? "전체 대화에서 ↑·↓로 내 답장을 찾습니다." : "전체 대화에서 확인된 답장으로 이동할 수 있습니다.") : "아티스트를 선택하면 본인 답장을 확인합니다.";
 }
 function syncVisibleReplyLabels(){
   const messages=new Map(state.chatMessages.map(m=>[String(m.messageId || m.id || ""),m]));
@@ -7759,8 +7757,8 @@ async function ensureReplyIdentity({retry=false}={}){
 }
 async function setOnlyMyReplies(enabled){
   const generation=state.scanGeneration,request=state.replyFilterSequence=(state.replyFilterSequence||0)+1;
-  state.onlyMyReplies=!!enabled;state.chatContext=state.chatContext===true;state.chatMatchKey="";
-  state.chatAutoTopPending=!enabled;
+  state.onlyMyReplies=!!enabled;state.chatMatchKey="";
+  state.chatAutoTopPending=false;
   syncMyReplyTools();render();
   if(enabled){
     await ensureReplyIdentity();
@@ -7993,7 +7991,7 @@ function updateChatSearchCount(){
 
 let chatMatchCache=null;
 function chatContextEnabled(){
-  return state.chatContext===true && (state.onlyMyReplies || !!state.chatQuery.trim());
+  return state.onlyMyReplies || !!state.chatQuery.trim();
 }
 function chatMessageVisible(message){
   return normType(message.type)!=="text" || specialTextState(message)?.kind!=="hidden-empty";
@@ -8008,12 +8006,10 @@ function chatMatches(){
   return items;
 }
 function syncChatMatchControls(){
-  const nav=$("#chatMatchNav"), context=$("#chatContextBtn");
-  if(!nav || !context) return;
+  const nav=$("#chatMatchNav");
+  if(!nav) return;
   const active=state.filter==="all" && (state.onlyMyReplies || !!state.chatQuery.trim());
   nav.hidden=!active;
-  if(context.type==="checkbox"){context.hidden=false;context.disabled=state.filter!=="all";context.checked=state.chatContext===true;}
-  else{context.hidden=!active;context.setAttribute("aria-pressed",String(chatContextEnabled()));}
   if(!active){state.chatMatchKey="";return;}
   const items=chatMatches(), index=items.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
   if(index<0) state.chatMatchKey="";
@@ -8056,23 +8052,8 @@ async function navigateChatMatch(direction,{first=false,valid=null}={}){
 }
 function filteredMessages(){
   if(state.filter==="all"){
-    if(chatContextEnabled()) return state.chatMessages.filter(chatMessageVisible).sort((a,b)=>compareMessages(a,b,"asc"));
-    const q = state.chatQuery.trim();
-
-    const source = state.chatMessages.filter(m=>{
-      if(state.onlyMyReplies && !isReplyToMe(m)) return false;
-      if(normType(m.type) !== "text") return true;
-
-      const s = specialTextState(m);
-      return !s || s.kind !== "hidden-empty";
-    });
-
-    const list = q
-      ? source.filter(m=>chatMessageMatches(m,q))
-      : source;
-
-    // TRUE chronological order: first-ever message -> latest message.
-    return [...list].sort((a,b)=>compareMessages(a,b,"asc"));
+    // Search and personal replies are navigation targets in the full conversation.
+    return state.chatMessages.filter(chatMessageVisible).sort((a,b)=>compareMessages(a,b,"asc"));
   }
 
   let list;
@@ -9782,7 +9763,7 @@ async function jumpToDate(targetDate){
 async function scrollToOriginalMessage(messageId){
   if(!messageId) return;
   const generation=state.scanGeneration;
-  state.onlyMyReplies=false;state.chatQuery="";state.chatContext=false;state.chatMatchKey="";
+  state.onlyMyReplies=false;state.chatQuery="";state.chatMatchKey="";
   if($("#chatSearchInput")) $("#chatSearchInput").value="";
   syncMyReplyTools();
 
@@ -9830,7 +9811,7 @@ async function setFilter(f, options={}){
   invalidateVoteView();
   if(f!=="live") leaveChannelHistory();
   const was = state.filter;
-  if(f === "all"){state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";}
+  if(f === "all"){state.onlyMyReplies=false;state.chatMatchKey="";}
   const autoTop = options.autoTop !== false && !restorePosition;
 
   if(was === "live" && f !== "live"){
@@ -11101,12 +11082,6 @@ $("#myRepliesBtn").onclick=()=>setOnlyMyReplies(!state.onlyMyReplies);
 $("#myReplyRetry").onclick=()=>ensureReplyIdentity({retry:true});
 $("#chatMatchPrev").onclick=()=>navigateChatMatch(-1);
 $("#chatMatchNext").onclick=()=>navigateChatMatch(1);
-$("#chatContextBtn").onclick=()=>{
-  const control=$("#chatContextBtn");
-  state.chatContext=control.type==="checkbox"?control.checked:!state.chatContext;state.chatAutoTopPending=false;
-  if(state.onlyMyReplies || state.chatQuery.trim()){render();navigateChatMatch(0);}
-  else syncChatMatchControls();
-};
 
 $("#datePickerBtn").onclick=(e)=>{
   e.stopPropagation();

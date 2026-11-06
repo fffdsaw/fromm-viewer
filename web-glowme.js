@@ -28,6 +28,30 @@
     });nav.append(button);
   }
   railHead.after(nav);
+  // A single decoration follows the pointer independently of the optional lens.
+  const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null;
+  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;nav.classList.remove('rail-pointer-tracking');}
+  function paintRailLight(){
+    lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
+    const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
+    const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect();
+    railLight.style.transform=`translate3d(${box.left-parent.left}px,${box.top-parent.top}px,0)`;
+    railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
+    railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-box.left))}px`);
+    railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-box.top))}px`);
+    nav.classList.add('rail-pointer-tracking');
+  }
+  function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}
+  nav.addEventListener('pointermove',event=>{
+    const button=event.target.closest('button');
+    if(event.pointerType==='touch'||!hover.matches||reducedMotion.matches||!button||!nav.contains(button))return clearRailLight();
+    lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
+  },{passive:true});
+  nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
+  sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});
+  document.addEventListener('keydown',clearRailLight,true);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});
+  reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});
   // Remove duplicate controls, keeping their existing filters and routes on the rail.
   $('.toolbar').querySelectorAll(':scope > [data-filter]').forEach(el=>el.remove());
   const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.hidden=true;
@@ -54,6 +78,7 @@
   installButton.onclick=async()=>{const pending=promptEvent;if(!pending)return;promptEvent=null;installButton.hidden=true;await pending.prompt();await pending.userChoice;};
   function setRailOpen(open,{focus=false,restore=false}={}){
     clearTimeout(closeTimer);if(!open)keyboardFocus=false;if(expanded!==!!open)railMotionUntil=performance.now()+220;expanded=!!open;document.body.classList.toggle('sidebar-open',expanded);document.documentElement.classList.toggle('sidebar-open',expanded);
+    if(!expanded)clearRailLight();
     sidebar.inert=false;sidebar.setAttribute('aria-hidden','false');
     toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-controls','sidebar');toggle.setAttribute('aria-label',expanded?'탐색 메뉴 접기':'탐색 메뉴 펼치기');toggle.title=expanded?'메뉴 접기':'메뉴 펼치기';
     if(focus&&expanded)(nav.querySelector('[aria-current="page"]')||nav.firstElementChild).focus({preventScroll:true});
@@ -64,8 +89,8 @@
   sidebar.addEventListener('pointerenter',event=>{if(hover.matches&&event.pointerType!=='touch')setRailOpen(true);});
   sidebar.addEventListener('pointerleave',()=>{if(hover.matches)closeTimer=setTimeout(()=>{if(!keyboardFocus||!sidebar.contains(document.activeElement)||document.activeElement===toggle)setRailOpen(false);},260);});
   // Restoring an old item focus after selection must not reopen the rail.
-  document.addEventListener('keydown',()=>{keyboardFocus=true;},true);
-  document.addEventListener('pointerdown',()=>{keyboardFocus=false;},{capture:true,passive:true});
+  document.addEventListener('keydown',()=>{keyboardFocus=true;document.documentElement.classList.add('rail-keyboard-entry');},true);
+  document.addEventListener('pointerdown',()=>{keyboardFocus=false;document.documentElement.classList.remove('rail-keyboard-entry');},{capture:true,passive:true});
   sidebar.addEventListener('focusin',event=>{clearTimeout(closeTimer);if(event.target!==toggle&&(expanded||keyboardFocus))setRailOpen(true);});
   sidebar.addEventListener('focusout',()=>{closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)&&!sidebar.matches(':hover'))setRailOpen(false);},160);});
   document.addEventListener('keydown',event=>{
@@ -122,7 +147,7 @@
   $('.chat-tools-title').textContent='대화 검색 / 날짜 찾기';
   const searchRow=$('#chatSearchInput').closest('.chat-tools-row'),searchLabel=searchRow.previousElementSibling;
   const searchLabelId='chatSearchLabel';searchLabel.id=searchLabelId;$('#chatSearchInput').setAttribute('aria-labelledby',searchLabelId);$('#chatSearchInput').placeholder='키워드를 입력하세요';
-  searchRow.after($('#myRepliesBtn').closest('label'),$('#chatContextBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
+  searchRow.after($('#myRepliesBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
   const dateLabel=$('.date-picker-row').previousElementSibling;dateLabel.id='calendarSectionLabel';$('#dateCalendar').setAttribute('aria-labelledby',dateLabel.id);
   const dateAction=document.createElement('div');dateAction.className='search-panel-footer';dateAction.append($('#dateJumpBtn'));panel.append(dateAction);$('.date-picker-row').hidden=true;
   const status=$('#myReplyStatus');new MutationObserver(()=>{status.hidden=!['loading','error'].includes(replyIdentity.status);}).observe(status,{childList:true});
@@ -140,6 +165,7 @@
   }).observe(calendar,{attributes:true,attributeFilter:['class']});
   function fitPanel(){
     const header=$('.viewer-header').getBoundingClientRect();
+    sidebar.style.setProperty('--rail-top',`${Math.max(12,header.bottom+12)}px`);
     searchDock.style.top=`${Math.max(12,header.bottom+12)}px`;
     const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
@@ -150,7 +176,7 @@
   }
   function syncNavigation(){
     const key=state.filter==='live'?state.live.centerMode:state.filter,all=state.filter==='all',pinned=isSearchPinned();
-    for(const button of nav.children){const selected=button.dataset.glowNav===key;button.setAttribute('aria-current',selected?'page':'false');button.classList.toggle('active',selected);}
+    for(const button of nav.querySelectorAll('button')){const selected=button.dataset.glowNav===key;button.setAttribute('aria-current',selected?'page':'false');button.classList.toggle('active',selected);}
     fields.disabled=!all;search.hidden=!all||pinned;panel.hidden=!all;
     document.documentElement.classList.toggle('chat-search-available',all&&!pinned);
     document.documentElement.dataset.glowLayout=pinned?'pinned':'web';

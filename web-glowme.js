@@ -92,9 +92,11 @@
     }
   }
   const fields=document.createElement('fieldset');fields.className='glowme-search-fields';
+  const panelTitle=panel.querySelector('.chat-tools-title');panelTitle.remove();
   const legend=document.createElement('legend');legend.className='glowme-sr';legend.textContent='대화 검색 및 날짜 선택';fields.append(legend,...panel.childNodes);
   const close=document.createElement('button');close.type='button';close.className='glowme-search-close';close.setAttribute('aria-label','검색 패널 닫기');close.innerHTML=svg('m6 6 12 12M18 6 6 18');close.onclick=()=>{closeChatToolsPanel();search.focus({preventScroll:true});};
-  panel.append(close,fields);panel.setAttribute('role','complementary');panel.setAttribute('aria-label','대화 찾기');$('.main').append(panel);
+  const panelHeading=document.createElement('div');panelHeading.className='search-panel-heading';panelHeading.append(panelTitle,close);
+  const fieldScroll=document.createElement('div');fieldScroll.className='search-panel-scroll';fieldScroll.append(fields);panel.append(panelHeading,fieldScroll);panel.setAttribute('role','complementary');panel.setAttribute('aria-label','대화 찾기');$('.main').append(panel);
   const searchDock=document.createElement('div');searchDock.id='chatSearchDock';
   const matchSlot=document.createElement('div');matchSlot.className='chat-match-slot';
   searchDock.append(search,matchSlot);document.body.append(searchDock);
@@ -105,7 +107,7 @@
     const target=inside?fields:matchSlot;
     const focused=matchNav.contains(document.activeElement)?document.activeElement:null;
     if(matchNav.parentElement!==target){
-      if(inside)fields.insertBefore(matchNav,$('#chatContextBtn'));else target.append(matchNav);
+      if(inside)fields.insertBefore(matchNav,$('#myReplyStatus'));else target.append(matchNav);
       focused?.focus({preventScroll:true});
     }
     const expanded=!inside&&state.filter==='all'&&state.onlyMyReplies&&!matchNav.hidden;
@@ -114,11 +116,18 @@
     matchSlot.setAttribute('aria-hidden',String(!expanded));
     searchDock.hidden=search.hidden;
   }
-  $('.chat-tools-title').textContent='대화 찾기';
+  $('.chat-tools-title').textContent='대화 검색 / 날짜 찾기';
+  const searchRow=$('#chatSearchInput').closest('.chat-tools-row'),searchLabel=searchRow.previousElementSibling;
+  const searchLabelId='chatSearchLabel';searchLabel.id=searchLabelId;$('#chatSearchInput').setAttribute('aria-labelledby',searchLabelId);$('#chatSearchInput').placeholder='키워드를 입력하세요';
+  searchRow.after($('#myRepliesBtn').closest('label'),$('#chatContextBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
+  const dateLabel=$('.date-picker-row').previousElementSibling;dateLabel.id='calendarSectionLabel';$('#dateCalendar').setAttribute('aria-labelledby',dateLabel.id);
+  const dateAction=document.createElement('div');dateAction.className='search-panel-footer';dateAction.append($('#dateJumpBtn'));panel.append(dateAction);$('.date-picker-row').hidden=true;
+  const status=$('#myReplyStatus');new MutationObserver(()=>{status.hidden=!['loading','error'].includes(replyIdentity.status);}).observe(status,{childList:true});
+
   function isSearchPinned(){return appWindow&&wide.matches&&state.filter==='all';}
   const calendar=$('#dateCalendar');
   new MutationObserver(()=>{
-    if(!calendar.classList.contains('open'))return;
+    if(window.FrommGlowME?.calendarInline||!calendar.classList.contains('open'))return;
     requestAnimationFrame(()=>{
       if(panel.hidden||!panel.classList.contains('open'))return;
       const firstDay=calendar.querySelector('.date-day'),box=panel.getBoundingClientRect();
@@ -144,18 +153,19 @@
     document.documentElement.dataset.glowLayout=pinned?'pinned':'web';
     if(pinned){if(!panel.classList.contains('open')){openChatToolsPanel();openDateCalendar();}}
     else if(!all&&panel.classList.contains('open')){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+    if(all&&panel.classList.contains('open')&&!calendar.classList.contains('open'))openDateCalendar();
     panel.inert=!all||!panel.classList.contains('open');search.setAttribute('aria-expanded',String(panel.classList.contains('open')));
     close.hidden=pinned;installButton.hidden=appWindow||!promptEvent;
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
+  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});
   new ResizeObserver(fitPanel).observe($('.viewer-header'));
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
-  new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
+  new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));if(!panel.inert&&!calendar.classList.contains('open'))openDateCalendar();syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
   new MutationObserver(syncMatchNav).observe(matchNav,{attributes:true,attributeFilter:['hidden']});
   setRailOpen(false);syncNavigation();updateSelectedCount();
 })();

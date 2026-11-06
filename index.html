@@ -1435,7 +1435,7 @@ body.download-marquee-active{user-select:none;cursor:default}
         <div id="chatToolsPanel" class="chat-tools-panel" aria-hidden="true">
           <div class="chat-tools-title">전체 대화 찾기</div>
 
-          <button id="myRepliesBtn" class="btn my-replies-btn" type="button" aria-pressed="false">내 글에 온 답장</button>
+          <label class="search-panel-option"><input id="myRepliesBtn" type="checkbox">내 글에 온 답장</label>
           <p id="myReplyStatus" class="my-reply-status" role="status" aria-live="polite"></p>
           <button id="myReplyRetry" class="btn" type="button" hidden>본인 정보 다시 확인</button>
 
@@ -1448,7 +1448,7 @@ body.download-marquee-active{user-select:none;cursor:default}
                     type="button" title="검색 지우기" aria-label="검색 지우기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </div>
 
-          <button id="chatContextBtn" class="btn chat-context-btn" type="button" aria-pressed="false" hidden>전체 대화 함께 보기</button>
+          <label class="search-panel-option"><input id="chatContextBtn" type="checkbox" disabled>전체 대화 함께 보기</label>
           <div class="chat-tools-divider"></div>
 
           <div class="chat-tools-label">날짜 찾기</div>
@@ -7691,7 +7691,8 @@ function resetReplyIdentity(){
 function syncMyReplyTools(){
   const button=$("#myRepliesBtn"), status=$("#myReplyStatus"), retry=$("#myReplyRetry");
   if(!button || !status || !retry) return;
-  button.setAttribute("aria-pressed",String(state.onlyMyReplies));
+  if(button.type==="checkbox") button.checked=state.onlyMyReplies;
+  else button.setAttribute("aria-pressed",String(state.onlyMyReplies));
   button.classList.toggle("active",state.onlyMyReplies);
   $("#chatToolsBtn")?.classList.toggle("reply-filter-active",state.onlyMyReplies);
   const ready=!!currentReplyUserId();
@@ -8002,8 +8003,9 @@ function syncChatMatchControls(){
   const nav=$("#chatMatchNav"), context=$("#chatContextBtn");
   if(!nav || !context) return;
   const active=state.filter==="all" && (state.onlyMyReplies || !!state.chatQuery.trim());
-  nav.hidden=!active;context.hidden=!active;
-  context.setAttribute("aria-pressed",String(chatContextEnabled()));
+  nav.hidden=!active;
+  if(context.type==="checkbox"){context.hidden=false;context.disabled=!active;context.checked=chatContextEnabled();}
+  else{context.hidden=!active;context.setAttribute("aria-pressed",String(chatContextEnabled()));}
   if(!active){state.chatMatchKey="";return;}
   const items=chatMatches(), index=items.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
   if(index<0) state.chatMatchKey="";
@@ -9388,7 +9390,7 @@ function openDateCalendar(){
 }
 
 function closeDateCalendar(){
-  if(window.FrommGlowME?.pinned) return;
+  if(window.FrommGlowME?.pinned || window.FrommGlowME?.calendarInline) return;
   const cal = $("#dateCalendar");
   const btn = $("#datePickerBtn");
   if(!cal || !btn) return;
@@ -9555,7 +9557,7 @@ function renderDateCalendar(){
       setSelectedDate(key);
       closeDateCalendar();
 
-      if(activity.dates.has(key)){
+      if(!window.FrommGlowME?.calendarInline && activity.dates.has(key)){
         jumpToDate(key);
       }
     };

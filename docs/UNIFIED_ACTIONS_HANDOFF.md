@@ -1,5 +1,6 @@
 # 작은 고정 헤더와 목록 저장바 통일
 
+- PR: https://github.com/fffdsaw/fromm-viewer/pull/61 (초안). 구현 체크포인트 `5e215f5b2c24c673ef1e5d3659041e33506670b7`.
 - 기준 main `7db27710ddc4aa60cb97feae7a1761e264fe7964`, 브랜치 `fix/compact-sticky-unified-actions`.
 - PC 중심. 통계와 로딩 상태를 같은 줄에 배치하고 상단바 축소. 미디어/사진/영상/음성에서 헤더를 sticky로 유지하며 카드가 헤더 모서리 뒤로 비치지 않도록 배경 계층 적용.
 - 아티스트 목록은 휠/터치/키보드 스크롤을 유지하고 PC 스크롤바만 숨김.

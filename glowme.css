@@ -704,3 +704,10 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout #selectedCount{flex-basis:70px;width:70px;min-width:70px;max-width:70px}
  .glowme-phase3.pc-layout .pc-list-host :is(#selectAllBtn,#saveSelectedBtn){padding:2px 6px}
 }
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ /* Keep the existing single hover capsule; the mint active surface returns on leave. */
+ .glowme-phase3.pc-layout .glowme-nav.rail-pointer-tracking button.active{background:transparent!important}
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout.sidebar-open #sidebar{z-index:500}
+}

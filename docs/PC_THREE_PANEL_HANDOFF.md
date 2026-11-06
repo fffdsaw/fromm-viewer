@@ -13,3 +13,30 @@
 - 기존 geometry 검사는 새 승인 구조(rail beside header / capsule inside header)에 맞게 갱신하며 기존 조작/포커스/캐시/재생 검사는 보존.
 - 증거/로그 `/workspace/scratch/fromm-pc-layout/`. 수정 전 화면은 `fromm-viewer-list-polish`의 이전 정상 코드와 동일한 합성 데이터/뷰포트로 촬영. 실제 계정/대화/토큰 사용 안 함.
 - 다음: 변경된 geometry 검사와 필수 CI → 실제 화면 재확인 → 인계/스크린샷/PR 갱신. 병합·배포 금지.
+
+
+## 로컬 검증 완료 체크포인트
+
+- 구현 체크포인트 `4e54fc1`은 원격 저장 완료. 후속 PC CSS 수정: 커서 추적 중 배경 하나만 표시, 펼친 레일 z-index500으로 헤더480 위에서 조작 가능.
+- 새 PC 검사: 1440 / 900 / 760 px에서 대화·미디어·Replay·Channel·LIVE, 선택 전후/스크롤/숫자 자릿수/연속 선택해제/초점/필터 이벤트/로딩·완료·오류·room generation 변경 통과.
+- 영향받는 브라우저 검사 8개 통과: conversation-header-rail, media-action-dock, unified-actions, desktop-startup-reply-lists, glowme-phase3-navigation, glowme-search-dock, channel-videos, pc-layout. 처음 실패했던 hover의 중복 배경 및 펼친 레일 가림은 CSS 수정 후 재실행 통과. 예전 레이아웃 좌표 assertion은 승인된 새 구조와 실제 sticky header inset으로 갱신했고, 조작/스크롤/초점 검사는 유지.
+- PC 전체 대화 axe WCAG2A/AA·2.1AA 자동 검사 위반 0. 접근성 자동 검사만으로 전반적인 실사용 접근성을 보증하지 않음.
+- 모바일 최소 확인: 390px 대화·미디어의 기존 헤더/기본 조작/넘침 확인. 기존 필수 Channel 회귀 검사의 모바일 기본 사례도 통과. 모바일 디자인 변경 없음.
+- 상태 검증은 합성 데이터 및 로딩/오류 상태, 기존 요청 generation/cancel 회귀 검사 기반. 실제 Fromm 계정/인증 스트림/Native LIVE/물리 Windows·Mac·모바일/PWA 설치 실기는 미검증.
+- 제품 변경은 web-glowme.js/glowme.css 두 파일. index.html/버전 query/SW/manifest/패키지 파일 변경 없음.
+
+## 동일 화면 전후 비교
+
+모두 Chromium, 동일 합성 콘텐츠 및 뷰포트. 실제 사용자 대화/토큰/앨범 아트는 저장하지 않음. 좁은 PC의 두 번째 채널은 새 자동 검사에서 별도로 확인.
+
+| 화면 | 변경 전 | 변경 후 |
+| --- | --- | --- |
+| 대화 1440 | [전](design-review/pc-three-panel/before-1440-all.png) | [후](design-review/pc-three-panel/after-1440-all.png) |
+| 미디어 1440 | [전](design-review/pc-three-panel/before-1440-image.png) | [후](design-review/pc-three-panel/after-1440-image.png) |
+| 미디어 선택 1440 | [전](design-review/pc-three-panel/before-1440-image-selected.png) | [후](design-review/pc-three-panel/after-1440-image-selected.png) |
+| Channel 선택 전 | [전](design-review/pc-three-panel/before-1440-channel.png) | [후](design-review/pc-three-panel/after-1440-channel.png) |
+| Channel 선택 후 | [전](design-review/pc-three-panel/before-1440-channel-selected.png) | [후](design-review/pc-three-panel/after-1440-channel-selected.png) |
+| LIVE 1440 | [전](design-review/pc-three-panel/before-1440-live.png) | [후](design-review/pc-three-panel/after-1440-live.png) |
+| 좁은 PC 900 | [전](design-review/pc-three-panel/before-900-channel-selected.png) | [후](design-review/pc-three-panel/after-900-channel-selected.png) |
+
+다음 시작: 이 브랜치의 Draft PR/최신 head CI 확인, 실패 시 실제 원인 수정. CI 성공 후에도 Draft 유지. 사용자 별도 승인 없이 병합·배포·버전 변경 금지.

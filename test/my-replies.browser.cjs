@@ -230,7 +230,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    assert.equal(await page.evaluate(()=>state.onlyMyReplies),false);
    assert.deepEqual(dialogs,[]);assert.deepEqual(errors,[]);
    assert.ok(requests.every(r=>r.method==='GET'));
-   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar general markers only, consistent inset focus/word marks, date/header/short-screen alignment, date/original jumps, context arrows/list toggle/3000-message bounded jumps, SVG icon, media, room/account/reset/failure/retry/late logout PASS`);
+   console.log(`${width}px: profile/history GET loaders, exact author, filter/search, calendar general markers only, consistent inset focus/word marks, date/header/short-screen alignment, date/original jumps, always-full-context arrows/3000-message bounded jumps, SVG icon, media, room/account/reset/failure/retry/late logout PASS`);
    await context.close();
   }
  }finally{await browser.close();}

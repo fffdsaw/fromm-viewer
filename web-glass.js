@@ -28,7 +28,7 @@ function sync(){
  if(scheduled)return;scheduled=true;
  requestAnimationFrame(()=>{
   scheduled=false;
-  const controls=[...document.querySelectorAll('#sidebarToggleBtn,#chatToolsBtn,.glowme-nav [aria-current="page"],#scanBtn,#logoutMiniBtn')];
+  const controls=[...document.querySelectorAll('#chatToolsBtn,.glowme-nav [aria-current="page"],#scanBtn,#logoutMiniBtn')];
   for(const el of controls)if(visibility&&!watched.has(el)){watched.add(el);visibility.observe(el);}
   const targets=eligible()?controls.filter(el=>{
    const r=el.getBoundingClientRect();

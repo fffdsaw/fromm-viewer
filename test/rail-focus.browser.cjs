@@ -11,7 +11,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false','restored focus does not reopen the closed rail');
   await page.screenshot({fullPage:true});assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   if(await page.evaluate(()=>matchMedia('(hover:hover) and (pointer:fine)').matches)){
-   await page.mouse.move(35,35);await page.waitForFunction(()=>document.querySelector('#sidebarToggleBtn').getAttribute('aria-expanded')==='true');
+   await page.locator('#sidebar').hover({position:{x:20,y:20}});await page.waitForFunction(()=>document.querySelector('#sidebarToggleBtn').getAttribute('aria-expanded')==='true');
    await page.mouse.move(700,200);await page.waitForFunction(()=>document.querySelector('#sidebarToggleBtn').getAttribute('aria-expanded')==='false');
   }
   await toggle.focus();await page.keyboard.press('Tab');assert.equal(await toggle.getAttribute('aria-expanded'),'true','real Tab navigation still expands the rail');

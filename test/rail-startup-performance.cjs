@@ -10,7 +10,7 @@ cp.execFileSync('tar',['-xf','-','-C',baseline],{input:cp.execFileSync('git',['a
   await seed(page);await page.mouse.move(700,200);
   const cdp=await context.newCDPSession(page);await cdp.send('Performance.enable');const metrics=async()=>Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x=>[x.name,x.value]));const m0=await metrics();
   await page.evaluate(()=>{window.railTrace={frames:[],first:null};const rail=document.querySelector('#sidebar');rail.addEventListener('pointerenter',e=>requestAnimationFrame(()=>requestAnimationFrame(()=>{railTrace.first=performance.now()-e.timeStamp})),{once:true});railTrace.done=new Promise(resolve=>{let last=performance.now(),n=0;const frame=t=>{railTrace.frames.push(t-last);last=t;if(++n<36)requestAnimationFrame(frame);else resolve();};requestAnimationFrame(frame);});});
-  await page.mouse.move(35,35);await page.evaluate(()=>railTrace.done);const m1=await metrics();
+  await page.locator('#sidebar').hover({position:{x:20,y:20}});await page.evaluate(()=>railTrace.done);const m1=await metrics();
   const trace=await page.evaluate(()=>({firstVisualMs:railTrace.first,frames:railTrace.frames.slice(1),open:document.querySelector('#sidebarToggleBtn').getAttribute('aria-expanded')==='true',optics:FrommGlass.count}));trace.frames.sort((a,b)=>a-b);
   rows.push({label,run,...startup,firstVisualMs:trace.firstVisualMs,frameP95:trace.frames[Math.ceil(trace.frames.length*.95)-1],frameMax:Math.max(...trace.frames),jsTaskMs:(m1.TaskDuration-m0.TaskDuration)*1000,open:trace.open,optics:trace.optics});await context.close();
  }

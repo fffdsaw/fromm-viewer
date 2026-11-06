@@ -95,14 +95,24 @@
   const legend=document.createElement('legend');legend.className='glowme-sr';legend.textContent='대화 검색 및 날짜 선택';fields.append(legend,...panel.childNodes);
   const close=document.createElement('button');close.type='button';close.className='glowme-search-close';close.setAttribute('aria-label','검색 패널 닫기');close.innerHTML=svg('m6 6 12 12M18 6 6 18');close.onclick=()=>{closeChatToolsPanel();search.focus({preventScroll:true});};
   panel.append(close,fields);panel.setAttribute('role','complementary');panel.setAttribute('aria-label','대화 찾기');$('.main').append(panel);
-  search.setAttribute('aria-controls','chatToolsPanel');document.body.append(search);search.classList.add('glowme-search-toggle');
+  const searchDock=document.createElement('div');searchDock.id='chatSearchDock';
+  const matchSlot=document.createElement('div');matchSlot.className='chat-match-slot';
+  searchDock.append(search,matchSlot);document.body.append(searchDock);
+  search.setAttribute('aria-controls','chatToolsPanel');search.classList.add('glowme-search-toggle');
   const matchNav=$('#chatMatchNav');
   function syncMatchNav(){
-    const inside=!panel.hidden&&panel.classList.contains('open'),target=inside?fields:$('.toolbar');
-    if(matchNav.parentElement===target)return;
+    const inside=!panel.hidden&&panel.classList.contains('open')&&(isSearchPinned()||!state.onlyMyReplies);
+    const target=inside?fields:matchSlot;
     const focused=matchNav.contains(document.activeElement)?document.activeElement:null;
-    if(inside)fields.insertBefore(matchNav,$('#chatContextBtn'));else target.append(matchNav);
-    focused?.focus({preventScroll:true});
+    if(matchNav.parentElement!==target){
+      if(inside)fields.insertBefore(matchNav,$('#chatContextBtn'));else target.append(matchNav);
+      focused?.focus({preventScroll:true});
+    }
+    const expanded=!inside&&state.filter==='all'&&state.onlyMyReplies&&!matchNav.hidden;
+    matchSlot.classList.toggle('expanded',expanded);matchSlot.inert=!expanded;
+    document.documentElement.classList.toggle('chat-reply-navigation',expanded);
+    matchSlot.setAttribute('aria-hidden',String(!expanded));
+    searchDock.hidden=search.hidden;
   }
   $('.chat-tools-title').textContent='대화 찾기';
   function isSearchPinned(){return appWindow&&wide.matches&&state.filter==='all';}
@@ -117,7 +127,7 @@
     });
   }).observe(calendar,{attributes:true,attributeFilter:['class']});
   function fitPanel(){
-    const header=$('.viewer-header').getBoundingClientRect();const top=Math.max(12,Math.min(header.bottom+12,innerHeight-200));
+    const header=$('.viewer-header').getBoundingClientRect();const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){
@@ -128,6 +138,7 @@
     const key=state.filter==='live'?state.live.centerMode:state.filter,all=state.filter==='all',pinned=isSearchPinned();
     for(const button of nav.children){const selected=button.dataset.glowNav===key;button.setAttribute('aria-current',selected?'page':'false');button.classList.toggle('active',selected);}
     fields.disabled=!all;search.hidden=!all||pinned;panel.hidden=!all;
+    document.documentElement.classList.toggle('chat-search-available',all&&!pinned);
     document.documentElement.dataset.glowLayout=pinned?'pinned':'web';
     if(pinned){if(!panel.classList.contains('open')){openChatToolsPanel();openDateCalendar();}}
     else if(!all&&panel.classList.contains('open')){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
@@ -143,5 +154,6 @@
   new ResizeObserver(fitPanel).observe($('.viewer-header'));
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
   new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
+  new MutationObserver(syncMatchNav).observe(matchNav,{attributes:true,attributeFilter:['hidden']});
   setRailOpen(false);syncNavigation();updateSelectedCount();
 })();

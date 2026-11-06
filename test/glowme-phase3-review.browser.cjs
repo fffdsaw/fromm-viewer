@@ -16,7 +16,7 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
   await page.locator('#chatToolsPanel #chatMatchNext').click();const first=await page.evaluate(()=>state.chatMatchKey);assert.ok(first);
   await page.locator('#chatToolsPanel #chatMatchNext').click();assert.notEqual(await page.evaluate(()=>state.chatMatchKey),first);
   await page.locator('#chatToolsPanel #chatMatchPrev').click();assert.equal(await page.evaluate(()=>state.chatMatchKey),first);
-  if(!viewport.installed){await page.keyboard.press('Escape');await page.locator('.toolbar #chatMatchNext').click();assert.notEqual(await page.evaluate(()=>state.chatMatchKey),first);}
+  if(!viewport.installed){await page.keyboard.press('Escape');assert.equal(await page.locator('.chat-match-slot').getAttribute('aria-hidden'),'true','ordinary text search does not expand the reply dock');await page.locator('#chatToolsBtn').click();await page.locator('#chatToolsPanel #chatMatchNext').click();assert.notEqual(await page.evaluate(()=>state.chatMatchKey),first);}
   await page.evaluate(()=>{state.chatQuery='';render();openChatToolsPanel();openDateCalendar();});await page.waitForTimeout(80);
   const calendarVisible=await page.locator('.date-day').first().evaluate(e=>{const r=e.getBoundingClientRect(),p=document.querySelector('#chatToolsPanel').getBoundingClientRect();return r.top>=p.top&&r.bottom<=p.bottom;});
   assert.equal(calendarVisible,true,'opening calendar exposes a selectable date in short landscape');

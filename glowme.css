@@ -612,3 +612,95 @@ html.glowme .reply-content{color:#244c42}
 }
 @keyframes selection-dismiss{to{opacity:0;translate:0 -6px}}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .batch-selection-tools.selection-exiting{animation:none}}
+
+/* Approved PC three-panel shell. Touch/mobile presentation stays unchanged. */
+.pc-mode-title,.pc-list-host,.pc-media-row{display:none}
+
+
+@keyframes pc-loading-spin{to{rotate:360deg}}
+@keyframes pc-selection-enter{from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
+@keyframes pc-selection-exit{to{opacity:0;translate:0 -4px}}
+@media(prefers-reduced-motion:reduce){.glowme-phase3.pc-layout .batch-selection-tools,.glowme-phase3.pc-layout #artistLoadStatus[data-loading="true"]::before{animation:none!important}}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--pc-cap-width:330px;--pc-header-bg:#e0f1e9;--panel:#fbfdfc}
+ .glowme-phase3.pc-layout body{background:#f0f8f3}
+ .glowme-phase3.pc-layout .viewer-header,.glowme-phase3.pc-layout[data-glow-layout="pinned"] .viewer-header{position:sticky;top:12px;margin-left:0;width:100%;z-index:480;isolation:isolate;gap:0;border:1px solid #c1ddcf;border-radius:16px;background:var(--pc-header-bg);box-shadow:0 2px 6px #244b3a08}
+ .glowme-phase3.pc-layout .viewer-header::before{content:"";position:absolute;inset:-12px -12px 0;background:#f0f8f3;z-index:-2;pointer-events:none}
+ .glowme-phase3.pc-layout .viewer-header::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--pc-header-bg);z-index:-1;pointer-events:none}
+ .glowme-phase3.pc-layout #sidebar,.glowme-phase3.pc-layout[data-glow-layout="pinned"] #sidebar{top:12px;bottom:12px;background:#e0f1e9;border-color:#c1ddcf;box-shadow:0 2px 8px #244b3a0a;transition-property:width}
+ .glowme-phase3.pc-layout .rail-head,.glowme-phase3.pc-layout.sidebar-open .rail-head{height:44px;flex:0 0 44px;margin:0;justify-content:center}
+ .glowme-phase3.pc-layout #sidebar .brand{visibility:visible;opacity:1;min-width:0;width:44px;margin:auto}
+ .glowme-phase3.pc-layout #sidebar .brand img{width:44px;max-height:40px}
+ .glowme-phase3.pc-layout.sidebar-open #sidebar .brand,.glowme-phase3.pc-layout.sidebar-open #sidebar .brand img{width:130px}
+ .glowme-phase3.pc-layout .glowme-nav button.active{background:#c5e8d9!important;box-shadow:none!important;color:#194c3e}
+ .glowme-phase3.pc-layout .room.active{background:transparent!important;box-shadow:none!important}
+ .glowme-phase3.pc-layout #viewContext{display:none}
+ .glowme-phase3.pc-layout .topbar{position:relative;min-height:80px;height:80px;padding:8px 14px;gap:12px;flex-wrap:nowrap;border:0;border-radius:16px;background:none;box-shadow:none;backdrop-filter:none}
+ .glowme-phase3.pc-layout .topbar::after{display:none}
+ .glowme-phase3.pc-layout #artistTitle{font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .glowme-phase3.pc-layout .title-line{align-self:flex-start;min-height:40px}
+ .glowme-phase3.pc-layout .artist-copy{position:static}
+ .glowme-phase3.pc-layout .artist-meta-line{position:absolute;left:76px;right:14px;bottom:10px;height:20px;display:flex;align-items:center;gap:12px;flex-wrap:nowrap;min-width:0}
+ .glowme-phase3.pc-layout #artistMediaStats{margin:0;font-size:12px;line-height:20px;white-space:nowrap}
+ .glowme-phase3.pc-layout #artistLoadStatus{margin:0;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .glowme-phase3.pc-layout #artistLoadStatus[data-loading="true"]::before{content:"";display:inline-block;width:10px;height:10px;margin-right:7px;border:1.5px dotted currentColor;border-radius:50%;vertical-align:-1px;animation:pc-loading-spin 1s linear infinite}
+ .glowme-phase3.pc-layout .top-auth-controls{align-self:flex-start!important;height:38px!important;min-height:38px!important;gap:6px!important}
+ .glowme-phase3.pc-layout .pc-media-row{display:flex;height:48px;min-height:48px;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-top:1px solid #bddbcc}
+ .glowme-phase3.pc-layout .pc-media-row[hidden]{display:none}
+ .glowme-phase3.pc-layout .pc-list-info{font-size:14px;font-weight:700;white-space:nowrap}
+ .glowme-phase3.pc-layout .pc-media-row #mediaActionDock{position:static;inset:auto!important;max-width:none;min-height:44px;flex-wrap:nowrap;background:none;box-shadow:none}
+ .glowme-phase3.pc-layout .media-action-gap{display:none!important}
+ .glowme-phase3.pc-layout .media-selection-slot{display:flex;align-items:center;flex:0 0 var(--pc-cap-width);width:var(--pc-cap-width);max-width:none;height:40px;overflow:visible;opacity:1;transition:none}
+ .glowme-phase3.pc-layout .media-selection-slot:not(.expanded){visibility:hidden;pointer-events:none}
+ .glowme-phase3.pc-layout .batch-selection-tools{position:static;inset:auto;transform:none;translate:none;width:var(--pc-cap-width);max-width:none;height:36px;min-height:36px;padding:2px 5px;gap:4px;flex-wrap:nowrap;border:1px solid #a8cfc0;border-radius:20px;background:#edf8f2;box-shadow:0 1px 3px #244b3a0c;animation:pc-selection-enter 180ms ease-out}
+ .glowme-phase3.pc-layout .batch-selection-tools[hidden]{display:none}
+ .glowme-phase3.pc-layout .batch-selection-tools .btn{min-height:30px;height:30px;font-size:13px;border-radius:16px;padding:3px 10px;white-space:nowrap}
+ .glowme-phase3.pc-layout #selectedCount{min-width:80px;padding:3px 6px;font-size:12px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .glowme-phase3.pc-layout #saveSelectedBtn{background:#147e69;color:white;border-color:#147e69;box-shadow:none}
+ .glowme-phase3.pc-layout #clearSelectionBtn{flex:0 0 30px;min-width:30px;width:30px;height:30px;padding:5px}
+ .glowme-phase3.pc-layout #clearSelectionBtn svg{width:18px;height:18px}
+ .glowme-phase3.pc-layout .batch-selection-tools.selection-exiting{animation:pc-selection-exit 140ms ease-in forwards;pointer-events:none}
+ .glowme-phase3.pc-layout.pc-collection .topbar{height:60px;min-height:60px;gap:10px;align-items:center;padding:8px 12px}
+ .glowme-phase3.pc-layout.pc-collection :is(.title-line,#tokenLifeWrap){display:none!important}
+ .glowme-phase3.pc-layout.pc-collection .pc-mode-title{display:block;flex:0 0 auto;font-size:22px;line-height:1.2;margin:0;letter-spacing:-.03em}
+ .glowme-phase3.pc-layout.pc-collection .pc-list-host{display:block;flex:1;min-width:0}
+ .glowme-phase3.pc-layout.pc-collection .top-auth-controls{align-self:center!important;margin-left:0!important}
+ .glowme-phase3.pc-layout.pc-collection:not([data-pc-mode="live"]) .header-live-btn{display:none!important}
+ .glowme-phase3.pc-layout .pc-list-host .replay-toolbar{position:static;inset:auto;display:flex;align-items:center;flex-wrap:nowrap;min-width:0;min-height:40px;height:40px;margin:0;padding:0;gap:8px;background:none;border:0;box-shadow:none;border-radius:0}
+ .glowme-phase3.pc-layout .pc-list-host .replay-filter-strip{flex:1 1 100px;min-width:40px;max-width:none!important;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding:0}
+ .glowme-phase3.pc-layout .pc-list-host .replay-count{visibility:visible!important;flex:0 0 auto;margin:0;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}
+ .glowme-phase3.pc-layout .pc-list-host #channelRefresh{visibility:visible!important;flex:0 0 auto;height:34px;margin:0;white-space:nowrap}
+ .glowme-phase3.pc-layout .pc-list-host .media-selection-slot{margin-left:auto}
+ .glowme-phase3.pc-layout :is(.replay-list-shell,.channel-list-shell)>.live-card{border:0;background:none;box-shadow:none;overflow:visible}
+ .glowme-phase3.pc-layout .replay-shell{padding:12px 0 18px}
+ .glowme-phase3.pc-layout :is(.card-body,.replay-body){background:#fcfefd;color:#193e34}
+ .glowme-phase3.pc-layout .media-card,.glowme-phase3.pc-layout .replay-card{box-shadow:none}
+ .glowme-phase3.pc-layout #mediaActionDock .batch-selection-tools{width:var(--pc-cap-width);min-height:36px;height:36px;padding:2px 5px;gap:4px;border-radius:20px}
+ .glowme-phase3.pc-layout #mediaActionDock :is(#selectAllBtn,#saveSelectedBtn){padding:3px 10px;border-radius:16px}
+ .glowme-phase3.pc-layout #mediaActionDock .batch-selection-tools .btn{min-height:30px;height:30px}
+ .glowme-phase3.pc-layout :is(.card-body,.replay-body){background:#fcfefd}
+ .glowme-phase3.pc-layout :is(.media-card,.replay-card).selected{background:#e2f3eb;border-color:#147e69;box-shadow:inset 0 0 0 1px #147e69}
+ .glowme-phase3.pc-layout :is(.media-card,.replay-card).selected :is(.card-body,.replay-body){background:#eff9f3}
+ .glowme-phase3.pc-layout #selectedCount{flex:0 0 80px;width:80px;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) :is(#selectAllBtn,#saveSelectedBtn){min-width:0!important;flex:none}
+ .glowme-phase3.pc-layout .pc-list-host :is(#selectAllBtn,#saveSelectedBtn){padding:3px 10px;border-radius:16px}
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--pc-cap-width:240px}
+ .glowme-phase3.pc-layout .batch-selection-tools{gap:2px;padding:2px}
+ .glowme-phase3.pc-layout .batch-selection-tools .btn{font-size:12px;padding:2px 6px;min-height:30px}
+ .glowme-phase3.pc-layout #selectedCount{min-width:60px;padding:2px;font-size:11px}
+ .glowme-phase3.pc-layout #clearSelectionBtn{width:28px;min-width:28px;flex-basis:28px}
+ .glowme-phase3.pc-layout.pc-collection .topbar{gap:6px;padding-inline:8px}
+ .glowme-phase3.pc-layout .pc-mode-title{font-size:19px!important}
+ .glowme-phase3.pc-layout .pc-list-host .replay-toolbar{gap:5px}
+ .glowme-phase3.pc-layout #channelRefresh{font-size:0!important;width:30px;padding:4px!important}
+ .glowme-phase3.pc-layout #channelRefresh::after{content:"↻";font-size:20px}
+ .glowme-phase3.pc-layout .pc-list-host .replay-count{font-size:11px}
+ .glowme-phase3.pc-layout .header-icon-cluster{gap:4px!important;padding-left:4px!important}
+ .glowme-phase3.pc-layout #tokenLifeWrap{min-width:0!important;font-size:11px!important;padding:5px 8px!important}
+ .glowme-phase3.pc-layout #mediaActionDock .batch-selection-tools{padding:2px;gap:2px}
+ .glowme-phase3.pc-layout #mediaActionDock :is(#selectAllBtn,#saveSelectedBtn){padding:2px 6px}
+ .glowme-phase3.pc-layout #selectedCount{flex-basis:70px;width:70px;min-width:70px;max-width:70px}
+ .glowme-phase3.pc-layout .pc-list-host :is(#selectAllBtn,#saveSelectedBtn){padding:2px 6px}
+}

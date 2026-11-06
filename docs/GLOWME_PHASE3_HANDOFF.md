@@ -1,5 +1,7 @@
 # Glow ME UI·UX 3차 — 재개 기록
 
+> 후속 PC 캡슐 머티리얼라이즈 작업: [CAPSULE_MATERIALIZE_HANDOFF.md](CAPSULE_MATERIALIZE_HANDOFF.md). 기준 main cbcc315(PR63 병합 후), 별도 feature/pc-capsule-materialize. 아래 원래 1~4차 기록은 보존한다. 이번 캡슐 변경에는 병합·배포 승인이 없으며, 앱 전체 Meapri 최종 적용과 구분한다.
+
 ## 현재 체크포인트
 - 기준 main: `552bc556d8eaacbcc589cb9bfabab6383b9d4dba` (2026-11-05 원격 재확인; PR #52 병합 완료).
 - 브랜치: `feature/glowme-uiux-phase3`; 작업 경로 `/workspace/fromm-viewer-phase3`.

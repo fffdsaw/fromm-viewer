@@ -1,0 +1,68 @@
+{
+  "syntheticFixture": true,
+  "browser": "Linux headless Chromium (Playwright 1.62.1)",
+  "viewport": [
+    900,
+    700
+  ],
+  "recordingCrop": [
+    0,
+    0,
+    900,
+    190
+  ],
+  "rafSamples": 127,
+  "svgDisplacementScaleRange": [
+    0.0,
+    40.81271269078081
+  ],
+  "peakSpringProgress": 1.0306240578480004,
+  "phaseTimeline": [
+    {
+      "phase": "entering",
+      "ms": 0.0
+    },
+    {
+      "phase": "shown",
+      "ms": 721.1
+    },
+    {
+      "phase": "exiting",
+      "ms": 836.8
+    },
+    {
+      "phase": "entering",
+      "ms": 971.1
+    },
+    {
+      "phase": "shown",
+      "ms": 1487.2
+    },
+    {
+      "phase": "exiting",
+      "ms": 1603.7
+    },
+    {
+      "phase": "hidden",
+      "ms": 2070.2
+    }
+  ],
+  "lastLensState": {
+    "phase": "hidden",
+    "mode": "plain",
+    "progress": 0,
+    "velocity": 0,
+    "builds": 1,
+    "disposed": 1,
+    "mapWidth": 0,
+    "reason": null,
+    "live": 0,
+    "time": 2883.0999999996275,
+    "scale": null
+  },
+  "notes": [
+    "Engine uses its public flexRefraction API; resolved scale includes engine strength normalization.",
+    "One entry/exit + reversal sample, not a benchmark across physical devices.",
+    "SVG map thickness fixed at 16px. No physical ray tracing or per-frame thickness map."
+  ]
+}

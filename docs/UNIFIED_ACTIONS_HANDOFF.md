@@ -19,3 +19,16 @@
 ## 재개 순서
 
 이 브랜치 최신 커밋과 동일 head의 PR/CI 상태부터 확인한다. 전체 검사가 성공하면 기존 사용자 승인 범위에서 이 변경 PR만 병합하고 Pages 및 공개 자산 hash를 확인한다. 실패가 있으면 원인을 수정하고 이 문서를 갱신한다. Meapri는 기존 제한적 시험 적용 상태를 유지한다.
+
+## 후속 수정 — 빈 줄 제거·영상 목록 헤더 고정·숨김 전환
+
+- 기준 main/복구 지점 `40e1f62508b56fedae32b73d1a3b311a3bbb7524`. 브랜치 `fix/list-header-selection-exit`.
+- 사용자 1번 관련: 이전 sticky 대상이 media/image/video/sound뿐이어서 Replay/Channel은 빠져 있었음. 이제 PC 영상 목록도 같은 작은 고정 헤더를 적용. 통계 오른쪽 로딩 상태는 기존 구현 유지.
+- Replay/Channel의 media-action-gap을 제거. 저장 캡슐은 기존 목록 필터·영상 개수 줄 오른쪽에 배치하며 선택 중에 개수·새로고침 자리를 사용. 선택 여부로 줄 높이나 영상 위치를 변경하지 않음. 목록 toolbar도 헤더 바로 아래에서 sticky 유지. LIVE/영상 플레이어에는 적용하지 않음.
+- 목록 live-card의 overflow:hidden이 toolbar sticky에 별도 스크롤 기준을 만드는 것을 확인하여 PC 영상 목록에만 overflow:clip 적용. 둥근 모서리 클리핑 유지.
+- 선택 해제 시 180ms opacity/translate 종료 애니메이션. 즉시 inert로 조작 차단, 전환 종료 후 hidden. 다시 선택하면 종료 취소, 모드 변경 시 전환 정리. prefers-reduced-motion은 즉시 숨김. 중복 컨트롤/복제 DOM을 사용하지 않음.
+- web-glowme.js, glowme.css, index.html의 정적 query(list-polish-20261107), 영향받는 unified-actions 브라우저 검사 수정. 데이터/인증/저장/재생/Native/확장 로직 변경 없음.
+- 로컬 Chromium unified-actions 및 media-action-dock 통과. Replay/Channel 24개 합성 목록, 선택 전후 위치·종료 애니메이션·inert·동작 감소·스크롤 후 고정 헤더 확인. 기존 media PC 동작 및 390px 기본 깨짐 검사 통과. 전체 Node/브라우저 검사는 CI에서 검증 예정.
+- 화면: docs/design-review/list-polish/ (channel/replay-empty 및 선택 후 스크롤). 로컬 로그 /workspace/scratch/fromm-list-polish/.
+- Work에 물어볼 프롬프트는 사용자에게 먼저 제공했으며 외부 메시지 전송은 하지 않음.
+- 재개: 이 브랜치의 PR과 최신 head CI 확인 → 실제 결함 해결 → 전체 성공 시 기존 사용자 승인대로 해당 PR만 병합 → Pages/공개 자산 및 PC 재검증. 실계정·실방송·물리 OS/모바일·OS 설치 PWA는 미검증. Meapri 시험 적용 상태 유지.

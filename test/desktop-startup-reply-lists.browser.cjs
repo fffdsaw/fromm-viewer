@@ -15,10 +15,10 @@ const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
  if(process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR){fs.mkdirSync(process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR,{recursive:true});await page.waitForTimeout(200);await page.screenshot({path:process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR+'/sidebar-single-highlight.png'});}
  release();await page.waitForLoadState();assert.deepEqual(errors,[]);await context.close();console.log('PC cold Native delay: ready sidebar, centered logo and single hover background PASS');
  // Delayed shell JS never exposes raw wrapped room names or duplicate tabs.
- const boot=await browser.newContext({viewport:{width:1440,height:900}}),bp=await boot.newPage();const shellHeld=new Promise(r=>release=r);await bp.route('**/web-glowme.js',async route=>{await shellHeld;await route.continue();});
+ const boot=await browser.newContext({viewport:{width:1440,height:900}}),bp=await boot.newPage();const shellHeld=new Promise(r=>release=r);await bp.route('**/web-glowme.js*',async route=>{await shellHeld;await route.continue();});
  await bp.goto(server.url,{waitUntil:'commit'});await bp.waitForFunction(()=>typeof state==='object'&&!!document.querySelector('.sidebar-toggle-slot'));
  assert.equal(await bp.locator('#sidebar .sub').evaluate(e=>getComputedStyle(e).visibility),'hidden');assert.equal(await bp.locator('.toolbar').evaluate(e=>getComputedStyle(e).visibility),'hidden');release();await bp.waitForFunction(()=>document.documentElement.classList.contains('glowme-shell-ready'));await boot.close();console.log('PC delayed shell: legacy rail/tabs stay hidden until ready PASS');
- const failed=await browser.newContext(),fp=await failed.newPage();await fp.route('**/web-glowme.js',route=>route.abort());await fp.goto(server.url);assert.equal(await fp.locator('#shellStartupNotice').isVisible(),true);await failed.close();console.log('PC shell network failure: explicit reload notice PASS');
+ const failed=await browser.newContext(),fp=await failed.newPage();await fp.route('**/web-glowme.js*',route=>route.abort());await fp.goto(server.url);assert.equal(await fp.locator('#shellStartupNotice').isVisible(),true);await failed.close();console.log('PC shell network failure: explicit reload notice PASS');
  const fixture=await open(browser,server.url,{width:1440,height:900});const p=fixture.page;
  await p.evaluate(async()=>{
   Object.assign(replyIdentity,{context:replyAuthContext(),status:'ready',id:'mine'});

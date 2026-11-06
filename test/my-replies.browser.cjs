@@ -96,7 +96,10 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.locator('#myRepliesBtn').click();
    assert.equal(await page.locator('#myRepliesBtn').isChecked(),true);
    await page.waitForFunction(()=>state.chatMatchKey==='my-reply');
-   assert.equal(await page.locator('.msg').count(),messages.length,'context mode retains surrounding conversation');
+   assert.equal(await page.locator('.msg').count(),2,'default shows only confirmed personal replies');
+   assert.equal(await page.locator('#chatContextBtn').isChecked(),false);
+   await page.locator('#chatContextBtn').check();
+   assert.equal(await page.locator('.msg').count(),messages.length,'explicit context mode retains surrounding conversation');
    assert.equal(await page.locator('#chatMatchPosition').innerText(),'1 / 2');
    assert.equal(await page.locator('#chatMatchPrev').isDisabled(),true);
    // All message target states stay inside the rounded bubble's paint box.
@@ -163,6 +166,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    });
    await ensureToolsOpen(page);await page.locator('#myRepliesBtn').click();
    await page.waitForFunction(()=>state.chatMatchKey==='many-0');
+   await page.locator('#chatContextBtn').check();
    await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='many-1500');
    assert.equal(await page.locator('[data-message-id="many-1499"]').count(),1);assert.equal(await page.locator('[data-message-id="many-1501"]').count(),1);
    assert.ok(await page.locator('.msg').count()<1200,'far jumps do not render all history');
@@ -217,7 +221,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    // The independent search panel may remain open across artist-menu actions.
    await ensureToolsOpen(page);
    assert.equal(await page.locator('#myReplyRetry').isVisible(),true);
-   await page.locator('#myRepliesBtn').click();assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#chatMatchNext').isDisabled(),true);assert.equal(await page.locator('#counts').innerText(),'내 답장 확인 불가');
+   await page.locator('#myRepliesBtn').click();assert.equal(await page.locator('.msg').count(),0,'unconfirmed identity must not show personal replies');assert.equal(await page.locator('#chatMatchNext').isDisabled(),true);assert.equal(await page.locator('#counts').innerText(),'내 답장 확인 불가');
    profileStatus=200;await page.locator('#myReplyRetry').click();await page.waitForFunction(()=>currentReplyUserId()==='fan-b');
    assert.equal(await page.locator('.msg').count(),1);assert.equal(await page.locator('#myReplyRetry').isVisible(),false);
    // Missing IDs follow the same recoverable path.

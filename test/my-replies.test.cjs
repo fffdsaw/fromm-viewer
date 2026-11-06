@@ -89,3 +89,18 @@ test('match cache updates after query, identity, or source changes and is reused
  c.state.chatMessages.push(reply('b2','fan-b'));assert.equal(c.chatMatches().length,2);
  c.auth={...c.auth,token:'other'};assert.equal(c.chatMatches().length,0);
 });
+
+test('conflicting quote aliases cannot label a reply as personal',()=>{
+ const c=setup();
+ assert.equal(c.isReplyToMe(reply('bad','fan-b',{embeddedMentionedMessage:{messageId:'original',userId:'fan-a',content:'display'}})),false);
+ assert.equal(c.isReplyToMe(reply('wrong-original','fan-a',{embeddedMentionedMessage:{messageId:'other',userId:'fan-a',content:'display'}})),false);
+ assert.equal(c.isReplyToMe(reply('missing-author','fan-a',{mentionedMessage:{messageId:'original',content:'same text'}})),false);
+});
+test('rapid reply filter activation starts once from first and context is opt-in',async()=>{
+ const c=setup();let resolve;const waiting=new Promise(r=>resolve=r),calls=[],input={value:'old query'};
+ c.$=()=>input;c.ensureReplyIdentity=()=>waiting;c.navigateChatMatch=async(direction,options)=>{if(options.valid())calls.push({direction,first:options.first});};
+ vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;c.state.chatQuery='old query';
+ const first=c.setOnlyMyReplies(true);await c.setOnlyMyReplies(false);const second=c.setOnlyMyReplies(true);
+ resolve(true);await Promise.all([first,second]);
+ assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatContext,false);assert.equal(c.state.chatQuery,'');assert.equal(input.value,'');
+});

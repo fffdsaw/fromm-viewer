@@ -502,16 +502,13 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #chatToolsPanel #chatMatchNav[hidden]{display:none}
 .glowme-phase3 #chatToolsPanel #chatMatchNav .btn{min-width:40px;min-height:40px}
 
-/* Upper search dock: reply navigation grows beside its search button. */
+/* Search dock below the header: reply navigation grows beside its search button. */
 .glowme-phase3 #chatSearchDock{position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:460;display:flex;flex-direction:row-reverse;align-items:flex-start;gap:6px}
 .glowme-phase3 #chatSearchDock[hidden]{display:none}
-.glowme-phase3.chat-search-available .top-auth-controls{padding-inline-end:60px}
-.glowme-phase3 .chat-match-slot{max-width:0;opacity:0;overflow:hidden;transform:translateX(8px);transition:max-width 200ms ease,opacity 180ms ease,transform 200ms ease}
-.glowme-phase3 .chat-match-slot.expanded{max-width:160px;opacity:1;transform:none}
+.glowme-phase3 .chat-match-slot{max-width:0;opacity:0;visibility:hidden;pointer-events:none;overflow:hidden;transform:translateX(8px);transition:max-width 200ms ease,opacity 180ms ease,transform 200ms ease,visibility 0s linear 200ms}
+.glowme-phase3 .chat-match-slot.expanded{max-width:160px;opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
 .glowme-phase3 .chat-match-slot #chatMatchNav{position:static;flex-wrap:nowrap;white-space:nowrap;padding:4px;gap:4px;background:#edf8f0;border:1px solid #a5cbbb;border-radius:16px;box-shadow:0 3px 12px #244b3a1a}
 .glowme-phase3 .chat-match-slot #chatMatchNav .btn{width:44px;height:44px;padding:0}
 .glowme-phase3 .chat-match-slot #chatMatchPosition{font-size:12px;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .chat-match-slot{transition:none;transform:none}}
 
-@media(min-width:701px){.glowme-phase3.chat-search-available.chat-reply-navigation .top-auth-controls{padding-inline-end:220px}}
-@media(max-width:700px){.glowme-phase3.chat-search-available .topbar{padding-top:72px}}

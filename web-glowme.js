@@ -127,7 +127,9 @@
     });
   }).observe(calendar,{attributes:true,attributeFilter:['class']});
   function fitPanel(){
-    const header=$('.viewer-header').getBoundingClientRect();const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
+    const header=$('.viewer-header').getBoundingClientRect();
+    searchDock.style.top=`${Math.max(12,header.bottom+12)}px`;
+    const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){

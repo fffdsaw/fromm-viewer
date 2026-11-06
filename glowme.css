@@ -369,10 +369,12 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 .glowme-nav{flex:0 0 auto;gap:2px}
 .glowme-phase3 .glowme-nav{position:relative;isolation:isolate}
 .glowme-phase3 .glowme-nav button{position:relative;z-index:1}
-.glowme-phase3 .rail-pointer-light{position:absolute;inset:0 auto auto 0;z-index:0;pointer-events:none;opacity:0;border:1px solid #ffffffc9;border-radius:14px;background:radial-gradient(90px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#ffffffed,transparent 72%),linear-gradient(135deg,#cceadeb3,#94d9c480);box-shadow:inset 0 1px 1px #fff,0 2px 8px #285c4712;transition:transform 140ms ease-out,opacity 120ms ease-out}
+.glowme-phase3 .rail-pointer-light{position:absolute;inset:0 auto auto 0;z-index:0;pointer-events:none;opacity:0;border:1px solid #ffffffc9;border-radius:14px;background:radial-gradient(90px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#ffffffed,transparent 72%),linear-gradient(135deg,#cceadeb3,#94d9c480);box-shadow:inset 0 1px 1px #fff,0 2px 8px #285c4712;transition:none}
 .glowme-phase3 .rail-pointer-tracking .rail-pointer-light{opacity:1}
 @media(hover:hover) and (pointer:fine){.glowme-phase3 .rail-pointer-tracking button:hover:not([aria-current="page"]){background:transparent}}
 @media(hover:hover) and (pointer:fine){
+ .glowme-phase3 .glowme-nav button{transition:none}
+ .glowme-phase3 .glowme-nav button:hover:not([aria-current="page"]){background:transparent!important;box-shadow:none!important}
  .glowme-phase3 .rail-pointer-tracking button[aria-current="page"]{background:transparent!important;box-shadow:none!important;border-color:transparent!important;backdrop-filter:none!important;transition:none!important;font-weight:700}
  .glowme-phase3 .rail-pointer-tracking button[aria-current="page"]::after{display:none}
 }
@@ -468,6 +470,25 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 .batch-selection-tools[hidden]{display:none}
 .glowme-phase3 .viewer-header{gap:0}
 .glowme-phase3 .toolbar:has(#sortControls[style*="flex"]){height:36px;margin-top:8px}
+
+/* PC media actions use the same upper fixed dock pattern as conversation search. */
+#mediaActionDock[hidden],.media-action-gap[hidden]{display:none!important}
+.glowme-phase3 #mediaActionDock{position:fixed;right:12px;z-index:460;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-height:48px;max-width:calc(100vw - var(--rail-width) - var(--rail-gutter) - 24px)}
+.glowme-phase3 #mediaActionDock #sortControls{position:static;transform:none;margin:0;flex:none}
+.glowme-phase3 #mediaActionDock #sortBtn{height:44px;min-width:92px;border-radius:22px;box-shadow:inset 0 1px 0 #fff,0 3px 12px #285c4714}
+.glowme-phase3 #mediaSelectionToggle{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;padding:10px;border-radius:50%}
+.glowme-phase3 #mediaSelectionToggle[hidden]{display:none}
+.glowme-phase3 #mediaSelectionToggle svg{width:22px;height:22px}
+.glowme-phase3 .media-selection-slot{display:grid;grid-template-columns:0fr;height:48px;max-width:0;opacity:0;overflow:hidden;transition:grid-template-columns 180ms ease,max-width 180ms ease,opacity 150ms ease}
+.glowme-phase3 .media-selection-slot.expanded{grid-template-columns:1fr;max-width:600px;opacity:1}
+.glowme-phase3 #mediaActionDock .batch-selection-tools{position:static;inset:auto;transform:none;min-width:0;min-height:48px;height:48px;width:max-content;max-width:none;margin:0;padding:2px 6px;border-radius:24px;flex-wrap:nowrap;box-shadow:inset 0 1px 0 #fff,0 3px 12px #285c4714}
+.glowme-phase3 #mediaActionDock .batch-selection-tools .btn{min-height:40px}
+.glowme-phase3 #mediaActionDock #selectedCount{white-space:nowrap}
+.glowme-phase3.media-action-mode .viewer-header .toolbar{height:0;margin:0}
+.glowme-phase3 .media-action-gap{height:60px;flex:none}
+.glowme-phase3 .scroll-top.is-returning svg{animation:scroll-top-lift var(--top-return-duration,550ms) ease-out}
+@keyframes scroll-top-lift{0%{transform:translateY(3px)}45%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.glowme-phase3 .media-selection-slot{transition:none}.glowme-phase3 .scroll-top.is-returning svg{animation:none}}
 
 .glowme-phase3 .date-day.selected{color:#173f32;background:#a9d9c4;border-color:#428e7a;box-shadow:inset 0 1px 1px #fff}
 .glowme-phase3 .date-day.has-chat::after{background:#428e7a}

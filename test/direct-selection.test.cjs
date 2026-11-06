@@ -177,3 +177,11 @@ test('Channel detail/download and LIVE entry sources are preserved; media save r
   assert.match(direct, /await stableSelectedMediaForSave\(selected,current\)/);
   assert.match(direct, /await saveSelectedToDownloads\(items,current\)/);
 });
+
+
+test('clear selection cancels pending click intent, keeps other channel choices and does not stop a save',async()=>{
+ const h=setup(),other=JSON.stringify(['channel','artist-b','one']);h.state.postSelected.add(other);h.state.postBulkSaving=true;h.state.selectionAnchor={context:'channel:a',key:'one'};
+ Object.assign(h.c,{clearTimeout,downloadSelectionSet:()=>h.state.postSelected,downloadClickGesture:{timer:setTimeout(()=>h.state.postSelected.add('resurrected-click'),5)}});
+ vm.runInContext(fn('clearDownloadSelection'),h.c);h.c.clearDownloadSelection();await new Promise(resolve=>setTimeout(resolve,15));
+ assert.deepEqual([...h.state.postSelected],[other]);assert.equal(h.state.selectionAnchor,null);assert.equal(h.c.downloadClickGesture,null);assert.equal(h.state.postBulkSaving,true);assert.deepEqual(h.writes,[]);assert.deepEqual(h.aborted,[]);
+});

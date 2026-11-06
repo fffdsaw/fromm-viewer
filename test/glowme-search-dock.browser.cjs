@@ -4,7 +4,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
 (async()=>{const server=await serve(),browser=await chromium.launch();const shots=process.env.SEARCH_DOCK_SCREENSHOT_DIR;
 try{
  const early=await browser.newPage({viewport:{width:390,height:844}});let release;const held=new Promise(r=>release=r);
- await early.route('**/web-glowme.js',async route=>{await held;await route.continue();});
+ await early.route('**/web-glowme.js*',async route=>{await held;await route.continue();});
  const navigation=early.goto(server.url,{waitUntil:'domcontentloaded'});
  await early.locator('.topbar').waitFor({state:'attached'});
  await early.waitForFunction(()=>getComputedStyle(document.querySelector('.topbar')).backgroundImage.includes('237, 248, 240'));

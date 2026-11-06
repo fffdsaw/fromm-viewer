@@ -6,6 +6,7 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
 (async()=>{const server=await serve(),browser=await chromium.launch();try{
  for(const viewport of [{width:320,height:640},{width:844,height:390},{width:1440,height:900,installed:true}]){
   const {page,context,errors}=await open(browser,server.url,viewport);
+  await page.waitForFunction(()=>document.querySelector('#logoutMiniBtn').classList.contains('meapri-control'));
   await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(100);
   assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'offscreen header releases its lens');
   await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);

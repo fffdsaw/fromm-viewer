@@ -1,0 +1,96 @@
+{
+  "method": "Linux headless Chromium; 3 cold contexts per version, alternating order; first hover after same synthetic seed; 36 frames; JS TaskDuration is not CPU/GPU utilization",
+  "baseline": "da837e217866d9a51c064a621f18e3f33a3267da",
+  "rows": [
+    {
+      "label": "before",
+      "run": 0,
+      "requests": 1,
+      "bytes": 100320,
+      "firstVisualMs": 25.899999976158142,
+      "frameP95": 16.700000000000045,
+      "frameMax": 33.40000000000009,
+      "jsTaskMs": 128.645,
+      "open": true,
+      "optics": 4
+    },
+    {
+      "label": "after",
+      "run": 0,
+      "requests": 0,
+      "bytes": 0,
+      "firstVisualMs": 18.69999998807907,
+      "frameP95": 16.800000000000068,
+      "frameMax": 33.39999999999998,
+      "jsTaskMs": 42.912,
+      "open": true,
+      "optics": 0
+    },
+    {
+      "label": "before",
+      "run": 1,
+      "requests": 1,
+      "bytes": 100320,
+      "firstVisualMs": 30.69999998807907,
+      "frameP95": 16.700000000000045,
+      "frameMax": 16.800000000000068,
+      "jsTaskMs": 85.89399999999999,
+      "open": true,
+      "optics": 4
+    },
+    {
+      "label": "after",
+      "run": 1,
+      "requests": 0,
+      "bytes": 0,
+      "firstVisualMs": 27.700000017881393,
+      "frameP95": 16.700000000000045,
+      "frameMax": 16.700000000000045,
+      "jsTaskMs": 51.068999999999996,
+      "open": true,
+      "optics": 0
+    },
+    {
+      "label": "before",
+      "run": 2,
+      "requests": 1,
+      "bytes": 100320,
+      "firstVisualMs": 24.5,
+      "frameP95": 16.800000000000068,
+      "frameMax": 33.299999999999955,
+      "jsTaskMs": 172.332,
+      "open": true,
+      "optics": 4
+    },
+    {
+      "label": "after",
+      "run": 2,
+      "requests": 0,
+      "bytes": 0,
+      "firstVisualMs": 24.5,
+      "frameP95": 16.799999999999955,
+      "frameMax": 16.80000000000001,
+      "jsTaskMs": 42.19,
+      "open": true,
+      "optics": 0
+    }
+  ],
+  "summary": {
+    "before": {
+      "requests": 1,
+      "bytes": 100320,
+      "firstVisualMs": 25.9,
+      "frameP95": 16.7,
+      "frameMax": 33.3,
+      "jsTaskMs": 128.65
+    },
+    "after": {
+      "requests": 0,
+      "bytes": 0,
+      "firstVisualMs": 24.5,
+      "frameP95": 16.8,
+      "frameMax": 16.8,
+      "jsTaskMs": 42.91
+    }
+  }
+}

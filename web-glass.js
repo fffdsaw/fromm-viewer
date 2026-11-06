@@ -1,17 +1,20 @@
 /* Limited control optics: idle initialization, no content capture or media hooks. */
 const instances=new Map(),reduce=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
-const watched=new WeakSet(),visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(()=>sync()):null;
-let Engine=null,loading=null,scheduled=false,idleTask=0,retry=0,permitBuild=false;
+const watched=new WeakSet(),failed=new WeakSet(),visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(()=>sync()):null;
+const INPUT_QUIET_MS=800;
+let Engine=null,loading=null,scheduled=false,idleTask=0,retry=0,permitBuild=false,lastInput=performance.now();
+for(const type of ['pointerdown','pointermove','keydown','wheel','touchstart'])window.addEventListener(type,()=>{lastInput=performance.now();},{passive:true,capture:true});
 function eligible(){
  const lowPower=(navigator.deviceMemory>0&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2);
  return !!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
 }
 function queueBuild(){
- if(idleTask||loading||!eligible())return;
+ if(idleTask||retry||loading||!eligible())return;
  const run=()=>{
   idleTask=0;if(!eligible())return;
-  if(window.FrommGlowME?.railAnimating||navigator.scheduling?.isInputPending?.()){
-   if(!retry)retry=setTimeout(()=>{retry=0;queueBuild();},100);return;
+  const quietFor=performance.now()-lastInput;
+  if(quietFor<INPUT_QUIET_MS||window.FrommGlowME?.railAnimating||navigator.scheduling?.isInputPending?.()){
+   if(!retry)retry=setTimeout(()=>{retry=0;queueBuild();},Math.max(100,INPUT_QUIET_MS-quietFor));return;
   }
   if(!Engine){
    loading=import('./vendor/meapri/liquid-glass.js').then(module=>{Engine=module.LiquidGlass;}).catch(()=>{}).finally(()=>{loading=null;if(Engine)sync();});
@@ -32,16 +35,16 @@ function sync(){
    return !el.hidden&&!el.disabled&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&!(window.FrommGlowME?.railAnimating&&el.closest('.glowme-nav'));
   }):[];
   for(const [el,glass] of instances)if(!targets.includes(el)){glass.destroy();instances.delete(el);el.classList.remove('meapri-control');}
-  const next=targets.find(el=>!instances.has(el));
-  const build=permitBuild&&!window.FrommGlowME?.railAnimating;permitBuild=false;
-  if(!next)return;
+  const next=targets.find(el=>!instances.has(el)&&!failed.has(el));
+  const build=permitBuild&&!window.FrommGlowME?.railAnimating&&performance.now()-lastInput>=INPUT_QUIET_MS;permitBuild=false;
+  if(!next){if(window.FrommGlowME?.railAnimating)queueBuild();return;}
   if(!Engine||!build){queueBuild();return;}
   // At most one small control is initialized per idle/frame, after rail motion.
   try{
    next.classList.add('meapri-control');
    instances.set(next,new Engine(next,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',refraction:16,thickness:18,blur:2.5,saturation:110,chromaticAberration:0,mapPixelRatio:1,tint:'rgba(222,245,232,.42)',specularIntensity:.3,edges:false,applyRadius:false,fallbackFilter:'blur(3px) saturate(1.1)',respectReducedMotion:true}));
-  }catch{next.classList.remove('meapri-control');}
-  if(targets.some(el=>!instances.has(el)))queueBuild();
+  }catch{next.classList.remove('meapri-control');failed.add(next);}
+  if(targets.some(el=>!instances.has(el)&&!failed.has(el)))queueBuild();
  });
 }
 window.FrommGlass=Object.freeze({sync,get count(){return instances.size;}});

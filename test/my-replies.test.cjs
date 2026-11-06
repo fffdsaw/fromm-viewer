@@ -102,5 +102,5 @@ test('rapid reply filter activation starts once from first and context is opt-in
  vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;c.state.chatQuery='old query';
  const first=c.setOnlyMyReplies(true);await c.setOnlyMyReplies(false);const second=c.setOnlyMyReplies(true);
  resolve(true);await Promise.all([first,second]);
- assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatContext,false);assert.equal(c.state.chatQuery,'');assert.equal(input.value,'');
+ assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatContext,false);assert.equal(c.state.chatQuery,'old query');assert.equal(input.value,'old query');
 });

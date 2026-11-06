@@ -7760,7 +7760,6 @@ async function ensureReplyIdentity({retry=false}={}){
 async function setOnlyMyReplies(enabled){
   const generation=state.scanGeneration,request=state.replyFilterSequence=(state.replyFilterSequence||0)+1;
   state.onlyMyReplies=!!enabled;state.chatContext=false;state.chatMatchKey="";
-  if(enabled){state.chatQuery="";const input=$("#chatSearchInput");if(input)input.value="";}
   state.chatAutoTopPending=!enabled;
   syncMyReplyTools();render();
   if(enabled){

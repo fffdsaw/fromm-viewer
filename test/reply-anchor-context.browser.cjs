@@ -16,7 +16,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    const earlier=document.querySelector('[data-message-id="m1499"]');earlier.style.contentVisibility='visible';earlier.style.height='520px';
    void navigateChatMatch(0);setTimeout(()=>{earlier.style.height='24px';},350);
   });await page.waitForTimeout(650);
-  const placement=await page.locator('.chat-match-active').evaluate(el=>{const r=el.getBoundingClientRect(),d=document.querySelector('#chatSearchDock').getBoundingClientRect();return{top:r.top,bottom:r.bottom,min:r.left<d.right&&r.right>d.left?d.bottom+12:12};});
+  const placement=await page.locator('.chat-match-active').evaluate(el=>{const r=el.getBoundingClientRect(),d=document.querySelector('#chatSearchDock').getBoundingClientRect();return{top:r.top,bottom:r.bottom,min:Math.max(chatHeaderInset()+12,r.left<d.right&&r.right>d.left?d.bottom+12:12)};});
   assert.ok(placement.top>=placement.min-2&&placement.top<=placement.min+3,JSON.stringify(placement));assert.ok(placement.bottom<=viewport.height,'reply visible without scrolling up');
   await page.mouse.wheel(0,300);await page.waitForTimeout(100);const manual=await page.evaluate(()=>scrollY);await page.waitForTimeout(150);assert.ok(Math.abs(await page.evaluate(()=>scrollY)-manual)<2,'manual scroll wins');
   await page.locator('#chatToolsBtn').click();await page.locator('#myRepliesBtn').uncheck();

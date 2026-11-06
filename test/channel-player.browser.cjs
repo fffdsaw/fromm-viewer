@@ -70,7 +70,7 @@ async function measure(page, label) {
       {width: 360, height: 640}, {width: 844, height: 390}, {width: 650, height: 600},
       {width: 667, height: 375}, {width: 740, height: 360}, {width: 568, height: 320},
     ];
-    for (const viewport of viewports) {
+    for (const viewport of viewports.filter(v=>!process.env.PLAYER_VIEWPORTS||process.env.PLAYER_VIEWPORTS.split(',').includes(v.width+'x'+v.height))) {
       const mobile = viewport.width <= 700 || viewport.height <= 500;
       const context = await browser.newContext({viewport, isMobile: mobile, hasTouch: mobile});
       const page = await context.newPage();

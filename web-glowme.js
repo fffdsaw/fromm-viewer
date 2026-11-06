@@ -56,7 +56,7 @@
   reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});
   // Remove duplicate controls, keeping their existing filters and routes on the rail.
   $('.toolbar').querySelectorAll(':scope > [data-filter]').forEach(el=>el.remove());
-  const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.hidden=true;
+  const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.setAttribute('role','group');batchTools.setAttribute('aria-label','선택 항목 저장');batchTools.hidden=true;
   $('.toolbar').append(batchTools);
   for(const id of ['selectedCount','selectAllBtn','saveSelectedBtn'])batchTools.append($('#'+id));
   const clearSelection=document.createElement('button');clearSelection.id='clearSelectionBtn';clearSelection.className='btn';clearSelection.type='button';clearSelection.innerHTML=svg('m6 6 12 12M18 6 6 18');clearSelection.setAttribute('aria-label','선택 모두 해제');clearSelection.title='현재 선택 모두 해제 (Esc)';clearSelection.onclick=()=>{clearDownloadSelection();if(mediaDockActive())(state.filter==='live'?document.querySelector('.replay-filter.active,#channelRefresh'):$('#sortBtn'))?.focus({preventScroll:true});};batchTools.append(clearSelection);
@@ -66,19 +66,56 @@
   const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionSlot);document.body.append(mediaDock);
   let selectionCount=0,selectionExitTimer=0,selectionExitScope='';
   function mediaDockActive(){return mediaPC.matches&&(['media','image','video','sound'].includes(state.filter)||(state.filter==='live'&&((state.live.centerMode==='replay'&&!state.live.replaySelected)||(state.live.centerMode==='channel'&&!channelVideoState.selected))));}
+  // PC presentation reuses the real toolbar and its handlers. Park it before a
+  // renderer patches/replaces the list, then mount it in the persistent header.
+  const pcModeTitle=document.createElement('h1');pcModeTitle.className='pc-mode-title';pcModeTitle.hidden=true;
+  const pcListHost=document.createElement('div');pcListHost.className='pc-list-host';
+  $('.topbar').prepend(pcModeTitle);$('.topbar').insertBefore(pcListHost,$('.top-auth-controls'));
+  const pcMediaRow=document.createElement('div');pcMediaRow.className='pc-media-row';pcMediaRow.hidden=true;
+  const pcListInfo=document.createElement('span');pcListInfo.className='pc-list-info';pcMediaRow.append(pcListInfo);$('.viewer-header').append(pcMediaRow);
+  let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0;
+  function restorePCToolbar(){
+    if(selectionSlot.parentElement!==mediaDock)mediaDock.prepend(selectionSlot);
+    if(pcToolbar){if(pcToolbarHome?.isConnected)pcToolbarHome.replaceWith(pcToolbar);else pcToolbar.remove();}
+    pcToolbar=null;pcToolbarHome=null;
+  }
+  function syncPCLayout(){
+    if(pcRenderDepth)return;
+    const pc=mediaPC.matches,collection=pc&&state.filter==='live',list=collection&&mediaDockActive();
+    document.documentElement.classList.toggle('pc-layout',pc);
+    document.documentElement.classList.toggle('pc-collection',collection);
+    document.documentElement.dataset.pcMode=collection?state.live.centerMode:'';
+    pcModeTitle.hidden=!collection;pcModeTitle.textContent=collection?labels[state.live.centerMode]||'LIVE':'';
+    const candidate=list?document.querySelector('#timeline .replay-toolbar')||pcToolbar:null;
+    if(!candidate){restorePCToolbar();}
+    else{
+      if(candidate!==pcToolbar){restorePCToolbar();pcToolbar=candidate;pcToolbarHome=document.createComment('PC toolbar home');candidate.before(pcToolbarHome);}
+      const focused=candidate.contains(document.activeElement)?document.activeElement:null;
+      if(candidate.parentElement!==pcListHost)pcListHost.append(candidate);
+      const refresh=candidate.querySelector('#channelRefresh');if(refresh){refresh.title='Channel 새로고침';refresh.setAttribute('aria-label','Channel 새로고침');}
+      const count=candidate.querySelector('.replay-count');if(selectionSlot.parentElement!==candidate)candidate.insertBefore(selectionSlot,count);
+      focused?.focus({preventScroll:true});
+    }
+    document.documentElement.classList.toggle('pc-has-list-refresh',!!(pc&&pcToolbar?.querySelector('#channelRefresh')));
+    const media=pc&&['media','image','video','sound'].includes(state.filter);
+    pcMediaRow.hidden=!media;
+    if(media){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);}
+    else if(mediaDock.parentElement!==document.body)document.body.append(mediaDock);
+  }
   function syncMediaDock(){
+    syncPCLayout();
     const active=mediaDockActive(),videoList=active&&state.filter==='live',destination=active?selectionSlot:$('.toolbar');
     if(selectionExitTimer&&(!active||selectionExitScope!==state.filter+':'+state.live.centerMode)){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(selectionCount);}
     clearSelection.hidden=(!selectionCount&&!selectionExitTimer)||!mediaPC.matches;
-    document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&(selectionCount>0||selectionExitTimer>0));mediaDock.hidden=!active||(videoList&&!selectionCount&&!selectionExitTimer);mediaGap.hidden=!active||videoList;
+    document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&(selectionCount>0||selectionExitTimer>0));mediaDock.hidden=!active||(videoList&&!selectionCount&&!selectionExitTimer);mediaGap.hidden=true;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active&&!videoList?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
     const open=active&&(selectionCount>0||selectionExitTimer>0);
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
-    if(active&&!videoList)mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;
+
   }
-  mediaPC.addEventListener('change',()=>{syncMediaDock();fitPanel();});
-  new ResizeObserver(()=>{if(mediaDockActive()&&state.filter!=='live')mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;}).observe(mediaDock);
+  mediaPC.addEventListener('change',()=>{restorePCToolbar();syncMediaDock();fitPanel();});
+
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');
   function decorateRooms(){
@@ -135,7 +172,8 @@
     const key=state.filter==='live'?state.live.centerMode:state.filter,host=state.room?.host||{},name=host.nick||host.defaultNameOverseas?.ko||state.room?.chatRoomName||'';
     const setText=(el,text)=>{if(el.textContent!==text)el.textContent=text;};
     setText(context,key==='all'?'현재 보고 있는 대화':`현재 보고 있는 ${labels[key]||'대화'}`);
-    setText(loadStatus,state.room&&state.historyError?'기록 준비 일시 중지 · 새로고침으로 재시도':state.room&&state.loadingMessages?'기록 불러오는 중…':'');
+    loadStatus.dataset.loading=String(!!state.room&&state.loadingMessages&&!state.historyError);
+    setText(loadStatus,state.room&&state.historyError?'기록 준비 일시 중지 · 새로고침으로 재시도':state.room&&state.loadingMessages?(mediaPC.matches?'불러오는 중…':'기록 불러오는 중…'):'');
     setText($('#artistTitle'),name||(['live','replay','channel'].includes(key)?labels[key]:'아티스트를 선택하세요'));
     const profile=String(state.room?.hostChatRoomId||state.room?.id||'')+'|'+(host.profileUrlThumbnail||host.profileUrl||host.defaultProfileUrl||'');
     if(profile!==profileKey){profileKey=profile;syncArtistHeaderProfile();}$('#artistProfileWrap').style.display=name?'':'none';
@@ -194,7 +232,7 @@
   function fitPanel(){
     const header=$('.viewer-header').getBoundingClientRect();
     document.documentElement.style.setProperty('--list-tools-top',`${Math.max(12,header.bottom+12)}px`);
-    sidebar.style.setProperty('--rail-top',`${Math.max(12,header.bottom+12)}px`);
+    sidebar.style.setProperty('--rail-top',`${mediaPC.matches?12:Math.max(12,header.bottom+12)}px`);
     searchDock.style.top=`${Math.max(12,header.bottom+12)}px`;
     const listTools=document.documentElement.classList.contains('video-list-actions')?document.querySelector('.replay-toolbar'):null;
     mediaDock.style.top=`${listTools?listTools.getBoundingClientRect().top:Math.max(12,header.bottom+12)}px`;
@@ -206,9 +244,9 @@
     if(n>0&&selectionExitTimer){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');}
     if(!n&&selectionCount>0&&mediaDockActive()&&!reducedMotion.matches){
       selectionExitScope=state.filter+':'+state.live.centerMode;batchTools.classList.add('selection-exiting');
-      selectionExitTimer=setTimeout(()=>{selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(0);},180);
+      selectionExitTimer=setTimeout(()=>{selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(0);},140);
     }
-    selectionCount=n;batchTools.inert=n===0;
+    selectionCount=n;$('#selectedCount').title=$('#selectedCount').textContent;batchTools.inert=n===0;
     const hide=n===0&&!selectionExitTimer;
     const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);batchTools.hidden=hide;
     for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=hide;el.inert=n===0;}
@@ -236,6 +274,12 @@
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
   new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));if(!panel.inert&&!calendar.classList.contains('open'))openDateCalendar();syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
   new MutationObserver(syncMatchNav).observe(matchNav,{attributes:true,attributeFilter:['hidden']});
+  // These functions remain the authoritative data/render paths; only the PC
+  // toolbar's DOM location is restored before their existing patch logic runs.
+  for(const name of ['renderLiveView','renderReplayView','renderChannelVideosView','renderReplayPlayerView']){
+    const original=window[name];if(typeof original!=='function')continue;
+    window[name]=function(...args){if(!pcRenderDepth)restorePCToolbar();pcRenderDepth++;try{return original.apply(this,args);}finally{if(!--pcRenderDepth){syncMediaDock();fitPanel();}}};
+  }
   setRailOpen(false);syncNavigation();updateSelectedCount();
   document.documentElement.classList.add('glowme-shell-ready');
   document.documentElement.classList.remove('glowme-shell-failed');

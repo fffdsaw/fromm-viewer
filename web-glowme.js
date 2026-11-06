@@ -67,10 +67,10 @@
   let selectionCount=0,selectionExitTimer=0,selectionExitScope='';
   function mediaDockActive(){return mediaPC.matches&&(['media','image','video','sound'].includes(state.filter)||(state.filter==='live'&&((state.live.centerMode==='replay'&&!state.live.replaySelected)||(state.live.centerMode==='channel'&&!channelVideoState.selected))));}
   function syncMediaDock(){
-    const active=mediaDockActive(),videoList=active&&state.filter==='live',destination=videoList?document.querySelector('.replay-toolbar')||selectionSlot:active?selectionSlot:$('.toolbar');
+    const active=mediaDockActive(),videoList=active&&state.filter==='live',destination=active?selectionSlot:$('.toolbar');
     if(selectionExitTimer&&(!active||selectionExitScope!==state.filter+':'+state.live.centerMode)){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(selectionCount);}
     clearSelection.hidden=(!selectionCount&&!selectionExitTimer)||!mediaPC.matches;
-    document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);mediaDock.hidden=!active||videoList;mediaGap.hidden=!active||videoList;
+    document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&(selectionCount>0||selectionExitTimer>0));mediaDock.hidden=!active||(videoList&&!selectionCount&&!selectionExitTimer);mediaGap.hidden=!active||videoList;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active&&!videoList?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
     const open=active&&(selectionCount>0||selectionExitTimer>0);
@@ -196,7 +196,9 @@
     document.documentElement.style.setProperty('--list-tools-top',`${Math.max(12,header.bottom+12)}px`);
     sidebar.style.setProperty('--rail-top',`${Math.max(12,header.bottom+12)}px`);
     searchDock.style.top=`${Math.max(12,header.bottom+12)}px`;
-    mediaDock.style.top=`${Math.max(12,header.bottom+12)}px`;
+    const listTools=document.documentElement.classList.contains('video-list-actions')?document.querySelector('.replay-toolbar'):null;
+    mediaDock.style.top=`${listTools?listTools.getBoundingClientRect().top:Math.max(12,header.bottom+12)}px`;
+    mediaDock.style.right=listTools?`${Math.max(12,innerWidth-listTools.getBoundingClientRect().right)}px`:'12px';
     const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }

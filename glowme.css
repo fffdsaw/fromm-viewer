@@ -602,11 +602,11 @@ html.glowme .reply-content{color:#244c42}
 
 /* Video lists reuse their own toolbar instead of reserving an empty action row. */
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.video-list-actions #mediaActionDock{z-index:475}
  .glowme-phase3.video-list-actions .live-card{overflow:clip}
  .glowme-phase3.video-list-actions .replay-toolbar{position:sticky;top:var(--list-tools-top,108px);z-index:470;min-height:48px;align-items:center;background:var(--bg);border-radius:14px}
- .glowme-phase3.video-list-actions .replay-toolbar .batch-selection-tools{position:absolute;inset:0 0 auto auto;transform:none;max-width:none;flex-wrap:nowrap;gap:8px;padding:3px 10px;min-height:48px;border-radius:26px}
- .glowme-phase3.video-list-actions .replay-toolbar:has(.batch-selection-tools:not([hidden])) :is(.replay-count,#channelRefresh){visibility:hidden}
- .glowme-phase3.video-list-actions .replay-toolbar:has(.batch-selection-tools:not([hidden])) .replay-filter-strip{max-width:calc(100% - 360px);flex-wrap:nowrap;overflow-x:auto}
+ .glowme-phase3.video-list-actions.video-selection-visible .replay-toolbar :is(.replay-count,#channelRefresh){visibility:hidden}
+ .glowme-phase3.video-list-actions.video-selection-visible .replay-toolbar .replay-filter-strip{max-width:calc(100% - 360px);flex-wrap:nowrap;overflow-x:auto}
  .glowme-phase3.video-list-actions .replay-toolbar :is(#selectAllBtn,#saveSelectedBtn){border-radius:22px;padding-inline:18px}
  .glowme-phase3 .batch-selection-tools.selection-exiting{animation:selection-dismiss 180ms ease-in forwards;pointer-events:none}
 }

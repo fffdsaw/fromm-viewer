@@ -32,3 +32,5 @@
 - 화면: docs/design-review/list-polish/ (channel/replay-empty 및 선택 후 스크롤). 로컬 로그 /workspace/scratch/fromm-list-polish/.
 - Work에 물어볼 프롬프트는 사용자에게 먼저 제공했으며 외부 메시지 전송은 하지 않음.
 - 재개: 이 브랜치의 PR과 최신 head CI 확인 → 실제 결함 해결 → 전체 성공 시 기존 사용자 승인대로 해당 PR만 병합 → Pages/공개 자산 및 PC 재검증. 실계정·실방송·물리 OS/모바일·OS 설치 PWA는 미검증. Meapri 시험 적용 상태 유지.
+
+- 보강: 저장 컨트롤 DOM은 body의 기존 고정 dock에 유지하고 위치만 목록 toolbar 줄에 맞춤. 목록 재렌더링이 버튼 DOM/ID를 제거하지 않게 함. PR https://github.com/fffdsaw/fromm-viewer/pull/62.

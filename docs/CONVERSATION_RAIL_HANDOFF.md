@@ -41,3 +41,10 @@
 - 스크린샷: `docs/design-review/conversation-context-rail/{before-1440,after-1440,after-1440-pwa,hover-1440}.png`. 실제 구현을 Chromium에서 렌더링한 합성 데이터이며 개인 대화/인증정보 없음. 실제 OS 설치 PWA 검증 아님.
 - 미검증: 실제 계정/실방송/Windows Native/물리 macOS·모바일·iOS·설치형 PWA. 모바일 세부 배치/전체 화면 행렬은 최신 사용자 범위에 따라 새로 검수하지 않음.
 - 다음: 이 체크포인트 커밋·푸시 및 같은 새 Draft PR의 CI 확인. 실패하면 필요한 검사/원인만 수정. main 병합·배포는 승인 전 수행하지 않음.
+
+## PR #58 CI 후속 및 병합 승인
+
+- Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/58 . UI 체크포인트 `c5b99ac` 원격 저장 완료.
+- 사용자가 **CI 완료 후 병합·배포를 승인**함. 기존 금지 조건을 이 PR에 대해 해제하며 다른 PR/브랜치는 건드리지 않음. 병합 전 main 및 head/필수 검사 재확인·복구 기준 기록 → 이 PR만 병합 → Pages 및 실제 공개 자산·PC 동작 확인.
+- 첫 CI: Node 및 Media 저장 전체 통과. Channel 브라우저의 `votes.browser.cjs`가 검색 후 DOM 메시지 수 1개(예전 결과 필터 방식)를 기대하여 실제 3개와 불일치. 그 이전 플레이어·LIVE·선택 등 검사는 통과 기록 있음.
+- 새 요구사항에 맞춰 투표 검색 검사를 **주변 대화 3개 유지 + 검색 일치 ID 1개 + 해당 투표 카드로 실제 이동**으로 갱신. 투표/검색 제품 로직은 추가 수정하지 않음. `node test/votes.browser.cjs` 1440/390 전체 통과(조회·상세·원본 저장/오류/재시도·읽기 전용·XSS·계정/아티스트 경합 포함). 재CI는 확인 중.

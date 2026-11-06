@@ -8,7 +8,12 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
   const {page,context,errors}=await open(browser,server.url,viewport);
   await page.waitForFunction(()=>document.querySelector('#logoutMiniBtn').classList.contains('meapri-control'));
   await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(100);
-  assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'offscreen header releases its lens');
+  if(await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'))){
+   assert.ok((await page.locator('.viewer-header').boundingBox()).y>=0,'PC header stays visible');
+   assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),true,'visible sticky control retains its small lens');
+   await page.locator('#logoutMiniBtn').evaluate(e=>{e.hidden=true;FrommGlass.sync();});await page.waitForFunction(()=>!document.querySelector('#logoutMiniBtn').classList.contains('meapri-control'));
+   await page.locator('#logoutMiniBtn').evaluate(e=>{e.hidden=false;FrommGlass.sync();});
+  }else assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'offscreen header releases its lens');
   await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);
   const paths=await page.locator('.glowme-nav svg path').evaluateAll(es=>es.map(e=>e.getAttribute('d')));assert.equal(new Set(paths).size,9,'collapsed navigation has nine distinct icons');
   await page.evaluate(()=>{state.historyError='synthetic';FrommGlowME.syncHeader();});assert.equal(await page.locator('#artistLoadStatus').isVisible(),true);assert.match(await page.locator('#artistLoadStatus').textContent(),/재시도/);

@@ -652,7 +652,7 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .media-action-gap{display:none!important}
  .glowme-phase3.pc-layout .media-selection-slot{display:flex;align-items:center;flex:0 0 var(--pc-cap-width);width:var(--pc-cap-width);max-width:none;height:40px;overflow:visible;opacity:1;transition:none}
  .glowme-phase3.pc-layout .media-selection-slot:not(.expanded){visibility:hidden;pointer-events:none}
- .glowme-phase3.pc-layout .batch-selection-tools{position:static;inset:auto;transform:none;translate:none;width:var(--pc-cap-width);max-width:none;height:36px;min-height:36px;padding:2px 5px;gap:4px;flex-wrap:nowrap;border:1px solid #a8cfc0;border-radius:20px;background:#edf8f2;box-shadow:0 1px 3px #244b3a0c;animation:pc-selection-enter 180ms ease-out}
+ .glowme-phase3.pc-layout .batch-selection-tools{justify-content:space-between;position:static;inset:auto;transform:none;translate:none;width:var(--pc-cap-width);max-width:none;height:36px;min-height:36px;padding:2px 5px;gap:4px;flex-wrap:nowrap;border:1px solid #a8cfc0;border-radius:20px;background:#edf8f2;box-shadow:0 1px 3px #244b3a0c;animation:pc-selection-enter 180ms ease-out}
  .glowme-phase3.pc-layout .batch-selection-tools[hidden]{display:none}
  .glowme-phase3.pc-layout .batch-selection-tools .btn{min-height:30px;height:30px;font-size:13px;border-radius:16px;padding:3px 10px;white-space:nowrap}
  .glowme-phase3.pc-layout #selectedCount{min-width:80px;padding:3px 6px;font-size:12px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}

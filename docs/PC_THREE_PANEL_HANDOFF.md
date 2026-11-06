@@ -40,3 +40,12 @@
 | 좁은 PC 900 | [전](design-review/pc-three-panel/before-900-channel-selected.png) | [후](design-review/pc-three-panel/after-900-channel-selected.png) |
 
 다음 시작: 이 브랜치의 Draft PR/최신 head CI 확인, 실패 시 실제 원인 수정. CI 성공 후에도 Draft 유지. 사용자 별도 승인 없이 병합·배포·버전 변경 금지.
+
+
+## Draft PR 및 CI 설계 조건 갱신
+
+- Draft PR https://github.com/fffdsaw/fromm-viewer/pull/63. Draft 유지, 병합·배포 금지.
+- 최초 CI regression 통과. browser는 `glowme-phase3-review.browser.cjs`의 "스크롤 시 헤더가 화면 밖으로 사라진다"는 이전 조건에서 실패. 이제 고정 PC 헤더의 보이는 소형 렌즈 유지 및 실제 hidden 컨트롤의 렌즈 정리를 나눠 확인하고, 모바일의 기존 offscreen 정리 검사는 유지함. 엔진 제품 코드는 변경하지 않음.
+- 변경한 review 검사 로컬320/844/1440 PWA 통과. 필수 CI가 포함한 기존 모바일 사례를 유지한 것이며 모바일 스타일 개편은 하지 않음.
+- 캡슐 내부는 고정 폭 안에서 버튼 간격을 고르게 정돈. 변경 후 새 PC1440/900/760 및 모바일390 대화·미디어 최소 검사 재통과. 전후 PNG의 수정 후 화면 재촬영.
+- 다음: 최신 커밋의 전체 CI 결과 확인 후 PR에 최종 결과 기록. main/public 상태는 변경하지 않는다.

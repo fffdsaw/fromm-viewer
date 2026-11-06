@@ -2,7 +2,8 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const {serve,seed,open}=require('./helpers/phase3-fixture.cjs');
-const output=process.env.MATERIALIZE_SCREENSHOT_DIR;
+// ffmpeg resolves concat entries relative to frames.txt, so record absolute paths.
+const output=process.env.MATERIALIZE_SCREENSHOT_DIR?path.resolve(process.env.MATERIALIZE_SCREENSHOT_DIR):null;
 async function snap(p,name){if(output){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,name+'.png'),clip:{x:0,y:0,width:p.viewportSize().width,height:190}});}}
 async function start(p){await p.evaluate(()=>{setFilter('image');clearDownloadSelection();});await p.waitForFunction(()=>FrommGlowME.capsule!==null);}
 async function select(p,i=0){await p.evaluate(i=>chooseDownloadItem('media',state.infiniteList[i]),i);}

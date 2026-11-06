@@ -34,3 +34,4 @@
 - 재개: 이 브랜치의 PR과 최신 head CI 확인 → 실제 결함 해결 → 전체 성공 시 기존 사용자 승인대로 해당 PR만 병합 → Pages/공개 자산 및 PC 재검증. 실계정·실방송·물리 OS/모바일·OS 설치 PWA는 미검증. Meapri 시험 적용 상태 유지.
 
 - 보강: 저장 컨트롤 DOM은 body의 기존 고정 dock에 유지하고 위치만 목록 toolbar 줄에 맞춤. 목록 재렌더링이 버튼 DOM/ID를 제거하지 않게 함. PR https://github.com/fffdsaw/fromm-viewer/pull/62.
+- 첫 CI browser 실패 원인은 기존 navigation 검사에서 선택 해제 직후 display:none을 기대했기 때문. 새 승인 동작에 맞게 즉시 inert와 전환 종료 후 hidden을 검사하고 기존 스크롤 위치 assertion은 유지. 로컬 PC/390px navigation 재검사 통과.

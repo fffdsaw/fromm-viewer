@@ -113,6 +113,9 @@
     document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&(selectionCount>0||selectionExitTimer>0));mediaDock.hidden=!active||(videoList&&!selectionCount&&!selectionExitTimer);mediaGap.hidden=true;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active&&!videoList?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
+    // List selections survive playback; their controls belong only to the list.
+    const playerOrLive=mediaPC.matches&&state.filter==='live'&&!active;
+    batchTools.hidden=playerOrLive||(!selectionCount&&!selectionExitTimer);batchTools.inert=playerOrLive||selectionCount===0;
     capsuleMotion?.sync(selectionCount>0,capsuleScope(),active);
     const open=active&&(selectionCount>0||selectionExitTimer>0);
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));

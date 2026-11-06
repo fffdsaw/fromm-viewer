@@ -59,26 +59,23 @@
   const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.hidden=true;
   $('.toolbar').append(batchTools);
   for(const id of ['selectedCount','selectAllBtn','saveSelectedBtn'])batchTools.append($('#'+id));
-  const clearSelection=document.createElement('button');clearSelection.id='clearSelectionBtn';clearSelection.className='btn';clearSelection.type='button';clearSelection.textContent='선택 해제';clearSelection.title='현재 선택 모두 해제 (Esc)';clearSelection.onclick=()=>{clearDownloadSelection();if(mediaDockActive())$('#sortBtn').focus({preventScroll:true});};batchTools.append(clearSelection);
+  const clearSelection=document.createElement('button');clearSelection.id='clearSelectionBtn';clearSelection.className='btn';clearSelection.type='button';clearSelection.innerHTML=svg('m6 6 12 12M18 6 6 18');clearSelection.setAttribute('aria-label','선택 모두 해제');clearSelection.title='현재 선택 모두 해제 (Esc)';clearSelection.onclick=()=>{clearDownloadSelection();if(mediaDockActive())(state.filter==='live'?document.querySelector('.replay-filter.active,#channelRefresh'):$('#sortBtn'))?.focus({preventScroll:true});};batchTools.append(clearSelection);
   const mediaPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)'),sortControls=$('#sortControls');
   const mediaDock=document.createElement('div');mediaDock.id='mediaActionDock';mediaDock.setAttribute('role','group');mediaDock.setAttribute('aria-label','미디어 정렬 및 선택');mediaDock.hidden=true;
   const mediaGap=document.createElement('div');mediaGap.className='media-action-gap';mediaGap.hidden=true;mediaGap.setAttribute('aria-hidden','true');$('.viewer-header').after(mediaGap);
-  const selectionToggle=document.createElement('button');selectionToggle.id='mediaSelectionToggle';selectionToggle.className='btn';selectionToggle.type='button';selectionToggle.innerHTML=svg('M5 4h14v16H5z M8 11l3 3 5-6');selectionToggle.setAttribute('aria-controls','mediaSelectionSlot');
-  const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionToggle,selectionSlot);document.body.append(mediaDock);
-  let selectionCount=0,mediaPanelOpen=false;
-  function mediaDockActive(){return mediaPC.matches&&['media','image','video','sound'].includes(state.filter);}
+  const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionSlot);document.body.append(mediaDock);
+  let selectionCount=0;
+  function mediaDockActive(){return mediaPC.matches&&(['media','image','video','sound'].includes(state.filter)||(state.filter==='live'&&((state.live.centerMode==='replay'&&!state.live.replaySelected)||(state.live.centerMode==='channel'&&!channelVideoState.selected))));}
   function syncMediaDock(){
     const active=mediaDockActive(),destination=active?selectionSlot:$('.toolbar');
     clearSelection.hidden=!selectionCount||!mediaPC.matches;
-    document.documentElement.classList.toggle('media-action-mode',active);mediaDock.hidden=!active;mediaGap.hidden=!active;
+    document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',mediaPC.matches&&['media','image','video','sound'].includes(state.filter));mediaDock.hidden=!active;mediaGap.hidden=!active;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
-    const open=active&&selectionCount>0&&mediaPanelOpen;
-    selectionToggle.hidden=!active||!selectionCount;selectionToggle.setAttribute('aria-expanded',String(open));selectionToggle.setAttribute('aria-label',`${open?'선택 도구 접기':'선택 도구 펼치기'} · ${selectionCount}개`);selectionToggle.title=`선택 ${selectionCount}개 · 도구 ${open?'접기':'펼치기'}`;
+    const open=active&&selectionCount>0;
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
     if(active)mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;
   }
-  selectionToggle.onclick=()=>{mediaPanelOpen=!mediaPanelOpen;syncMediaDock();};
   mediaPC.addEventListener('change',()=>{syncMediaDock();fitPanel();});
   new ResizeObserver(()=>{if(mediaDockActive())mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;}).observe(mediaDock);
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
@@ -126,12 +123,13 @@
   },true);
   // Existing modal and marquee Escape handlers run first and retain priority.
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&!event.defaultPrevented&&!event.frommSelectionOverlay&&mediaDockActive()&&selectionCount>0){event.preventDefault();clearDownloadSelection();$('#sortBtn').focus({preventScroll:true});}
+    if(event.key==='Escape'&&!event.defaultPrevented&&!event.frommSelectionOverlay&&mediaDockActive()&&selectionCount>0){event.preventDefault();clearDownloadSelection();(state.filter==='live'?document.querySelector('.replay-filter.active,#channelRefresh'):$('#sortBtn'))?.focus({preventScroll:true});}
   });
   document.addEventListener('pointerdown',event=>{if(expanded&&!sidebar.contains(event.target))setRailOpen(false);});
   const context=document.createElement('div');context.id='viewContext';$('.artist-copy').prepend(context);
   const stats=document.createElement('div');stats.id='artistMediaStats';stats.setAttribute('role','status');stats.setAttribute('aria-live','polite');$('#artistTitle').after(stats);
   const loadStatus=document.createElement('div');loadStatus.id='artistLoadStatus';loadStatus.setAttribute('role','status');stats.after(loadStatus);
+  const metaLine=document.createElement('div');metaLine.className='artist-meta-line';stats.before(metaLine);metaLine.append(stats,loadStatus);
   function syncHeader(){
     const key=state.filter==='live'?state.live.centerMode:state.filter,host=state.room?.host||{},name=host.nick||host.defaultNameOverseas?.ko||state.room?.chatRoomName||'';
     const setText=(el,text)=>{if(el.textContent!==text)el.textContent=text;};
@@ -201,7 +199,7 @@
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){
-    if(n>0&&selectionCount===0)mediaPanelOpen=true;if(!n)mediaPanelOpen=false;selectionCount=n;
+    selectionCount=n;
     const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);batchTools.hidden=n===0;
     for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=n===0;el.inert=n===0;}
     syncMediaDock();

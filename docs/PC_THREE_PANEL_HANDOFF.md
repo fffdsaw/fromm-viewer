@@ -58,3 +58,9 @@
 - 미디어 목록 정보는 기존 state.infiniteList.length를 O(1)로 읽음. 레이아웃 동기화 때 전체 메시지를 다시 필터링하지 않음.
 - 새 PC1440/900/760 및 모바일390 최소 검사 재통과. ui-icons, reply-start-top, reply-anchor-context, glowme-phase3-visual도 통과. 필수 CI만 남음.
 - 기존 visual 검사의 합성 성능 수치는 optics idle 초기화 등에 영향을 받는 단회 측정이며 실제 기기 CPU/GPU 성능 보증으로 사용하지 않음. 엔진 개편/새 blur 추가 없음.
+
+## 플레이어 회귀 수정
+
+- 세 번째 CI의 Channel 1920×980 bottom-fill 실패는 새 `.replay-shell` 목록 padding이 플레이어에도 적용된 실제 회귀였음. 새 목록 전용 외곽/여백 스타일을 `video-list-actions`에 한정해 플레이어의 기존 sizing 규칙이 유지되도록 수정. 기존 fill/비율/컨트롤/scroll-lock assertion은 변경하지 않음.
+- Channel/Replay 플레이어 테스트에 선택적 PLAYER_VIEWPORTS 필터 추가. 기본 CI 전체 viewport 목록은 그대로 유지하며, 로컬에서는 PC1920×980·1440×900만 골라 비용을 줄임.
+- 두 PC viewport에서 Channel 가로·세로 로컬 MP4 decode/화면 채움/컨트롤/목록 복귀, Replay decode/휠·페이지키 고정/목록 스크롤 복구 통과. 재생·다운로드 제품 로직은 수정하지 않음.

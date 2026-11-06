@@ -671,8 +671,8 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .pc-list-host .replay-count{visibility:visible!important;flex:0 0 auto;margin:0;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}
  .glowme-phase3.pc-layout .pc-list-host #channelRefresh{visibility:visible!important;flex:0 0 auto;height:34px;margin:0;white-space:nowrap}
  .glowme-phase3.pc-layout .pc-list-host .media-selection-slot{margin-left:auto}
- .glowme-phase3.pc-layout :is(.replay-list-shell,.channel-list-shell)>.live-card{border:0;background:none;box-shadow:none;overflow:visible}
- .glowme-phase3.pc-layout .replay-shell{padding:12px 0 18px}
+ .glowme-phase3.pc-layout.video-list-actions :is(.replay-list-shell,.channel-list-shell)>.live-card{border:0;background:none;box-shadow:none;overflow:visible}
+ .glowme-phase3.pc-layout.video-list-actions .replay-shell{padding:12px 0 18px}
  .glowme-phase3.pc-layout :is(.card-body,.replay-body){background:#fcfefd;color:#193e34}
  .glowme-phase3.pc-layout .media-card,.glowme-phase3.pc-layout .replay-card{box-shadow:none}
  .glowme-phase3.pc-layout #mediaActionDock .batch-selection-tools{width:var(--pc-cap-width);min-height:36px;height:36px;padding:2px 5px;gap:4px;border-radius:20px}

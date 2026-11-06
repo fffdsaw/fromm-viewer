@@ -54,10 +54,26 @@
    if(++count<12)requestAnimationFrame(align);
   };requestAnimationFrame(align);
  }
+ function toStart(){
+  cancel();state.chatAutoTopPending=false;
+  const view=key();
+  if(state.filter==='all'&&state.chatHistoryComplete){
+   const list=filteredMessages();if(list.length)renderChatWindow(list,0);
+  }
+  cancel();const ticket=serial;positions.set(view,{y:0});
+  // Virtual prepend compensation and smooth scrolling fight over the viewport.
+  // Reset the window to the true start and stabilize it for bounded frames.
+  scrollTo({top:0,behavior:state.filter==='all'?'instant':'smooth'});
+  if(state.filter!=='all')return;
+  let count=0;const settle=()=>{if(ticket!==serial||view!==key())return;
+   scrollTo({top:0,behavior:'instant'});
+   if(++count<12)requestAnimationFrame(settle);
+  };requestAnimationFrame(settle);
+ }
  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;void restore();});}
  new MutationObserver(schedule).observe(document.querySelector('#timeline'),{childList:true,subtree:true});
  // User-directed movement always wins over an asynchronous restore.
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,clear(){positions.clear();pending=null;active='';serial++;},get pending(){return !!pending;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,toStart,clear(){positions.clear();pending=null;active='';serial++;},get pending(){return !!pending;}});
 })();

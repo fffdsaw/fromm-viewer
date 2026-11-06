@@ -1435,7 +1435,7 @@ body.download-marquee-active{user-select:none;cursor:default}
         <div id="chatToolsPanel" class="chat-tools-panel" aria-hidden="true">
           <div class="chat-tools-title">전체 대화 찾기</div>
 
-          <button id="myRepliesBtn" class="btn my-replies-btn" type="button" aria-pressed="false">내 글에 온 답장</button>
+          <label class="search-panel-option"><input id="myRepliesBtn" type="checkbox">내 글에 온 답장</label>
           <p id="myReplyStatus" class="my-reply-status" role="status" aria-live="polite"></p>
           <button id="myReplyRetry" class="btn" type="button" hidden>본인 정보 다시 확인</button>
 
@@ -1448,7 +1448,7 @@ body.download-marquee-active{user-select:none;cursor:default}
                     type="button" title="검색 지우기" aria-label="검색 지우기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </div>
 
-          <button id="chatContextBtn" class="btn chat-context-btn" type="button" aria-pressed="false" hidden>전체 대화 함께 보기</button>
+          <label class="search-panel-option"><input id="chatContextBtn" type="checkbox" disabled>전체 대화 함께 보기</label>
           <div class="chat-tools-divider"></div>
 
           <div class="chat-tools-label">날짜 찾기</div>
@@ -7673,11 +7673,18 @@ function currentReplyUserId(){
 }
 function isReplyToMe(message){
   const id=currentReplyUserId();
-  return !!id && isArtist(message) && getQuotedMessage(message)?.userId === id;
+  if(!id || !isArtist(message)) return false;
+  const quote=getQuotedMessage(message);
+  if(quote?.userId!==id) return false;
+  // Display aliases must agree on the quoted author and original message.
+  // Conflicting metadata is unconfirmed, never a personal-reply match.
+  const aliases=[message.embeddedMentionedMessage,message.mentionedMessage,message.mentionDetailMessage,message.mentionedContent,message.replyMessage,message.embeddedReplyMessage,message.quotedMessage,message.mentionDetail].map(normalizeQuotedValue).filter(q=>q?.userId);
+  return aliases.every(q=>q.userId===id && (!quote.messageId || !q.messageId || q.messageId===quote.messageId));
 }
 function resetReplyIdentity(){
   replyIdentity.owner?.abort();
   Object.assign(replyIdentity,{context:null,id:"",status:"idle",owner:null,promise:null});
+  state.replyFilterSequence=(state.replyFilterSequence||0)+1;
   state.onlyMyReplies=false;state.chatContext=false;state.chatMatchKey="";chatMatchCache=null;
   document.querySelectorAll(".chat-match-active").forEach(el=>el.classList.remove("chat-match-active"));
   // Remove personal markers immediately, including during account transitions.
@@ -7691,7 +7698,8 @@ function resetReplyIdentity(){
 function syncMyReplyTools(){
   const button=$("#myRepliesBtn"), status=$("#myReplyStatus"), retry=$("#myReplyRetry");
   if(!button || !status || !retry) return;
-  button.setAttribute("aria-pressed",String(state.onlyMyReplies));
+  if(button.type==="checkbox") button.checked=state.onlyMyReplies;
+  else button.setAttribute("aria-pressed",String(state.onlyMyReplies));
   button.classList.toggle("active",state.onlyMyReplies);
   $("#chatToolsBtn")?.classList.toggle("reply-filter-active",state.onlyMyReplies);
   const ready=!!currentReplyUserId();
@@ -7750,13 +7758,14 @@ async function ensureReplyIdentity({retry=false}={}){
   return promise;
 }
 async function setOnlyMyReplies(enabled){
-  const generation=state.scanGeneration;
-  state.onlyMyReplies=!!enabled;state.chatContext=!!enabled;state.chatMatchKey="";
+  const generation=state.scanGeneration,request=state.replyFilterSequence=(state.replyFilterSequence||0)+1;
+  state.onlyMyReplies=!!enabled;state.chatContext=false;state.chatMatchKey="";
   state.chatAutoTopPending=!enabled;
   syncMyReplyTools();render();
   if(enabled){
     await ensureReplyIdentity();
-    if(generation===state.scanGeneration && state.onlyMyReplies && chatContextEnabled()) await navigateChatMatch(1);
+    const valid=()=>generation===state.scanGeneration && state.onlyMyReplies && request===state.replyFilterSequence;
+    if(valid()) await navigateChatMatch(0,{first:true,valid});
   }
 }
 
@@ -8002,8 +8011,9 @@ function syncChatMatchControls(){
   const nav=$("#chatMatchNav"), context=$("#chatContextBtn");
   if(!nav || !context) return;
   const active=state.filter==="all" && (state.onlyMyReplies || !!state.chatQuery.trim());
-  nav.hidden=!active;context.hidden=!active;
-  context.setAttribute("aria-pressed",String(chatContextEnabled()));
+  nav.hidden=!active;
+  if(context.type==="checkbox"){context.hidden=false;context.disabled=!active;context.checked=chatContextEnabled();}
+  else{context.hidden=!active;context.setAttribute("aria-pressed",String(chatContextEnabled()));}
   if(!active){state.chatMatchKey="";return;}
   const items=chatMatches(), index=items.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
   if(index<0) state.chatMatchKey="";
@@ -8012,14 +8022,14 @@ function syncChatMatchControls(){
   $("#chatMatchPrev").disabled=unavailable || index<=0;
   $("#chatMatchNext").disabled=unavailable || !items.length || index>=items.length-1;
 }
-async function navigateChatMatch(direction){
+async function navigateChatMatch(direction,{first=false,valid=null}={}){
   if(state.filter!=="all") return;
   const generation=state.scanGeneration;
   await ensureFullChatHistory();
-  if(generation!==state.scanGeneration || state.filter!=="all") return;
+  if(generation!==state.scanGeneration || state.filter!=="all" || (valid && !valid())) return;
   const matches=chatMatches();if(!matches.length) return;
   const previous=matches.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
-  const index=previous<0 ? 0 : Math.max(0,Math.min(matches.length-1,previous+direction));
+  const index=first || previous<0 ? 0 : Math.max(0,Math.min(matches.length-1,previous+direction));
   const key=messageStableKey(matches[index]);state.chatMatchKey=key;state.chatAutoTopPending=false;
   let target=[...document.querySelectorAll("#timeline .msg")].find(el=>el.dataset.messageId===key);
   if(!target){
@@ -8031,7 +8041,7 @@ async function navigateChatMatch(direction){
   document.querySelectorAll(".chat-match-active").forEach(el=>el.classList.remove("chat-match-active"));
   target?.classList.add("chat-match-active");syncChatMatchControls();
   requestAnimationFrame(()=>{
-    if(generation===state.scanGeneration && state.chatMatchKey===key && target?.isConnected) scrollElementBelowToolbar(target,"auto");
+    if(generation===state.scanGeneration && (!valid || valid()) && state.chatMatchKey===key && target?.isConnected) scrollElementBelowToolbar(target,"auto");
   });
 }
 function filteredMessages(){
@@ -8654,6 +8664,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  chatMatchCache=null; // Refresh author/quote amendments even when the array length is unchanged.
   window.FrommViewState?.beforeRender();
   syncMyReplyTools();
   if(state.filter === "vote"){updateChatSearchCount();renderVoteList();return;}
@@ -9388,7 +9399,7 @@ function openDateCalendar(){
 }
 
 function closeDateCalendar(){
-  if(window.FrommGlowME?.pinned) return;
+  if(window.FrommGlowME?.pinned || window.FrommGlowME?.calendarInline) return;
   const cal = $("#dateCalendar");
   const btn = $("#datePickerBtn");
   if(!cal || !btn) return;
@@ -9555,7 +9566,7 @@ function renderDateCalendar(){
       setSelectedDate(key);
       closeDateCalendar();
 
-      if(activity.dates.has(key)){
+      if(!window.FrommGlowME?.calendarInline && activity.dates.has(key)){
         jumpToDate(key);
       }
     };
@@ -11271,6 +11282,7 @@ window.addEventListener("scroll", ()=>{
 
 
 $("#scrollTopBtn").onclick=()=>{
+  if(window.FrommViewState?.toStart) return window.FrommViewState.toStart();
   window.scrollTo({top:0,behavior:"smooth"});
 };
 

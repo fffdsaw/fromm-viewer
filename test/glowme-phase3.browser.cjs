@@ -31,7 +31,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const panelBox=await page.locator('#chatToolsPanel').boundingBox(),railBox=await page.locator('#sidebar').boundingBox();
  assert.ok(panelBox.x>=railBox.x+railBox.width,'search preserves access to collapsed rail');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}
- await page.waitForTimeout(400);
+ await page.waitForFunction(()=>getComputedStyle(document.querySelector('#sidebarToggleBtn')).backdropFilter.includes('url('));
  const optics=await page.locator('#sidebarToggleBtn').evaluate(e=>getComputedStyle(e).backdropFilter);assert.match(optics,/url\(/,'Chromium uses actual SVG refraction');
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.FrommGlass.count),0);
  assert.deepEqual(errors,[]);results.push({viewport,geometry,optics:'SVG',keyboard:'pass'});await context.close();

@@ -4,7 +4,7 @@
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),panel=$('#chatToolsPanel'),toggle=$('#sidebarToggleBtn'),search=$('#chatToolsBtn');
   if(!sidebar||!panel||!toggle||!search)return;
   const installed=matchMedia('(display-mode: standalone)'),wide=matchMedia('(min-width:1200px)'),hover=matchMedia('(hover:hover) and (pointer:fine)');
-  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false;
+  let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false,railMotionUntil=0,keyboardFocus=false;
   document.documentElement.classList.add('glowme','glowme-phase3');
   const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
   const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M9 18V5l11-2v13 M9 9l11-2 M9 18a3 2 0 1 1-3-2h3 M20 16a3 2 0 1 1-3-2h3',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
@@ -53,7 +53,7 @@
   window.addEventListener('appinstalled',()=>{promptEvent=null;installButton.hidden=true;});
   installButton.onclick=async()=>{const pending=promptEvent;if(!pending)return;promptEvent=null;installButton.hidden=true;await pending.prompt();await pending.userChoice;};
   function setRailOpen(open,{focus=false,restore=false}={}){
-    clearTimeout(closeTimer);expanded=!!open;document.body.classList.toggle('sidebar-open',expanded);document.documentElement.classList.toggle('sidebar-open',expanded);
+    clearTimeout(closeTimer);if(!open)keyboardFocus=false;if(expanded!==!!open)railMotionUntil=performance.now()+220;expanded=!!open;document.body.classList.toggle('sidebar-open',expanded);document.documentElement.classList.toggle('sidebar-open',expanded);
     sidebar.inert=false;sidebar.setAttribute('aria-hidden','false');
     toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-controls','sidebar');toggle.setAttribute('aria-label',expanded?'탐색 메뉴 접기':'탐색 메뉴 펼치기');toggle.title=expanded?'메뉴 접기':'메뉴 펼치기';
     if(focus&&expanded)(nav.querySelector('[aria-current="page"]')||nav.firstElementChild).focus({preventScroll:true});
@@ -62,8 +62,11 @@
   }
   toggle.onclick=event=>setRailOpen(!expanded,{focus:event.detail===0,restore:expanded});
   sidebar.addEventListener('pointerenter',event=>{if(hover.matches&&event.pointerType!=='touch')setRailOpen(true);});
-  sidebar.addEventListener('pointerleave',()=>{if(hover.matches)closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)||document.activeElement===toggle)setRailOpen(false);},260);});
-  sidebar.addEventListener('focusin',event=>{clearTimeout(closeTimer);if(event.target!==toggle)setRailOpen(true);});
+  sidebar.addEventListener('pointerleave',()=>{if(hover.matches)closeTimer=setTimeout(()=>{if(!keyboardFocus||!sidebar.contains(document.activeElement)||document.activeElement===toggle)setRailOpen(false);},260);});
+  // Restoring an old item focus after selection must not reopen the rail.
+  document.addEventListener('keydown',()=>{keyboardFocus=true;},true);
+  document.addEventListener('pointerdown',()=>{keyboardFocus=false;},{capture:true,passive:true});
+  sidebar.addEventListener('focusin',event=>{clearTimeout(closeTimer);if(event.target!==toggle&&(expanded||keyboardFocus))setRailOpen(true);});
   sidebar.addEventListener('focusout',()=>{closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)&&!sidebar.matches(':hover'))setRailOpen(false);},160);});
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;
@@ -92,9 +95,11 @@
     }
   }
   const fields=document.createElement('fieldset');fields.className='glowme-search-fields';
+  const panelTitle=panel.querySelector('.chat-tools-title');panelTitle.remove();
   const legend=document.createElement('legend');legend.className='glowme-sr';legend.textContent='대화 검색 및 날짜 선택';fields.append(legend,...panel.childNodes);
   const close=document.createElement('button');close.type='button';close.className='glowme-search-close';close.setAttribute('aria-label','검색 패널 닫기');close.innerHTML=svg('m6 6 12 12M18 6 6 18');close.onclick=()=>{closeChatToolsPanel();search.focus({preventScroll:true});};
-  panel.append(close,fields);panel.setAttribute('role','complementary');panel.setAttribute('aria-label','대화 찾기');$('.main').append(panel);
+  const panelHeading=document.createElement('div');panelHeading.className='search-panel-heading';panelHeading.append(panelTitle,close);
+  const fieldScroll=document.createElement('div');fieldScroll.className='search-panel-scroll';fieldScroll.append(fields);panel.append(panelHeading,fieldScroll);panel.setAttribute('role','complementary');panel.setAttribute('aria-label','대화 찾기');$('.main').append(panel);
   const searchDock=document.createElement('div');searchDock.id='chatSearchDock';
   const matchSlot=document.createElement('div');matchSlot.className='chat-match-slot';
   searchDock.append(search,matchSlot);document.body.append(searchDock);
@@ -105,7 +110,7 @@
     const target=inside?fields:matchSlot;
     const focused=matchNav.contains(document.activeElement)?document.activeElement:null;
     if(matchNav.parentElement!==target){
-      if(inside)fields.insertBefore(matchNav,$('#chatContextBtn'));else target.append(matchNav);
+      if(inside)fields.insertBefore(matchNav,$('#myReplyStatus'));else target.append(matchNav);
       focused?.focus({preventScroll:true});
     }
     const expanded=!inside&&state.filter==='all'&&state.onlyMyReplies&&!matchNav.hidden;
@@ -114,11 +119,18 @@
     matchSlot.setAttribute('aria-hidden',String(!expanded));
     searchDock.hidden=search.hidden;
   }
-  $('.chat-tools-title').textContent='대화 찾기';
+  $('.chat-tools-title').textContent='대화 검색 / 날짜 찾기';
+  const searchRow=$('#chatSearchInput').closest('.chat-tools-row'),searchLabel=searchRow.previousElementSibling;
+  const searchLabelId='chatSearchLabel';searchLabel.id=searchLabelId;$('#chatSearchInput').setAttribute('aria-labelledby',searchLabelId);$('#chatSearchInput').placeholder='키워드를 입력하세요';
+  searchRow.after($('#myRepliesBtn').closest('label'),$('#chatContextBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
+  const dateLabel=$('.date-picker-row').previousElementSibling;dateLabel.id='calendarSectionLabel';$('#dateCalendar').setAttribute('aria-labelledby',dateLabel.id);
+  const dateAction=document.createElement('div');dateAction.className='search-panel-footer';dateAction.append($('#dateJumpBtn'));panel.append(dateAction);$('.date-picker-row').hidden=true;
+  const status=$('#myReplyStatus');new MutationObserver(()=>{status.hidden=!['loading','error'].includes(replyIdentity.status);}).observe(status,{childList:true});
+
   function isSearchPinned(){return appWindow&&wide.matches&&state.filter==='all';}
   const calendar=$('#dateCalendar');
   new MutationObserver(()=>{
-    if(!calendar.classList.contains('open'))return;
+    if(window.FrommGlowME?.calendarInline||!calendar.classList.contains('open'))return;
     requestAnimationFrame(()=>{
       if(panel.hidden||!panel.classList.contains('open'))return;
       const firstDay=calendar.querySelector('.date-day'),box=panel.getBoundingClientRect();
@@ -144,18 +156,19 @@
     document.documentElement.dataset.glowLayout=pinned?'pinned':'web';
     if(pinned){if(!panel.classList.contains('open')){openChatToolsPanel();openDateCalendar();}}
     else if(!all&&panel.classList.contains('open')){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+    if(all&&panel.classList.contains('open')&&!calendar.classList.contains('open'))openDateCalendar();
     panel.inert=!all||!panel.classList.contains('open');search.setAttribute('aria-expanded',String(panel.classList.contains('open')));
     close.hidden=pinned;installButton.hidden=appWindow||!promptEvent;
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
+  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});
   new ResizeObserver(fitPanel).observe($('.viewer-header'));
   new MutationObserver(syncNavigation).observe($('.toolbar'),{subtree:true,attributes:true,attributeFilter:['class','style']});
-  new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
+  new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));if(!panel.inert&&!calendar.classList.contains('open'))openDateCalendar();syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
   new MutationObserver(syncMatchNav).observe(matchNav,{attributes:true,attributeFilter:['hidden']});
   setRailOpen(false);syncNavigation();updateSelectedCount();
 })();

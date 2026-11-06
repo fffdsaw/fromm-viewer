@@ -1,0 +1,23 @@
+'use strict';
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
+(async()=>{const server=await serve(),browser=await chromium.launch();try{
+ const fixtureBrowser={newContext:async options=>{const context=await browser.newContext(options);await context.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return context;}};
+ const {page,context,errors}=await open(fixtureBrowser,server.url,{login:true});
+ assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(e=>e.name.includes('/vendor/meapri/')).length),0,'login does not download the unused optics engine');
+ let release;const held=new Promise(r=>release=r);await page.route('**/vendor/meapri/liquid-glass.js',async route=>{await held;await route.continue();});
+ await seed(page);await page.mouse.move(35,35);assert.equal(await page.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'true','rail opens while optics download is pending');
+ assert.equal(await page.evaluate(()=>FrommGlass.count),0);await page.keyboard.press('Escape');assert.equal(await page.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'false');
+ release();await page.waitForFunction(()=>getComputedStyle(document.querySelector('#sidebarToggleBtn')).backdropFilter.includes('url('));
+ await page.mouse.move(700,200);await page.waitForTimeout(300);await page.mouse.move(35,35);await page.waitForTimeout(40);
+ assert.equal(await page.locator('.glowme-nav [aria-current="page"]').evaluate(el=>el.classList.contains('meapri-control')),false,'expanding rail uses the static fallback, not a resizing lens');
+ await page.waitForFunction(()=>!FrommGlowME.railAnimating);await page.waitForFunction(()=>document.querySelector('.glowme-nav [aria-current="page"]').classList.contains('meapri-control'));
+ assert.ok(await page.evaluate(()=>FrommGlass.count<=5));
+ await page.evaluate(()=>showLoginGate());await page.waitForFunction(()=>FrommGlass.count===0);
+ assert.deepEqual(errors,[]);await context.close();
+ const fallback=await open(fixtureBrowser,server.url,{login:true});
+ await fallback.page.route('**/vendor/meapri/liquid-glass.js',route=>route.fulfill({contentType:'text/javascript',body:'export class LiquidGlass{constructor(){window.failedLensAttempts=(window.failedLensAttempts||0)+1;throw Error("synthetic");}}'}));
+ await seed(fallback.page);await fallback.page.waitForFunction(()=>window.failedLensAttempts>0);await fallback.page.waitForTimeout(350);
+ assert.ok(await fallback.page.evaluate(()=>failedLensAttempts<=5),'failed lens initialization does not loop');assert.equal(await fallback.page.evaluate(()=>FrommGlass.count),0);
+ assert.deepEqual(fallback.errors,[]);await fallback.context.close();console.log('Cold rail works before optics; idle SVG returns after motion; login releases lenses PASS');
+}finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

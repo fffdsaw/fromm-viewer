@@ -1,0 +1,30 @@
+[
+  {
+    "label": "before",
+    "first": {
+      "y": 23235,
+      "start": 2020,
+      "first": "m2020",
+      "historyComplete": true
+    },
+    "settled": {
+      "y": 23235,
+      "start": 2020,
+      "first": "m2020"
+    }
+  },
+  {
+    "label": "after",
+    "first": {
+      "y": 0,
+      "start": 0,
+      "first": "m0",
+      "historyComplete": true
+    },
+    "settled": {
+      "y": 0,
+      "start": 0,
+      "first": "m0"
+    }
+  }
+]

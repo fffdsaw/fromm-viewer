@@ -6,6 +6,7 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
 (async()=>{const server=await serve(),browser=await chromium.launch();try{
  for(const viewport of [{width:320,height:640},{width:844,height:390},{width:1440,height:900,installed:true}]){
   const {page,context,errors}=await open(browser,server.url,viewport);
+  await page.waitForFunction(()=>document.querySelector('#logoutMiniBtn').classList.contains('meapri-control'));
   await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(100);
   assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'offscreen header releases its lens');
   await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);
@@ -18,6 +19,7 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
   await page.locator('#chatToolsPanel #chatMatchPrev').click();assert.equal(await page.evaluate(()=>state.chatMatchKey),first);
   if(!viewport.installed){await page.keyboard.press('Escape');assert.equal(await page.locator('.chat-match-slot').getAttribute('aria-hidden'),'true','ordinary text search does not expand the reply dock');await page.locator('#chatToolsBtn').click();await page.locator('#chatToolsPanel #chatMatchNext').click();assert.notEqual(await page.evaluate(()=>state.chatMatchKey),first);}
   await page.evaluate(()=>{state.chatQuery='';render();openChatToolsPanel();openDateCalendar();});await page.waitForTimeout(80);
+  if(await page.evaluate(()=>FrommGlowME.calendarInline))await page.locator('.date-day').first().scrollIntoViewIfNeeded();
   const calendarVisible=await page.locator('.date-day').first().evaluate(e=>{const r=e.getBoundingClientRect(),p=document.querySelector('#chatToolsPanel').getBoundingClientRect();return r.top>=p.top&&r.bottom<=p.bottom;});
   assert.equal(calendarVisible,true,'opening calendar exposes a selectable date in short landscape');
   for(const selector of ['.media-missing','.artist-select-prompt']){

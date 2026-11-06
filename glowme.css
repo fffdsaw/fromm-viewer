@@ -511,3 +511,26 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 .chat-match-slot #chatMatchNav .btn{width:44px;height:44px;padding:0}
 .glowme-phase3 .chat-match-slot #chatMatchPosition{font-size:12px;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .chat-match-slot{transition:none;transform:none}}
+
+/* Unified search and inline date picker, preserving the existing mint surfaces. */
+.glowme-phase3 #chatToolsPanel{padding:0;overflow:hidden;background:linear-gradient(135deg,#f6fff8fc,#e0f1e7fc)}
+.glowme-phase3 #chatToolsPanel.open{display:flex;flex-direction:column}
+.glowme-phase3 .search-panel-heading{flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 14px 12px 18px;border-bottom:1px solid var(--line)}
+.glowme-phase3 .search-panel-heading .chat-tools-title{padding:0;margin:0;font-size:16px}
+.glowme-phase3 .search-panel-heading .glowme-search-close{position:static;flex:none}
+.glowme-phase3 .glowme-search-fields{padding:16px 18px 10px}
+.glowme-phase3 .search-panel-scroll{overflow-y:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#85b8a4 transparent}
+.glowme-phase3 .search-panel-footer{flex:none;padding:12px 18px 16px;border-top:1px solid var(--line);background:#e4f4eb}
+.glowme-phase3 .search-panel-option{display:flex;align-items:center;gap:10px;min-height:40px;margin:4px 0;color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.glowme-phase3 #chatToolsPanel input[type=checkbox]{appearance:auto;width:20px;height:20px;min-height:20px;margin:0;padding:0;flex:none;accent-color:#428e7a;cursor:pointer}
+.glowme-phase3 .search-panel-option:has(input:disabled){opacity:.6;cursor:default}
+.glowme-phase3 #chatToolsPanel .date-picker-row[hidden]{display:none}
+.glowme-phase3 #dateCalendar{margin:8px 0 14px;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}
+.glowme-phase3 #dateCalendar .date-calendar-head{grid-template-columns:40px 1fr 40px;margin:8px 0}
+.glowme-phase3 #dateCalendarTitle{font-size:16px;min-height:40px}
+.glowme-phase3 #dateCalendar .date-day{height:36px;min-height:32px;font-size:14px}
+.glowme-phase3 #dateJumpBtn{width:100%;min-height:48px;border-radius:24px;background:linear-gradient(135deg,#b7ead9,#94d9c4);border:1px solid #81bda7;box-shadow:inset 0 1px 2px #fff,0 4px 10px #244b3a15;color:#164b3c;font-weight:700;font-size:16px}
+.glowme-phase3 #chatToolsPanel .chat-tools-row input[type=search]{height:44px}
+
+@keyframes calendar-unfold{from{opacity:0;transform:translateY(-6px);clip-path:inset(0 0 24% 0)}to{opacity:1;transform:none;clip-path:inset(0)}}
+@media(prefers-reduced-motion:no-preference){.glowme-phase3 #chatToolsPanel.open #dateCalendar{animation:calendar-unfold 220ms cubic-bezier(.2,.8,.2,1) both}}

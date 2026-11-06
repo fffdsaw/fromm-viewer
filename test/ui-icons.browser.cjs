@@ -33,7 +33,7 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
       await centered('#chatSearchClear');
       await page.locator('#chatSearchClear').click();
       assert.equal(await page.locator('#chatSearchInput').inputValue(),'');
-      await page.locator('#datePickerBtn').click();
+      if(await page.locator('#dateCalendar').getAttribute('aria-hidden')==='true')await page.locator('#datePickerBtn').click();
       for(const s of ['#datePrevMonth','#dateNextMonth']) await centered(s);
       await shot('search-calendar');
       await page.evaluate(()=>openImageLightbox('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"/>'));

@@ -104,3 +104,11 @@ test('rapid reply filter activation starts once from first and context is opt-in
  resolve(true);await Promise.all([first,second]);
  assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatContext,false);assert.equal(c.state.chatQuery,'old query');assert.equal(input.value,'old query');
 });
+
+test('independent context preference survives personal filter toggles',async()=>{
+ const c=setup();c.ensureReplyIdentity=async()=>true;c.navigateChatMatch=async()=>{};
+ vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;c.state.chatContext=true;
+ await c.setOnlyMyReplies(true);assert.equal(c.state.chatContext,true);
+ await c.setOnlyMyReplies(false);assert.equal(c.state.chatContext,true);
+ c.state.chatContext=false;await c.setOnlyMyReplies(true);assert.equal(c.state.chatContext,false);
+});

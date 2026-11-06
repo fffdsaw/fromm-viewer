@@ -44,11 +44,11 @@ test('IDs retain exact values; unsafe numeric IDs and missing IDs never identify
  for(const v of [null,undefined,{},false,'   ']) assert.equal(c.replyUserId(v),'');
  c.replyIdentity.id='0';assert.equal(c.isReplyToMe(reply('zero',0)),true);
 });
-test('filter and text search share the personal reply predicate without indexing user identifiers',()=>{
+test('reply and text targets share the personal predicate while the conversation stays complete',()=>{
  const c=setup();c.state.chatMessages=[reply('other','fan-b'),reply('mine','fan-a'),reply('plain','fan-a',{mentionedMessage:null})];
- c.state.onlyMyReplies=true;assert.deepEqual(Array.from(c.filteredMessages(),m=>m.messageId),['mine']);
- c.state.chatQuery='인용 원문';assert.equal(c.filteredMessages().length,1);
- c.state.chatQuery='fan-a';assert.equal(c.filteredMessages().length,0);
+ c.state.onlyMyReplies=true;assert.deepEqual(Array.from(c.chatMatches(),m=>m.messageId),['mine']);assert.equal(c.filteredMessages().length,3);
+ c.state.chatQuery='인용 원문';assert.equal(c.chatMatches().length,1);assert.equal(c.filteredMessages().length,3);
+ c.state.chatQuery='fan-a';assert.equal(c.chatMatches().length,0);assert.equal(c.filteredMessages().length,3);
  c.state.chatQuery='';c.state.onlyMyReplies=false;assert.equal(c.filteredMessages().length,3);
 });
 test('calendar keeps general conversation dates and has no personal reply markers',()=>{
@@ -76,11 +76,11 @@ test('logout/account change discards a late profile response and clears personal
 
 test('conversation context keeps surrounding messages while match navigation intersects own replies and text',()=>{
  const c=setup();c.state.chatMessages=[reply('other','fan-b'),reply('mine','fan-a'),reply('normal','fan-a',{mentionedMessage:null})];
- c.state.onlyMyReplies=true;c.state.chatContext=true;
+ c.state.onlyMyReplies=true;
  assert.equal(c.filteredMessages().length,3);assert.deepEqual(Array.from(c.chatMatches(),m=>m.messageId),['mine']);
  c.state.chatQuery='인용 원문';assert.equal(c.filteredMessages().length,3);assert.equal(c.chatMatches().length,1);
  c.state.chatQuery='no match';assert.equal(c.chatMatches().length,0);assert.equal(c.filteredMessages().length,3);
- c.state.chatContext=false;assert.equal(c.filteredMessages().length,0);
+ c.state.onlyMyReplies=false;c.state.chatQuery='';assert.equal(c.filteredMessages().length,3);
 });
 test('match cache updates after query, identity, or source changes and is reused for repeated arrows',()=>{
  const c=setup();c.state.onlyMyReplies=true;c.state.chatMessages=[reply('a','fan-a'),reply('b','fan-b')];
@@ -96,19 +96,18 @@ test('conflicting quote aliases cannot label a reply as personal',()=>{
  assert.equal(c.isReplyToMe(reply('wrong-original','fan-a',{embeddedMentionedMessage:{messageId:'other',userId:'fan-a',content:'display'}})),false);
  assert.equal(c.isReplyToMe(reply('missing-author','fan-a',{mentionedMessage:{messageId:'original',content:'same text'}})),false);
 });
-test('rapid reply filter activation starts once from first and context is opt-in',async()=>{
+test('rapid reply navigation activation starts once from first and preserves the query',async()=>{
  const c=setup();let resolve;const waiting=new Promise(r=>resolve=r),calls=[],input={value:'old query'};
  c.$=()=>input;c.ensureReplyIdentity=()=>waiting;c.navigateChatMatch=async(direction,options)=>{if(options.valid())calls.push({direction,first:options.first});};
  vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;c.state.chatQuery='old query';
  const first=c.setOnlyMyReplies(true);await c.setOnlyMyReplies(false);const second=c.setOnlyMyReplies(true);
  resolve(true);await Promise.all([first,second]);
- assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatContext,false);assert.equal(c.state.chatQuery,'old query');assert.equal(input.value,'old query');
+ assert.deepEqual(calls,[{direction:0,first:true}]);assert.equal(c.state.chatQuery,'old query');assert.equal(input.value,'old query');
 });
 
-test('independent context preference survives personal filter toggles',async()=>{
+test('personal navigation toggles never schedule a jump to the conversation start',async()=>{
  const c=setup();c.ensureReplyIdentity=async()=>true;c.navigateChatMatch=async()=>{};
- vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;c.state.chatContext=true;
- await c.setOnlyMyReplies(true);assert.equal(c.state.chatContext,true);
- await c.setOnlyMyReplies(false);assert.equal(c.state.chatContext,true);
- c.state.chatContext=false;await c.setOnlyMyReplies(true);assert.equal(c.state.chatContext,false);
+ vm.runInContext(source('setOnlyMyReplies'),c);c.state.scanGeneration=1;
+ await c.setOnlyMyReplies(true);assert.equal(c.state.chatAutoTopPending,false);
+ await c.setOnlyMyReplies(false);assert.equal(c.state.chatAutoTopPending,false);
 });

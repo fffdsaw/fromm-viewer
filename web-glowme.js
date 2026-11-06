@@ -122,7 +122,7 @@
   $('.chat-tools-title').textContent='대화 검색 / 날짜 찾기';
   const searchRow=$('#chatSearchInput').closest('.chat-tools-row'),searchLabel=searchRow.previousElementSibling;
   const searchLabelId='chatSearchLabel';searchLabel.id=searchLabelId;$('#chatSearchInput').setAttribute('aria-labelledby',searchLabelId);$('#chatSearchInput').placeholder='키워드를 입력하세요';
-  searchRow.after($('#myRepliesBtn').closest('label'),$('#chatContextBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
+  searchRow.after($('#myRepliesBtn').closest('label'),$('#myReplyStatus'),$('#myReplyRetry'));
   const dateLabel=$('.date-picker-row').previousElementSibling;dateLabel.id='calendarSectionLabel';$('#dateCalendar').setAttribute('aria-labelledby',dateLabel.id);
   const dateAction=document.createElement('div');dateAction.className='search-panel-footer';dateAction.append($('#dateJumpBtn'));panel.append(dateAction);$('.date-picker-row').hidden=true;
   const status=$('#myReplyStatus');new MutationObserver(()=>{status.hidden=!['loading','error'].includes(replyIdentity.status);}).observe(status,{childList:true});

@@ -711,3 +711,7 @@ html.glowme .reply-content{color:#244c42}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
  .glowme-phase3.pc-layout.sidebar-open #sidebar{z-index:500}
 }
+
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout.pc-collection.pc-has-list-refresh #scanBtn{display:none!important}
+}

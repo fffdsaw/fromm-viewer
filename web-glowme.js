@@ -96,9 +96,10 @@
       const count=candidate.querySelector('.replay-count');if(selectionSlot.parentElement!==candidate)candidate.insertBefore(selectionSlot,count);
       focused?.focus({preventScroll:true});
     }
+    document.documentElement.classList.toggle('pc-has-list-refresh',!!(pc&&pcToolbar?.querySelector('#channelRefresh')));
     const media=pc&&['media','image','video','sound'].includes(state.filter);
     pcMediaRow.hidden=!media;
-    if(media){const text=`${labels[state.filter]} ${downloadSelectionScope().items.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);}
+    if(media){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);}
     else if(mediaDock.parentElement!==document.body)document.body.append(mediaDock);
   }
   function syncMediaDock(){

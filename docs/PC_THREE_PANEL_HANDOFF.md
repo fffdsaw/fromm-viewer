@@ -49,3 +49,12 @@
 - 변경한 review 검사 로컬320/844/1440 PWA 통과. 필수 CI가 포함한 기존 모바일 사례를 유지한 것이며 모바일 스타일 개편은 하지 않음.
 - 캡슐 내부는 고정 폭 안에서 버튼 간격을 고르게 정돈. 변경 후 새 PC1440/900/760 및 모바일390 대화·미디어 최소 검사 재통과. 전후 PNG의 수정 후 화면 재촬영.
 - 다음: 최신 커밋의 전체 CI 결과 확인 후 PR에 최종 결과 기록. main/public 상태는 변경하지 않는다.
+
+
+## 최종 좌표·공통 조작 보강
+
+- CI 두 번째 실패는 reply-anchor-context의 옛 top12 조건. PC sticky header와 검색 dock을 모두 피하는 실제 inset 기준으로 수정. 로컬1440/390 재검사 통과. 원문/전체 대화 유지·늦은 행 높이 변경·사용자 스크롤 우선 검사는 그대로 유지.
+- Channel 목록은 원래 channelRefresh를 보존하고 중복 공통 scanBtn만 PC CSS로 숨김. LIVE/Replay/플레이어에서는 공통 새로고침 접근 유지, 로그아웃도 유지. 필터와 카운트는 숨기지 않음.
+- 미디어 목록 정보는 기존 state.infiniteList.length를 O(1)로 읽음. 레이아웃 동기화 때 전체 메시지를 다시 필터링하지 않음.
+- 새 PC1440/900/760 및 모바일390 최소 검사 재통과. ui-icons, reply-start-top, reply-anchor-context, glowme-phase3-visual도 통과. 필수 CI만 남음.
+- 기존 visual 검사의 합성 성능 수치는 optics idle 초기화 등에 영향을 받는 단회 측정이며 실제 기기 CPU/GPU 성능 보증으로 사용하지 않음. 엔진 개편/새 blur 추가 없음.

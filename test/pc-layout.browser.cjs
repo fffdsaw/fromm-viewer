@@ -33,7 +33,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     const h=await p.locator('.viewer-header').boundingBox();assert.ok(h.x>=g['#sidebar'].right+10,'header starts beside rail');
     const bar=await p.locator('.topbar').boundingBox();assert.ok(name==='live'||['replay','channel'].includes(name)?bar.height>=56&&bar.height<=64:bar.height>=76&&bar.height<=84);
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width} ${name} no overflow`);
-    if(['live','replay','channel'].includes(name)){assert.equal(await p.locator('.title-line').isVisible(),false);assert.equal(await p.locator('#tokenLifeWrap').isVisible(),false);assert.equal(await p.locator('#scanBtn').isVisible(),true);}
+    if(['live','replay','channel'].includes(name)){assert.equal(await p.locator('.title-line').isVisible(),false);assert.equal(await p.locator('#tokenLifeWrap').isVisible(),false);assert.equal(await p.locator('#scanBtn').isVisible(),name!=='channel');if(name==='channel')assert.equal(await p.locator('#channelRefresh').isVisible(),true);}
     await shot(p,`${width}-${name}-empty`);
     if(!['image','replay','channel'].includes(name))continue;
     const card=name==='image'?'.media-card':'.replay-card',download=name==='image'?'.card-download':'.replay-download';

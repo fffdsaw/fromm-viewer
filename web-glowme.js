@@ -45,7 +45,9 @@
   function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}
   nav.addEventListener('pointermove',event=>{
     const button=event.target.closest('button');
-    if(event.pointerType==='touch'||!hover.matches||reducedMotion.matches||!button||!nav.contains(button))return clearRailLight();
+    if(event.pointerType==='touch'||!hover.matches||reducedMotion.matches)return clearRailLight();
+    // Crossing the small row gaps must not restore a second hover background.
+    if(!button||!nav.contains(button))return;
     lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
   },{passive:true});
   nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
@@ -57,6 +59,28 @@
   const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.hidden=true;
   $('.toolbar').append(batchTools);
   for(const id of ['selectedCount','selectAllBtn','saveSelectedBtn'])batchTools.append($('#'+id));
+  const clearSelection=document.createElement('button');clearSelection.id='clearSelectionBtn';clearSelection.className='btn';clearSelection.type='button';clearSelection.textContent='선택 해제';clearSelection.title='현재 선택 모두 해제 (Esc)';clearSelection.onclick=()=>{clearDownloadSelection();if(mediaDockActive())$('#sortBtn').focus({preventScroll:true});};batchTools.append(clearSelection);
+  const mediaPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)'),sortControls=$('#sortControls');
+  const mediaDock=document.createElement('div');mediaDock.id='mediaActionDock';mediaDock.setAttribute('role','group');mediaDock.setAttribute('aria-label','미디어 정렬 및 선택');mediaDock.hidden=true;
+  const mediaGap=document.createElement('div');mediaGap.className='media-action-gap';mediaGap.hidden=true;mediaGap.setAttribute('aria-hidden','true');$('.viewer-header').after(mediaGap);
+  const selectionToggle=document.createElement('button');selectionToggle.id='mediaSelectionToggle';selectionToggle.className='btn';selectionToggle.type='button';selectionToggle.innerHTML=svg('M5 4h14v16H5z M8 11l3 3 5-6');selectionToggle.setAttribute('aria-controls','mediaSelectionSlot');
+  const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionToggle,selectionSlot);document.body.append(mediaDock);
+  let selectionCount=0,mediaPanelOpen=false;
+  function mediaDockActive(){return mediaPC.matches&&['media','image','video','sound'].includes(state.filter);}
+  function syncMediaDock(){
+    const active=mediaDockActive(),destination=active?selectionSlot:$('.toolbar');
+    clearSelection.hidden=!selectionCount||!mediaPC.matches;
+    document.documentElement.classList.toggle('media-action-mode',active);mediaDock.hidden=!active;mediaGap.hidden=!active;
+    if(batchTools.parentElement!==destination)destination.append(batchTools);
+    const sortParent=active?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
+    const open=active&&selectionCount>0&&mediaPanelOpen;
+    selectionToggle.hidden=!active||!selectionCount;selectionToggle.setAttribute('aria-expanded',String(open));selectionToggle.setAttribute('aria-label',`${open?'선택 도구 접기':'선택 도구 펼치기'} · ${selectionCount}개`);selectionToggle.title=`선택 ${selectionCount}개 · 도구 ${open?'접기':'펼치기'}`;
+    selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
+    if(active)mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;
+  }
+  selectionToggle.onclick=()=>{mediaPanelOpen=!mediaPanelOpen;syncMediaDock();};
+  mediaPC.addEventListener('change',()=>{syncMediaDock();fitPanel();});
+  new ResizeObserver(()=>{if(mediaDockActive())mediaGap.style.height=`${mediaDock.getBoundingClientRect().height+12}px`;}).observe(mediaDock);
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');
   function decorateRooms(){
@@ -95,10 +119,15 @@
   sidebar.addEventListener('focusout',()=>{closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)&&!sidebar.matches(':hover'))setRailOpen(false);},160);});
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;
+    event.frommSelectionOverlay=!!document.fullscreenElement||!!event.target.closest('input,textarea,select,[contenteditable="true"]')||!!document.querySelector('#imageLightbox.open,#saveResultModal.open,dialog[open],details[open]');
     if(panel.contains(document.activeElement)&&panel.classList.contains('open')&&!isSearchPinned()){
       event.stopImmediatePropagation();closeChatToolsPanel();search.focus({preventScroll:true});
     }else if(expanded){event.stopImmediatePropagation();setRailOpen(false,{restore:true});}
   },true);
+  // Existing modal and marquee Escape handlers run first and retain priority.
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!event.defaultPrevented&&!event.frommSelectionOverlay&&mediaDockActive()&&selectionCount>0){event.preventDefault();clearDownloadSelection();$('#sortBtn').focus({preventScroll:true});}
+  });
   document.addEventListener('pointerdown',event=>{if(expanded&&!sidebar.contains(event.target))setRailOpen(false);});
   const context=document.createElement('div');context.id='viewContext';$('.artist-copy').prepend(context);
   const stats=document.createElement('div');stats.id='artistMediaStats';stats.setAttribute('role','status');stats.setAttribute('aria-live','polite');$('#artistTitle').after(stats);
@@ -167,12 +196,15 @@
     const header=$('.viewer-header').getBoundingClientRect();
     sidebar.style.setProperty('--rail-top',`${Math.max(12,header.bottom+12)}px`);
     searchDock.style.top=`${Math.max(12,header.bottom+12)}px`;
+    mediaDock.style.top=`${Math.max(12,header.bottom+12)}px`;
     const dockBottom=searchDock.hidden?0:searchDock.getBoundingClientRect().bottom;const top=Math.max(dockBottom+12,12,Math.min(header.bottom+12,innerHeight-200));
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){
+    if(n>0&&selectionCount===0)mediaPanelOpen=true;if(!n)mediaPanelOpen=false;selectionCount=n;
     const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);batchTools.hidden=n===0;
     for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=n===0;el.inert=n===0;}
+    syncMediaDock();
   }
   function syncNavigation(){
     const key=state.filter==='live'?state.live.centerMode:state.filter,all=state.filter==='all',pinned=isSearchPinned();
@@ -186,7 +218,7 @@
     panel.inert=!all||!panel.classList.contains('open');search.setAttribute('aria-expanded',String(panel.classList.contains('open')));
     close.hidden=pinned;installButton.hidden=appWindow||!promptEvent;
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
-    syncHeader();fitPanel();syncMatchNav();window.FrommGlass?.sync();
+    syncHeader();syncMediaDock();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
   window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);

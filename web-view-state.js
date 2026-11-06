@@ -1,7 +1,7 @@
 /* Ephemeral view positions only: no messages, credentials or account data persisted. */
 (() => {
  'use strict';
- const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null;
+ const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null;
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
  const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>8);
  function capture(){
@@ -15,8 +15,8 @@
   return !!positions.get(active)&&options.autoTop!==false;
  }
  function navigate(filter,options){capture();return enter(filter,options);}
- function beforeRender(){if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}}
- function cancel(){anchorCleanup?.();anchorCleanup=null;pending=null;serial++;}
+ function beforeRender(){if(motionCleanup)return;if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}}
+ function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;pending=null;serial++;}
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;
   if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete))return;
@@ -73,6 +73,17 @@
    const list=filteredMessages();if(list.length)renderChatWindow(list,0);
   }
   cancel();const ticket=serial;positions.set(view,{y:0});
+  if(['media','image','video','sound'].includes(state.filter)){
+   if(matchMedia('(prefers-reduced-motion: reduce)').matches){scrollTo({top:0,behavior:'instant'});return;}
+   const origin=scrollY,started=performance.now(),duration=Math.min(650,Math.max(260,origin/12)),button=document.querySelector('#scrollTopBtn');let animation=0;
+   const cleanup=()=>{cancelAnimationFrame(animation);button?.classList.remove('is-returning');button?.style.removeProperty('--top-return-duration');if(motionCleanup===cleanup)motionCleanup=null;};
+   motionCleanup=cleanup;button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add('is-returning');
+   const animate=now=>{
+    if(ticket!==serial||view!==key()||document.hidden){cleanup();return;}
+    const t=Math.min(1,(now-started)/duration);scrollTo({top:Math.max(0,origin*Math.pow(1-t,3)),behavior:'instant'});
+    if(t<1)animation=requestAnimationFrame(animate);else{scrollTo({top:0,behavior:'instant'});cleanup();}
+   };animation=requestAnimationFrame(animate);return;
+  }
   // Virtual prepend compensation and smooth scrolling fight over the viewport.
   // Reset the window to the true start and stabilize it for bounded frames.
   scrollTo({top:0,behavior:state.filter==='all'?'instant':'smooth'});

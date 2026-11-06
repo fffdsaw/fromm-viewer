@@ -197,4 +197,6 @@
   new MutationObserver(()=>{panel.inert=!panel.classList.contains('open')||panel.hidden;search.setAttribute('aria-expanded',String(!panel.inert));if(!panel.inert&&!calendar.classList.contains('open'))openDateCalendar();syncMatchNav();}).observe(panel,{attributes:true,attributeFilter:['class']});
   new MutationObserver(syncMatchNav).observe(matchNav,{attributes:true,attributeFilter:['hidden']});
   setRailOpen(false);syncNavigation();updateSelectedCount();
+  document.documentElement.classList.add('glowme-shell-ready');
+  document.documentElement.classList.remove('glowme-shell-failed');
 })();

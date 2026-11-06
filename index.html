@@ -1305,6 +1305,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css">
+<link rel="preload" as="script" href="web-glowme.js">
+<link rel="preload" as="script" href="web-ui-a11y.js">
+<link rel="preload" as="script" href="web-view-state.js">
 </head>
 <body>
 
@@ -1356,6 +1359,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 
 
   <main class="main">
+    <div id="shellStartupNotice" role="alert">메뉴를 불러오지 못했습니다. 새로고침해 주세요.</div>
     <header class="viewer-header">
     <div class="topbar">
 <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button"
@@ -1952,7 +1956,7 @@ function renderChannelVideosView() {
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
     body = `<div class="video-list-content">${body}</div><div class="video-list-footer">`;
-    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice)}</p>`;
+    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice || (!s.error && channelVideoPage()?.loaded && channelVideoPage()?.isLast && posts.length) ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice || "더 불러올 영상이 없습니다.")}</p>`;
     if (s.loading || s.error || (s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast))) {
       body += `<button id="channelLoadMore" class="btn replay-more" type="button" ${s.loading ? 'disabled aria-busy="true"' : ""}>${s.loading ? "불러오는 중..." : s.error ? "다시 시도" : "더 불러오기"}</button>`;
     }
@@ -4545,7 +4549,7 @@ function renderReplayView(){
     <div class="replay-toolbar">${filters}<span class="replay-count">Replay ${posts.length}개</span></div>
     <div class="video-list-feedback">${state.live.replayError?`<div class="live-entry-note replay-error" role="alert">${esc(state.live.replayError)}</div>`:""}</div>
     <div class="video-list-content">${grid}</div>
-    <div class="video-list-footer">${replayHasMore() || state.live.replayError?`<button id="replayLoadMore" class="btn replay-more" type="button" ${state.live.replayLoading?'disabled aria-busy="true"':""}>${state.live.replayLoading?"불러오는 중...":videoListError("replay")?"다시 시도":"더 불러오기"}</button>`:""}</div>
+    <div class="video-list-footer">${!state.live.replayLoading && !state.live.replayError && posts.length && !replayHasMore()?`<p class="video-list-end live-entry-note" role="status">더 불러올 영상이 없습니다.</p>`:""}${replayHasMore() || state.live.replayError?`<button id="replayLoadMore" class="btn replay-more" type="button" ${state.live.replayLoading?'disabled aria-busy="true"':""}>${state.live.replayLoading?"불러오는 중...":videoListError("replay")?"다시 시도":"더 불러오기"}</button>`:""}</div>
   </div></div></div>`;
 
   renderVideoListMarkup(markup, JSON.stringify(["replay", state.live.replayFilter]));
@@ -8024,6 +8028,9 @@ async function navigateChatMatch(direction,{first=false,valid=null}={}){
   await ensureFullChatHistory();
   if(generation!==state.scanGeneration || state.filter!=="all" || (valid && !valid())) return;
   const matches=chatMatches();if(!matches.length) return;
+  // Explicit result navigation owns the viewport; cancel any queued list restore
+  // before it can replace the target DOM in the next animation frame.
+  window.FrommViewState?.cancel();
   const previous=matches.findIndex(m=>messageStableKey(m)===state.chatMatchKey);
   const index=first || previous<0 ? 0 : Math.max(0,Math.min(matches.length-1,previous+direction));
   const key=messageStableKey(matches[index]);state.chatMatchKey=key;state.chatAutoTopPending=false;
@@ -11284,6 +11291,9 @@ autoConnectSaved();
 
 
 
+<script src="web-ui-a11y.js"></script>
+<script src="web-view-state.js"></script>
+<script src="web-glowme.js" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>
@@ -11299,9 +11309,6 @@ autoConnectSaved();
   document.body.appendChild(mobileTest);
 })();
 </script>
-<script src="web-ui-a11y.js"></script>
-<script src="web-view-state.js"></script>
-<script src="web-glowme.js"></script>
 <script src="web-pwa.js"></script>
 <script type="module" src="web-glass.js"></script>
 </body>

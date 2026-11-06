@@ -13,7 +13,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  const cardTop=await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top);
  await page.evaluate(()=>{state.selected.add('m0');updateSelectedCount();});
  assert.equal(await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top),cardTop,'batch tools never move the sorting row or cards');assert.equal(await page.locator('#saveSelectedBtn').isVisible(),true);
- const pos=await page.evaluate(()=>scrollY);await page.evaluate(()=>{state.selected.clear();updateSelectedCount();});assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false);assert.equal(await page.evaluate(()=>scrollY),pos);
+ const pos=await page.evaluate(()=>scrollY);await page.evaluate(()=>{state.selected.clear();updateSelectedCount();});assert.equal(await page.locator('.batch-selection-tools').evaluate(e=>e.inert),true);await page.locator('#saveSelectedBtn').waitFor({state:'hidden'});assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false);assert.equal(await page.evaluate(()=>scrollY),pos);
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(150);await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('인용');await page.waitForTimeout(500);assert.equal(await page.locator('#chatSearchInput').inputValue(),'인용');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');
  await page.evaluate(()=>{state.chatQuery='';render();});await page.waitForTimeout(100);

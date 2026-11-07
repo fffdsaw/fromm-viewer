@@ -716,7 +716,8 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .glowme-nav.rail-pointer-tracking button.active{background:transparent!important}
 }
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout.sidebar-open #sidebar{z-index:500}
+ /* Keep the rail above the pinned header for the entire width transition. */
+ .glowme-phase3.pc-layout #sidebar{z-index:500}
 }
 
 @media(min-width:701px) and (hover:hover) and (pointer:fine){

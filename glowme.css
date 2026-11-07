@@ -995,3 +995,30 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #chatToolsPanel .date-weekdays > *{
   min-width:0;box-sizing:border-box;
 }
+
+
+/* Search calendar: keep its footer on-screen at short heights/high zoom.
+   Dates scroll inside the panel; the outer rounded glass frame never clips
+   the '이동' action. This also covers the pinned wide-PWA layout. */
+.glowme-phase3 #chatToolsPanel.open{
+  box-sizing:border-box;
+  max-height:max(0px,calc(100dvh - var(--glow-tools-top,160px) - 12px));
+  overflow:hidden;
+}
+.glowme-phase3 #chatToolsPanel .search-panel-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding-bottom:8px;
+  scroll-padding-bottom:20px;
+}
+.glowme-phase3 #chatToolsPanel .search-panel-footer{
+  flex:0 0 auto;
+  box-sizing:border-box;
+}
+@media(max-height:760px){
+  .glowme-phase3 #dateCalendar{margin:4px 0 8px}
+  .glowme-phase3 #dateCalendar .date-calendar-head{margin:4px 0}
+  .glowme-phase3 #dateCalendar .date-day{height:32px;min-height:32px}
+}

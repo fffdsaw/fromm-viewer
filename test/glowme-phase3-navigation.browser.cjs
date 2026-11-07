@@ -82,6 +82,26 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
   for(const [year,month,days] of [[2026,10,35],[2026,7,42],[2026,1,28]]){
    await p.evaluate(({year,month})=>{state.calendarMode='day';state.calendarMonth=new Date(year,month,1);renderDateCalendar();},{year,month});
    assert.equal(await p.locator('#dateCalendarGrid .date-day').count(),days,`${year}/${month+1}: only necessary weeks`);
+   if(year===2026 && month===10){
+    // The selected date and hovered date must not inherit the old dark theme.
+    await p.evaluate(()=>{state.selectedDate='2026-11-01';renderDateCalendar();document.querySelector('[data-date="2026-11-07"]').classList.add('today');});
+    const selected=p.locator('#dateCalendarGrid [data-date="2026-11-01"]');
+    await selected.hover();
+    const selection=await selected.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color}));
+    assert.equal(selection.background,'rgb(169, 217, 196)','selected day stays mint even on hover');
+    assert.equal(selection.color,'rgb(23, 63, 50)','selected day has readable dark-green text');
+    const unselected=p.locator('#dateCalendarGrid [data-date="2026-11-02"]');
+    await unselected.hover();
+    assert.equal(await unselected.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(224, 244, 233)','unselected hovered day does not inherit black dark-theme highlight');
+    const today=await p.locator('#dateCalendarGrid [data-date="2026-11-07"]').evaluate(e=>{
+      const s=getComputedStyle(e),box=e.getBoundingClientRect(),grid=e.parentElement.getBoundingClientRect();
+      return {outline:s.outlineStyle,shadow:s.boxShadow,offset:s.outlineOffset,right:box.right,gridRight:grid.right};
+    });
+    assert.equal(today.outline,'none','today has no protruding outside outline');
+    assert.ok(today.shadow.includes('inset')&&today.shadow.includes('2px'),'today uses a 2px inner border');
+    assert.ok(today.right<=today.gridRight+1,'last-column date stays inside grid');
+    assert.equal(today.offset,'-3px','keyboard focus ring is inset into each date');
+   }
    const layout=await p.evaluate(()=>{
     const panel=document.querySelector('#chatToolsPanel'),footer=panel.querySelector('.search-panel-footer'),scroller=panel.querySelector('.search-panel-scroll');
     const a=panel.getBoundingClientRect(),b=footer.getBoundingClientRect();

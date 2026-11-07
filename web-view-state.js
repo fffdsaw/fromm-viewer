@@ -3,12 +3,17 @@
  'use strict';
  const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null;
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
+ const chatWaiting=()=>state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete||state.chatAutoTopPending);
  const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>8);
  function capture(){
-  if(state.filter==='live'||pending||restoring)return;
-  const el=row();positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0});
+  if(state.filter==='live'||pending||restoring||chatWaiting())return false;
+  const el=row();
+  // A loading/empty notice is not a message the reader chose to keep.
+  if(state.filter==='all'&&!el)return false;
+  positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0});
   // Navigation history is bounded; only scalar positions/IDs are retained.
   if(positions.size>120)positions.delete(positions.keys().next().value);
+  return true;
  }
  function enter(filter=state.filter,options={}){
   latestCleanup?.();active=key(filter);serial++;
@@ -20,8 +25,8 @@
  }
  function navigate(filter,options){capture();return enter(filter,options);}
  function beforeRender(){
-  if(motionCleanup || latestCleanup || anchorCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
-  if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
+  if(motionCleanup || latestCleanup || anchorCleanup || chatWaiting())return;
+  if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
  }
  function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;pending=null;serial++;}
  async function restore(){

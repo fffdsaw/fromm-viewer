@@ -1316,7 +1316,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="glowme.css?v=unified-download-icons-20261108">
 <link rel="preload" as="script" href="web-glowme.js?v=chat-download-selection-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=chat-latest-20261107">
+<link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 </head>
 <body>
 
@@ -8644,7 +8644,7 @@ function renderFullConversation(version){
       ? ` ${state.chatHistoryProgress.toLocaleString()}개 확인 중`
       : "";
 
-    tl.innerHTML = `<div class="empty stable-loading-slot">가장 오래된 메시지를 찾는 중...${progress}</div>`;
+    tl.innerHTML = `<div class="empty stable-loading-slot">전체 대화 불러오는 중…${progress}</div>`;
     syncLoadingUI();
     return;
   }
@@ -11343,7 +11343,7 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=chat-latest-20261107"></script>
+<script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
 <script src="web-glowme.js?v=chat-download-selection-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>

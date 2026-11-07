@@ -51,11 +51,21 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  assert.ok(latest.lastVisible,'newest message visible at first entry');
  assert.ok(Math.abs(latest.y-latest.max)<6,'initial viewport starts at latest messages');
  await p.evaluate(()=>scrollTo(0,Math.max(0,document.documentElement.scrollHeight-innerHeight-700)));
- await p.waitForTimeout(120);const readY=await p.evaluate(()=>scrollY);
+ await p.waitForTimeout(120);
+ const read=await p.evaluate(()=>{
+  const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.getBoundingClientRect().bottom>8);
+  return {id:e?.dataset.messageId,top:e?.getBoundingClientRect().top,y:scrollY,windowStart:state.chatWindowStart};
+ });
+ assert.ok(read.id,'a reading anchor is visible before leaving chat');
  await p.evaluate(()=>setFilter('image'));await p.waitForTimeout(160);
  await p.evaluate(()=>setFilter('all'));await p.waitForTimeout(230);
- const backY=await p.evaluate(()=>scrollY);
- assert.ok(Math.abs(readY-backY)<8,viewport.width+': returning to chat restores reading position');
+ const back=await p.evaluate(id=>{
+  const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.dataset.messageId===id);
+  return {present:!!e,top:e?.getBoundingClientRect().top,y:scrollY,windowStart:state.chatWindowStart};
+ },read.id);
+ console.log('reading-position restore',viewport.width,JSON.stringify({read,back}));
+ assert.ok(back.present,viewport.width+': same reading message is rendered again');
+ assert.ok(Math.abs(read.top-back.top)<10,viewport.width+': returning to chat restores the same message viewport offset');
  assert.deepEqual(fresh.errors,[]);await fresh.context.close();
  console.log(viewport.width+': latest first visit, bounded conversation rendering and read-position return PASS');
  }

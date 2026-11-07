@@ -20,10 +20,27 @@ function setup(){
   compareMessages:(a,b)=>new Date(a.createdAt)-new Date(b.createdAt),
   voteSearchText:()=>''
  });
- for(const n of ['replyUserId','replyAuthContext','replyAuthCurrent','currentReplyUserId','isArtist','looksLikeIdOnly','normalizeQuotedValue','getQuotedMessage','isReplyToMe','chatMessageMatches','messageStableKey','chatContextEnabled','chatMessageVisible','chatMatches','filteredMessages','localDateKeyFromISO','chatDateSet','calendarActivityInfo','firstMessageOnDate','resetReplyIdentity','ensureReplyIdentity']) vm.runInContext(source(n),c);
+ for(const n of ['replyUserId','replyAuthContext','replyAuthCurrent','currentReplyUserId','isArtist','looksLikeIdOnly','normalizeQuotedValue','getQuotedMessage','isReplyToMe','quotedSourceLabel','quotedLabelText','chatMessageMatches','messageStableKey','chatContextEnabled','chatMessageVisible','chatMatches','filteredMessages','localDateKeyFromISO','chatDateSet','calendarActivityInfo','firstMessageOnDate','resetReplyIdentity','ensureReplyIdentity']) vm.runInContext(source(n),c);
  c.replyIdentity.context=c.replyAuthContext();c.replyIdentity.status='ready';c.replyIdentity.id='fan-a';return c;
 }
 const reply=(id,userId,patch={})=>({messageId:id,userType:'star',type:'text',content:'답장 본문',createdAt:'2026-10-25T05:00:00Z',mentionedMessage:{messageId:'original',userId,content:'인용 원문'},...patch});
+test('quoted source labels distinguish signed-in fan from other fans without guessing',()=>{
+ const c=setup();
+ const mine=reply('mine','fan-a'),other=reply('other','fan-b');
+ assert.equal(c.quotedSourceLabel(mine,c.getQuotedMessage(mine)), '나');
+ assert.equal(c.quotedLabelText(mine,c.getQuotedMessage(mine)), '나 · 내 글에 답장');
+ assert.equal(c.quotedSourceLabel(other,c.getQuotedMessage(other)), '팬');
+ const missing=reply('unknown',null,{mentionedMessage:{messageId:'original',content:'원문'}});
+ assert.equal(c.quotedSourceLabel(missing,c.getQuotedMessage(missing)), '인용');
+ const ownArtistQuote=reply('artist','artist-a',{userType:'fan',mentionedMessage:{messageId:'star-1',userId:'artist-a',userType:'star',content:'아티 글'}});
+ assert.equal(c.quotedSourceLabel(ownArtistQuote,c.getQuotedMessage(ownArtistQuote)), '아티스트');
+ const conflict=reply('conflict','fan-a',{embeddedMentionedMessage:{messageId:'another',content:'다른 인용'}});
+ assert.equal(c.quotedSourceLabel(conflict,c.getQuotedMessage(conflict)), '인용');
+ c.replyIdentity.status='error';c.replyIdentity.id='';
+ assert.equal(c.quotedSourceLabel(mine,c.getQuotedMessage(mine)), '인용');
+ assert.equal(c.quotedSourceLabel(other,c.getQuotedMessage(other)), '인용');
+});
+
 test('personal replies require the authenticated profile ID and an artist sender',()=>{
  const c=setup();assert.equal(c.isReplyToMe(reply('mine','fan-a')),true);
  for(const value of ['fan-b','device-not-user','account-a','',null,undefined]) assert.equal(c.isReplyToMe(reply('other',value)),false);

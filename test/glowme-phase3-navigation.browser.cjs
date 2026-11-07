@@ -73,4 +73,28 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  assert.deepEqual(fresh.errors,[]);await fresh.context.close();
  console.log(viewport.width+': latest first visit, bounded conversation rendering and read-position return PASS');
  }
+ // Search panel must keep the fixed action visible on short viewports. The
+ // day grid uses only required calendar weeks (Nov=5, Aug=6, Feb=4).
+ for(const viewport of [{width:390,height:650},{width:1440,height:760}]){
+  const cal=await open(browser,server.url,viewport),p=cal.page;
+  await p.locator('#chatToolsBtn').click();
+  await p.evaluate(()=>openDateCalendar());
+  for(const [year,month,days] of [[2026,10,35],[2026,7,42],[2026,1,28]]){
+   await p.evaluate(({year,month})=>{state.calendarMode='day';state.calendarMonth=new Date(year,month,1);renderDateCalendar();},{year,month});
+   assert.equal(await p.locator('#dateCalendarGrid .date-day').count(),days,`${year}/${month+1}: only necessary weeks`);
+   const layout=await p.evaluate(()=>{
+    const panel=document.querySelector('#chatToolsPanel'),footer=panel.querySelector('.search-panel-footer'),scroller=panel.querySelector('.search-panel-scroll');
+    const a=panel.getBoundingClientRect(),b=footer.getBoundingClientRect();
+    return {open:panel.classList.contains('open'),panelBottom:a.bottom,footerBottom:b.bottom,viewport:innerHeight,scrollHeight:scroller.scrollHeight,clientHeight:scroller.clientHeight};
+   });
+   assert.ok(layout.open,`${viewport.width}: search panel open`);
+   assert.ok(layout.panelBottom<=layout.viewport+2,`${viewport.width} ${year}/${month+1}: panel fits viewport ${JSON.stringify(layout)}`);
+   assert.ok(layout.footerBottom<=layout.viewport+2,`${viewport.width} ${year}/${month+1}: move action visible ${JSON.stringify(layout)}`);
+   await p.locator('.search-panel-scroll').evaluate(e=>e.scrollTop=e.scrollHeight);
+   assert.equal(await p.locator('#dateCalendarGrid .date-day').last().isVisible(),true,'last calendar day remains accessible');
+  }
+  assert.deepEqual(cal.errors,[]);
+  console.log(viewport.width+'x'+viewport.height+': calendar day count, scroll and fixed action PASS');
+  await cal.context.close();
+ }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

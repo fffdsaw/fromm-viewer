@@ -1313,7 +1313,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=replay-count-chat-latest-20261107">
+<link rel="stylesheet" href="glowme.css?v=calendar-fit-20261107">
 <link rel="preload" as="script" href="web-glowme.js?v=calendar-visibility-20261107">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-latest-20261107">
@@ -9560,8 +9560,13 @@ function renderDateCalendar(){
   const first = new Date(year,month,1);
   const firstDow = first.getDay();
   const start = new Date(year,month,1-firstDow);
+  // Render only the weeks this month needs (4, 5 or 6). A fixed six-week
+  // grid added an unnecessary final row in November 2026 and pushed the
+  // search panel footer below the visible viewport on compact screens.
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const visibleDays = Math.ceil((firstDow + daysInMonth)/7)*7;
 
-  for(let i=0;i<42;i++){
+  for(let i=0;i<visibleDays;i++){
     const d = new Date(start);
     d.setDate(start.getDate()+i);
 

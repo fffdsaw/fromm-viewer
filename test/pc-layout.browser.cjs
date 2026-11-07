@@ -36,6 +36,15 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
      const artist=await p.locator('#artistTitle').boundingBox(),stats=await p.locator('#artistMediaStats').boundingBox(),auth=await p.locator('.top-auth-controls').boundingBox();
      assert.ok(stats.width>0 && stats.x>=artist.x+artist.width-1,`${width} ${name}: metadata follows artist name`);
      assert.ok(Math.abs((stats.y+stats.height/2)-(artist.y+artist.height/2))<4,`${width} ${name}: artist name and metadata share a row`);
+     // Compare actual rendered text centers, not just outer element boxes.
+     const visual=await p.evaluate(()=>{
+      const title=document.querySelector('#artistTitle'),stats=document.querySelector('#artistMediaStats'),avatar=document.querySelector('#artistProfileWrap'),image=document.querySelector('#artistProfileImage');
+      const center=el=>{const range=document.createRange();range.selectNodeContents(el);const rect=range.getBoundingClientRect();return rect.top+rect.height/2;};
+      return {title:center(title),stats:center(stats),shadow:getComputedStyle(avatar).boxShadow,imageShadow:getComputedStyle(image).boxShadow};
+     });
+     assert.equal(visual.shadow,'none',`${width} ${name}: avatar has no drop shadow`);
+     assert.equal(visual.imageShadow,'none',`${width} ${name}: avatar image has no drop shadow`);
+     assert.ok(Math.abs(visual.title-visual.stats)<=3,`${width} ${name}: visual text centers match ${JSON.stringify(visual)}`);
      assert.ok(stats.x+stats.width<=auth.x+1,`${width} ${name}: metadata does not overlap auth controls`);
      assert.ok(Math.abs((artist.y+artist.height/2)-(auth.y+auth.height/2))<4,`${width} ${name}: header information and auth controls share a centerline`);
     }

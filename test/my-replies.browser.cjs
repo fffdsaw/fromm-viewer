@@ -65,7 +65,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    profileDelay=0;
    assert.equal(await page.locator('.msg').count(),messages.length);
    assert.equal(await page.locator('.reply-mine').count(),2);
-   assert.match(await page.locator('[data-message-id="my-reply"] .reply-label').innerText(),/내 글에/);
+   assert.equal(await page.locator('[data-message-id="my-reply"] .reply-label').innerText(),'나');
    assert.match(await page.locator('[data-message-id="my-reply"] .reply-label').innerText(),/^나/);
    assert.equal(await page.locator('[data-message-id="other-reply"] .reply-label').innerText(),'팬');
    assert.equal(await page.locator('[data-message-id="missing-author"] .reply-label').innerText(),'인용');

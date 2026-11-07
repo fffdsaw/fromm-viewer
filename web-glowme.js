@@ -278,6 +278,8 @@
     syncMediaDock();
   }
   function syncNavigation(){
+    // Initial shell creation also reflects a LIVE event discovered before nav mounted.
+    window.syncHeaderLiveIndicator?.();
     const key=state.filter==='live'?state.live.centerMode:state.filter,all=state.filter==='all',pinned=isSearchPinned();
     for(const button of nav.querySelectorAll('button')){const selected=button.dataset.glowNav===key;button.setAttribute('aria-current',selected?'page':'false');button.classList.toggle('active',selected);}
     fields.disabled=!all;search.hidden=!all||pinned;panel.hidden=!all;

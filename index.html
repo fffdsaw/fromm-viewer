@@ -1313,8 +1313,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-glowme.js?v=list-polish-20261107">
+<link rel="stylesheet" href="glowme.css?v=artist-live-sidebar-20261107">
+<link rel="preload" as="script" href="web-glowme.js?v=artist-live-sidebar-20261107">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=list-polish-20261107">
 </head>
@@ -1392,11 +1392,6 @@ body.download-marquee-active{user-select:none;cursor:default}
           <span class="token-life-clock" aria-hidden="true">◷</span>
           <span id="tokenLifeText">--</span>
         </div>
-        <button class="pill header-live-btn" data-filter="live" type="button"
-                title="현재 라이브 보기" aria-label="라이브">
-          <span class="header-live-dot" aria-hidden="true"></span>
-          <span>라이브</span>
-        </button>
         <div class="header-icon-cluster">
           <button id="logoutMiniBtn" class="logout-mini-btn" type="button"
                   style="display:none" title="로그아웃" aria-label="로그아웃">
@@ -3899,12 +3894,15 @@ function liveErrorText(error){
 }
 
 function syncHeaderLiveIndicator(){
-  const btn=document.querySelector(".header-live-btn");
-  if(!btn) return;
+  // Preserve the existing broadcast detection, but show its indicator on the sidebar only.
   const streaming=state.live.entrances.length>0 || !!state.live.config?.isStreaming;
-  btn.classList.toggle("is-streaming",streaming);
-  btn.title=streaming ? "시청 가능한 라이브 · 눌러서 목록 보기" : "현재 라이브 보기";
-  btn.setAttribute("aria-label",streaming ? "라이브 중" : "라이브");
+  document.documentElement.classList.toggle("glowme-live-broadcasting",streaming);
+  const liveNav=document.querySelector('.glowme-nav [data-glow-nav="live"]');
+  if(liveNav){
+    liveNav.classList.toggle("is-streaming",streaming);
+    liveNav.title=streaming ? "진행 중인 LIVE 보기" : "LIVE";
+    liveNav.setAttribute("aria-label",streaming ? "LIVE 방송 중" : "LIVE");
+  }
 }
 
 function syncLiveToolbarControls(){
@@ -11317,7 +11315,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=list-polish-20261107"></script>
-<script src="web-glowme.js?v=list-polish-20261107" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=artist-live-sidebar-20261107" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>

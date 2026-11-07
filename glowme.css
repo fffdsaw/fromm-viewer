@@ -828,18 +828,32 @@ html.glowme .reply-content{color:#244c42}
     justify-content:flex-start!important;flex:1 1 auto;min-width:0;
     gap:10px!important;
   }
+  /* The avatar stays circular but has no residual dark drop shadow. */
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-profile-wrap{
+    box-shadow:none!important;filter:none!important;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-profile-image{
+    box-shadow:none!important;filter:none!important;
+  }
+  /* The old 34px min-height left the artist glyphs above the visual center
+     of the smaller statistics. Center the actual text inside matched rows. */
   .glowme-phase3.pc-layout:not(.pc-collection) #artistTitle{
-    flex:0 1 auto;min-width:0;min-height:34px!important;
+    display:flex!important;align-items:center!important;
+    flex:0 1 auto;min-width:0;
+    height:28px!important;min-height:28px!important;
+    line-height:28px!important;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) .artist-meta-line{
     position:static;inset:auto;width:auto;right:auto;left:auto;bottom:auto;
-    height:24px;flex:1 1 auto;min-width:0;align-items:center;
+    height:28px;flex:1 1 auto;min-width:0;align-items:center;
     padding-left:10px;border-left:1px solid #bad7c9;gap:10px;
     overflow:hidden;white-space:nowrap;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) #artistMediaStats{
+    display:flex;align-items:center;
     flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap;margin:0;
+    height:28px;line-height:28px;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus{
     flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;
@@ -912,4 +926,35 @@ html.glowme .reply-content{color:#244c42}
 }
 @media(forced-colors:active){
   .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){border:1px solid CanvasText}
+}
+
+
+/* LIVE indication belongs to the existing sidebar item, never to the header. */
+.glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]{
+  color:#bc2634!important;
+}
+.glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+  content:"";display:block!important;position:absolute;
+  top:5px;right:5px;width:9px;height:9px;z-index:2;
+  border-radius:50%;background:#e52f42;border:2px solid #f4fdf7;
+  box-sizing:content-box;box-shadow:0 0 0 1px #bd2c3b26;
+  pointer-events:none;
+}
+.glowme-phase3.sidebar-open.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+  top:9px;right:9px;
+}
+@media(forced-colors:active){
+  .glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+    background:Highlight;border-color:Canvas;box-shadow:0 0 0 1px CanvasText;
+  }
+}
+/* Match the loading text's actual box to the name/statistics baseline. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus:not(:empty){
+    display:flex;align-items:center;
+    height:28px;min-height:28px;line-height:28px;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus:empty{
+    display:none!important;
+  }
 }

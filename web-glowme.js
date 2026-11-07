@@ -130,7 +130,7 @@
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active&&!videoList?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
     // List selections survive playback; their controls belong only to the list.
-    const playerOrLive=mediaPC.matches&&state.filter==='live'&&!active;
+    const playerOrLive=mediaPC.matches&&((state.filter==='live'&&!active)||state.filter==='all');
     batchTools.hidden=playerOrLive||(!active&&!selectionCount);batchTools.inert=playerOrLive||(!active&&selectionCount===0);
     const save=$('#saveSelectedBtn'),busy=!!(state.mediaBulkSaving||state.postBulkSaving);
     if(active){
@@ -144,7 +144,7 @@
 
   }
   new MutationObserver(()=>syncMediaDock()).observe($('#saveSelectedBtn'),{attributes:true,attributeFilter:['disabled']});
-  mediaPC.addEventListener('change',()=>{restorePCToolbar();syncMediaDock();fitPanel();});
+  mediaPC.addEventListener('change',()=>{restorePCToolbar();if(state.filter==='all')render();syncDownloadSelection();syncMediaDock();fitPanel();});
 
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');

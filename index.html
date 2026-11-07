@@ -1313,8 +1313,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=calendar-mint-focus-20261107">
-<link rel="preload" as="script" href="web-glowme.js?v=calendar-visibility-20261107">
+<link rel="stylesheet" href="glowme.css?v=chat-download-selection-20261108">
+<link rel="preload" as="script" href="web-glowme.js?v=chat-download-selection-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-latest-20261107">
 </head>
@@ -8108,16 +8108,21 @@ function downloadSelectionSet(kind){
   return kind==="media" ? state.selected : state.postSelected;
 }
 
+function pcChatDownloadsOnly(){
+  return state.filter==="all" && !!window.matchMedia?.("(min-width:701px) and (hover:hover) and (pointer:fine)").matches;
+}
+
 function syncDownloadSelection(){
   for(const el of document.querySelectorAll("[data-download-selection-key]")){
     const checked=downloadSelectionSet(el.dataset.downloadSelectionKind).has(el.dataset.downloadSelectionKey);
-    el.classList.toggle("selected",checked);
+    el.classList.toggle("selected",checked && !pcChatDownloadsOnly());
     el.querySelector(".selection-toggle")?.setAttribute("aria-pressed",String(checked));
   }
   updateSelectedCount();
 }
 
 function chooseDownloadItem(kind,item,event={}){
+  if(pcChatDownloadsOnly()) return;
   const scope=downloadSelectionScope();
   if(scope.kind!==kind) return;
   const key=downloadSelectionKey(kind,item), selected=downloadSelectionSet(kind);
@@ -8180,7 +8185,7 @@ function openDownloadPreview(kind,item){
 }
 
 function bindDownloadSelection(el,kind,item){
-  if(!el) return;
+  if(!el || pcChatDownloadsOnly()) return;
   el.classList.add("download-selectable");
   for(const img of el.querySelectorAll("img")) img.draggable=false;
   el.dataset.downloadSelectionKind=kind;
@@ -8199,7 +8204,7 @@ function bindDownloadSelection(el,kind,item){
   el.querySelector(".selection-toggle")?.setAttribute("aria-pressed",String(checked));
   el.addEventListener("click",e=>{
     if(performance.now()<downloadDragClickUntil){e.preventDefault();e.stopPropagation();return;}
-    if(e.detail>1 || downloadSelectionControl(e)) return;
+    if(pcChatDownloadsOnly() || e.detail>1 || downloadSelectionControl(e)) return;
     e.preventDefault();
     flushDownloadClick();
     const g={el,kind,item,event:{shiftKey:e.shiftKey},context:downloadSelectionContext(),generation:state.scanGeneration,applied:false};
@@ -8214,7 +8219,7 @@ function bindDownloadSelection(el,kind,item){
     openDownloadPreview(kind,item);
   },true);
   el.addEventListener("keydown",e=>{
-    if(e.target!==el || !["Enter"," "].includes(e.key)) return;
+    if(pcChatDownloadsOnly() || e.target!==el || !["Enter"," "].includes(e.key)) return;
     e.preventDefault();
     flushDownloadClick();
     downloadClickGesture=null;
@@ -8278,7 +8283,7 @@ function initDownloadMarqueeSelection(){
     if(e.button!==0 || e.pointerType!=="mouse" || $("#imageLightbox")?.classList.contains("open")) return;
     const surface=e.target.closest('.gallery,.replay-grid') || (state.filter==="all" ? e.target.closest('#timeline') : null);
     const card=e.target.closest('[data-download-selection-key]');
-    if(!surface || downloadSelectionControl(e) || (!card && e.target.closest('video,.bubble,.date-separator'))) return;
+    if(pcChatDownloadsOnly() || !surface || downloadSelectionControl(e) || (!card && e.target.closest('video,.bubble,.date-separator'))) return;
     const scope=downloadSelectionScope();if(!scope.items.length) return;
     if(card && card.dataset.downloadSelectionKind!==scope.kind) return;
     finish();
@@ -9254,7 +9259,7 @@ function renderMessage(m){
       const kind = t==="image" ? "사진" : t==="video" ? "영상" : "음성";
       html+=`<div class="text media-missing">[${kind} · 파일 URL 없음]</div>`;
     }else{
-      html+=`<div class="media-wrap">`;
+      html+=`<div class="media-wrap${t==="image" || t==="video" ? " chat-media-visual" : ""}">`;
       if(t==="image") html+=`<img loading="lazy" decoding="async" src="${esc(previewUrl(m))}" alt="Fromm image">`;
       if(t==="video"){
         const poster=resolvePreviewUrl(m);
@@ -9265,7 +9270,7 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl" href="${esc(proxyUrl(m,true))}">다운로드</a>`;
+        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">다운로드</a>`;
         html+=`<span class="stats">${esc(baseName(m))}</span>`;
       }
 
@@ -9309,10 +9314,12 @@ function renderMessage(m){
 
   const chatDownload = bubble.querySelector(".dl");
   if(chatDownload){
-    chatDownload.onclick = (e)=>{
+    chatDownload.onclick = async (e)=>{
       e.preventDefault();
       e.stopPropagation();
-      downloadSingleMedia(m,chatDownload);
+      if(chatDownload.getAttribute("aria-busy")==="true") return;
+      chatDownload.setAttribute("aria-busy","true");
+      try{await downloadSingleMedia(m,chatDownload);}finally{chatDownload.removeAttribute("aria-busy");}
     };
   }
 
@@ -9326,6 +9333,10 @@ function renderMessage(m){
   }
 
   if(artist && hasUsableMedia(m)) bindDownloadSelection(bubble.querySelector(".media-wrap"),"media",m);
+  if(t==="video" && pcChatDownloadsOnly()) bubble.querySelector("video")?.addEventListener("dblclick",e=>{
+    if(downloadSelectionControl(e)) return;
+    e.preventDefault();e.stopPropagation();openDownloadPreview("media",m);
+  });
 
   // 전체 대화 탭의 이미지도 원본 URL -> blob 순서로 자동 복구.
   if(t==="image"){
@@ -11333,7 +11344,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-latest-20261107"></script>
-<script src="web-glowme.js?v=calendar-visibility-20261107" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=chat-download-selection-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>

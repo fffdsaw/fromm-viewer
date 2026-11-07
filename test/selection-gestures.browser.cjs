@@ -99,26 +99,13 @@ async function shot(page, name) {
       assert.deepEqual(await selection(page), beforeChat, 'chat photo preview keeps selection');
       await page.locator('#lightboxClose').click();
       if(!mobile){
+        assert.equal(await page.locator('#timeline [data-download-selection-key]').count(),0,'PC conversation does not expose selection');
         await page.locator('.media-wrap').first().scrollIntoViewIfNeeded();
-        const timeline=await page.locator('#timeline').boundingBox(),media=await page.locator('.media-wrap').first().boundingBox();
-        await page.mouse.move(timeline.x+timeline.width-5,media.y+10);await page.mouse.down();
-        await page.mouse.move(media.x+10,media.y+media.height-10,{steps:6});
-        await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
-        const chatKey=await page.locator('.media-wrap').first().getAttribute('data-download-selection-key');
-        assert.deepEqual(await selection(page),[...new Set([...beforeChat,chatKey])].sort(),'chat blank-margin drag preserves other selections');
-        await page.keyboard.press('Escape');await page.mouse.up();
-        assert.deepEqual(await selection(page),beforeChat);
-        await page.evaluate(key=>{state.selected.add(key);syncDownloadSelection();},chatKey);
+        const media=await page.locator('.media-wrap').first().boundingBox();
         await page.mouse.move(media.x+30,media.y+30);await page.mouse.down();
-        await page.mouse.move(media.x+90,media.y+90,{steps:6});
-        assert.deepEqual(await selection(page),beforeChat.filter(key=>key!==chatKey),'selected chat media removes only itself');
-        await page.mouse.up();
-        await page.mouse.move(media.x+30,media.y+30);await page.mouse.down();
-        await page.mouse.move(media.x+90,media.y+90,{steps:6});
-        await page.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
-        assert.deepEqual(await selection(page),[...new Set([...beforeChat,chatKey])].sort(),'chat photo-origin drag preserves other selections');
-        await page.keyboard.press('Escape');await page.mouse.up();
-        assert.deepEqual(await selection(page),beforeChat);
+        await page.mouse.move(media.x+90,media.y+90,{steps:6});await page.mouse.up();
+        assert.equal(await page.locator('.download-selection-box').count(),0,'PC chat drag cannot start a selection');
+        assert.deepEqual(await selection(page),beforeChat,'PC chat gestures cannot mutate gallery selections');
       }
       for (const id of ['landscape', 'portrait']) {
         await page.evaluate(() => {state.filter = 'video'; syncLiveToolbarControls(); render(); scrollTo(0, 0);});
@@ -315,7 +302,7 @@ async function shot(page, name) {
       await settled(page);
       assert.equal((await selection(page)).length,0,'logout invalidates a pending single click');
       assert.deepEqual(errors, []);
-      console.log(`${mobile ? 'Mobile' : 'Desktop'}: ${mobile ? 'touch scrolling and selection preserved' : '8 -> 7 local deselection, range shrink/mixed selection/Ctrl/cancel, add/remove auto-scroll, chat/Channel/Replay local deselection'}, photo/card drag, double-click invariants, real MP4 preview and controls PASS`);
+      console.log(`${mobile ? 'Mobile' : 'Desktop'}: ${mobile ? 'touch scrolling and selection preserved' : '8 -> 7 local deselection, range shrink/mixed selection/Ctrl/cancel, add/remove auto-scroll, PC chat downloads-only and Channel/Replay local deselection'}, photo/card drag, double-click invariants, real MP4 preview and controls PASS`);
       await context.close();
     }
   } finally {

@@ -154,7 +154,10 @@ async function assertScrollLocked(page, label) {
           await page.waitForFunction(() => document.querySelector('#replayVideo').currentTime > 1.1);
         }
         await page.locator('#replayBackToList').click();
-        assert.equal(await page.locator('[data-replay-post]').count(), 4);
+        // Replay now scopes its list to the selected subscribed channel.
+        assert.equal(await page.locator('[data-replay-post]').count(), 2, 'only selected-channel videos are listed after Back');
+        assert.equal(await page.locator('[data-replay-post][data-replay-channel="a"]').count(), 2, 'selected channel a retains both videos');
+        assert.equal(await page.locator('[data-replay-post][data-replay-channel="b"]').count(), 0, 'other subscribed channels do not leak into this list');
         assert.equal(await page.locator('.main').evaluate(e => getComputedStyle(e).display), 'block', 'list returns to its ordinary scrolling layout');
         if (!baseline) assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY), 'auto', 'Back releases the playback-only scroll lock');
         if (!baseline && viewport.width === 1440 && id === 'landscape') {

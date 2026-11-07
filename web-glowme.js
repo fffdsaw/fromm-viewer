@@ -250,15 +250,32 @@
 
   function isSearchPinned(){return appWindow&&wide.matches&&state.filter==='all';}
   const calendar=$('#dateCalendar');
-  new MutationObserver(()=>{
-    if(window.FrommGlowME?.calendarInline||!calendar.classList.contains('open'))return;
-    requestAnimationFrame(()=>{
-      if(panel.hidden||!panel.classList.contains('open'))return;
-      const firstDay=calendar.querySelector('.date-day'),box=panel.getBoundingClientRect();
-      if(firstDay&&firstDay.getBoundingClientRect().bottom>box.bottom-12)
-        panel.scrollTop+=calendar.getBoundingClientRect().top-box.top-12;
-    });
-  }).observe(calendar,{attributes:true,attributeFilter:['class']});
+  let calendarRevealFrame=0;
+  function ensureCalendarInScrollView(){
+    calendarRevealFrame=0;
+    if(panel.hidden||!panel.classList.contains('open')||!calendar.classList.contains('open'))return;
+    // The panel itself clips its rounded corners; the nested fieldScroll is
+    // the actual scroll container. Never attempt to scroll the outer panel.
+    const scroller=fieldScroll,viewport=scroller.getBoundingClientRect(),rect=calendar.getBoundingClientRect();
+    if(viewport.height<40||!rect.height)return;
+    const inset=10;
+    if(rect.height>viewport.height-2*inset){
+      // A short viewport cannot show a full six-week calendar at once.
+      // Start at its heading; the remaining rows stay reachable by scrolling.
+      if(rect.top<viewport.top+inset||rect.top>viewport.bottom-inset)
+        scroller.scrollTop+=rect.top-viewport.top-inset;
+    }else if(rect.bottom>viewport.bottom-inset){
+      scroller.scrollTop+=rect.bottom-viewport.bottom+inset;
+    }else if(rect.top<viewport.top+inset){
+      scroller.scrollTop+=rect.top-viewport.top-inset;
+    }
+  }
+  function scheduleCalendarReveal(){
+    if(!calendarRevealFrame)calendarRevealFrame=requestAnimationFrame(ensureCalendarInScrollView);
+  }
+  new MutationObserver(scheduleCalendarReveal).observe(calendar,{attributes:true,attributeFilter:['class']});
+  new ResizeObserver(scheduleCalendarReveal).observe(calendar);
+  new MutationObserver(scheduleCalendarReveal).observe(panel,{attributes:true,attributeFilter:['class','hidden']});
   function fitPanel(){
     const header=$('.viewer-header').getBoundingClientRect();
     document.documentElement.style.setProperty('--list-tools-top',`${Math.max(12,header.bottom+12)}px`);

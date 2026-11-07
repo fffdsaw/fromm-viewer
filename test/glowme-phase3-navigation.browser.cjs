@@ -79,7 +79,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
   const cal=await open(browser,server.url,viewport),p=cal.page;
   await p.locator('#chatToolsBtn').click();
   await p.evaluate(()=>openDateCalendar());
-  for(const [year,month,days] of [[2026,10,35],[2026,7,42],[2021,1,28]]){
+  for(const [year,month,days] of [[2026,10,35],[2026,7,42],[2026,1,28]]){
    await p.evaluate(({year,month})=>{state.calendarMode='day';state.calendarMonth=new Date(year,month,1);renderDateCalendar();},{year,month});
    assert.equal(await p.locator('#dateCalendarGrid .date-day').count(),days,`${year}/${month+1}: only necessary weeks`);
    const layout=await p.evaluate(()=>{

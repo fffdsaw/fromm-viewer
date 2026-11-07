@@ -48,8 +48,8 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     const buttonsBefore=await boxes(p,'#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn');
     await p.locator('#selectedCount').evaluate(e=>e.textContent='선택 1,000개');
     assert.deepEqual(await boxes(p,'#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn'),buttonsBefore,'count digits do not move buttons');
-    await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('.batch-selection-tools').evaluate(e=>e.inert),true);
-    await p.locator('.batch-selection-tools').waitFor({state:'hidden'});assert.notEqual(await p.evaluate(()=>document.activeElement.tagName),'BODY','X restores focus');
+    await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('.batch-selection-tools').evaluate(e=>e.inert),false);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.equal(await p.locator('#clearSelectionBtn').isDisabled(),true);
+    assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.notEqual(await p.evaluate(()=>document.activeElement.tagName),'BODY','X restores focus');
     assert.deepEqual(await boxes(p,card+':first-child,'+card+':first-child '+download),before,'dismissal preserves list');assert.equal(await p.evaluate(()=>scrollY),position);
     await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items[0]);clearDownloadSelection();chooseDownloadItem(q.kind,q.items[0]);});await p.waitForTimeout(240);
     assert.equal(await p.locator('#saveSelectedBtn').isVisible(),true,'rapid reselect cancels delayed hide');
@@ -60,7 +60,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     }
     await p.evaluate(()=>scrollTo(0,600));await p.waitForTimeout(100);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);
     await shot(p,`${width}-${name}-scrolled`);
-    await p.emulateMedia({reducedMotion:'reduce'});await p.evaluate(()=>clearDownloadSelection());assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);await p.emulateMedia({reducedMotion:'no-preference'});
+    await p.emulateMedia({reducedMotion:'reduce'});await p.evaluate(()=>clearDownloadSelection());assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);await p.emulateMedia({reducedMotion:'no-preference'});
    }
    await mode(p,'image');const header=await p.locator('.viewer-header').boundingBox(),auth=await boxes(p,'.top-auth-controls');
    await p.evaluate(()=>{state.loadingMessages=true;state.hasMoreMessages=true;FrommGlowME.syncHeader();});

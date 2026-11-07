@@ -14,3 +14,5 @@
 - 로그/전후 합성 PNG: `/workspace/scratch/fromm-chat-loading/`, 검토 자료 `docs/design-review/chat-loading-latest/`. 실제 OS 설치형 PWA/Windows·Safari/실계정 대화는 미검증이며 standalone은 배치 모의이다. 다음은 체크포인트/PR/필수 CI → 기존 승인 범위의 병합·Pages·공개 origin 합성 재검증.
 
 - 추가 PC 검사: 다른 탭에 머무르는 동안 기록 준비가 끝난 다음 전체대화로 돌아오는 실제 버튼 경로도 최신 메시지 진입 PASS. 구현 체크포인트5486826 원격 저장 완료.
+
+- 후속 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/76 . 마지막 완료 체크포인트 `8cbc2fd65e8d669dca20aaccc1dc11c950fa2e9e` 원격 저장. 최종 HEAD는 git log로 확인하며 필수 CI 진행 중. 최종 CI/복구 태그/병합/Pages/공개 화면 검증은 PR 설명의 완료 기록에 남긴다.

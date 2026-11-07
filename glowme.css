@@ -725,6 +725,20 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .viewer-header,.glowme-phase3.pc-layout[data-glow-layout="pinned"] .viewer-header{border-color:transparent;border-radius:var(--pc-header-radius);background:none}
  .glowme-phase3.pc-layout .viewer-header::before{inset:-13px -12px -1px;background:var(--pc-surround)}
  .glowme-phase3.pc-layout .viewer-header::after{inset:-1px;border:1px solid #c1ddcf;border-radius:inherit;background:var(--pc-header-bg)}
+ /* Round only the visible edge where scrolled media meets the pinned header. */
+ .glowme-phase3.pc-layout .pc-media-row:not([hidden])::after{
+   --media-edge-radius:12px;
+   content:"";
+   position:absolute;
+   top:calc(100% + 1px);
+   left:-1px;
+   right:-1px;
+   height:var(--media-edge-radius);
+   background:
+     radial-gradient(circle var(--media-edge-radius) at bottom right,transparent calc(100% - 1px),var(--pc-surround) 100%) left top / var(--media-edge-radius) 100% no-repeat,
+     radial-gradient(circle var(--media-edge-radius) at bottom left,transparent calc(100% - 1px),var(--pc-surround) 100%) right top / var(--media-edge-radius) 100% no-repeat;
+   pointer-events:none;
+ }
  .glowme-phase3.pc-layout .topbar{border-radius:inherit}
  .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){position:relative;isolation:isolate;align-items:center;height:46px;min-height:46px;padding:5px 8px;gap:6px;border-radius:26px;background:#e0f2e8;border:1px solid #badbcd;box-shadow:inset 0 1px 1px #fffffff2,0 3px 9px #244b3a14;animation:none!important;transform:none!important;translate:none!important}
  .glowme-phase3.pc-layout .batch-selection-tools[hidden]{display:none}

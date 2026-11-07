@@ -1077,3 +1077,21 @@ html.glowme .reply-content{color:#244c42}
     box-shadow:none;
   }
 }
+
+/* PC selection feedback: one teal hue for cards and a scrolling marquee. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--media-selection:#147e69;--media-selection-fill:#c9e9da}
+ .glowme-phase3.pc-layout .media-card.selected{outline:3px solid var(--media-selection);outline-offset:-3px;border-color:var(--media-selection);box-shadow:none}
+ .glowme-phase3.pc-layout .media-card.selected .card-body{background:var(--media-selection-fill);color:#173f32}
+ .glowme-phase3.pc-layout .media-card.selected .card-badge::after{content:' ✓';font-weight:800}
+ .glowme-phase3.pc-layout .download-selection-box{border:2px solid var(--media-selection);background:#147e6933}
+ .glowme-phase3.pc-layout #timeline .media-wrap .selection-toggle{display:none!important}
+ .glowme-phase3.pc-layout #timeline .media-wrap.selected{outline:0}
+ .glowme-phase3.pc-layout .chat-media-visual{position:relative;width:fit-content;max-width:100%}
+ .glowme-phase3.pc-layout .chat-media-visual .chat-media-download{position:absolute;top:10px;right:10px;z-index:2;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #ffffff24;border-radius:50%;background:#000b;color:#fff;font-size:0;line-height:1;text-decoration:none}
+ .glowme-phase3.pc-layout .chat-media-download::after{content:'↓';font-size:18px;line-height:1}
+ .glowme-phase3.pc-layout .chat-media-download:hover{background:#000d}
+ .glowme-phase3.pc-layout .chat-media-download:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 4px #147e69}
+ .glowme-phase3.pc-layout .chat-media-download[aria-busy=true]::after{content:'…'}
+}
+@media(forced-colors:active){.glowme-phase3.pc-layout .media-card.selected{outline-color:Highlight}.glowme-phase3.pc-layout .download-selection-box{border-color:Highlight;background:transparent}}

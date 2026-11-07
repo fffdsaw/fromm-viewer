@@ -103,7 +103,7 @@ async function selectionSize(page) {
       await page.locator('#lightboxClose').click();
       console.log(`${mobile ? 'Mobile' : 'Desktop'}: photo scroll/range/keyboard/preview PASS`);
       // Both media grouping and individual type tabs use the same interaction.
-      for (const filter of ['media', 'video', 'sound', 'all']) {
+      for (const filter of ['media', 'video', 'sound', ...(mobile ? ['all'] : [])]) {
         await page.evaluate(filter => {state.selected.clear(); state.selectionAnchor = null; state.filter = filter; syncLiveToolbarControls(); render(); scrollTo(0, 0);}, filter);
         const selectable = page.locator('[data-download-selection-kind="media"]').first();
         await selectable.waitFor();
@@ -115,6 +115,7 @@ async function selectionSize(page) {
         }
         assert.equal(await page.locator('.card-footer-select,.chat-select-pill').count(), 0);
       }
+      if(!mobile){await page.evaluate(()=>{state.filter='all';render();});assert.equal(await page.locator('#timeline [data-download-selection-key]').count(),0,'PC chat is individual-download only');}
       // Inline download and native playback controls do not toggle selection.
       await page.evaluate(() => {state.filter = 'media'; state.selected.clear(); render(); downloadSingleMedia = async m => {window.singleDownloaded = m.messageId;};});
       await page.locator('.card-download').first().click();
@@ -124,7 +125,7 @@ async function selectionSize(page) {
       const videoBox=await page.locator('#timeline video').boundingBox();
       await page.locator('#timeline video').click({position: {x: 100, y: videoBox.height-20}});
       assert.equal(await page.evaluate(() => state.selected.size), 0);
-      console.log(`${mobile ? 'Mobile' : 'Desktop'}: media/chat/type selection and controls PASS`);
+      console.log(`${mobile ? 'Mobile' : 'Desktop'}: media/type selection, chat download policy and controls PASS`);
       await page.evaluate(mobile => {
         const posts = (kind, channel) => [1, 2, 3].map(i => ({id: `${kind === 'replay' ? 'r' : 'v'}${i}`, type: kind === 'replay' ? 'live_record' : 'video', title: '동일한 제목 테스트', _channelId: channel, _channelName: channel, thumbnail: {url: 'https://cdn.example/photo.svg'}, displayStartAt: 1791586800000 - i * 1000}));
         state.filter = 'live'; state.live.centerMode = 'channel'; state.live.channelsLoaded = true;

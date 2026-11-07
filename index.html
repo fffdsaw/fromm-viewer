@@ -173,6 +173,10 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .reply-quote:hover { background: rgba(255, 255, 255, 0.086); }
 .reply-label { color: var(--accent2); font-size: 12px; font-weight: 800; margin-bottom: 5px; }
 .reply-label::before { content:"↪"; display:inline-block; margin-right:6px; font-weight:700; }
+.reply-label::after { content:":"; margin-right:4px; }
+.reply-copy { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+.reply-copy .reply-label { display:inline; margin-bottom:0; }
+.reply-copy .reply-content { display:inline; white-space:inherit; overflow:visible; -webkit-line-clamp:unset; -webkit-box-orient:initial; }
 .reply-content { color: rgb(196, 202, 212); font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .reply-media-label { color: rgb(170, 178, 191); font-size: 13px; }
 /* content-visibility on .msg implies paint containment: keep emphasis inside
@@ -7705,10 +7709,6 @@ function quotedSourceLabel(message,quote,mine=isReplyToMe(message)){
   if(quotedId && viewerId && quotedId===viewerId) return "인용";
   const type=String(quote?.userType || "").toLowerCase();
   if(type==="star") return "아티스트";
-  if(quote?.messageId){
-    const original=state.chatMessages.find(item=>String(item.messageId ?? item.id ?? "")===String(quote.messageId));
-    if(original && isArtist(original)) return "아티스트";
-  }
   // For artist replies, FROMM quotes refer to fan-authored messages.
   // Wait for the signed-in profile so "나" and "팬" cannot be confused.
   if(viewerId && quotedId && quotedId!==viewerId &&
@@ -7717,7 +7717,7 @@ function quotedSourceLabel(message,quote,mine=isReplyToMe(message)){
 }
 function quotedLabelText(message,quote,mine=isReplyToMe(message)){
   const source=quotedSourceLabel(message,quote,mine);
-  return mine ? `${source} · 내 글에 답장` : source;
+  return source;
 }
 function resetReplyIdentity(){
   replyIdentity.owner?.abort();
@@ -9249,8 +9249,7 @@ function renderMessage(m){
     const preview = quotedPreview(quoted);
 
     html += `<div class="reply-quote${mine ? " reply-mine" : ""}" data-quoted-id="${esc(quoted.messageId || "")}">
-      <div class="reply-label">${esc(label)}</div>
-      <div class="reply-content">${highlightText(preview, state.filter==="all" ? state.chatQuery : "")}</div>
+      <div class="reply-copy"><span class="reply-label">${esc(label)}</span><span class="reply-content">${highlightText(preview, state.filter==="all" ? state.chatQuery : "")}</span></div>
     </div>`;
   }
 

@@ -91,11 +91,12 @@ test('Replay download and Native transport/auth contracts remain protected aroun
   const baseline = execFileSync('git', ['show', 'd4d9c2f:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
   const names = [...baseline.matchAll(/^(?:async )?function ((?:\w*Replay\w*)|(?:replay\w+)|(?:visibleReplayPosts)|(?:returnToReplayList))\(/gm)].map(m => m[1]);
   assert.ok(names.length > 30);
-  // List selection and the shared save-name / cross-tab download guard evolve;
+  // Subscribed-only selection (visibleReplayPosts/replayHasMore) and shared save guards evolve;
+  // first-valid/legacy selection and scoped paging have dedicated coverage below;
   // automatic list pagination has its own browser coverage; stream fetching,
   // decryption and download wire paths remain unchanged. Playback/source selection
   // now has dedicated real HLS quality-switch and lifecycle tests.
-  for (const name of names.filter(name => !['renderReplayView', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  for (const name of names.filter(name => !['renderReplayView', 'visibleReplayPosts', 'replayHasMore', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
   const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
@@ -142,7 +143,7 @@ test('a page without uploads still offers pagination; repeated cursors stop with
 });
 
 test('preferred existing channel selection is reused, per-channel pages stay separate', async () => {
-  const h = setup(); h.state.live.entry.channelId = 'b';
+  const h = setup(); h.s.channelId = 'b';
   await h.context.loadChannelVideos();
   assert.equal(h.s.channelId, 'b');
   await h.context.selectChannelVideos('a');
@@ -385,3 +386,6 @@ test('existing session request helper supplies authorization, stable UUID and ch
   h.setAuth({token: '', uuid: ''});
   await assert.rejects(h.context.frommApiRequest('/channels'), /먼저 연결/);
 });
+
+for(const [channels,value,expected] of [[[],"all",""],[[{id:"a"}],"all","a"],[[{id:"a"},{id:"b"}],"b","b"],[[{id:"a"},{id:"b"}],"missing","a"]])test(`shared subscribed channel selection ${value} -> ${expected}`,()=>{const h=setup();h.state.live.channels=channels;h.state.live.channelsLoaded=true;h.state.live.replayFilter=value;assert.equal(h.context.normalizeReplayChannelSelection(),expected);assert.equal(h.context.subscribedChannelSelection(value),expected);});
+test('valid pending Replay selection survives subscription fetch; legacy all never exposes other-channel posts',()=>{const h=setup();h.state.live.replayFilter='b';assert.equal(h.context.normalizeReplayChannelSelection(),'');assert.equal(h.state.live.replayFilter,'b');h.state.live.channels=[{id:'a'},{id:'b'}];h.state.live.channelsLoaded=true;assert.equal(h.context.normalizeReplayChannelSelection(),'b');vm.runInContext(fn('visibleReplayPosts'),h.context);h.state.live.replayPosts=[{id:'a1',_channelId:'a'},{id:'b1',_channelId:'b'}];assert.equal(h.context.visibleReplayPosts()[0].id,'b1');h.state.live.replayFilter='all';assert.deepEqual(Array.from(h.context.visibleReplayPosts(),p=>p.id),['a1']);h.state.live.channels=[];assert.equal(h.context.visibleReplayPosts().length,0);});

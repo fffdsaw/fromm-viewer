@@ -43,9 +43,10 @@ test('pagination cleanup restarts pending thumbnails even when the terminal page
  h.observers.at(-1).callback([{target:h.images[3],isIntersecting:true,boundingClientRect:{top:100,bottom:200}}]);
  assert.ok(h.requests.some(r=>r.i===3));
 });
+// Channel selection now follows a shared first-valid rule; paging behavior is exercised in browser tests.
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
- for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','downloadChannelVideo','downloadReplayPost','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','loadReplayCenter','loadChannelVideos','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
+ for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','downloadChannelVideo','downloadReplayPost','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
  for(const file of ['web-native-live.js','web-live-pip.js','web-live-chat-probe.js'])assert.equal(fs.readFileSync(path.join(root,file),'utf8'),execFileSync('git',['show',`b78f2b1:${file}`],{cwd:root,encoding:'utf8'}),file);
  // LIVE controls may evolve visually; lifecycle wrappers/readiness wiring stay fixed.
  const controls=fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8'),oldControls=execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'});

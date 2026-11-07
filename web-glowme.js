@@ -73,15 +73,21 @@
   // PC presentation reuses the real toolbar and its handlers. Park it before a
   // renderer patches/replaces the list, then mount it in the persistent header.
   const pcModeTitle=document.createElement('h1');pcModeTitle.className='pc-mode-title';pcModeTitle.hidden=true;
+  const pcHeading=document.createElement('div');pcHeading.className='pc-mode-heading';pcHeading.hidden=true;
+  const pcModeCount=document.createElement('span');pcModeCount.className='pc-mode-count';pcModeCount.hidden=true;pcHeading.append(pcModeTitle,pcModeCount);
   const pcListHost=document.createElement('div');pcListHost.className='pc-list-host';
-  $('.topbar').prepend(pcModeTitle);$('.topbar').insertBefore(pcListHost,$('.top-auth-controls'));
+  $('.topbar').prepend(pcHeading);$('.topbar').insertBefore(pcListHost,$('.top-auth-controls'));
   const pcMediaRow=document.createElement('div');pcMediaRow.className='pc-media-row';pcMediaRow.hidden=true;
   const pcListInfo=document.createElement('span');pcListInfo.className='pc-list-info';pcMediaRow.append(pcListInfo);$('.viewer-header').append(pcMediaRow);
-  let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0;
+  let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0,pcRefresh=null,pcRefreshHome=null;
+  const pcFilterScroll=new WeakMap();
   function restorePCToolbar(){
+    if(pcToolbar)pcFilterScroll.set(pcToolbar,pcToolbar.querySelector('.replay-filter-strip')?.scrollLeft||0);
+    const focused=pcToolbar?.contains(document.activeElement)||pcRefresh===document.activeElement?document.activeElement:null;
+    if(pcRefresh){if(pcRefreshHome?.isConnected)pcRefreshHome.replaceWith(pcRefresh);else pcToolbar?.append(pcRefresh);}pcRefresh=null;pcRefreshHome=null;
     if(selectionSlot.parentElement!==mediaDock)mediaDock.prepend(selectionSlot);
     if(pcToolbar){if(pcToolbarHome?.isConnected)pcToolbarHome.replaceWith(pcToolbar);else pcToolbar.remove();}
-    pcToolbar=null;pcToolbarHome=null;
+    pcToolbar=null;pcToolbarHome=null;focused?.isConnected&&focused.focus({preventScroll:true});
   }
   function syncPCLayout(){
     if(pcRenderDepth)return;
@@ -89,18 +95,28 @@
     document.documentElement.classList.toggle('pc-layout',pc);
     document.documentElement.classList.toggle('pc-collection',collection);
     document.documentElement.dataset.pcMode=collection?state.live.centerMode:'';
+    document.documentElement.classList.toggle('pc-video-list',list);pcHeading.hidden=!collection;pcModeCount.hidden=!list;
     pcModeTitle.hidden=!collection;pcModeTitle.textContent=collection?labels[state.live.centerMode]||'LIVE':'';
+    let mounted=null;
     const candidate=list?document.querySelector('#timeline .replay-toolbar')||pcToolbar:null;
     if(!candidate){restorePCToolbar();}
     else{
       if(candidate!==pcToolbar){restorePCToolbar();pcToolbar=candidate;pcToolbarHome=document.createComment('PC toolbar home');candidate.before(pcToolbarHome);}
       const focused=candidate.contains(document.activeElement)?document.activeElement:null;
-      if(candidate.parentElement!==pcListHost)pcListHost.append(candidate);
-      const refresh=candidate.querySelector('#channelRefresh');if(refresh){refresh.title='Channel 새로고침';refresh.setAttribute('aria-label','Channel 새로고침');}
-      const count=candidate.querySelector('.replay-count');if(selectionSlot.parentElement!==candidate)candidate.insertBefore(selectionSlot,count);
+      if(candidate.parentElement!==pcListHost){pcListHost.append(candidate);mounted=candidate;}
+      const refresh=candidate.querySelector('#channelRefresh')||pcRefresh;if(refresh){
+        refresh.title='Channel 새로고침';refresh.setAttribute('aria-label','Channel 새로고침');
+        if(!pcRefresh){pcRefresh=refresh;pcRefreshHome=document.createComment('PC refresh home');refresh.before(pcRefreshHome);}
+        const cluster=$('.header-icon-cluster');if(refresh.parentElement!==cluster)cluster.append(refresh);
+      }
+      const count=candidate.querySelector('.replay-count');
+      const value=Number((count?.textContent.match(/([\d,]+)\s*개/)?.[1]||'0').replaceAll(',','')).toLocaleString();
+      const text=value+'개';if(pcModeCount.textContent!==text)pcModeCount.textContent=text;pcModeCount.setAttribute('aria-label',(labels[state.live.centerMode]||'')+' '+text);pcModeCount.title=pcModeCount.getAttribute('aria-label');
+      if(selectionSlot.parentElement!==candidate)candidate.append(selectionSlot);
       focused?.focus({preventScroll:true});
     }
-    document.documentElement.classList.toggle('pc-has-list-refresh',!!(pc&&pcToolbar?.querySelector('#channelRefresh')));
+    document.documentElement.classList.toggle('pc-has-list-refresh',!!(pc&&pcRefresh));
+    if(mounted){const strip=mounted.querySelector('.replay-filter-strip');if(strip){if(pcFilterScroll.has(mounted))strip.scrollLeft=pcFilterScroll.get(mounted);else window.revealSubscribedChannelFilter?.(strip.querySelector('.replay-filter.active'));}}
     const media=pc&&['media','image','video','sound'].includes(state.filter);
     pcMediaRow.hidden=!media;
     if(media){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);}

@@ -889,10 +889,10 @@ html.glowme .reply-content{color:#244c42}
 
   /* Give sorting breathing room below the artist controls; keep it right. */
   .glowme-phase3.pc-layout .pc-media-row #mediaActionDock{gap:10px}
-  .glowme-phase3.pc-layout .pc-media-row #sortControls{
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortControls{
     margin-left:8px;margin-right:4px;
   }
-  .glowme-phase3.pc-layout .pc-media-row #sortBtn{
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortBtn{
     height:36px;min-height:36px;min-width:104px;
     padding:0 16px;border-radius:19px;
     border-color:#b8d8c8;background:#fafefa;
@@ -908,7 +908,7 @@ html.glowme .reply-content{color:#244c42}
     flex-basis:48px;width:48px;min-width:48px;
   }
   .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){gap:5px}
-  .glowme-phase3.pc-layout .pc-media-row #sortControls{margin-left:6px;margin-right:2px}
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortControls{margin-left:6px;margin-right:2px}
 }
 @media(forced-colors:active){
   .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){border:1px solid CanvasText}

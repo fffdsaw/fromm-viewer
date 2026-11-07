@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Fromm Viewer · seamless two-row fixed header -->
-<html lang="ko" class="glowme glowme-phase3">
+<html lang="ko" class="glowme glowme-phase3 login-screen auth-pending">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -11,7 +11,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#d5f5f0">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/glowme/favicon-32.png">
-<style>:root { --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --text: #f5f6f8; --muted: #9da6b5; --line: #2a303b; --accent: #ff5b73; --accent2: #ff8798; --ok: #69d59a; --warn: #ffcb6b; }
+<style>
+/* Before any external assets: never paint the login form during session restore. */
+.glowme.login-screen{overflow:hidden;scrollbar-gutter:auto;background:#000}
+#loginGate{overflow-y:auto;align-items:safe center;background:#000;backdrop-filter:none}
+.auth-pending #loginGate .login-panel{visibility:hidden}
+.login-startup-status{display:none}
+.auth-pending .login-startup-status{display:block;position:absolute;color:#c9d8d2;font:14px/1.5 system-ui}
+:root { --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --text: #f5f6f8; --muted: #9da6b5; --line: #2a303b; --accent: #ff5b73; --accent2: #ff8798; --ok: #69d59a; --warn: #ffcb6b; }
 * { box-sizing: border-box; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
@@ -347,7 +354,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .auth-advanced-toggle:hover { color: rgb(199, 215, 239); }
 .auth-advanced { margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: rgb(15, 20, 27); }
 #loginBtn:disabled, #checkEmailBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-.login-gate { position: fixed; inset: 0px; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(circle at 50% 10%, rgba(255, 91, 115, 0.09), transparent 34%), rgb(15, 18, 24); }
+.login-gate { position: fixed; inset: 0px; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: #000; }
 .login-gate.hidden { display: none; }
 .login-panel { width: min(520px, -36px + 100vw); padding: 30px; border: 1px solid rgb(45, 52, 64); border-radius: 22px; background: rgb(23, 29, 39); box-shadow: rgba(0, 0, 0, 0.5) 0px 28px 90px; }
 .login-brand { text-align: center; font-size: 30px; font-weight: 900; letter-spacing: -0.03em; }
@@ -1311,7 +1318,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 </head>
 <body>
 
-<div id="loginGate" class="login-gate" aria-hidden="false">
+<div id="loginGate" class="login-gate" aria-hidden="false" aria-busy="true">
+  <div class="login-startup-status" role="status">로그인 확인 중…</div>
   <div class="login-panel">
     <div class="login-brand">Fromm Viewer</div>
     <div class="login-subtitle">Fromm 계정으로 로그인</div>
@@ -6450,6 +6458,9 @@ function showLoginGate(message="",type=""){
   const gate = $("#loginGate");
   if(!gate) return;
 
+  document.documentElement.classList.remove("auth-pending");
+  document.documentElement.classList.add("login-screen");
+  gate.removeAttribute("aria-busy");
   gate.classList.remove("hidden");
   gate.setAttribute("aria-hidden","false");
   window.FrommA11y?.syncLogin();
@@ -6468,6 +6479,8 @@ function hideLoginGate(){
   const gate = $("#loginGate");
   if(!gate) return;
 
+  document.documentElement.classList.remove("auth-pending","login-screen");
+  gate.removeAttribute("aria-busy");
   gate.classList.add("hidden");
   gate.setAttribute("aria-hidden","true");
   window.FrommA11y?.syncLogin();

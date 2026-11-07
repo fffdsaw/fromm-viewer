@@ -3,13 +3,14 @@
   'use strict';
   const gate=document.querySelector('#loginGate');
   if(!gate)return;
-  const saved=new Map();let active=false,returnTo=null;
+  const saved=new Map();let active=false,returnTo=null,awaiting=false;
   gate.setAttribute('role','dialog');gate.setAttribute('aria-modal','true');
   gate.setAttribute('aria-label','Fromm 로그인');gate.tabIndex=-1;
-  const visible=el=>el?.isConnected&&!el.closest('[inert]')&&el.getClientRects().length>0;
+  const visible=el=>el?.isConnected&&!el.closest('[inert]')&&el.getClientRects().length>0&&getComputedStyle(el).visibility==='visible';
   const focusable=()=>[...gate.querySelectorAll('button,input,select,a[href],[tabindex="0"]')].filter(el=>!el.disabled&&visible(el));
   function sync(){
     const open=!gate.classList.contains('hidden');
+    const pending=document.documentElement.classList.contains('auth-pending'),formReady=awaiting&&!pending;awaiting=pending;
     if(open){
       if(!active){returnTo=gate.contains(document.activeElement)?null:document.activeElement;active=true;}
       for(const el of document.body.children){
@@ -17,7 +18,7 @@
         if(!saved.has(el))saved.set(el,el.inert);
         el.inert=true;
       }
-      if(!gate.contains(document.activeElement))(focusable()[0]||gate).focus({preventScroll:true});
+      if(formReady||!gate.contains(document.activeElement))(focusable()[0]||gate).focus({preventScroll:true});
     }else if(active){
       active=false;for(const [el,prior] of saved)el.inert=prior;saved.clear();
       const fallback=document.querySelector('#sidebarToggleBtn');

@@ -14,3 +14,4 @@
 - 로그/PNG: `/workspace/scratch/fromm-chat-download/`. 최종 스크린샷 검토 완료, 이전 baseline 대조 재촬영 및 체크포인트/후속 PR 준비 중. 실제 OS 설치형 PWA/Windows·Safari 실기/실계정 방송은 미검증. Meapri Regular 본격 적용 여부 변화 없음.
 
 - 최종 로컬 화면 검토와 650px↔PC 경계 바인딩 복귀 PASS. 전후 합성 PNG/검토 설명은 `docs/design-review/chat-download/README.md`에 저장. Node 전체 285 PASS/0 FAIL/기존 SKIP1 재확인. 키보드 Enter로 실제 개별 다운로드를 확인하는 최종 브라우저 검사는 실행 중이며, 결과 후 원격 CI 진행.
+- 체크포인트 구현 SHA: `a955d1b` (원격 저장 완료). 후속 Draft PR: https://github.com/fffdsaw/fromm-viewer/pull/73 . 최종 키보드 Enter 개별 다운로드 및 전체 새 브라우저 검사 PASS. 최신 커밋은 `git log -1 --format=%H`로 확인하며, 필수 원격 CI 진행 중. CI/최종 병합/Pages/복구 태그는 PR73 설명의 최종 실행 기록에 추가한다.

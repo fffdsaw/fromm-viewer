@@ -12,3 +12,5 @@
 - 검증 PASS: Node286 중285 PASS/0 FAIL/기존 Agora 타입 미설치 SKIP1. 기존 navigation(PC/mobile 최초 최신 진입, 실제 읽기 위치, 갤러리 스크롤, 검색·날짜·초점 및 달력짧은화면) PASS. reply-anchor-context의 실제 답장/검색 및 지연 미디어 정렬 PC/mobile PASS. 새 로딩 검사 CI 연결.
 - 초기 native 반복 테스트는 대기 중 disabled된 동일 버튼을 다시 클릭하는 잘못된 전제로 timeout이 났으며, 정상적인 사진/미디어 왕복 클릭 시나리오로 교정했다. 제품의 버튼 disabled 정책은 변경하지 않았다. 현재 로컬 검사 실패 없음.
 - 로그/전후 합성 PNG: `/workspace/scratch/fromm-chat-loading/`, 검토 자료 `docs/design-review/chat-loading-latest/`. 실제 OS 설치형 PWA/Windows·Safari/실계정 대화는 미검증이며 standalone은 배치 모의이다. 다음은 체크포인트/PR/필수 CI → 기존 승인 범위의 병합·Pages·공개 origin 합성 재검증.
+
+- 추가 PC 검사: 다른 탭에 머무르는 동안 기록 준비가 끝난 다음 전체대화로 돌아오는 실제 버튼 경로도 최신 메시지 진입 PASS. 구현 체크포인트5486826 원격 저장 완료.

@@ -114,6 +114,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    mode='normal';release();release=null;
    await page.waitForTimeout(350);
    assert.equal(await page.evaluate(()=>window.pendingPagePlayer.isConnected),true,'list response cannot recreate an opened player');
+   if(width>700){
+    assert.equal(await page.locator('.batch-selection-tools').isVisible(),false,'retained list selection never covers player navigation');
+    assert.equal(await page.locator('.batch-selection-tools').evaluate(e=>e.inert),true,'player cannot focus retained list controls');
+    assert.equal(await page.evaluate(()=>FrommGlowME.capsule.live),0,'player releases list optics');
+   }
    await page.locator(kind==='replay'?'#replayBackToList':'#channelBackToList').click();
    // A pending page from A must not overwrite B or clear B's loading state.
    mode='hold';

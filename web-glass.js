@@ -1,3 +1,6 @@
+import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
+ window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
+}).catch(()=>{}); // An unavailable optional adapter leaves the plain mint capsule usable.
 /* Limited control optics: idle initialization, no content capture or media hooks. */
 const instances=new Map(),reduce=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const watched=new WeakSet(),failed=new WeakSet(),visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(()=>sync()):null;

@@ -64,7 +64,10 @@
   const mediaDock=document.createElement('div');mediaDock.id='mediaActionDock';mediaDock.setAttribute('role','group');mediaDock.setAttribute('aria-label','미디어 정렬 및 선택');mediaDock.hidden=true;
   const mediaGap=document.createElement('div');mediaGap.className='media-action-gap';mediaGap.hidden=true;mediaGap.setAttribute('aria-hidden','true');$('.viewer-header').after(mediaGap);
   const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionSlot);document.body.append(mediaDock);
-  let selectionCount=0,selectionExitTimer=0,selectionExitScope='';
+  let selectionCount=0,selectionExitTimer=0,selectionExitScope='',capsuleMotion=null;
+  const capsuleScope=()=>[state.filter,state.live.centerMode,state.room?.id||state.room?.hostChatRoomId||'',state.scanGeneration].join(':');
+  function connectCapsule(){if(capsuleMotion||!window.FrommCapsuleMaterializer)return;capsuleMotion=window.FrommCapsuleMaterializer(batchTools,()=>{if(selectionExitTimer){clearTimeout(selectionExitTimer);selectionExitTimer=0;}batchTools.classList.remove('selection-exiting');queueMicrotask(()=>syncSelection(selectionCount));},()=>syncSelection(selectionCount));syncSelection(selectionCount);}
+  window.addEventListener('fromm-capsule-ready',connectCapsule,{once:true});
   function mediaDockActive(){return mediaPC.matches&&(['media','image','video','sound'].includes(state.filter)||(state.filter==='live'&&((state.live.centerMode==='replay'&&!state.live.replaySelected)||(state.live.centerMode==='channel'&&!channelVideoState.selected))));}
   // PC presentation reuses the real toolbar and its handlers. Park it before a
   // renderer patches/replaces the list, then mount it in the persistent header.
@@ -105,11 +108,15 @@
   function syncMediaDock(){
     syncPCLayout();
     const active=mediaDockActive(),videoList=active&&state.filter==='live',destination=active?selectionSlot:$('.toolbar');
-    if(selectionExitTimer&&(!active||selectionExitScope!==state.filter+':'+state.live.centerMode)){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(selectionCount);}
+    if(selectionExitTimer&&(!active||selectionExitScope!==capsuleScope())){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(selectionCount);}
     clearSelection.hidden=(!selectionCount&&!selectionExitTimer)||!mediaPC.matches;
     document.documentElement.classList.toggle('media-action-mode',active);document.documentElement.classList.toggle('media-header-pinned',active);document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&(selectionCount>0||selectionExitTimer>0));mediaDock.hidden=!active||(videoList&&!selectionCount&&!selectionExitTimer);mediaGap.hidden=true;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active&&!videoList?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
+    // List selections survive playback; their controls belong only to the list.
+    const playerOrLive=mediaPC.matches&&state.filter==='live'&&!active;
+    batchTools.hidden=playerOrLive||(!selectionCount&&!selectionExitTimer);batchTools.inert=playerOrLive||selectionCount===0;
+    capsuleMotion?.sync(selectionCount>0,capsuleScope(),active);
     const open=active&&(selectionCount>0||selectionExitTimer>0);
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
 
@@ -243,8 +250,9 @@
   function syncSelection(n){
     if(n>0&&selectionExitTimer){clearTimeout(selectionExitTimer);selectionExitTimer=0;batchTools.classList.remove('selection-exiting');}
     if(!n&&selectionCount>0&&mediaDockActive()&&!reducedMotion.matches){
-      selectionExitScope=state.filter+':'+state.live.centerMode;batchTools.classList.add('selection-exiting');
-      selectionExitTimer=setTimeout(()=>{selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(0);},140);
+      selectionExitScope=capsuleScope();batchTools.classList.add('selection-exiting');
+      // The materializer owns completion; the timer is only an import-failure fallback.
+      selectionExitTimer=setTimeout(()=>{selectionExitTimer=0;batchTools.classList.remove('selection-exiting');syncSelection(0);},capsuleMotion?1600:140);
     }
     selectionCount=n;$('#selectedCount').title=$('#selectedCount').textContent;batchTools.inert=n===0;
     const hide=n===0&&!selectionExitTimer;
@@ -266,7 +274,7 @@
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();syncMediaDock();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
+  window.FrommGlowME=Object.freeze({get capsule(){return capsuleMotion?.snapshot||null;},get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});
@@ -280,6 +288,7 @@
     const original=window[name];if(typeof original!=='function')continue;
     window[name]=function(...args){if(!pcRenderDepth)restorePCToolbar();pcRenderDepth++;try{return original.apply(this,args);}finally{if(!--pcRenderDepth){syncMediaDock();fitPanel();}}};
   }
+  connectCapsule();window.addEventListener('pageshow',()=>syncSelection(selectionCount));
   setRailOpen(false);syncNavigation();updateSelectedCount();
   document.documentElement.classList.add('glowme-shell-ready');
   document.documentElement.classList.remove('glowme-shell-failed');

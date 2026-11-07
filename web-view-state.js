@@ -11,11 +11,18 @@
   if(positions.size>120)positions.delete(positions.keys().next().value);
  }
  function enter(filter=state.filter,options={}){
-  active=key(filter);serial++;pending=options.autoTop===false?null:{key:active,position:positions.get(active)||{y:0},serial};
-  return !!positions.get(active)&&options.autoTop!==false;
+  active=key(filter);serial++;
+  const saved=positions.get(active);
+  // New conversation entry is handled by the latest-message virtual window,
+  // not by an automatic restore to scrollY 0. Keep gallery's default top.
+  pending=options.autoTop===false?null:saved?{key:active,position:saved,serial}:filter==='all'?null:{key:active,position:{y:0},serial};
+  return !!saved&&options.autoTop!==false;
  }
  function navigate(filter,options){capture();return enter(filter,options);}
- function beforeRender(){if(motionCleanup)return;if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}}
+ function beforeRender(){
+  if(motionCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
+  if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
+ }
  function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;pending=null;serial++;}
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;

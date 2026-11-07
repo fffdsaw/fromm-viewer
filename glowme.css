@@ -958,3 +958,21 @@ html.glowme .reply-content{color:#244c42}
     display:none!important;
   }
 }
+
+
+/* Replay / Channel: visually center the count on the same line as its title.
+   Keep the fixed-width count slot so digit changes never shift the filters. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{
+    height:34px;align-items:center;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-title,
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    display:flex;align-items:center;
+    height:34px;min-height:34px;
+    line-height:1;vertical-align:middle;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    justify-content:flex-start;margin:0;padding:0;
+  }
+}

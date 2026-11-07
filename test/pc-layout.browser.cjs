@@ -95,6 +95,18 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     assert.ok(stats.width>0 && stats.x>=artist.x+artist.width-1,`${width} ${name}: single-row artist statistics`);
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width} ${name}: no overflow`);
    }
+   // LIVE is accessible only from the sidebar; the status appears red
+   // when a broadcast is known and disappears when it ends.
+   assert.equal(await p.locator('.header-live-btn').count(),0,`${width}: no duplicate header LIVE button`);
+   const liveNav=p.locator('.glowme-nav [data-glow-nav="live"]');
+   assert.equal(await liveNav.count(),1);
+   await p.evaluate(()=>{state.live.entrances=[{id:'live-fixture'}];state.live.config=null;syncHeaderLiveIndicator();});
+   assert.equal(await liveNav.getAttribute('aria-label'),'LIVE 방송 중');
+   assert.equal(await liveNav.evaluate(e=>getComputedStyle(e,'::after').display),'block',`${width}: red status dot visible`);
+   assert.equal(await liveNav.evaluate(e=>getComputedStyle(e).color),'rgb(188, 38, 52)',`${width}: LIVE label red`);
+   await p.evaluate(()=>{state.live.entrances=[];state.live.config=null;syncHeaderLiveIndicator();});
+   assert.equal(await liveNav.getAttribute('aria-label'),'LIVE');
+   assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('glowme-live-broadcasting')),false);
    await mode(p,'image');const header=await p.locator('.viewer-header').boundingBox(),auth=await boxes(p,'.top-auth-controls');
    await p.evaluate(()=>{state.loadingMessages=true;state.hasMoreMessages=true;FrommGlowME.syncHeader();});
    assert.match(await p.locator('#artistLoadStatus').textContent(),/불러오는 중/);
@@ -107,7 +119,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
   }
   // Only two affected touch screens; no mobile redesign or broad device matrix.
   const {page:p,context,errors}=await open(browser,server.url,{width:390,height:844});
-  for(const name of ['all','image']){await mode(p,name);assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('pc-layout')),false);assert.equal(await p.locator('.title-line').isVisible(),true);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await shot(p,`390-${name}`);}
+  for(const name of ['all','image']){await mode(p,name);assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('pc-layout')),false);assert.equal(await p.locator('.title-line').isVisible(),true);assert.equal(await p.locator('.header-live-btn').count(),0,'no mobile header LIVE button');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await shot(p,`390-${name}`);}
   assert.deepEqual(errors,[]);await context.close();console.log('390 touch: existing artist header and media controls preserved; no overflow PASS');
  }finally{await browser.close();await server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

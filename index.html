@@ -172,6 +172,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .reply-quote { margin: 2px 0px 9px; padding: 9px 11px; border-left: 3px solid var(--accent); border-radius: 10px; background: rgba(255, 255, 255, 0.055); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
 .reply-quote:hover { background: rgba(255, 255, 255, 0.086); }
 .reply-label { color: var(--accent2); font-size: 12px; font-weight: 800; margin-bottom: 5px; }
+.reply-label::before { content:"↪"; display:inline-block; margin-right:6px; font-weight:700; }
 .reply-content { color: rgb(196, 202, 212); font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .reply-media-label { color: rgb(170, 178, 191); font-size: 13px; }
 /* content-visibility on .msg implies paint containment: keep emphasis inside
@@ -7694,6 +7695,30 @@ function isReplyToMe(message){
   const aliases=[message.embeddedMentionedMessage,message.mentionedMessage,message.mentionDetailMessage,message.mentionedContent,message.replyMessage,message.embeddedReplyMessage,message.quotedMessage,message.mentionDetail].map(normalizeQuotedValue).filter(q=>q?.userId);
   return aliases.every(q=>q.userId===id && (!quote.messageId || !q.messageId || q.messageId===quote.messageId));
 }
+// Label the original author of an inline quote. "나" is the signed-in fan,
+// not the artist. Ambiguous historical records must not be guessed as another fan.
+function quotedSourceLabel(message,quote,mine=isReplyToMe(message)){
+  if(mine) return "나";
+  const quotedId=replyUserId(quote?.userId);
+  const viewerId=currentReplyUserId();
+  // A matching ID without the full alias agreement is not a verified "나".
+  if(quotedId && viewerId && quotedId===viewerId) return "인용";
+  const type=String(quote?.userType || "").toLowerCase();
+  if(type==="star") return "아티스트";
+  if(quote?.messageId){
+    const original=state.chatMessages.find(item=>String(item.messageId ?? item.id ?? "")===String(quote.messageId));
+    if(original && isArtist(original)) return "아티스트";
+  }
+  // For artist replies, FROMM quotes refer to fan-authored messages.
+  // Wait for the signed-in profile so "나" and "팬" cannot be confused.
+  if(viewerId && quotedId && quotedId!==viewerId &&
+     (type==="fan" || isArtist(message))) return "팬";
+  return "인용";
+}
+function quotedLabelText(message,quote,mine=isReplyToMe(message)){
+  const source=quotedSourceLabel(message,quote,mine);
+  return mine ? `${source} · 내 글에 답장` : source;
+}
 function resetReplyIdentity(){
   replyIdentity.owner?.abort();
   Object.assign(replyIdentity,{context:null,id:"",status:"idle",owner:null,promise:null});
@@ -7704,7 +7729,7 @@ function resetReplyIdentity(){
   document.querySelectorAll(".reply-mine").forEach(el=>{
     el.classList.remove("reply-mine");
     const label=el.querySelector(".reply-label");
-    if(label) label.textContent="아티가 답장했어요! ♥";
+    if(label) label.textContent="인용";
   });
   syncMyReplyTools();
 }
@@ -7729,8 +7754,8 @@ function syncVisibleReplyLabels(){
     if(!message || !quote) return;
     const mine=isReplyToMe(message);
     quote.classList.toggle("reply-mine",mine);
-    quote.querySelector(".reply-label").textContent=isArtist(message) ?
-      (mine ? "아티가 내 글에 답장했어요! ♥" : "아티가 답장했어요! ♥") : "내가 답장한 메시지";
+    const label=quote.querySelector(".reply-label");
+    if(label) label.textContent=quotedLabelText(message,getQuotedMessage(message),mine);
   });
 }
 async function ensureReplyIdentity({retry=false}={}){
@@ -7838,7 +7863,9 @@ function normalizeQuotedValue(value){
   );
 
   if(!messageId && !content) return null;
-  return {messageId,content,type,userId:replyUserId(value.userId)};
+  const userType=String(value.userType ?? value.senderType ?? "").toLowerCase();
+  return {messageId,content,type,userId:replyUserId(value.userId),
+    userType:["star","fan"].includes(userType) ? userType : ""};
 }
 
 function getQuotedMessage(m){
@@ -9218,7 +9245,7 @@ function renderMessage(m){
   const quoted = getQuotedMessage(m);
   if(quoted){
     const mine = isReplyToMe(m);
-    const label = artist ? (mine ? "아티가 내 글에 답장했어요! ♥" : "아티가 답장했어요! ♥") : "내가 답장한 메시지";
+    const label = quotedLabelText(m,quoted,mine);
     const preview = quotedPreview(quoted);
 
     html += `<div class="reply-quote${mine ? " reply-mine" : ""}" data-quoted-id="${esc(quoted.messageId || "")}">

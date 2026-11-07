@@ -927,3 +927,34 @@ html.glowme .reply-content{color:#244c42}
 @media(forced-colors:active){
   .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){border:1px solid CanvasText}
 }
+
+
+/* LIVE indication belongs to the existing sidebar item, never to the header. */
+.glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]{
+  color:#bc2634!important;
+}
+.glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+  content:"";display:block!important;position:absolute;
+  top:5px;right:5px;width:9px;height:9px;z-index:2;
+  border-radius:50%;background:#e52f42;border:2px solid #f4fdf7;
+  box-sizing:content-box;box-shadow:0 0 0 1px #bd2c3b26;
+  pointer-events:none;
+}
+.glowme-phase3.sidebar-open.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+  top:9px;right:9px;
+}
+@media(forced-colors:active){
+  .glowme-phase3.glowme-live-broadcasting .glowme-nav button[data-glow-nav="live"]::after{
+    background:Highlight;border-color:Canvas;box-shadow:0 0 0 1px CanvasText;
+  }
+}
+/* Match the loading text's actual box to the name/statistics baseline. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus:not(:empty){
+    display:flex;align-items:center;
+    height:28px;min-height:28px;line-height:28px;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus:empty{
+    display:none!important;
+  }
+}

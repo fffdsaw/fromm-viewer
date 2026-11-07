@@ -2283,8 +2283,8 @@ const state = {
   calendarMode: "day",
   calendarYearPageStart: null,
 
-  // Only normal entry into 전체 대화 should jump to the top.
-  // Date/reply jumps must not be overwritten by a later auto-top frame.
+  // Legacy autoTop flag: a first normal entry now opens at the newest
+  // message; explicit date/reply navigation and saved positions take priority.
   chatAutoTopPending: false,
 
   // Last folder handle / failed items are kept only for this browser session.
@@ -8659,17 +8659,24 @@ function renderFullConversation(version){
   state.infiniteRendered = 0;
   state.infiniteLastDate = "";
 
-  // Normal 전체 대화 entry starts at the actual first-ever message.
+  // On first entry, render a bounded window ending at the newest message.
+  // Merely scrolling a first-page DOM to the bottom would show old messages.
+  if(state.chatAutoTopPending){
+    const latest=renderChatWindow(list,list.length-1);
+    if(latest){
+      requestAnimationFrame(()=>{
+        if(state.filter!=="all" || latest.version!==state.infiniteVersion || !tl.isConnected) return;
+        window.scrollTo({top:document.documentElement.scrollHeight,behavior:"auto"});
+        state.chatAutoTopPending=false;
+        window.FrommViewState?.capture();
+      });
+      return;
+    }
+  }
+
+  // Explicit jumps and returning readers keep the prior window/anchor logic.
   appendChatBatch(state.initialChunks,version);
   armChatRenderObserver(version);
-
-  if(state.chatAutoTopPending){
-    state.chatAutoTopPending = false;
-
-    requestAnimationFrame(()=>{
-      window.scrollTo({top:0,behavior:"auto"});
-    });
-  }
 }
 
 function render(){
@@ -9843,8 +9850,13 @@ async function setFilter(f, options={}){
     startLivePolling();
   }
 
+  // C: leaving a media gallery for the conversation discards its selection,
+  // delayed click intent and stale selection tools, without touching downloads.
+  if(f==="all" && ["media","image","video","sound"].includes(was)){
+    clearDownloadSelection();
+  }
   state.filter=f;
-  $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter===f));
+  $(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter===f));
   syncLiveToolbarControls();
 
   if(f==="all" && was!=="all"){

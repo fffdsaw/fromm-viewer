@@ -828,18 +828,32 @@ html.glowme .reply-content{color:#244c42}
     justify-content:flex-start!important;flex:1 1 auto;min-width:0;
     gap:10px!important;
   }
+  /* The avatar stays circular but has no residual dark drop shadow. */
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-profile-wrap{
+    box-shadow:none!important;filter:none!important;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-profile-image{
+    box-shadow:none!important;filter:none!important;
+  }
+  /* The old 34px min-height left the artist glyphs above the visual center
+     of the smaller statistics. Center the actual text inside matched rows. */
   .glowme-phase3.pc-layout:not(.pc-collection) #artistTitle{
-    flex:0 1 auto;min-width:0;min-height:34px!important;
+    display:flex!important;align-items:center!important;
+    flex:0 1 auto;min-width:0;
+    height:28px!important;min-height:28px!important;
+    line-height:28px!important;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) .artist-meta-line{
     position:static;inset:auto;width:auto;right:auto;left:auto;bottom:auto;
-    height:24px;flex:1 1 auto;min-width:0;align-items:center;
+    height:28px;flex:1 1 auto;min-width:0;align-items:center;
     padding-left:10px;border-left:1px solid #bad7c9;gap:10px;
     overflow:hidden;white-space:nowrap;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) #artistMediaStats{
+    display:flex;align-items:center;
     flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap;margin:0;
+    height:28px;line-height:28px;
   }
   .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus{
     flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;

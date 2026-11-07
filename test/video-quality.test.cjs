@@ -371,7 +371,13 @@ test('cyclic playback and highest-download masters fail with bounded requests',a
 test('pagination state and requests remain equivalent apart from restarting thumbnail observation',()=>{
   const baseline=execFileSync('git',['show','38fca89:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
   const normalize=text=>text.replace(/\r\n/g,'\n');
-  for(const name of ['bindVideoListAuto','loadReplayCenter','loadChannelVideos'])assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n',''),normalize(fn(name,baseline)),name);
+  // Protect all paging/auth/cancellation code while allowing only the approved subscription targeting change.
+  for(const name of ['bindVideoListAuto','loadReplayCenter','loadChannelVideos']){
+    let expected=normalize(fn(name,baseline));
+    if(name==='loadReplayCenter')expected=expected.replace(/    let targets;[^]*?    if\(!loadMore\)/, '    normalizeReplayChannelSelection();\n    let targets=channels.filter(c=>c.id===state.live.replayFilter);\n    if(!loadMore)').replace(/    const prefetchTargets=state.live.replayFilter==="all"[^]*?;\n/, '    const prefetchTargets=channels.filter(c=>c.id===state.live.replayFilter);\n');
+    if(name==='loadChannelVideos')expected=expected.replace(/      const preferred = String[^]*?      s.channelId = .*;\n/, '      s.channelId = subscribedChannelSelection(s.channelId,channels);\n');
+    assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n',''),expected,name);
+  }
   const declaration=source=>source.match(/^const videoListAuto = .*;$/m)?.[0];
   assert.ok(declaration(html)&&declaration(baseline),'pagination state declarations exist');
   assert.equal(declaration(html),declaration(baseline));

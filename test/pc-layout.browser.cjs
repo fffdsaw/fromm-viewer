@@ -55,7 +55,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     assert.equal(await p.locator('#saveSelectedBtn').isVisible(),true,'rapid reselect cancels delayed hide');
     if(name!=='image'){
      await p.evaluate(()=>{renderLiveView();syncLoadingUI();updateSelectedCount();});assert.equal(await p.locator('#saveSelectedBtn').count(),1,'rerender keeps one real control');
-     assert.equal(await p.locator('.pc-list-host .replay-count').isVisible(),true);
+     assert.equal(await p.locator('.pc-mode-count').isVisible(),true);
      assert.equal(await p.locator('[data-replay-filter],[data-channel-video-filter]').first().evaluate(e=>typeof e.onclick),'function','real filters retain handlers');
     }
     await p.evaluate(()=>scrollTo(0,600));await p.waitForTimeout(100);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);

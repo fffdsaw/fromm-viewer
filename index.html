@@ -1544,6 +1544,25 @@ body.download-marquee-active{user-select:none;cursor:default}
 <script id="channelVideosScript">
 // Shared list-only UI. Existing cards stay mounted while pages append.
 const videoListAuto = {observer:null, timer:null, scope:"", running:false, emptyPages:0, paused:false};
+function subscribedChannelSelection(value, channels=state.live.channels) {
+  const key=String(value || "");
+  return (key!=="all" && channels.some(c=>String(c.id)===key)) ? key : String(channels[0]?.id || "");
+}
+function revealSubscribedChannelFilter(button) {
+  const strip=button?.closest('.replay-filter-strip');
+  if(!strip) return;
+  const a=button.getBoundingClientRect(),b=strip.getBoundingClientRect();
+  if(a.left<b.left) strip.scrollLeft-=b.left-a.left;
+  else if(a.right>b.right) strip.scrollLeft+=a.right-b.right;
+}
+function focusSubscribedChannelFilter(selector) {
+  const button=document.querySelector(selector);
+  if(button){button.focus({preventScroll:true});revealSubscribedChannelFilter(button);}
+}
+function normalizeReplayChannelSelection() {
+  if(!state.live.channelsLoaded && !state.live.channels.length) return "";
+  return state.live.replayFilter=subscribedChannelSelection(state.live.replayFilter);
+}
 function videoListCardKey(card) {
   return JSON.stringify([card.dataset.replayChannel || "", card.dataset.replayPost || card.dataset.channelVideoCard]);
 }
@@ -1581,6 +1600,14 @@ function renderVideoListMarkup(markup, scope) {
   for (const selector of [".video-list-feedback", ".video-list-footer"]) {
     const target = old.querySelector(selector), replacement = next.querySelector(selector);
     if (target.innerHTML !== replacement.innerHTML) target.replaceChildren(...replacement.childNodes);
+  }
+  const strip=old.querySelector(".replay-filter-strip"),nextStrip=next.querySelector(".replay-filter-strip");
+  if(strip?.innerHTML!==nextStrip?.innerHTML){
+    const focusKey=strip?.contains(document.activeElement) ? document.activeElement.dataset.replayFilter || document.activeElement.dataset.channelVideoFilter : null;
+    if(strip && nextStrip)strip.replaceWith(nextStrip);
+    else if(strip)strip.remove();
+    else if(nextStrip)old.querySelector(".replay-toolbar").prepend(nextStrip);
+    if(focusKey){const button=[...(nextStrip?.querySelectorAll('button')||[])].find(b=>(b.dataset.replayFilter||b.dataset.channelVideoFilter)===focusKey);button?.focus({preventScroll:true});}
   }
   old.querySelector(".replay-count").textContent = next.querySelector(".replay-count").textContent;
   const refresh = old.querySelector("#channelRefresh");
@@ -1628,7 +1655,8 @@ function disconnectVideoListAuto() {
 }
 function videoListError(kind) {
   if (kind === "channel") return !!channelVideoState.error;
-  const channels = state.live.channels.filter(c => state.live.replayFilter === "all" || c.id === state.live.replayFilter);
+  const id=normalizeReplayChannelSelection();
+  const channels = state.live.channels.filter(c => c.id === id);
   return !!state.live.replayError || channels.some(c => replayPagingFor(c.id).lastError);
 }
 function bindVideoListAuto(kind, filter) {
@@ -1859,8 +1887,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
     const channels = await channelVideoChannels(current);
     if (!current()) return;
     if (!channels.some(c => c.id === s.channelId)) {
-      const preferred = String(state.room?.channelId || state.live.entry?.channelId || "");
-      s.channelId = (channels.find(c => c.id === preferred) || channels[0])?.id || "";
+      s.channelId = subscribedChannelSelection(s.channelId,channels);
     }
     const channel = channels.find(c => c.id === s.channelId);
     if (!channel) return;
@@ -1929,7 +1956,9 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
 
 async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
   if (!restoreHistory) channelHistoryNavigation++;
-  if (!state.live.channels.some(c => c.id === String(channelId))) return;
+  const requested=String(channelId || "");
+  const focused=document.activeElement?.dataset?.channelVideoFilter===requested;
+  const id=(state.live.channelsLoaded || state.live.channels.length) ? subscribedChannelSelection(requested) : requested;
   stopChannelVideoPlayback();
   const s = channelVideoState;
   s.requestSeq++;
@@ -1937,13 +1966,15 @@ async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
   s.loading = false;
   s.error = "";
   s.notice = "";
-  s.channelId = String(channelId);
+  s.channelId = id;
   renderLiveView();
   await loadChannelVideos();
+  if(focused && s.channelId===id && !s.selected && (document.activeElement===document.body || document.activeElement?.dataset?.channelVideoFilter===id)) focusSubscribedChannelFilter(`[data-channel-video-filter="${CSS.escape(id)}"]`);
 }
 
 function renderChannelVideosView() {
   const s = channelVideoState;
+  if(!s.selected && (state.live.channelsLoaded || state.live.channels.length)) s.channelId=subscribedChannelSelection(s.channelId);
   const posts = channelVideoPage()?.posts || [];
   const filters = state.live.channels.map(c => `<button class="replay-filter ${s.channelId === c.id ? "active" : ""}" data-channel-video-filter="${esc(c.id)}" type="button" aria-pressed="${s.channelId === c.id}">${esc(c.channelName)}</button>`).join("");
   const selected = s.selected;
@@ -2306,7 +2337,7 @@ const state = {
     replayPaging: new Map(),
     replayLoading: false,
     replayError: "",
-    replayFilter: "all",
+    replayFilter: "",
     replayHls: null,
     replaySelected: null,
     replayPlayerError: "",
@@ -4072,7 +4103,7 @@ function replayChannelName(channel){
 }
 
 async function ensureReplayChannels(current=replayListCurrent()){
-  if(state.live.channelsLoaded) return state.live.channels;
+  if(state.live.channelsLoaded){normalizeReplayChannelSelection();return state.live.channels;}
   const response=await replayListRequest("/channels",{base:FROMM_CHANNEL_API_BASE},current);
   if(!current()) return [];
   const raw=response?.data?.channels || response?.channels || response?.result?.channels || [];
@@ -4083,6 +4114,7 @@ async function ensureReplayChannels(current=replayListCurrent()){
     profileUrl:normalizeMediaUrl(c.profileUrl || c.profileUrlThumbnail || "")
   })).filter(c=>c.id);
   state.live.channelsLoaded=true;
+  normalizeReplayChannelSelection();
   return state.live.channels;
 }
 
@@ -4356,13 +4388,8 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
   try{
     const channels=await ensureReplayChannels(current);
     if(!current()) return;
-    let targets;
-    if(state.live.replayFilter!=="all"){
-      const c=channels.find(x=>x.id===state.live.replayFilter);
-      targets=c?[c]:[];
-    }else{
-      targets=channels;
-    }
+    normalizeReplayChannelSelection();
+    let targets=channels.filter(c=>c.id===state.live.replayFilter);
     if(!loadMore) targets=targets.filter(c=>!replayPagingFor(c.id).loaded);
     else targets=targets.filter(c=>!replayPagingFor(c.id).isLast);
 
@@ -4379,9 +4406,7 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
 
     // Prepare the next page without blocking the visible UI. When the user
     // later presses 더보기, most/all channels can commit cached pages instantly.
-    const prefetchTargets=state.live.replayFilter==="all"
-      ? channels
-      : channels.filter(c=>c.id===state.live.replayFilter);
+    const prefetchTargets=channels.filter(c=>c.id===state.live.replayFilter);
     if(current() && !videoListError("replay")) scheduleReplayPrefetch(prefetchTargets);
   }catch(e){
     if(current()) state.live.replayError=String(e?.message || e || "Replay 목록을 불러오지 못했습니다.");
@@ -4395,54 +4420,28 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
 }
 
 function visibleReplayPosts(){
-  if(state.live.replayFilter!=="all"){
-    return state.live.replayPosts.filter(p=>p._channelId===state.live.replayFilter);
-  }
-
-  const posts=state.live.replayPosts;
-  const activeChannels=state.live.channels.filter(c=>replayPagingFor(c.id).loaded);
-
-  if(!activeChannels.length) return posts;
-
-  // Each channel is paged independently, then everything is sorted together.
-  // Without a common cutoff, a later "더보기" can fetch a dense channel and
-  // insert older Replays into the middle of the existing global list.
-  //
-  // The shallowest unfinished channel defines the oldest timestamp for which
-  // the merged list is guaranteed complete. Only show that contiguous region.
-  // As "더보기" advances every unfinished channel, the cutoff moves backward,
-  // so new Replays append below instead of suddenly appearing in the middle.
-  const frontiers=activeChannels
-    .map(c=>replayPagingFor(c.id))
-    .filter(p=>!p.isLast && p.lastPost)
-    .map(p=>Number(p.lastPost?.displayStartAt || 0))
-    .filter(Number.isFinite)
-    .filter(n=>n>0);
-
-  if(!frontiers.length) return posts;
-
-  const safeCutoff=Math.max(...frontiers);
-  return posts.filter(p=>Number(p.displayStartAt || 0)>=safeCutoff);
+  const id=normalizeReplayChannelSelection();
+  return id ? state.live.replayPosts.filter(p=>p._channelId===id) : [];
 }
 
 function replayHasMore(){
-  const channels=state.live.replayFilter==="all"
-    ? state.live.channels
-    : state.live.channels.filter(c=>c.id===state.live.replayFilter);
-
-  return channels.some(c=>{
+  const id=normalizeReplayChannelSelection();
+  return state.live.channels.filter(c=>c.id===id).some(c=>{
     const p=replayPagingFor(c.id);
     return !!p.lastError || !p.isLast;
   });
 }
 
 async function setReplayFilter(channelId){
+  const focused=document.activeElement?.dataset?.replayFilter===String(channelId);
   cancelReplayListRequests();
   state.live.replayLoading=false;
-  state.live.replayFilter=String(channelId || "all");
+  state.live.replayFilter=String(channelId || "");
+  const id=normalizeReplayChannelSelection();
   renderLiveView();
-  const channels=state.live.replayFilter==="all" ? state.live.channels : state.live.channels.filter(c=>c.id===state.live.replayFilter);
-  if(channels.some(c=>!replayPagingFor(c.id).loaded)) await loadReplayCenter();
+  const channels=state.live.channels.filter(c=>c.id===state.live.replayFilter);
+  if(!state.live.channelsLoaded || channels.some(c=>!replayPagingFor(c.id).loaded)) await loadReplayCenter();
+  if(focused && state.live.replayFilter===id && !state.live.replaySelected && (document.activeElement===document.body || document.activeElement?.dataset?.replayFilter===id)) focusSubscribedChannelFilter(`[data-replay-filter="${CSS.escape(id)}"]`);
 }
 
 function replayThumb(post){
@@ -4541,9 +4540,8 @@ function renderReplayView(){
     return;
   }
 
-  const filters=channels.length ? `<div class="replay-filter-strip">
-    <button class="replay-filter ${state.live.replayFilter==="all"?"active":""}" data-replay-filter="all" type="button">전체</button>
-    ${channels.map(c=>`<button class="replay-filter ${state.live.replayFilter===c.id?"active":""}" data-replay-filter="${esc(c.id)}" type="button">${esc(c.channelName)}</button>`).join("")}
+  const filters=channels.length ? `<div class="replay-filter-strip" aria-label="구독 채널 선택">
+    ${channels.map(c=>`<button class="replay-filter ${state.live.replayFilter===c.id?"active":""}" data-replay-filter="${esc(c.id)}" type="button" aria-pressed="${state.live.replayFilter===c.id}">${esc(c.channelName)}</button>`).join("")}
   </div>` : "";
 
   const grid=posts.length ? `<div class="replay-grid">${posts.map(p=>{
@@ -6562,7 +6560,7 @@ function resetUserScopedMemory(){
   videoListAuto.scope="";
   state.live.replayLoading=false;
   state.live.replayError="";
-  state.live.replayFilter="all";
+  state.live.replayFilter="";
 }
 
 function forgetSavedAuth(){

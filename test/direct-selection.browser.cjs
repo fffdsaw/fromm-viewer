@@ -151,7 +151,7 @@ async function selectionSize(page) {
         await cards.first().locator('img').click();
         await cards.nth(2).locator('img').click({modifiers: ['Shift']});
         await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
-        assert.equal(await cards.count(), kind === 'channel' ? 3 : 4);
+        assert.equal(await cards.count(), 3, 'only the active subscribed channel is selectable');
         assert.equal(await page.locator('#selectedCount').textContent(), '선택 3개');
         assert.equal(await page.locator('#saveSelectedBtn').isVisible(), true);
         await shot(page, `${kind}-selection-${mobile ? 'mobile' : 'desktop'}`);

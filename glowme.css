@@ -779,3 +779,35 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout #clearSelectionBtn{flex-basis:30px;min-width:30px;width:30px}
 }
 @media(prefers-reduced-motion:reduce){.glowme-phase3.pc-layout :is(.capsule-save-control,#saveSelectedBtn,.capsule-optics){transition:none!important}}
+
+/* One shared PC collection bar. Original controls/handlers are moved, not cloned. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--pc-tools-height:34px;--pc-tools-line:#bdd8c9;--pc-tools-fill:#e8f4ec99;--pc-tools-glint:inset 0 1px 0 #ffffff80;--pc-tools-text:#345c4e}
+ .pc-mode-heading{display:flex;align-items:center;gap:8px;min-width:0}
+ .pc-mode-heading[hidden],.pc-mode-count[hidden]{display:none!important}
+ .glowme-phase3.pc-layout.pc-video-list .topbar{padding:8px 12px;gap:10px}
+ .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{flex:0 0 174px;width:174px}
+ .glowme-phase3.pc-layout .pc-mode-count{flex:0 0 64px;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#527367;font-variant-numeric:tabular-nums}
+ .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-count{display:none!important}
+ .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:12px}
+ .glowme-phase3.pc-layout.pc-video-list .replay-filter-strip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:2px!important;overscroll-behavior-inline:contain}
+ .glowme-phase3.pc-layout.pc-video-list .replay-filter{flex:0 0 auto;height:var(--pc-tools-height);min-height:var(--pc-tools-height);padding:5px 12px;border:1px solid transparent;border-radius:18px;background:transparent;background-image:none;color:var(--pc-tools-text);font-size:13px;font-weight:600;box-shadow:none;white-space:nowrap;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+ .glowme-phase3.pc-layout.pc-video-list .replay-filter.active{background:#cbe7d8;background-image:none;border-color:var(--pc-tools-line);box-shadow:var(--pc-tools-glint)}
+ .glowme-phase3.pc-layout.pc-video-list .top-auth-controls{padding-left:0!important;gap:0!important}
+ .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster{gap:8px!important;margin-left:0!important;padding-left:12px!important}
+ .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster::before{display:block;left:0;top:6px;bottom:6px;background:#adcbbb}
+ .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster :is(#logoutMiniBtn,#scanBtn,#channelRefresh){flex:0 0 var(--pc-tools-height)!important;width:var(--pc-tools-height)!important;min-width:var(--pc-tools-height)!important;height:var(--pc-tools-height)!important;min-height:var(--pc-tools-height)!important;margin:0!important;padding:5px!important;border:1px solid var(--pc-tools-line)!important;border-radius:50%!important;background:var(--pc-tools-fill)!important;box-shadow:var(--pc-tools-glint)!important;color:var(--pc-tools-text)}
+ .glowme-phase3.pc-layout.pc-video-list #channelRefresh{font-size:0!important}
+ .glowme-phase3.pc-layout.pc-video-list #channelRefresh::after{content:'↻';font-size:21px;line-height:1}
+ .glowme-phase3.pc-layout.pc-video-list #scanBtn .reload-icon{font-size:21px;line-height:1}
+ .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){background:#e2f1e899;border-color:var(--pc-tools-line);box-shadow:var(--pc-tools-glint)}
+ .glowme-phase3.pc-layout .batch-selection-tools #selectedCount{border:0;background:transparent;box-shadow:none;animation:none!important;transform:none!important}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #selectAllBtn{background:var(--pc-tools-fill);border-color:var(--pc-tools-line);box-shadow:var(--pc-tools-glint)}
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout.pc-video-list .topbar{gap:6px}
+ .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{flex-basis:142px;width:142px;gap:6px}
+ .glowme-phase3.pc-layout .pc-mode-count{flex-basis:56px;width:56px;font-size:12px}
+ .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:6px}
+ .glowme-phase3.pc-layout.pc-video-list .replay-filter{font-size:12px;padding-inline:9px}
+}

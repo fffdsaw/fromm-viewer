@@ -629,12 +629,18 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .viewer-header::before{content:"";position:absolute;inset:-12px -12px 0;background:#f0f8f3;z-index:-2;pointer-events:none}
  .glowme-phase3.pc-layout .viewer-header::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--pc-header-bg);z-index:-1;pointer-events:none}
  .glowme-phase3.pc-layout #sidebar,.glowme-phase3.pc-layout[data-glow-layout="pinned"] #sidebar{top:12px;bottom:12px;background:#e0f1e9;border-color:#c1ddcf;box-shadow:0 2px 8px #244b3a0a;transition-property:width}
- .glowme-phase3.pc-layout .rail-head,.glowme-phase3.pc-layout.sidebar-open .rail-head{height:44px;flex:0 0 44px;margin:0;justify-content:center}
- .glowme-phase3.pc-layout #sidebar .brand{visibility:visible;opacity:1;min-width:0;width:44px;margin:auto}
- .glowme-phase3.pc-layout #sidebar .brand img{width:44px;max-height:40px}
+ .glowme-phase3.pc-layout .rail-head,.glowme-phase3.pc-layout.sidebar-open .rail-head{height:48px;flex:0 0 48px;margin:0;justify-content:center}
+ .glowme-phase3.pc-layout #sidebar .brand{visibility:visible;opacity:1;min-width:0;width:min(48px,100%);margin:auto}
+ .glowme-phase3.pc-layout #sidebar .brand img{width:100%;max-height:40px}
  .glowme-phase3.pc-layout.sidebar-open #sidebar .brand,.glowme-phase3.pc-layout.sidebar-open #sidebar .brand img{width:130px}
  .glowme-phase3.pc-layout .glowme-nav button.active{background:#c5e8d9!important;box-shadow:none!important;color:#194c3e}
+ .glowme-phase3.pc-layout .glowme-nav button[data-glow-nav="live"]{margin-top:6px}
+ .glowme-phase3.pc-layout .glowme-nav:not(.rail-pointer-tracking) button.active{
+   box-shadow:inset 0 0 0 1px #a8d5c3,inset 0 2px 1px #ffffffb3!important;
+ }
  .glowme-phase3.pc-layout .room.active{background:transparent!important;box-shadow:none!important}
+ .glowme-phase3.pc-layout .room.active::before{top:12px;bottom:12px}
+ .glowme-phase3.pc-layout .room.active .rail-avatar{outline:1px solid #51977f;outline-offset:2px}
  .glowme-phase3.pc-layout #viewContext{display:none}
  .glowme-phase3.pc-layout .topbar{position:relative;min-height:80px;height:80px;padding:8px 14px;gap:12px;flex-wrap:nowrap;border:0;border-radius:16px;background:none;box-shadow:none;backdrop-filter:none}
  .glowme-phase3.pc-layout .topbar::after{display:none}
@@ -721,7 +727,8 @@ html.glowme .reply-content{color:#244c42}
 .capsule-optics{display:none}
 .capsule-save-control{display:contents}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout{--pc-cap-width:312px;--pc-header-radius:24px;--pc-surround:#f0f8f3}
+ .glowme-phase3.pc-layout{--pc-cap-width:312px;--pc-header-radius:24px;--pc-surround:#f0f8f3;--pc-media-inset:8px}
+ .glowme-phase3.pc-layout #timeline.gallery{box-sizing:border-box;padding-inline:var(--pc-media-inset)}
  .glowme-phase3.pc-layout .viewer-header,.glowme-phase3.pc-layout[data-glow-layout="pinned"] .viewer-header{border-color:transparent;border-radius:var(--pc-header-radius);background:none}
  .glowme-phase3.pc-layout .viewer-header::before{inset:-13px -12px -1px;background:var(--pc-surround)}
  .glowme-phase3.pc-layout .viewer-header::after{inset:-1px;border:1px solid #c1ddcf;border-radius:inherit;background:var(--pc-header-bg)}
@@ -731,8 +738,7 @@ html.glowme .reply-content{color:#244c42}
    content:"";
    position:absolute;
    top:calc(100% + 1px);
-   left:-1px;
-   right:-1px;
+   inset-inline:calc(var(--pc-media-inset) - 1px);
    height:var(--media-edge-radius);
    background:
      radial-gradient(circle var(--media-edge-radius) at bottom right,transparent calc(100% - 1px),var(--pc-surround) 100%) left top / var(--media-edge-radius) 100% no-repeat,

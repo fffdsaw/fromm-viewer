@@ -1089,9 +1089,23 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout #timeline .media-wrap.selected{outline:0}
  .glowme-phase3.pc-layout .chat-media-visual{position:relative;width:fit-content;max-width:100%}
  .glowme-phase3.pc-layout .chat-media-visual .chat-media-download{position:absolute;top:10px;right:10px;z-index:2;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #ffffff24;border-radius:50%;background:#000b;color:#fff;font-size:0;line-height:1;text-decoration:none}
- .glowme-phase3.pc-layout .chat-media-download::after{content:'↓';font-size:18px;line-height:1}
+ .glowme-phase3.pc-layout .chat-media-download::after{content:'⇩';font-size:var(--thumb-download-glyph,18px);line-height:1;position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
  .glowme-phase3.pc-layout .chat-media-download:hover{background:#000d}
  .glowme-phase3.pc-layout .chat-media-download:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 4px #147e69}
  .glowme-phase3.pc-layout .chat-media-download[aria-busy=true]::after{content:'…'}
 }
 @media(forced-colors:active){.glowme-phase3.pc-layout .media-card.selected{outline-color:Highlight}.glowme-phase3.pc-layout .download-selection-box{border-color:Highlight;background:transparent}}
+
+/* PC thumbnail download controls follow the existing media-card button.
+   Runtime progress text and success/error styling stay with their original handlers. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--thumb-download-size:38px;--thumb-download-inset:10px;--thumb-download-glyph:20px;--thumb-download-face:rgba(0,0,0,.68);--thumb-download-line:rgba(255,255,255,.08)}
+ .glowme-phase3.pc-layout :is(.card-download,.replay-download,.chat-media-download){top:var(--thumb-download-inset)!important;right:var(--thumb-download-inset)!important;width:var(--thumb-download-size)!important;height:var(--thumb-download-size)!important;padding:0;border-radius:50%;display:grid;place-items:center;font-family:inherit;font-weight:400;line-height:1;text-decoration:none}
+ .glowme-phase3.pc-layout .replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download{font-size:0}
+ .glowme-phase3.pc-layout .replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download::after{content:'⇩';font-size:var(--thumb-download-glyph);position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;line-height:1}
+ .glowme-phase3.pc-layout :is(.media-card:not(.download-active,.download-done,.download-error) .card-download,.replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download,.chat-media-visual .chat-media-download){background:var(--thumb-download-face);border:1px solid var(--thumb-download-line);color:#fff;box-shadow:none}
+ .glowme-phase3.pc-layout :is(.card-download,.replay-download,.chat-media-download):focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 4px #147e69}
+}
+@media(min-width:851px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--thumb-download-size:34px;--thumb-download-inset:9px;--thumb-download-glyph:18px}
+}

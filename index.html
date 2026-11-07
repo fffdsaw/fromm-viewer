@@ -7261,9 +7261,11 @@ function selectRoom(i, btn){
   // Artist selection must feel immediate. Do not wait for LIVE/Agora cleanup
   // before changing the visible center view.
   const wasLive = state.filter === "live";
+  const keepMediaTab = ["media", "image", "video", "sound"].includes(state.filter);
+  const nextFilter = keepMediaTab ? state.filter : "all";
 
   state.room = state.rooms[i];
-  const restorePosition=window.FrommViewState?.enter("all");
+  const restorePosition = window.FrommViewState?.enter(nextFilter, {autoTop: !keepMediaTab});
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7278,9 +7280,9 @@ function selectRoom(i, btn){
     stopLivePlayback().catch(()=>{});
   }
 
-  // Switch to 전체 대화 synchronously before doing any network work.
-  state.filter = "all";
-  $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter==="all"));
+  // Update the selected tab before starting the new artist’s requests.
+  state.filter = nextFilter;
+  $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter===nextFilter));
   syncLiveToolbarControls();
 
   if(document.body.classList.contains("sidebar-open")){
@@ -7324,7 +7326,14 @@ function selectRoom(i, btn){
 
   restoreFullChatCache();
   ensureReplyIdentity();
-  state.chatAutoTopPending = !restorePosition;
+  state.chatAutoTopPending = !keepMediaTab && !restorePosition;
+
+  if(keepMediaTab){
+    state.sortDirection = "desc";
+    $("#sortBtn").textContent = "최신순 ↓";
+    $("#timeline").replaceChildren();
+    window.scrollTo({top:0, behavior:"instant"});
+  }
 
   startLivePolling();
   setTimeout(()=>probeLiveIndicator().catch(()=>{}),0);
@@ -7334,19 +7343,16 @@ function selectRoom(i, btn){
 
   const hasImmediateData =
     !!(cached && cached.messages?.length) ||
-    !!(state.chatHistoryComplete && state.chatMessages.length);
+    (!keepMediaTab && !!(state.chatHistoryComplete && state.chatMessages.length));
 
   if(hasImmediateData){
     render();
   }else{
-    // Show the whole-conversation loading state immediately so the user can
-    // see that the center view has already changed away from LIVE/Replay.
     const tl = $("#timeline");
-    tl.className = "timeline";
-    tl.innerHTML = `
-      <div class="empty stable-loading-slot">
-        전체 대화 불러오는 중...
-      </div>`;
+    tl.className = keepMediaTab ? "gallery" : "timeline";
+    tl.innerHTML = `<div class="empty stable-loading-slot" style="grid-column:1/-1">
+      ${keepMediaTab ? "파일 불러오는 중..." : "전체 대화 불러오는 중..."}
+    </div>`;
     document.body.classList.add("data-loading");
     document.querySelector(".toolbar")?.classList.add("is-loading");
   }
@@ -7361,24 +7367,26 @@ function selectRoom(i, btn){
         await loadMoreHistory({initial:true});
       }
 
-      if(generation !== state.scanGeneration) return;
+      if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
 
-      await ensureFullChatHistory();
-
-      if(generation !== state.scanGeneration || state.filter !== "all") return;
+      if(keepMediaTab){
+        if(state.historyError && !state.messages.length) throw state.historyError;
+      }else{
+        await ensureFullChatHistory();
+        if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
+      }
 
       render();
     }catch(e){
-      console.error("아티스트 전체 대화 전환 실패:",e);
-
-      if(generation !== state.scanGeneration || state.filter !== "all") return;
+      if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
+      console.error("아티스트 화면 전환 실패:",e);
 
       const tl = $("#timeline");
-      tl.className = "timeline";
-      tl.innerHTML = `
-        <div class="empty">
-          전체 대화를 불러오지 못했습니다. 새로고침을 눌러 다시 시도해주세요.
-        </div>`;
+      tl.className = keepMediaTab ? "gallery" : "timeline";
+      const subject = keepMediaTab ? "파일을" : "전체 대화를";
+      tl.innerHTML = `<div class="empty" style="grid-column:1/-1">
+        ${subject} 불러오지 못했습니다. 새로고침을 눌러 다시 시도해주세요.
+      </div>`;
       document.body.classList.remove("data-loading");
       document.querySelector(".toolbar")?.classList.remove("is-loading");
       syncLoadingUI();
@@ -8720,9 +8728,14 @@ function render(){
   tl.className = "gallery";
 
   if(!list.length){
+    const emptyLabel = {
+      media: "미디어가 없습니다.", image: "사진이 없습니다.",
+      video: "영상이 없습니다.", sound: "음성이 없습니다."
+    }[state.filter] || "표시할 항목이 없습니다.";
     tl.innerHTML = `<div class="empty" style="grid-column:1/-1">${
       state.loadingMessages
         ? `<span class="stable-loading-slot">파일 불러오는 중...</span>`
+        : !state.hasMoreMessages ? emptyLabel
         : (state.messages.length
             ? "이 구간에는 표시할 항목이 없습니다. 아래로 내리면 과거 기록을 더 불러옵니다."
             : "아직 불러온 메시지가 없습니다.")

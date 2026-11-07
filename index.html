@@ -1392,11 +1392,6 @@ body.download-marquee-active{user-select:none;cursor:default}
           <span class="token-life-clock" aria-hidden="true">◷</span>
           <span id="tokenLifeText">--</span>
         </div>
-        <button class="pill header-live-btn" data-filter="live" type="button"
-                title="현재 라이브 보기" aria-label="라이브">
-          <span class="header-live-dot" aria-hidden="true"></span>
-          <span>라이브</span>
-        </button>
         <div class="header-icon-cluster">
           <button id="logoutMiniBtn" class="logout-mini-btn" type="button"
                   style="display:none" title="로그아웃" aria-label="로그아웃">
@@ -3899,12 +3894,15 @@ function liveErrorText(error){
 }
 
 function syncHeaderLiveIndicator(){
-  const btn=document.querySelector(".header-live-btn");
-  if(!btn) return;
+  // Preserve the existing broadcast detection, but show its indicator on the sidebar only.
   const streaming=state.live.entrances.length>0 || !!state.live.config?.isStreaming;
-  btn.classList.toggle("is-streaming",streaming);
-  btn.title=streaming ? "시청 가능한 라이브 · 눌러서 목록 보기" : "현재 라이브 보기";
-  btn.setAttribute("aria-label",streaming ? "라이브 중" : "라이브");
+  document.documentElement.classList.toggle("glowme-live-broadcasting",streaming);
+  const liveNav=document.querySelector('.glowme-nav [data-glow-nav="live"]');
+  if(liveNav){
+    liveNav.classList.toggle("is-streaming",streaming);
+    liveNav.title=streaming ? "진행 중인 LIVE 보기" : "LIVE";
+    liveNav.setAttribute("aria-label",streaming ? "LIVE 방송 중" : "LIVE");
+  }
 }
 
 function syncLiveToolbarControls(){

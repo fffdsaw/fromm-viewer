@@ -58,7 +58,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  });
  assert.ok(read.id,'a reading anchor is visible before leaving chat');
  await p.evaluate(()=>setFilter('image'));await p.waitForTimeout(160);
- await p.evaluate(()=>setFilter('all'));await p.waitForTimeout(230);
+ await p.evaluate(()=>setFilter('all'));
+ await p.waitForFunction(({id,top})=>{
+  const anchor=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.dataset.messageId===id);
+  return anchor&&Math.abs(anchor.getBoundingClientRect().top-top)<10;
+ },{id:read.id,top:read.top},{timeout:2500});
  const back=await p.evaluate(id=>{
   const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.dataset.messageId===id);
   return {present:!!e,top:e?.getBoundingClientRect().top,y:scrollY,windowStart:state.chatWindowStart};

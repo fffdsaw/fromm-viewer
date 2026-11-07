@@ -9560,8 +9560,13 @@ function renderDateCalendar(){
   const first = new Date(year,month,1);
   const firstDow = first.getDay();
   const start = new Date(year,month,1-firstDow);
+  // Render only the weeks this month needs (4, 5 or 6). A fixed six-week
+  // grid added an unnecessary final row in November 2026 and pushed the
+  // search panel footer below the visible viewport on compact screens.
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const visibleDays = Math.ceil((firstDow + daysInMonth)/7)*7;
 
-  for(let i=0;i<42;i++){
+  for(let i=0;i<visibleDays;i++){
     const d = new Date(start);
     d.setDate(start.getDate()+i);
 

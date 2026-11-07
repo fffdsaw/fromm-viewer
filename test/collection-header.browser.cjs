@@ -25,10 +25,14 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
     assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.equal(await p.locator('#selectAllBtn').isEnabled(),true);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);
     if(n)assert.equal(await p.locator(selector+'.active').getAttribute('aria-pressed'),'true');
    }
-   const g=await geometry(p);if(mode==='replay')replayGeometry=g;else for(const key of ['.viewer-header','.pc-mode-heading','.pc-list-host','.batch-selection-tools','#logoutMiniBtn']){
+   const g=await geometry(p);if(mode==='replay')replayGeometry=g;else for(const key of ['.viewer-header','.batch-selection-tools','#logoutMiniBtn']){
     for(const dim of ['x','y','width','height'])assert.ok(Math.abs(g[key][dim]-replayGeometry[key][dim])<1,`${width} same ${key} ${dim}`);
    }
    const bar=g['.viewer-header'],cap=g['.batch-selection-tools'],logout=g['#logoutMiniBtn'],filter=g['.replay-filter-strip'];assert.ok(filter.right<=cap.left+1);assert.ok(cap.right<logout.left);assert.ok(bar.height>=56&&bar.height<=64);
+   const heading=g['.pc-mode-heading'];
+   assert.ok(filter.x>=heading.right-1&&filter.x-heading.right<=24,`${width} ${mode}: filter follows title/count without a large gap`);
+   const capsuleStyle=await p.locator('.batch-selection-tools').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow}));
+   assert.deepEqual(capsuleStyle,{border:'0px',background:'rgba(0, 0, 0, 0)',shadow:'none'},`${width} ${mode}: frameless tools blend with header`);
    const refresh=p.locator(mode==='channel'?'#channelRefresh':'#scanBtn');assert.equal(await refresh.isVisible(),true);assert.equal(await refresh.getAttribute('aria-label')!==null,true);
    const refreshBox=await refresh.boundingBox();assert.ok(refreshBox.x>=logout.right);assert.equal(Math.round(refreshBox.width),34);assert.equal(Math.round(refreshBox.height),34);
    const centers=await p.locator(selector+'.active,#saveSelectedBtn,#selectAllBtn,#logoutMiniBtn').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return r.top+r.height/2;}));assert.ok(Math.max(...centers)-Math.min(...centers)<1,'same control centerline');

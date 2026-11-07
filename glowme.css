@@ -811,3 +811,105 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:6px}
  .glowme-phase3.pc-layout.pc-video-list .replay-filter{font-size:12px;padding-inline:9px}
 }
+
+
+/* PC header visual refinement: existing controls only, no new buttons or routes. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+  /* Artist modes share one centered information row; statistics are no longer
+     absolutely positioned below the name. Keep loading/error status inline. */
+  .glowme-phase3.pc-layout:not(.pc-collection) .topbar{
+    height:72px;min-height:72px;align-items:center;gap:10px;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .title-line{
+    flex:1 1 auto!important;align-self:center;min-width:0;overflow:hidden!important;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-copy{
+    display:flex!important;flex-direction:row!important;align-items:center;
+    justify-content:flex-start!important;flex:1 1 auto;min-width:0;
+    gap:10px!important;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistTitle{
+    flex:0 1 auto;min-width:0;min-height:34px!important;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-meta-line{
+    position:static;inset:auto;width:auto;right:auto;left:auto;bottom:auto;
+    height:24px;flex:1 1 auto;min-width:0;align-items:center;
+    padding-left:10px;border-left:1px solid #bad7c9;gap:10px;
+    overflow:hidden;white-space:nowrap;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistMediaStats{
+    flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;margin:0;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) #artistLoadStatus{
+    flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;
+  }
+  .glowme-phase3.pc-layout:not(.pc-collection) .top-auth-controls{
+    flex:0 0 auto;align-self:center!important;
+  }
+
+  /* The title and fixed-width count are a compact group followed immediately
+     by the existing subscribed-channel filters. No new filter is introduced. */
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{
+    flex:0 0 auto;width:auto;gap:6px;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    flex:0 0 56px;width:56px;min-width:56px;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading::after{
+    content:"";display:block;flex:0 0 1px;width:1px;height:18px;
+    margin-inline:2px;background:#afcfbf;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .topbar{gap:8px}
+  .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:6px}
+
+  /* Selection is part of the shared mint header instead of a framed capsule.
+     Retain all existing button hit targets and the save-only glass pulse. */
+  .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){
+    height:40px;min-height:40px;padding:3px 0;gap:7px;
+    border:0;border-radius:0;background:transparent;box-shadow:none;
+  }
+  .glowme-phase3.pc-layout .batch-selection-tools #selectedCount{
+    border:0;background:transparent;box-shadow:none;
+  }
+  .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #selectAllBtn{
+    background:#e9f6ee;border-color:#bbdacb;box-shadow:none;
+  }
+  .glowme-phase3.pc-layout .capsule-save-control{
+    background:#e9f4ee;
+  }
+  .glowme-phase3.pc-layout .capsule-save-control.save-ready{
+    background:#147e69;
+  }
+  .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #saveSelectedBtn,
+  .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) .save-ready #saveSelectedBtn{
+    border:0;box-shadow:none;
+  }
+
+  /* Give sorting breathing room below the artist controls; keep it right. */
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock{gap:10px}
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortControls{
+    margin-left:8px;margin-right:4px;
+  }
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortBtn{
+    height:36px;min-height:36px;min-width:104px;
+    padding:0 16px;border-radius:19px;
+    border-color:#b8d8c8;background:#fafefa;
+    box-shadow:0 1px 3px #244b3a0b;
+  }
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-copy{gap:6px!important}
+  .glowme-phase3.pc-layout:not(.pc-collection) .artist-meta-line{
+    padding-left:7px;gap:6px;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    flex-basis:48px;width:48px;min-width:48px;
+  }
+  .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){gap:5px}
+  .glowme-phase3.pc-layout .pc-media-row #mediaActionDock #sortControls{margin-left:6px;margin-right:2px}
+}
+@media(forced-colors:active){
+  .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){border:1px solid CanvasText}
+}

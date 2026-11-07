@@ -330,6 +330,11 @@
 
 /* P1: quoted content must use the light surface foreground, not legacy dark UI grey. */
 html.glowme .reply-content{color:#244c42}
+/* Quoted author labels: gentle mint surfaces, with aqua for verified own replies. */
+html.glowme .reply-quote{background:#f1fbf6;border-left-color:#85cbb8}
+html.glowme .reply-quote.reply-mine{background:#e9f8f5;border-left-color:#2a9aaa}
+html.glowme .reply-label{color:#266b5c}
+html.glowme .reply-mine .reply-label{color:#176a78}
 
 /* Phase 3: floating navigation, independent artist scroll and an in-flow header.
    Keeping the header in normal flow removes behind-corner bleed without masks,

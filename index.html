@@ -13,11 +13,13 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/glowme/favicon-32.png">
 <style>
 /* Before any external assets: never paint the login form during session restore. */
-.glowme.login-screen{overflow:hidden;scrollbar-gutter:auto;background:#000}
-#loginGate{overflow-y:auto;align-items:safe center;background:#000;backdrop-filter:none}
+.glowme{--login-bg:#edf8f0}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){.glowme{--login-bg:#f0f8f3}}
+.glowme.login-screen{overflow:hidden;scrollbar-gutter:auto;background:var(--login-bg)}
+#loginGate{overflow-y:auto;align-items:safe center;background:var(--login-bg);backdrop-filter:none}
 .auth-pending #loginGate .login-panel{visibility:hidden}
 .login-startup-status{display:none}
-.auth-pending .login-startup-status{display:block;position:absolute;color:#c9d8d2;font:14px/1.5 system-ui}
+.auth-pending .login-startup-status{display:block;position:absolute;color:#48675e;font:14px/1.5 system-ui}
 :root { --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --text: #f5f6f8; --muted: #9da6b5; --line: #2a303b; --accent: #ff5b73; --accent2: #ff8798; --ok: #69d59a; --warn: #ffcb6b; }
 * { box-sizing: border-box; }
 button, input, textarea, select { font: inherit; }
@@ -354,7 +356,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .auth-advanced-toggle:hover { color: rgb(199, 215, 239); }
 .auth-advanced { margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: rgb(15, 20, 27); }
 #loginBtn:disabled, #checkEmailBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-.login-gate { position: fixed; inset: 0px; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: #000; }
+.login-gate { position: fixed; inset: 0px; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--login-bg,#edf8f0); }
 .login-gate.hidden { display: none; }
 .login-panel { width: min(520px, -36px + 100vw); padding: 30px; border: 1px solid rgb(45, 52, 64); border-radius: 22px; background: rgb(23, 29, 39); box-shadow: rgba(0, 0, 0, 0.5) 0px 28px 90px; }
 .login-brand { text-align: center; font-size: 30px; font-weight: 900; letter-spacing: -0.03em; }

@@ -117,7 +117,7 @@
 .glowme .live-card {box-shadow:var(--glow-shadow);}
 .glowme .replay-page-head {background:#edf9f7;border-color:var(--line);}
 .glowme .replay-page-title {color:var(--text);}
-.glowme .login-gate {background:#000;backdrop-filter:none;}
+.glowme .login-gate {background:var(--login-bg,#edf8f0);backdrop-filter:none;}
 .glowme .save-result-modal {background:#163d4655;backdrop-filter:blur(7px);}
 .glowme :is(.login-panel,.save-result-card,.vote-dialog) {background:#f7fdfc;color:var(--text);border-color:#b1dcd6;box-shadow:var(--glow-shadow);}
 .glowme :is(.login-panel label,.login-subtitle) {color:var(--muted);}

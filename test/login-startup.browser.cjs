@@ -30,7 +30,7 @@ const output=process.env.LOGIN_SCREENSHOT_DIR;
    await Promise.race([seen,new Promise((_,reject)=>setTimeout(()=>reject(Error('restore not requested')),5000))]);
    await p.waitForTimeout(180);assert.equal(await p.locator('.login-panel').isVisible(),false,'no form during saved-session restore');
    assert.equal(await p.evaluate(()=>loginPaints),0,'no painted login frame before restore completes');
-   assert.equal(await p.locator('#loginGate').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(0, 0, 0)');
+   assert.equal(await p.locator('#loginGate').evaluate(e=>getComputedStyle(e).backgroundColor),mode==='fresh'?'rgb(237, 248, 240)':'rgb(240, 248, 243)');
    assert.equal(await p.locator('.app').evaluate(e=>e.inert),true);
    await p.keyboard.press('Tab');assert.equal(await p.evaluate(()=>document.activeElement.id),'loginGate','pending form is not tabbable');
    if(output&&mode==='saved'){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,'restoring.png')});}
@@ -42,16 +42,16 @@ const output=process.env.LOGIN_SCREENSHOT_DIR;
    if(mode==='saved'){await p.reload();await p.locator('#loginGate').waitFor({state:'hidden'});assert.equal(await p.evaluate(()=>loginPaints),0,'reload never paints login form');}
   }else{
    await p.locator('.login-panel').waitFor({state:'visible'});assert.equal(await p.evaluate(()=>document.activeElement.id),'loginEmail');
-   assert.equal(await p.locator('#loginGate').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(0, 0, 0)');
+   assert.equal(await p.locator('#loginGate').evaluate(e=>getComputedStyle(e).backgroundColor),mode==='fresh'?'rgb(237, 248, 240)':'rgb(240, 248, 243)');
    if(mode==='expired'||mode==='invalid')assert.match(await p.locator('#loginStatus').textContent(),/유효|만료/);
    if(output&&mode==='fresh'){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,'login.png')});}
    if(mode==='fresh'){
-    assert.equal(await p.evaluate(()=>document.documentElement.clientWidth),390,'no mint root scrollbar strip');
+    assert.equal(await p.evaluate(()=>document.documentElement.clientWidth),390,'no exposed root scrollbar strip');
     await p.setViewportSize({width:844,height:390});await p.locator('#checkEmailBtn').focus();
     const button=await p.locator('#checkEmailBtn').boundingBox();assert.ok(button.y>=0&&button.y+button.height<=390,'short login viewport can scroll to controls');
    }
   }
   assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('auth-pending')),false);
-  assert.deepEqual(errors,[]);await context.close();console.log(`${mode}: black background, correct form visibility/focus and existing auth outcome PASS`);
+  assert.deepEqual(errors,[]);await context.close();console.log(`${mode}: mint background, correct form visibility/focus and existing auth outcome PASS`);
  }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

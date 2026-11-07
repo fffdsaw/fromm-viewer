@@ -30,6 +30,16 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
    }
    const bar=g['.viewer-header'],cap=g['.batch-selection-tools'],logout=g['#logoutMiniBtn'],filter=g['.replay-filter-strip'];assert.ok(filter.right<=cap.left+1);assert.ok(cap.right<logout.left);assert.ok(bar.height>=56&&bar.height<=64);
    const heading=g['.pc-mode-heading'];
+   // Same compact count slot and centerline for both title labels.
+   const headingText=await p.evaluate(()=>{
+    const title=document.querySelector('.pc-mode-title'),count=document.querySelector('.pc-mode-count');
+    const t=title.getBoundingClientRect(),c=count.getBoundingClientRect();
+    return {titleCenter:t.top+t.height/2,countCenter:c.top+c.height/2,gap:c.left-t.right,display:getComputedStyle(count).display,height:c.height};
+   });
+   assert.equal(headingText.display,'flex',`${width} ${mode}: count uses centered layout`);
+   assert.ok(Math.abs(headingText.titleCenter-headingText.countCenter)<1,`${width} ${mode}: title/count share a centerline`);
+   assert.ok(headingText.gap>=5&&headingText.gap<=9,`${width} ${mode}: consistent title/count gap`);
+   assert.equal(headingText.height,34,`${width} ${mode}: count has a stable 34px alignment box`);
    assert.ok(filter.x>=heading.right-1&&filter.x-heading.right<=24,`${width} ${mode}: filter follows title/count without a large gap`);
    const capsuleStyle=await p.locator('.batch-selection-tools').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow}));
    assert.deepEqual(capsuleStyle,{border:'0px',background:'rgba(0, 0, 0, 0)',shadow:'none'},`${width} ${mode}: frameless tools blend with header`);

@@ -719,6 +719,7 @@ html.glowme .reply-content{color:#244c42}
 
 /* Capsule optics are isolated from the opaque header and from button hit boxes. */
 .capsule-optics{display:none}
+.capsule-save-control{display:contents}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
  .glowme-phase3.pc-layout{--pc-cap-width:312px;--pc-header-radius:24px;--pc-surround:#f0f8f3}
  .glowme-phase3.pc-layout .viewer-header,.glowme-phase3.pc-layout[data-glow-layout="pinned"] .viewer-header{border-color:transparent;border-radius:var(--pc-header-radius);background:none}
@@ -735,7 +736,6 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #saveSelectedBtn{height:34px;border:1px solid #168774;border-radius:20px;background:#147e69;color:#fff;box-shadow:inset 0 2px 2px #ffffff45,0 1px 2px #145d4c16}
  .glowme-phase3.pc-layout #clearSelectionBtn{height:30px!important;min-height:30px!important;border:0;background:transparent;box-shadow:none;color:#3b6558}
  .glowme-phase3.pc-layout .batch-selection-tools> :not(.capsule-optics){position:relative;z-index:1;opacity:var(--capsule-content-alpha,1)}
- .glowme-phase3.pc-layout .capsule-materializing{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
  .glowme-phase3.pc-layout .capsule-materializing .capsule-optics{display:block;position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;transform-origin:center;will-change:transform,opacity}
  .glowme-phase3.pc-layout :is(.capsule-optics-lens,.capsule-optics-backdrop){position:absolute;inset:0;border-radius:inherit;pointer-events:none}
  .glowme-phase3.pc-layout .capsule-optics-backdrop{background:radial-gradient(ellipse at 24% 0%,#ffffffdf,transparent 60%),linear-gradient(112deg,#d1ebdf,#f5fcf7 48%,#c8e6d7);border:1px solid #bddccc}
@@ -747,3 +747,35 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout{--pc-cap-width:248px}
  .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){padding:5px;gap:3px}
 }
+
+/* Persistent PC tools: fixed dimensions, content-sized controls, save-only optics. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--pc-cap-width:301px}
+ .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){justify-content:flex-start;padding:5px 8px;gap:7px}
+ .glowme-phase3.pc-layout #mediaActionDock{gap:12px}
+ .glowme-phase3.pc-layout #selectedCount{flex:0 0 88px;width:88px;min-width:88px;max-width:88px;border-radius:20px}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #selectAllBtn{flex:0 0 78px;width:78px;border-color:#bddfcf;overflow:hidden;text-overflow:ellipsis;padding-inline:6px}
+ .glowme-phase3.pc-layout .capsule-save-control{display:block;position:relative;isolation:isolate;flex:0 0 62px;width:62px;height:34px;border-radius:20px;overflow:hidden;background:#eaf4ef;transition:background-color 140ms ease}
+ .glowme-phase3.pc-layout .capsule-save-control.save-ready{background:#147e69}
+ .glowme-phase3.pc-layout .capsule-save-control:has(:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #saveSelectedBtn{position:relative;z-index:1;display:block;width:100%;min-width:0!important;padding-inline:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;box-shadow:inset 0 1px 1px #ffffff45;border-color:#bddfcf;color:#648074;opacity:1;transition:color 140ms,border-color 140ms}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) .save-ready #saveSelectedBtn{background:#09624d26;border-color:#147e69;color:#fff}
+ .glowme-phase3.pc-layout #clearSelectionBtn{flex:0 0 34px;width:34px;min-width:34px;height:34px!important;min-height:34px!important}
+ .glowme-phase3.pc-layout #clearSelectionBtn:disabled{opacity:.4;cursor:default}
+ .glowme-phase3.pc-layout #saveSelectedBtn:disabled{cursor:default}
+ .glowme-phase3.pc-layout .capsule-save-control .capsule-optics{inset:1px;transition:opacity 140ms ease;will-change:auto}
+ .glowme-phase3.pc-layout .capsule-save-control:is([data-capsule-phase="shown"],[data-capsule-phase="exiting"]) .capsule-optics{opacity:0!important}
+ .glowme-phase3.pc-layout .capsule-save-control .capsule-optics-backdrop{border:0;background:radial-gradient(ellipse at 22% 0%,#448f78,transparent 60%),linear-gradient(112deg,#116a57,#1a7e67 50%,#126552)}
+ .glowme-phase3.pc-layout .capsule-save-control .capsule-optics-lens{border-color:#79b19d44;background:#def3e60a;box-shadow:inset 0 1px 2px #ffffff55,inset 0 -1px 2px #155b4b33}
+ .glowme-phase3.pc-layout .capsule-save-control .capsule-optics-lens::after{border-color:#ffffff38}
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout{--pc-cap-width:248px}
+ .glowme-phase3.pc-layout :is(.batch-selection-tools,#mediaActionDock .batch-selection-tools){padding:5px 7px;gap:6px}
+ .glowme-phase3.pc-layout #mediaActionDock{gap:10px}
+ .glowme-phase3.pc-layout #selectedCount{flex-basis:76px;width:76px;min-width:76px;max-width:76px}
+ .glowme-phase3.pc-layout :is(#mediaActionDock,.pc-list-host) #selectAllBtn{flex-basis:64px;width:64px;padding-inline:4px}
+ .glowme-phase3.pc-layout .capsule-save-control{flex-basis:44px;width:44px}
+ .glowme-phase3.pc-layout #clearSelectionBtn{flex-basis:30px;min-width:30px;width:30px}
+}
+@media(prefers-reduced-motion:reduce){.glowme-phase3.pc-layout :is(.capsule-save-control,#saveSelectedBtn,.capsule-optics){transition:none!important}}

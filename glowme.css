@@ -958,3 +958,40 @@ html.glowme .reply-content{color:#244c42}
     display:none!important;
   }
 }
+
+
+/* Replay / Channel: visually center the count on the same line as its title.
+   Keep the fixed-width count slot so digit changes never shift the filters. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{
+    height:34px;align-items:center;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-title,
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    display:flex;align-items:center;
+    height:34px;min-height:34px;
+    line-height:1;vertical-align:middle;
+  }
+  .glowme-phase3.pc-layout.pc-video-list .pc-mode-count{
+    justify-content:flex-start;margin:0;padding:0;
+  }
+}
+
+/* Keep the inline calendar in the scrollable search body rather than
+   clipping its final week under the pinned footer on short viewports. */
+.glowme-phase3 #chatToolsPanel .search-panel-scroll{
+  min-width:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;
+  scroll-padding-top:10px;scroll-padding-bottom:16px;
+}
+.glowme-phase3 #chatToolsPanel .glowme-search-fields,
+.glowme-phase3 #chatToolsPanel #dateCalendar{
+  box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+}
+.glowme-phase3 #chatToolsPanel .date-calendar-grid,
+.glowme-phase3 #chatToolsPanel .date-weekdays{
+  min-width:0;width:100%;
+}
+.glowme-phase3 #chatToolsPanel .date-calendar-grid > *,
+.glowme-phase3 #chatToolsPanel .date-weekdays > *{
+  min-width:0;box-sizing:border-box;
+}

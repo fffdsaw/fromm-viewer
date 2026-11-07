@@ -1313,10 +1313,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=artist-live-sidebar-20261107">
-<link rel="preload" as="script" href="web-glowme.js?v=artist-live-sidebar-20261107">
+<link rel="stylesheet" href="glowme.css?v=replay-count-chat-latest-20261107">
+<link rel="preload" as="script" href="web-glowme.js?v=calendar-visibility-20261107">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=list-polish-20261107">
+<link rel="preload" as="script" href="web-view-state.js?v=chat-latest-20261107">
 </head>
 <body>
 
@@ -2283,8 +2283,8 @@ const state = {
   calendarMode: "day",
   calendarYearPageStart: null,
 
-  // Only normal entry into 전체 대화 should jump to the top.
-  // Date/reply jumps must not be overwritten by a later auto-top frame.
+  // Legacy autoTop flag: a first normal entry now opens at the newest
+  // message; explicit date/reply navigation and saved positions take priority.
   chatAutoTopPending: false,
 
   // Last folder handle / failed items are kept only for this browser session.
@@ -8659,17 +8659,25 @@ function renderFullConversation(version){
   state.infiniteRendered = 0;
   state.infiniteLastDate = "";
 
-  // Normal 전체 대화 entry starts at the actual first-ever message.
+  // On first entry, render a bounded window ending at the newest message.
+  // Merely scrolling a first-page DOM to the bottom would show old messages.
+  if(state.chatAutoTopPending){
+    const latest=renderChatWindow(list,list.length-1);
+    if(latest){
+      requestAnimationFrame(()=>{
+        if(state.filter!=="all" || latest.version!==state.infiniteVersion || !tl.isConnected) return;
+        state.chatAutoTopPending=false;
+        const valid=()=>state.filter==="all" && latest.version===state.infiniteVersion && tl.isConnected;
+        if(window.FrommViewState?.settleLatest) window.FrommViewState.settleLatest(valid);
+        else window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
+      });
+      return;
+    }
+  }
+
+  // Explicit jumps and returning readers keep the prior window/anchor logic.
   appendChatBatch(state.initialChunks,version);
   armChatRenderObserver(version);
-
-  if(state.chatAutoTopPending){
-    state.chatAutoTopPending = false;
-
-    requestAnimationFrame(()=>{
-      window.scrollTo({top:0,behavior:"auto"});
-    });
-  }
 }
 
 function render(){
@@ -9843,6 +9851,11 @@ async function setFilter(f, options={}){
     startLivePolling();
   }
 
+  // C: leaving a media gallery for the conversation discards its selection,
+  // delayed click intent and stale selection tools, without touching downloads.
+  if(f==="all" && ["media","image","video","sound"].includes(was)){
+    clearDownloadSelection();
+  }
   state.filter=f;
   $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter===f));
   syncLiveToolbarControls();
@@ -11314,8 +11327,8 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=list-polish-20261107"></script>
-<script src="web-glowme.js?v=artist-live-sidebar-20261107" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-view-state.js?v=chat-latest-20261107"></script>
+<script src="web-glowme.js?v=calendar-visibility-20261107" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>

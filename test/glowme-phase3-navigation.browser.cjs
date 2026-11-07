@@ -13,11 +13,64 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  const cardTop=await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top);
  await page.evaluate(()=>{state.selected.add('m0');updateSelectedCount();});
  assert.equal(await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top),cardTop,'batch tools never move the sorting row or cards');assert.equal(await page.locator('#saveSelectedBtn').isVisible(),true);
- const pos=await page.evaluate(()=>scrollY);await page.evaluate(()=>{state.selected.clear();updateSelectedCount();});assert.equal(await page.locator('.batch-selection-tools').evaluate(e=>e.inert),viewport.width<700);if(viewport.width<700)await page.locator('#saveSelectedBtn').waitFor({state:'hidden'});assert.equal(await page.locator('#saveSelectedBtn').isVisible(),viewport.width>700);if(viewport.width>700)assert.equal(await page.locator('#saveSelectedBtn').isDisabled(),true);assert.equal(await page.evaluate(()=>scrollY),pos);
+ const pos=await page.evaluate(()=>scrollY);
+ // C: a gallery selection must be cleared on conversation entry, and the
+ // batch toolbar must not remain in the chat header at either viewport.
+ await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(150);
+ assert.equal(await page.evaluate(()=>state.selected.size),0,'media selection cleared on conversation entry');
+ assert.equal(await page.locator('.batch-selection-tools').isVisible(),false,'no gallery tools inside full conversation');
+ assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false,'no stale save button inside full conversation');
+ assert.equal(await page.locator('.toolbar').evaluate(e=>e.classList.contains('has-download-selection')),false,'chat toolbar has no selection state');
+ await page.evaluate(()=>setFilter('image'));await page.waitForTimeout(120);
+ assert.equal(await page.locator('#saveSelectedBtn').isVisible(),viewport.width>700,'gallery toolbar stays available for new selections');
+ if(viewport.width>700)assert.equal(await page.locator('#saveSelectedBtn').isDisabled(),true,'former selection is not restored');
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(150);await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('인용');await page.waitForTimeout(500);assert.equal(await page.locator('#chatSearchInput').inputValue(),'인용');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');
  await page.evaluate(()=>{state.chatQuery='';render();});await page.waitForTimeout(100);
  await page.evaluate(()=>jumpToDate('2026-10-09'));await page.waitForTimeout(600);assert.ok(await page.evaluate(()=>scrollY)<500,'explicit date navigation overrides restored position');
- assert.deepEqual(errors,[]);console.log(viewport.width+': filter scroll, selection layout, search/date/focus PASS');await context.close();
+ assert.deepEqual(errors,[]);console.log(viewport.width+': filter scroll, auto-clear selection, search/date/focus PASS');await context.close();
+ // A true first visit should show the newest message without constructing
+ // the entire archive. Returning to chat must restore the reading position.
+ const fresh=await open(browser,server.url,viewport),p=fresh.page;
+ await p.evaluate(async()=>{
+  await setFilter('image');
+  FrommViewState.clear();
+  const messages=Array.from({length:700},(_,i)=>({messageId:'fresh'+i,type:i%4===0?'image':'text',userType:'star',content:i%4===0?'https://fixture.test/photo.svg':'최신 대화 '+i,createdAt:1791534600000+i*60000}));
+  state.messages=messages;state.chatMessages=messages;state.chatHistoryComplete=true;state.hasMoreMessages=false;
+  await setFilter('all');
+ });
+ await p.waitForFunction(()=>!state.chatAutoTopPending&&state.infiniteList.length===700);
+ await p.waitForTimeout(160);
+ const latest=await p.evaluate(()=>{
+  const end=document.querySelector('#timeline [data-message-id="fresh699"]'),rect=end?.getBoundingClientRect();
+  return {windowStart:state.chatWindowStart,lastVisible:!!rect&&rect.bottom<=innerHeight+2,lastTop:rect?.top,lastBottom:rect?.bottom,y:scrollY,max:document.documentElement.scrollHeight-innerHeight,sorted:state.infiniteList.at(-1).messageId,pending:FrommViewState.pending};
+ });
+ console.log('latest-first geometry',viewport.width,JSON.stringify(latest));
+ assert.ok(latest.windowStart>0,'first conversation visit uses a bounded newest-message window');
+ assert.equal(latest.sorted,'fresh699');
+ assert.ok(latest.lastVisible,'newest message visible at first entry');
+ assert.ok(Math.abs(latest.y-latest.max)<6,'initial viewport starts at latest messages');
+ await p.evaluate(()=>scrollTo(0,Math.max(0,document.documentElement.scrollHeight-innerHeight-700)));
+ await p.waitForTimeout(120);
+ const read=await p.evaluate(()=>{
+  const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.getBoundingClientRect().bottom>8);
+  return {id:e?.dataset.messageId,top:e?.getBoundingClientRect().top,y:scrollY,windowStart:state.chatWindowStart};
+ });
+ assert.ok(read.id,'a reading anchor is visible before leaving chat');
+ await p.evaluate(()=>setFilter('image'));await p.waitForTimeout(160);
+ await p.evaluate(()=>setFilter('all'));
+ await p.waitForFunction(({id,top})=>{
+  const anchor=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.dataset.messageId===id);
+  return anchor&&Math.abs(anchor.getBoundingClientRect().top-top)<10;
+ },{id:read.id,top:read.top},{timeout:2500});
+ const back=await p.evaluate(id=>{
+  const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.dataset.messageId===id);
+  return {present:!!e,top:e?.getBoundingClientRect().top,y:scrollY,windowStart:state.chatWindowStart};
+ },read.id);
+ console.log('reading-position restore',viewport.width,JSON.stringify({read,back}));
+ assert.ok(back.present,viewport.width+': same reading message is rendered again');
+ assert.ok(Math.abs(read.top-back.top)<10,viewport.width+': returning to chat restores the same message viewport offset');
+ assert.deepEqual(fresh.errors,[]);await fresh.context.close();
+ console.log(viewport.width+': latest first visit, bounded conversation rendering and read-position return PASS');
  }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -13,6 +13,24 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();});
   const calendar=await page.locator('#dateCalendar').boundingBox(),move=await page.locator('#dateJumpBtn').boundingBox();const fields=await page.locator('.search-panel-scroll').boundingBox();assert.ok(move.y>=fields.y+fields.height-1,'move footer is below scrollable calendar area');
   const panel=await page.locator('#chatToolsPanel').boundingBox();assert.ok(move.width>=panel.width-50);assert.ok(move.y+move.height<=panel.y+panel.height,'Move remains visible on short screens');
+  // Six-week calendars must not overflow sideways, and the bottom row must
+  // remain reachable in the INNER scrolling body, even in landscape mode.
+  await page.evaluate(()=>{state.calendarMonth=new Date(2026,4,1);renderDateCalendar();});
+  await page.waitForTimeout(250);
+  const lastDay=page.locator('#dateCalendar .date-day').last();
+  await lastDay.scrollIntoViewIfNeeded();
+  const grid=await page.evaluate(()=>{
+   const scroller=document.querySelector('.search-panel-scroll');
+   const calendar=document.querySelector('#dateCalendar');
+   const last=calendar.querySelector('.date-day:last-child');
+   const s=scroller.getBoundingClientRect(),c=calendar.getBoundingClientRect(),l=last.getBoundingClientRect();
+   return {scroller:s.toJSON(),calendar:c.toJSON(),last:l.toJSON(),scrollHeight:scroller.scrollHeight,clientHeight:scroller.clientHeight,scrollTop:scroller.scrollTop};
+  });
+  assert.ok(grid.calendar.left>=grid.scroller.left-3&&grid.calendar.right<=grid.scroller.right+3,'calendar fits search panel width');
+  assert.ok(grid.last.left>=grid.scroller.left-3&&grid.last.right<=grid.scroller.right+3,'last date stays inside panel width');
+  assert.ok(grid.last.top>=grid.scroller.top-3&&grid.last.bottom<=grid.scroller.bottom+3,
+    'last calendar week is reachable through inner scroll at '+viewport.width+'x'+viewport.height+': '+JSON.stringify(grid));
+  await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();document.querySelector('.search-panel-scroll').scrollTop=0;});
   if(shots){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:shots+`/panel-${viewport.width}${viewport.installed?'-pwa':''}.png`});}
   const before=await page.evaluate(()=>({y:scrollY,key:state.chatMatchKey}));
   await page.locator('.date-day[data-date="2026-10-09"]').click();

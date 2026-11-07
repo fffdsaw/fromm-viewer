@@ -26,6 +26,27 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.equal(geometry.overflow,false);assert.ok(geometry.artists.height>=40);assert.ok(geometry.nav.bottom<=geometry.artists.top);
  if(process.env.PHASE3_SCREENSHOT_DIR){fs.mkdirSync(process.env.PHASE3_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PHASE3_SCREENSHOT_DIR,`rail-${viewport.width}${viewport.installed?'-pwa':''}.png`)});}
  await page.keyboard.press('Escape');
+ if(await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'))){
+  // The width eases over 200ms; stacking must stay above the pinned header throughout.
+  const layers=await page.evaluate(async()=>{
+   const rail=document.querySelector('#sidebar'),header=document.querySelector('.viewer-header');
+   const read=()=>({width:rail.getBoundingClientRect().width,z:Number(getComputedStyle(rail).zIndex)});
+   window.FrommGlowME.setRailOpen(true);
+   await new Promise(resolve=>setTimeout(resolve,240));
+   const expanded=read(),headerZ=Number(getComputedStyle(header).zIndex);
+   window.FrommGlowME.setRailOpen(false);
+   const closingStart=read();
+   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+   const shrinking=read();
+   await new Promise(resolve=>setTimeout(resolve,240));
+   return{headerZ,expanded,closingStart,shrinking,collapsed:read()};
+  });
+  assert.ok(layers.expanded.width>layers.collapsed.width+100,'sidebar width still animates');
+  assert.ok(layers.shrinking.width>layers.collapsed.width+3,'sidebar contracts over time');
+  for(const phase of ['expanded','closingStart','shrinking','collapsed'])
+   assert.ok(layers[phase].z>layers.headerZ,`rail stays over header during ${phase}: ${JSON.stringify(layers)}`);
+  console.log('PC sidebar width transition stays above pinned header PASS');
+ }
  if(!viewport.installed){await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#chatToolsPanel').getAttribute('aria-hidden'),'false');
  await page.waitForFunction(()=>document.querySelector('#sidebar').getBoundingClientRect().width<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-width'))+1);
  const panelBox=await page.locator('#chatToolsPanel').boundingBox(),railBox=await page.locator('#sidebar').boundingBox();

@@ -8666,9 +8666,10 @@ function renderFullConversation(version){
     if(latest){
       requestAnimationFrame(()=>{
         if(state.filter!=="all" || latest.version!==state.infiniteVersion || !tl.isConnected) return;
-        window.scrollTo({top:document.documentElement.scrollHeight,behavior:"auto"});
         state.chatAutoTopPending=false;
-        window.FrommViewState?.capture();
+        const valid=()=>state.filter==="all" && latest.version===state.infiniteVersion && tl.isConnected;
+        if(window.FrommViewState?.settleLatest) window.FrommViewState.settleLatest(valid);
+        else window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
       });
       return;
     }

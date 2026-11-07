@@ -20,7 +20,7 @@
  }
  function navigate(filter,options){capture();return enter(filter,options);}
  function beforeRender(){
-  if(motionCleanup || latestCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
+  if(motionCleanup || latestCleanup || anchorCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
   if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
  }
  function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;pending=null;serial++;}
@@ -46,10 +46,45 @@
     }
    }
    if(pending!==job||job.serial!==serial||job.key!==key())return;
-   if(el&&windowed)scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
-   else scrollTo({top:pos.y,behavior:'instant'});
-   pending=null;
+   if(el&&windowed){
+    scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
+    pending=null;
+    settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all');
+   }else{
+    scrollTo({top:pos.y,behavior:'instant'});
+    pending=null;
+   }
   }finally{restoring=false;}
+ }
+ // After rebuilding a virtual message window, images can gain height later.
+ // Keep the same message at its prior viewport offset for a bounded period.
+ function settleRestoredMessage(el,offset,valid){
+  anchorCleanup?.();const ticket=serial,tl=document.querySelector('#timeline');
+  let closed=false,queued=0,observer=null,timer=0,frames=0;
+  const cleanup=()=>{
+   if(closed)return;closed=true;cancelAnimationFrame(queued);
+   observer?.disconnect();clearTimeout(timer);tl?.removeEventListener('load',schedule,true);
+   document.fonts?.removeEventListener('loadingdone',schedule);
+   document.fonts?.removeEventListener('loadingerror',schedule);
+   if(anchorCleanup===cleanup)anchorCleanup=null;
+  };
+  const align=()=>{
+   queued=0;
+   if(closed||ticket!==serial||!el.isConnected||!valid()||document.hidden){cleanup();return;}
+   const delta=el.getBoundingClientRect().top-offset;
+   if(Math.abs(delta)>0.5)scrollBy({top:delta,behavior:'instant'});
+   if(++frames<15)schedule();
+  };
+  function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
+  anchorCleanup=cleanup;
+  if(typeof ResizeObserver==='function'&&tl){
+   observer=new ResizeObserver(schedule);observer.observe(tl);
+  }
+  tl?.addEventListener('load',schedule,true);
+  document.fonts?.addEventListener('loadingdone',schedule);
+  document.fonts?.addEventListener('loadingerror',schedule);
+  timer=setTimeout(()=>{align();cleanup();},1450);
+  schedule();
  }
  function settleAnchor(el,inset,valid=()=>true,watchMs=0){
   cancel();watchMs=Math.max(0,Math.min(2000,Number(watchMs)||0));const ticket=serial;let count=0,queued=false,closed=false,observer=null,timer=0;

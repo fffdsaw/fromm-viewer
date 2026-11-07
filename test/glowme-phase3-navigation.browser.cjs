@@ -40,10 +40,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
   await setFilter('all');
  });
  await p.waitForFunction(()=>!state.chatAutoTopPending&&state.infiniteList.length===700);
+ await p.waitForTimeout(160);
  const latest=await p.evaluate(()=>{
-  const end=document.querySelector('#timeline [data-message-id="fresh699"]');
-  return {windowStart:state.chatWindowStart,lastVisible:!!end&&end.getBoundingClientRect().bottom<=innerHeight+2,y:scrollY,max:document.documentElement.scrollHeight-innerHeight,sorted:state.infiniteList.at(-1).messageId};
+  const end=document.querySelector('#timeline [data-message-id="fresh699"]'),rect=end?.getBoundingClientRect();
+  return {windowStart:state.chatWindowStart,lastVisible:!!rect&&rect.bottom<=innerHeight+2,lastTop:rect?.top,lastBottom:rect?.bottom,y:scrollY,max:document.documentElement.scrollHeight-innerHeight,sorted:state.infiniteList.at(-1).messageId,pending:FrommViewState.pending};
  });
+ console.log('latest-first geometry',viewport.width,JSON.stringify(latest));
  assert.ok(latest.windowStart>0,'first conversation visit uses a bounded newest-message window');
  assert.equal(latest.sorted,'fresh699');
  assert.ok(latest.lastVisible,'newest message visible at first entry');

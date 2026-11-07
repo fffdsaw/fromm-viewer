@@ -28,7 +28,7 @@ test('quoted source labels distinguish signed-in fan from other fans without gue
  const c=setup();
  const mine=reply('mine','fan-a'),other=reply('other','fan-b');
  assert.equal(c.quotedSourceLabel(mine,c.getQuotedMessage(mine)), '나');
- assert.equal(c.quotedLabelText(mine,c.getQuotedMessage(mine)), '나 · 내 글에 답장');
+ assert.equal(c.quotedLabelText(mine,c.getQuotedMessage(mine)), '나');
  assert.equal(c.quotedSourceLabel(other,c.getQuotedMessage(other)), '팬');
  const missing=reply('unknown',null,{mentionedMessage:{messageId:'original',content:'원문'}});
  assert.equal(c.quotedSourceLabel(missing,c.getQuotedMessage(missing)), '인용');

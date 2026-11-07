@@ -1,7 +1,7 @@
 /* Ephemeral view positions only: no messages, credentials or account data persisted. */
 (() => {
  'use strict';
- const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null;
+ const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null;
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
  const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>8);
  function capture(){
@@ -11,7 +11,7 @@
   if(positions.size>120)positions.delete(positions.keys().next().value);
  }
  function enter(filter=state.filter,options={}){
-  active=key(filter);serial++;
+  latestCleanup?.();active=key(filter);serial++;
   const saved=positions.get(active);
   // New conversation entry is handled by the latest-message virtual window,
   // not by an automatic restore to scrollY 0. Keep gallery's default top.
@@ -20,10 +20,10 @@
  }
  function navigate(filter,options){capture();return enter(filter,options);}
  function beforeRender(){
-  if(motionCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
+  if(motionCleanup || latestCleanup || (state.filter==='all'&&state.chatAutoTopPending))return;
   if(active===key()&&!pending){capture();pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
  }
- function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;pending=null;serial++;}
+ function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;pending=null;serial++;}
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;
   if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete))return;
@@ -100,10 +100,34 @@
    if(++count<12)requestAnimationFrame(settle);
   };requestAnimationFrame(settle);
  }
+ // Only a first chat entry follows late image/font sizing. User input cancels it.
+ function settleLatest(valid=()=>true){
+  cancel();const ticket=serial,tl=document.querySelector('#timeline');
+  let closed=false,queued=0,observer=null,timer=0;
+  const cleanup=()=>{
+   if(closed)return;closed=true;cancelAnimationFrame(queued);observer?.disconnect();clearTimeout(timer);
+   document.fonts?.removeEventListener('loadingdone',schedule);
+   document.fonts?.removeEventListener('loadingerror',schedule);
+   if(latestCleanup===cleanup)latestCleanup=null;
+  };
+  const align=()=>{
+   queued=0;
+   if(closed||ticket!==serial||!valid()||document.hidden){cleanup();return;}
+   scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});
+   capture();
+  };
+  function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
+  latestCleanup=cleanup;
+  if(typeof ResizeObserver==='function'&&tl){observer=new ResizeObserver(schedule);observer.observe(tl);}
+  document.fonts?.addEventListener('loadingdone',schedule);
+  document.fonts?.addEventListener('loadingerror',schedule);
+  timer=setTimeout(()=>{align();cleanup();},1400);
+  schedule();
+ }
  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;void restore();});}
  new MutationObserver(schedule).observe(document.querySelector('#timeline'),{childList:true,subtree:true});
  // User-directed movement always wins over an asynchronous restore.
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,toStart,clear(){cancel();positions.clear();active='';},get pending(){return !!pending;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get pending(){return !!pending;}});
 })();

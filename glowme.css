@@ -1022,3 +1022,58 @@ html.glowme .reply-content{color:#244c42}
   .glowme-phase3 #dateCalendar .date-calendar-head{margin:4px 0}
   .glowme-phase3 #dateCalendar .date-day{height:32px;min-height:32px}
 }
+
+
+/* Calendar selected/hover/today states use the Glow ME palette. Keep focus
+   and today's ring INSIDE each date cell so last-column corners are not clipped. */
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day{
+  box-sizing:border-box;
+  border-radius:10px;
+  outline-offset:-3px;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day:hover:not(.selected){
+  background:#e0f4e9;
+  color:#214b3d;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected,
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected:hover,
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected:active{
+  background:#a9d9c4;
+  color:#173f32;
+  border:0;
+  box-shadow:inset 0 0 0 1px #79b69d;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day.today{
+  outline:none;
+  box-shadow:inset 0 0 0 2px #428e7a;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day.today.selected{
+  box-shadow:inset 0 0 0 2px #428e7a;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar .date-day:focus-visible{
+  outline:2px solid #116c63;
+  outline-offset:-3px;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).selected,
+.glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).selected:hover{
+  background:#a9d9c4;
+  color:#173f32;
+  box-shadow:inset 0 0 0 1px #79b69d;
+}
+.glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option):focus-visible{
+  outline:2px solid #116c63;
+  outline-offset:-3px;
+}
+@media(forced-colors:active){
+  .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected,
+  .glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).selected{
+    background:Highlight;
+    color:HighlightText;
+    border:1px solid Highlight;
+  }
+  .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.today{
+    outline:2px solid CanvasText;
+    outline-offset:-3px;
+    box-shadow:none;
+  }
+}

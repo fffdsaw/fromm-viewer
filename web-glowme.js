@@ -138,7 +138,7 @@
       const disabled=!selectionCount||busy;if(save.disabled!==disabled)save.disabled=disabled;saveDisabledForCount=!selectionCount&&!busy;
     }else if(saveDisabledForCount&&!busy){save.disabled=false;saveDisabledForCount=false;}
     clearSelection.disabled=active&&selectionCount===0;saveControl.classList.toggle('save-ready',mediaPC.matches&&selectionCount>0);
-    capsuleMotion?.sync(selectionCount>0,capsuleScope(),active);
+    capsuleMotion?.sync(selectionCount>0,capsuleScope(),active&&!window.FrommHeaderGlassTrial);
     const open=active;
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
 

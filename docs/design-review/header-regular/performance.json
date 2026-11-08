@@ -1,0 +1,393 @@
+{
+  "samples": [
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.799999999999955,
+      "maxMs": 16.800000000000182,
+      "mainThreadMs": 124.02199999999999,
+      "scriptMs": 10.773,
+      "layoutMs": 3.3319999999999945,
+      "heapMiB": 2.2307205200195312,
+      "cpuSeconds": {
+        "browser": 0.020000000000000018,
+        "renderer": 0.24,
+        "GPU": 0.33,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "frost",
+        "reason": "scroll",
+        "live": true
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000273,
+      "maxMs": 16.800000000000182,
+      "mainThreadMs": 176.13400000000001,
+      "scriptMs": 29.881,
+      "layoutMs": 2.2040000000000046,
+      "heapMiB": 2.3327598571777344,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.33000000000000007,
+        "GPU": 0.8500000000000001,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "frost",
+        "reason": "scroll",
+        "live": true
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.800000000000182,
+      "maxMs": 50.04200000000037,
+      "mainThreadMs": 142.61100000000005,
+      "scriptMs": 21.254,
+      "layoutMs": 3.3739999999999952,
+      "heapMiB": 2.332569122314453,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.2599999999999998,
+        "GPU": 0.8700000000000001,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.800000000000182,
+      "maxMs": 33.399999999999636,
+      "mainThreadMs": 104.30099999999997,
+      "scriptMs": 9.394,
+      "layoutMs": 2.5130000000000083,
+      "heapMiB": 2.2919998168945312,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.25,
+        "GPU": 0.31000000000000005,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.700000000000728,
+      "mainThreadMs": 105.99300000000001,
+      "scriptMs": 10.238999999999997,
+      "layoutMs": 2.2779999999999885,
+      "heapMiB": 2.2925643920898438,
+      "cpuSeconds": {
+        "browser": 0.020000000000000018,
+        "renderer": 0.20999999999999996,
+        "GPU": 0.2999999999999998,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "frost",
+        "reason": "scroll",
+        "live": true
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.80000000000109,
+      "mainThreadMs": 133.95899999999995,
+      "scriptMs": 19.60500000000001,
+      "layoutMs": 2.880999999999995,
+      "heapMiB": 2.3540878295898438,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.26000000000000023,
+        "GPU": 0.77,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 16.80000000000109,
+      "mainThreadMs": 107.00999999999982,
+      "scriptMs": 6.110000000000005,
+      "layoutMs": 16.116000000000007,
+      "heapMiB": 3.2156753540039062,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.2999999999999998,
+        "GPU": 0.5899999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2184849999999994,
+        "dropped": 0,
+        "frames": 29
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.799999999999272,
+      "mainThreadMs": 109.43700000000001,
+      "scriptMs": 5.674000000000012,
+      "layoutMs": 16.75900000000001,
+      "heapMiB": 3.2208404541015625,
+      "cpuSeconds": {
+        "browser": 0.019999999999999907,
+        "renderer": 0.29000000000000004,
+        "GPU": 0.5199999999999996,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2101679999999995,
+        "dropped": 0,
+        "frames": 29
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.80000000000109,
+      "mainThreadMs": 110.4280000000002,
+      "scriptMs": 7.032000000000011,
+      "layoutMs": 15.248999999999985,
+      "heapMiB": 3.2318649291992188,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.28000000000000025,
+        "GPU": 0.5599999999999996,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2166180000000004,
+        "dropped": 0,
+        "frames": 30
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.80000000000109,
+      "mainThreadMs": 151.09299999999993,
+      "scriptMs": 7.78100000000001,
+      "layoutMs": 22.654000000000007,
+      "heapMiB": 3.2308731079101562,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.35000000000000053,
+        "GPU": 0.5899999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2263159999999997,
+        "dropped": 0,
+        "frames": 30
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 33.19999999999709,
+      "mainThreadMs": 129.26100000000008,
+      "scriptMs": 8.755000000000013,
+      "layoutMs": 17.522999999999982,
+      "heapMiB": 3.228759765625,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.33000000000000007,
+        "GPU": 0.5599999999999996,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2087339999999998,
+        "dropped": 0,
+        "frames": 30
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false
+      },
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.400000000001455,
+      "mainThreadMs": 118.35899999999988,
+      "scriptMs": 15.85700000000001,
+      "layoutMs": 14.68899999999998,
+      "heapMiB": 3.237079620361328,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.29000000000000004,
+        "GPU": 0.5300000000000002,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2070919999999998,
+        "dropped": 0,
+        "frames": 29
+      }
+    }
+  ],
+  "summary": [
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.799999999999955,
+      "mainThreadMs": 105.99300000000001,
+      "heapMiB": 2.2919998168945312,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000728,
+      "mainThreadMs": 142.61100000000005,
+      "heapMiB": 2.3327598571777344,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "medianFrameMs": 16.700000000000728,
+      "p95FrameMs": 16.799999999999272,
+      "mainThreadMs": 129.26100000000008,
+      "heapMiB": 3.228759765625,
+      "videoDropped": 0,
+      "videoFrames": 89
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.700000000000728,
+      "mainThreadMs": 110.4280000000002,
+      "heapMiB": 3.2318649291992188,
+      "videoDropped": 0,
+      "videoFrames": 88
+    }
+  ],
+  "limits": "Linux headless Chromium; synthetic local MP4, standalone layout simulation only. Process CPU time is not hardware GPU utilization; JS heap excludes GPU textures.",
+  "initial": {
+    "firstContentfulPaint": 312,
+    "navigationToReadySample": 1363.2999999970198,
+    "settings": {
+      "profile": "bar",
+      "preset": "balanced",
+      "variant": "regular",
+      "scheme": "light",
+      "radius": 24,
+      "thickness": 11.76,
+      "refraction": 10.2,
+      "blur": 3.0779999999999994,
+      "saturation": 108,
+      "specularIntensity": 0.07,
+      "tint": "rgba(224,241,233,.18)",
+      "usesFallback": false,
+      "quality": "balanced",
+      "width": 1328,
+      "height": 72
+    }
+  },
+  "final": {
+    "mode": "svg",
+    "reason": "",
+    "live": true,
+    "suspended": false,
+    "builds": 4,
+    "disposed": 3,
+    "resolved": {
+      "profile": "bar",
+      "preset": "balanced",
+      "variant": "regular",
+      "scheme": "light",
+      "radius": 24,
+      "thickness": 11.76,
+      "refraction": 10.2,
+      "blur": 3.0779999999999994,
+      "saturation": 108,
+      "specularIntensity": 0.07,
+      "tint": "rgba(224,241,233,.18)",
+      "usesFallback": false,
+      "quality": "balanced",
+      "width": 1328,
+      "height": 60
+    }
+  }
+}

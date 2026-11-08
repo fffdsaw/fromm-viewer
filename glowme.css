@@ -1130,3 +1130,13 @@ html.glowme .reply-content{color:#244c42}
 @media(min-width:851px) and (hover:hover) and (pointer:fine){
  .glowme-phase3.pc-layout{--thumb-download-size:34px;--thumb-download-inset:9px;--thumb-download-glyph:18px}
 }
+
+/* Experimental Regular header. Decorative pixels only; foreground stays unfiltered. */
+.header-glass-surface{display:none}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout .header-glass-surface{display:block;position:absolute;inset:0;border-radius:inherit;z-index:-2;pointer-events:none;visibility:hidden}
+ .glowme-phase3.pc-layout .header-glass-face{position:absolute;inset:0;border-radius:inherit;background:var(--pc-header-bg);pointer-events:none;mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 10px),transparent),linear-gradient(180deg,transparent,#000 8px,#000 calc(100% - 8px),transparent);mask-composite:intersect}
+ .glowme-phase3.pc-layout .header-glass-ready .header-glass-surface{visibility:visible}
+ .glowme-phase3.pc-layout .viewer-header.header-glass-ready::before{z-index:-3;mask-image:var(--header-glass-surround);mask-size:100% 100%;mask-repeat:no-repeat}
+ .glowme-phase3.pc-layout .viewer-header.header-glass-ready::after{background:transparent;border-color:#ffffffa6;box-shadow:inset 0 -1px 0 #79a79255}
+}

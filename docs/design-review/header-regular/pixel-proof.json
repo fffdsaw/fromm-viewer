@@ -1,0 +1,44 @@
+[
+  {
+    "case": "1440",
+    "pixelsChangedOver2": 9845,
+    "size": [
+      1330,
+      122
+    ],
+    "bounds": [
+      1,
+      1,
+      1328,
+      121
+    ]
+  },
+  {
+    "case": "760",
+    "pixelsChangedOver2": 5669,
+    "size": [
+      650,
+      122
+    ],
+    "bounds": [
+      1,
+      1,
+      649,
+      121
+    ]
+  },
+  {
+    "case": "900-pwa",
+    "pixelsChangedOver2": 6507,
+    "size": [
+      790,
+      122
+    ],
+    "bounds": [
+      1,
+      1,
+      789,
+      121
+    ]
+  }
+]

@@ -1,3 +1,6 @@
+const headerTrial=new URLSearchParams(location.search).get('headerGlass')==='regular';
+window.FrommHeaderGlassTrial=headerTrial;
+if(headerTrial)import('./web-header-glass.js?v=regular-rim-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{}); // An unavailable optional adapter leaves the plain mint capsule usable.
@@ -9,7 +12,7 @@ let Engine=null,loading=null,scheduled=false,idleTask=0,retry=0,permitBuild=fals
 for(const type of ['pointerdown','pointermove','keydown','wheel','touchstart'])window.addEventListener(type,()=>{lastInput=performance.now();},{passive:true,capture:true});
 function eligible(){
  const lowPower=(navigator.deviceMemory>0&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2);
- return !!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
+ return !headerTrial&&!!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
 }
 function queueBuild(){
  if(idleTask||retry||loading||!eligible())return;

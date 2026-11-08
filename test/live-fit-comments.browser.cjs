@@ -39,7 +39,7 @@ async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.s
   await bottom();const label=opt.width+(opt.installed?'-pwa':'');await shot(p,label+'-normal');
   await p.locator('[data-live-control="full"]').click();await p.waitForFunction(()=>!!document.fullscreenElement);await fit();await bottom();
   assert.ok(Math.abs((await p.locator('#nativeLiveVideo').boundingBox()).height-opt.height)<1,'fullscreen image reaches viewport height');await shot(p,label+'-fullscreen');
-  await p.locator('.live-player-controls summary').click();const popup=await p.locator('.live-player-controls .mvc-popover').boundingBox();assert.ok(popup.y>=10&&popup.y+popup.height<=opt.height-10,'top settings popup fits');await p.keyboard.press('Escape');await p.evaluate(()=>document.exitFullscreen());
+  await p.locator('.live-player-controls summary').click();await p.locator('.live-player-controls .mvc-popover').waitFor({state:'visible'});const popup=await p.locator('.live-player-controls .mvc-popover').boundingBox();assert.ok(popup.y>=10&&popup.y+popup.height<=opt.height-10,'top settings popup fits');await p.keyboard.press('Escape');await p.evaluate(()=>document.exitFullscreen());
   assert.equal(await p.locator('#nativeLiveMetrics').count(),0);assert.deepEqual(errors,[]);await p.evaluate(()=>stopLivePlayback({clearRoom:true}));await context.close();console.log(label+': full native portrait height, contain, bottom composer/top controls, no diagnostics DOM, one-minute clock skew + ACK/real echo under5s PASS');
  }
  }finally{await b.close();await s.close()}})().catch(e=>{console.error(e);process.exitCode=1});

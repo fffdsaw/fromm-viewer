@@ -17,7 +17,7 @@
     const removers = []; let dead = false, angle = 0, hideTimer, keyboard = false, previouslyLoading = null, volume = 1, muted = false, controlHovered = false, controlActive = false;
     const appliedTracks = new WeakMap();
     const controls = document.createElement('div');controls.className = 'modern-video-controls live-player-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','LIVE 재생 컨트롤');
-    controls.innerHTML = `<div class="mvc-panel"><div class="mvc-row"><div class="mvc-left"><span class="live-control-badge">LIVE</span></div><div class="mvc-right"><span class="live-web-volume" hidden>${button('sound','음소거')}</span><input class="mvc-volume" type="range" min="0" max="1" step=".05" value="1" aria-label="LIVE 음량" hidden><details class="mvc-settings"><summary class="mvc-button" aria-label="LIVE 재생 설정" title="LIVE 재생 설정">${icon(paths.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(paths.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div></div></details><span class="live-pip-slot"></span>${button('full','전체 화면')}</div></div></div>`;
+    controls.innerHTML = `<div class="mvc-panel"><div class="mvc-row"><div class="mvc-right"><span class="live-web-volume" hidden>${button('sound','음소거')}</span><input class="mvc-volume" type="range" min="0" max="1" step=".05" value="1" aria-label="LIVE 음량" hidden><details class="mvc-settings"><summary class="mvc-button" aria-label="LIVE 재생 설정" title="LIVE 재생 설정">${icon(paths.settings)}</summary><div class="mvc-popover"><div class="mvc-section mvc-rotation-row"><div class="mvc-rotation-title">${icon(paths.right)}<span>회전</span><span class="mvc-angle" aria-live="polite">0°</span></div><div class="mvc-rotation-actions">${button('left','왼쪽으로 90도 회전')}${button('right','오른쪽으로 90도 회전')}</div></div></div></details><span class="live-pip-slot"></span>${button('full','전체 화면')}</div></div></div>`;
     let loader = document.getElementById('liveControlsPending') || document.getElementById('liveWaiting');
     if (!loader) { const holder = document.createElement('div'); holder.innerHTML = videoLoadingIndicator(); loader = holder.firstElementChild; }
     loader.id = 'livePlayerLoading';
@@ -37,7 +37,7 @@
       if(dead||!settings.open)return;
       if(popup.showPopover&&popup.hasAttribute('popover')&&!popup.matches(':popover-open'))try{popup.showPopover();}catch{popup.removeAttribute('popover');}
       stage.classList.toggle('mvc-menu-fallback',!popup.hasAttribute('popover'));
-      const r=settings.getBoundingClientRect();popup.style.left=`${Math.max(12,Math.min(innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,r.top-popup.offsetHeight-10)}px`;
+      const r=settings.getBoundingClientRect();popup.style.left=`${Math.max(12,Math.min(innerWidth-popup.offsetWidth-12,r.right-popup.offsetWidth))}px`;popup.style.top=`${Math.max(12,Math.min(innerHeight-popup.offsetHeight-12,r.top-popup.offsetHeight-10>=12?r.top-popup.offsetHeight-10:r.bottom+10))}px`;
     };
     const layout = () => {
       if(dead)return;stage.classList.toggle('live-rotated',angle!==0);

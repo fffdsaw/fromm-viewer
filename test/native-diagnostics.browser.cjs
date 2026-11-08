@@ -22,9 +22,9 @@ for(const width of[1440,390]){
   state.live.room={id:'synthetic-room',title:'합성 진단 테스트',encryptionKey:'x'.repeat(64)};
   resolveAgoraJoinArgs=()=>{};renderLiveView();await connectAgoraLive();
  });
- assert.equal(await page.locator('#nativeLiveMetrics').evaluate(el=>el.open),false);
+ assert.equal(await page.locator('#nativeLiveMetrics').count(),0);
  assert.equal(await page.evaluate(()=>qa.requests.some(r=>r.method==='diagnostics')),false);
- await page.locator('#nativeLiveMetrics summary').click();await page.waitForFunction(()=>FrommLiveMetrics().enabled);
+ await page.evaluate(()=>FrommSetLiveDiagnostics(true));await page.waitForFunction(()=>FrommLiveMetrics().enabled);
  await page.evaluate(()=>{
   const status=value=>window.postMessage({protocol:'fromm-native-v1',direction:'extension',value:{type:'status',value}},location.origin);
   status({stage:'rtc-video-stats',receivedWidth:720,receivedHeight:1280,decoderFps:30,rendererFps:29,receivedBitrateKbps:1500,packetLossPercent:0,rxStreamType:0,nativeAvSyncMs:-12,synthetic:false,encryptionKey:'FORBIDDEN_SECRET',uid:42});
@@ -33,18 +33,18 @@ for(const width of[1440,390]){
   const c=document.createElement('canvas');c.width=720;c.height=1280;const ctx=c.getContext('2d');ctx.fillStyle='#567';ctx.fillRect(0,0,720,1280);
   window.postMessage({protocol:'fromm-native-v1',direction:'extension',value:{type:'frame',sequence:1,jpeg:c.toDataURL('image/jpeg'),synthetic:true,sentAt:performance.timeOrigin+performance.now()}},location.origin);
  });
- await page.waitForFunction(()=>qa.acks.includes(1));await page.waitForFunction(()=>document.querySelector('#nativeLiveMetrics pre').textContent.includes('720'));
- await page.getByRole('button',{name:'진단 JSON 복사'}).click();const copied=JSON.parse(await page.evaluate(()=>navigator.clipboard.readText()));
+ await page.waitForFunction(()=>qa.acks.includes(1));await page.waitForFunction(()=>FrommLiveMetrics().rtc.receivedWidth===720);
+ const copied=await page.evaluate(()=>FrommLiveMetrics());assert.equal(await page.locator('#nativeLiveMetrics').count(),0);
  assert.equal(copied.rtc.receivedWidth,720);assert.equal(copied.sourceResolution,'UNAVAILABLE');assert.equal(copied.pipeline.synthetic,true);assert.ok(copied.sources.transport.includes('estimate'));
  assert.equal(JSON.stringify(copied).includes('FORBIDDEN_SECRET'),false);assert.equal(JSON.stringify(copied).includes('synthetic-device'),false);assert.equal('uid' in copied.rtc,false);
- await page.locator('#nativeLiveMetrics summary').click();await page.waitForFunction(()=>!FrommLiveMetrics().enabled);
+ await page.evaluate(()=>FrommSetLiveDiagnostics(false));await page.waitForFunction(()=>!FrommLiveMetrics().enabled);
  assert.equal(await page.evaluate(()=>FrommLiveMetrics().rtc),'UNAVAILABLE');
- await page.locator('#nativeLiveMetrics summary').click();await page.waitForFunction(()=>FrommLiveMetrics().enabled);
+ await page.evaluate(()=>FrommSetLiveDiagnostics(true));await page.waitForFunction(()=>FrommLiveMetrics().enabled);
  assert.equal(await page.evaluate(()=>FrommLiveMetrics().rtc),'UNAVAILABLE','reopening never reuses old stats');
  await page.evaluate(()=>window.postMessage({protocol:'fromm-native-v1',direction:'extension',value:{type:'status',value:{stage:'native-disconnected'}}},location.origin));
  await page.waitForFunction(()=>!FrommLiveMetrics().enabled);assert.equal(await page.evaluate(()=>FrommLiveMetrics().pipeline),'UNAVAILABLE');
  await page.evaluate(()=>stopLivePlayback());assert.equal(await page.locator('#nativeLiveMetrics').count(),0);assert.deepEqual(errors,[]);
- console.log(`${width}px: opt-in/collapse, 0.5.0 bridge, real 720x1280 JPEG decode/ACK, separate RTC/synthetic stages, JSON clipboard redaction, reconnect/stop PASS`);
+ console.log(`${width}px: console-only opt-in/off, 0.5.0 bridge, real 720x1280 JPEG decode/ACK, separate RTC/synthetic stages, JSON snapshot redaction, reconnect/stop PASS`);
  await context.close();
 }
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

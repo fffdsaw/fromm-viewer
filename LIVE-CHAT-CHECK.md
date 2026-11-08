@@ -1,3 +1,21 @@
+## Current UI and latency guard (2026-11-09)
+
+LIVE comments remain opt-in with explicit sending. The initial millisecond cursor now
+includes two recent minutes, using an exposed service Date when available, otherwise
+PC time. Returned service cursors remain authoritative; bounded retention/deletion,
+auth, one-second cadence and single-POST/GET-echo handling stay in place. This
+addresses a reproduced one-minute-ahead PC clock, not a proven provider delay.
+`FrommChatProbe()` reports bounded clock-relative lead/age estimates and separate
+submission-to-ACK / ACK-to-GET-echo times, never raw cursors or comment data.
+
+The composer sits at the stage bottom; controls move to the top while comments are
+open. Native video uses100% stage height with contain. Receive diagnostics have no
+on-screen UI: use `await FrommSetLiveDiagnostics(true)`, `FrommLiveMetrics()` and
+`await FrommSetLiveDiagnostics(false)`. [Evidence and limitations](docs/design-review/live-fit-comments/README.md).
+
+The sections below record the original read-only implementation and its historical
+runtime evidence; current behavior is described above and in the linked review.
+
 # LIVE comment overlay and read-only checks
 
 The user's authenticated browser is not connected to this chat's browser tools. On 2026-10-16 the user ran the deployed normal-account probe: room state and two message-list GETs succeeded, with provider `fromm`, frozen=false, banned=false and mutePresent=false. The first run was empty; a subsequent run received three message objects in its second sample. This establishes actual authenticated read transport and nonempty comment receipt. Posting remains unverified.

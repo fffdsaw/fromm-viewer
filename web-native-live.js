@@ -5,7 +5,7 @@
   let performanceStarted = 0, performanceFrames = 0;
   let repaintFrame;
   let latestDecodedAt = 0, syntheticFrames = false;
-  let rtc = null, rtcAt = 0, audio = null, audioAt = 0, web = null, webAt = 0, pipeline = null, pipelineAt = 0, overlay, overlayTimer;
+  let rtc = null, rtcAt = 0, audio = null, audioAt = 0, web = null, webAt = 0, pipeline = null, pipelineAt = 0;
   let metricsEnabled = false, metricsSupported = false, metricEpoch = 0;
   const rtcFields = ['receivedWidth', 'receivedHeight', 'decoderFps', 'rendererFps', 'receivedBitrateKbps',
     'frameLossPercent', 'packetLossPercent', 'rxStreamType', 'videoE2eDelayMs', 'nativeAvSyncMs',
@@ -54,50 +54,11 @@
     const connection=nativeSequence;
     metricsEnabled=next;clearMetrics();
     const epoch=metricEpoch;
-    clearInterval(overlayTimer);overlayTimer=undefined;
-    if(next && typeof setInterval==='function') overlayTimer=setInterval(renderMetrics,1000);
-    renderMetrics();
     try { await call('diagnostics',{enabled:next},3000); }
-    catch { if(connection===nativeSequence && epoch===metricEpoch){metricsEnabled=false;clearMetrics();clearInterval(overlayTimer);overlayTimer=undefined;renderMetrics();} }
+    catch { if(connection===nativeSequence && epoch===metricEpoch){metricsEnabled=false;clearMetrics();} }
     return metricsEnabled;
   }
   window.FrommSetLiveDiagnostics = setMetrics;
-  function renderMetrics() {
-    const grid=document.getElementById('liveVideoGrid');
-    if(!grid?.after || !nativeSequence) return;
-    if(!overlay?.isConnected){
-      overlay=document.createElement('details');overlay.id='nativeLiveMetrics';
-      overlay.style.cssText='font-size:12px;color:var(--muted,#aab4c2);padding:8px 12px;max-width:100%;box-sizing:border-box';
-      const summary=document.createElement('summary');summary.textContent='LIVE 진단';summary.style.cursor='pointer';
-      const copy=document.createElement('button');copy.type='button';copy.textContent='진단 JSON 복사';copy.className='btn';
-      copy.addEventListener('click',async()=>{
-        try{await navigator.clipboard.writeText(JSON.stringify(metricsSnapshot(),null,2));copy.textContent='복사됨';}
-        catch{copy.textContent='복사 실패 · 콘솔에서 FrommLiveMetrics() 확인';}
-      });
-      const text=document.createElement('pre');text.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0;font:inherit;max-height:38vh;overflow:auto;scrollbar-width:thin';
-      overlay.append(summary,copy,text);(grid.closest?.('.live-stage') || grid).after(overlay);
-      overlay.addEventListener('toggle',event=>{if(event.currentTarget===overlay)void setMetrics(event.currentTarget.open);});
-    }
-    if(!overlay.open && !metricsEnabled) return;
-    const snapshot=metricsSnapshot();
-    const n=(value,unit='')=>Number.isFinite(value)?`${value}${unit}`:'UNAVAILABLE';
-    const r=snapshot.rtc,a=snapshot.audio,w=snapshot.web,p=snapshot.pipeline;
-    const stream=r?.rxStreamType===0?'High':r?.rxStreamType===1?'Low':'UNAVAILABLE';
-    overlay.lastChild.textContent=(!metricsSupported?'PC LIVE 0.5.0 + 확장 1.0.9 업데이트가 필요합니다.\n':!metricsEnabled?'진단 수집 꺼짐\n':'')+[
-      `수신 해상도: ${n(r?.receivedWidth)} × ${n(r?.receivedHeight)} (원본 송출 해상도: UNAVAILABLE)`,
-      `SDK 디코더/Native 렌더러 FPS: ${n(r?.decoderFps)} / ${n(r?.rendererFps)} · 스트림: ${stream}`,
-      `수신 비트레이트: ${n(r?.receivedBitrateKbps,' Kbps')} · SDK frameLossRate/packetLossRate: ${n(r?.frameLossPercent,'%')} / ${n(r?.packetLossPercent,'%')}`,
-      `캡처+JPEG 평균/최대: ${n(p?.captureEncodeAvgMs,'ms')} / ${n(p?.captureEncodeMaxMs,'ms')} · 캡처 FPS: ${n(p?.captureFps)}`,
-      `Native IPC / 웹 전달 추정 평균: ${n(w?.nativeIpcAvgMs,'ms')} / ${n(w?.transportAvgMs,'ms')}`,
-      `이미지 로드+해독 / decode() 대기 / rAF 대기 평균: ${n(w?.imageLoadDecodeAvgMs,'ms')} / ${n(w?.imageDecodeAvgMs,'ms')} / ${n(w?.repaintWaitAvgMs,'ms')}`,
-      `ACK 왕복 평균/최대: ${n(p?.ackRoundTripAvgMs,'ms')} / ${n(p?.ackRoundTripMaxMs,'ms')} · 타임아웃: ${n(p?.ackTimeouts)}`,
-      `웹 갱신 FPS(rAF): ${n(w?.displayFps)}${w?.synthetic?' · SYNTHETIC 실제 LIVE 아님':''} · 모니터 실제 표시 시각: UNAVAILABLE`,
-      `SDK 음성 수신 상태: ${typeof a?.audioReceiving==='boolean'?(a.audioReceiving?'수신':'중단'):'UNAVAILABLE'} · 음성 비트레이트: ${n(a?.audioBitrateKbps,' Kbps')}`,
-      `SDK 음성 네트워크 / 지터 버퍼 / E2E 지연: ${n(a?.audioNetworkDelayMs,'ms')} / ${n(a?.audioJitterBufferMs,'ms')} / ${n(a?.audioE2eDelayMs,'ms')}`,
-      `SDK 영상 E2E 지연: ${n(r?.videoE2eDelayMs,'ms')} · Native AV 차이: ${n(r?.nativeAvSyncMs,'ms')} (양수: 음성 선행, 웹 전달 지연 제외)`,
-      '수치는 SDK 콜백·단계별 계측값입니다. 전체 출처·평균/최대/표본 수는 진단 JSON에 포함됩니다.'
-    ].join('\n');
-  }
   function call(method, params = {}, timeout = 25000) {
     return new Promise((resolve, reject) => {
       const requestId = ++id;
@@ -139,9 +100,8 @@
       else if (stage.includes('failed') || stage === 'encryption-error' || stage === 'native-disconnected') liveStatusText('PC LIVE ' + stage, true);
       else if (stage === 'left') state.live.client=null;
       if(stage==='native-disconnected' || stage==='left'){
-        nativeSequence=0;metricsEnabled=false;clearInterval(overlayTimer);overlayTimer=undefined;
+        nativeSequence=0;metricsEnabled=false;
         if(repaintFrame!==undefined) cancelAnimationFrame(repaintFrame);repaintFrame=undefined;
-        if(overlay?.lastChild) overlay.lastChild.textContent=JSON.stringify(metricsSnapshot(),null,2);
         state.live.client=null;
       }
     }
@@ -150,7 +110,7 @@
       let image = document.getElementById('nativeLiveVideo');
       if (!image) {
         grid.replaceChildren(); image = document.createElement('img'); image.id = 'nativeLiveVideo'; image.alt = 'LIVE 영상';
-        image.style.cssText = 'display:block;width:100%;height:100%;max-height:75vh;object-fit:contain;background:#000'; grid.append(image);
+        image.style.cssText = 'display:block;width:100%;height:100%;max-height:100%;object-fit:contain;background:#000'; grid.append(image);
       }
       const connection = nativeSequence;
       const measuring=metricsEnabled, epoch=metricEpoch;
@@ -211,8 +171,7 @@
     if (repaintFrame !== undefined) cancelAnimationFrame(repaintFrame);
     repaintFrame = undefined;
     nativeSequence = 0; frames = 0; performanceStarted = 0; performanceFrames = 0;
-    metricsEnabled=false;metricsSupported=false;clearMetrics();overlay?.remove();overlay=undefined;
-    if (overlayTimer !== undefined) clearInterval(overlayTimer); overlayTimer = undefined;
+    metricsEnabled=false;metricsSupported=false;clearMetrics();
     const stopping = originalStop(options);
     if (wasNative) { try { await call('leave', {}, 3000); } catch {} }
     await stopping;
@@ -230,7 +189,6 @@
     const auth = currentAuth();
     const seq = ++state.live.connectionSeq; nativeSequence = seq; frames = 0;
     metricsSupported=hello.receiveMetrics===true && hello.extensionVersion==='1.0.9';
-    renderMetrics();
     state.live.phase = 'native-join';
     state.live.audioBlocked = false;
     liveStatusText('PC LIVE 연결 중...');
@@ -239,7 +197,7 @@
       if (seq !== state.live.connectionSeq || requestSeq !== state.live.requestSeq) return;
       state.live.client = { removeAllListeners() {}, leave: async () => {}, remoteUsers: [] };
       liveStatusText('LIVE 연결 요청됨 · 영상 스트림 대기 중');
-    } catch (error) { nativeSequence=0;metricsEnabled=false;clearMetrics();overlay?.remove();overlay=undefined;throw error; }
+    } catch (error) { nativeSequence=0;metricsEnabled=false;clearMetrics();throw error; }
   };
   // Agora Native playout starts with join; browser autoplay does not govern it.
   resumeLiveAudio = () => nativeSequence ? Promise.resolve() : originalAudio();

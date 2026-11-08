@@ -1,7 +1,7 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=menu-tools-20261108';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=rail-lens-20261108';
 const controls='.card-download,.replay-download,.chat-media-download,.replay-play,#chatToolsBtn,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -15,27 +15,31 @@ function optics(){return enabled()&&!motion.matches&&!document.hidden&&!(navigat
 function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
 function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
 function stopInteractive(item){item.interactive?.destroy();item.interactive=null;}
-function remove(el,item){releaseEngine(item);stopInteractive(item);el.removeAttribute('data-control-optics');if(!item.rail)item.face.remove();el.classList.remove('glass-control','glass-droplet','glass-control-relative','glass-on-image','glass-pressed');faces.delete(el);}
+function remove(el,item){releaseEngine(item);stopInteractive(item);el.removeAttribute('data-control-optics');item.face.remove();el.classList.remove('glass-control','glass-droplet','glass-control-relative','glass-on-image','glass-pressed');faces.delete(el);}
 function create(el,relative){
  const rail=el.matches('.rail-pointer-light'),drop=rail||el.matches(selected);
  if(!rail&&relative)el.classList.add('glass-control-relative');
- const face=rail?el:document.createElement('span');
- if(!rail){face.className='control-glass-surface';face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);}
+ // Keep the translating carrier separate from its lens. The rail's light
+ // field sits behind this surface so even a solid backdrop has light to bend.
+ const face=document.createElement('span');
+ face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
  if(el.matches('.card-download,.replay-download,.chat-media-download,.replay-play'))el.classList.add('glass-on-image');
  const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
 }
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
- const {el,drop}=item;
+ const {el,drop,rail}=item;
  const strength=el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
- const brightness=menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
+ const brightness=rail?Math.min(.06,settings.opacity/100):menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
  return {
   thickness:settings.thickness,refraction:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
-  specular:settings.specular>0,specularIntensity:settings.specular/100
+  // A flat mint backdrop has no detail to refract. Keep the cursor lens's
+  // baked optical rim visible there; the gloss preference adds to this baseline.
+  specular:rail||settings.specular>0,specularIntensity:rail?.32+settings.specular/100:settings.specular/100
  };
 }
 function sync(){

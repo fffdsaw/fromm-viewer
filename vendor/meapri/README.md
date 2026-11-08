@@ -95,3 +95,16 @@ foreground glyphs stay fixed. Motion reduction disables optical motion; playing
 video releases the small lenses as well as panes. Offscreen/removed controls,
 login and pagehide clean up. See `docs/design-review/glass-controls/` for current
 recording, tests and paired VM samples; expanded-pane scroll cost remains.
+
+
+### Cursor optical light field correction
+
+The mint rail is opaque and uniform; a displacement-only hover lens there had
+no visible detail to bend. Its translating carrier now owns one child optical
+face and a small neutral ambient light field behind that face. The unchanged
+`LiquidGlass` native displacement/specular maps refract that local light field;
+foreground labels remain above it. Cursor tint is capped at6%, with32% baseline
+specular intensity plus the existing gloss preference. Other control/artist
+profiles, map budget, fallback and playback/low-power gates stay unchanged.
+See `test/rail-lens-spinner.browser.cjs`: zeroing actual SVG displacement changes
+the normal cursor pixels, without injecting a checkerboard into the backdrop.

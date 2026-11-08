@@ -1222,9 +1222,15 @@ html.glowme .reply-content{color:#244c42}
 }
 @media(prefers-reduced-motion:reduce){.glowme-phase3.pc-layout .rail-pointer-light.rail-light-moving{transition:none}}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3 :is(.card-download,.replay-download)[data-download-phase="queued"] .download-feedback-icon{opacity:.3}
- .glowme-phase3 :is(.card-download,.replay-download)[data-download-phase="queued"]::after{content:"대기";position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:white;pointer-events:none}
-}
-@media(min-width:701px) and (hover:hover) and (pointer:fine){
  html.glowme-phase3.pc-layout .glowme-nav button.active[aria-current="page"]{box-shadow:none!important;border-color:transparent!important;border-radius:999px}
+}
+
+/* The cursor lens needs its SDK specular map on the uniform, opaque rail.
+   A small neutral light field is refracted inside the moving carrier;
+   local pointer coordinates stay correct as it translates. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]{isolation:isolate;background:none;border-color:#ffffff57;box-shadow:0 2px 5px #194b3814}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse 65px 30px at var(--rail-light-x,50%) 0,#fff,transparent 80%),radial-gradient(ellipse 75px 28px at calc(100% - var(--rail-light-x,50%)) 100%,#28574370,transparent 85%),linear-gradient(115deg,transparent 12%,#ffffffb8 22%,transparent 34%,transparent 58%,#3058473d 68%,transparent 80%)}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light>.rail-lens-surface{z-index:0;border-color:transparent;background-image:none;box-shadow:none;transform:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-tracking .rail-pointer-light[data-control-optics="engine"]::after{opacity:.7;background:radial-gradient(80px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#fff,transparent 75%) border-box}
 }

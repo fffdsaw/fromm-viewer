@@ -1,0 +1,889 @@
+{
+  "samples": [
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 1,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 1,
+          "disposed": 1,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000273,
+      "maxMs": 16.799999999999727,
+      "mainThreadMs": 629.8949999999999,
+      "scriptMs": 39.603,
+      "layoutMs": 7.920999999999998,
+      "heapMiB": 2.7582168579101562,
+      "cpuSeconds": {
+        "browser": 0.020000000000000018,
+        "renderer": 0.8699999999999999,
+        "GPU": 0.56,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 2,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 2,
+          "disposed": 1,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 62,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 16.799999999999727,
+      "p95Ms": 33.40000000000009,
+      "maxMs": 50.00599999999986,
+      "mainThreadMs": 454.229,
+      "scriptMs": 36.904999999999994,
+      "layoutMs": 7.82200000000001,
+      "heapMiB": 2.7925682067871094,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.6600000000000001,
+        "GPU": 1.0899999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 2,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 2,
+          "disposed": 1,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 62,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 33.400000000000546,
+      "maxMs": 83.39999999999964,
+      "mainThreadMs": 344.7220000000002,
+      "scriptMs": 27.563000000000002,
+      "layoutMs": 4.621,
+      "heapMiB": 2.8406448364257812,
+      "cpuSeconds": {
+        "browser": 0.019999999999999962,
+        "renderer": 0.5699999999999994,
+        "GPU": 1.1300000000000003,
+        "network.mojom.NetworkService": 0.010000000000000009
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 2,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 2,
+          "disposed": 2,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.800000000000182,
+      "mainThreadMs": 571.0899999999999,
+      "scriptMs": 36.47699999999998,
+      "layoutMs": 6.802000000000002,
+      "heapMiB": 2.9286041259765625,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.8799999999999999,
+        "GPU": 0.6699999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 2,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 2,
+          "disposed": 2,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.30000000000018,
+      "mainThreadMs": 494.1870000000001,
+      "scriptMs": 35.34200000000001,
+      "layoutMs": 6.671999999999997,
+      "heapMiB": 2.924835205078125,
+      "cpuSeconds": {
+        "browser": 0.020000000000000018,
+        "renderer": 0.8399999999999999,
+        "GPU": 0.6199999999999997,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 3,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 3,
+          "disposed": 2,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 62,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 33.400000000001455,
+      "maxMs": 66.60000000000036,
+      "mainThreadMs": 391.54800000000023,
+      "scriptMs": 30.11,
+      "layoutMs": 6.663999999999989,
+      "heapMiB": 2.916900634765625,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.6699999999999999,
+        "GPU": 1.1099999999999994,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 3,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 3,
+          "disposed": 3,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.399999999999636,
+      "mainThreadMs": 414.4889999999997,
+      "scriptMs": 24.299000000000014,
+      "layoutMs": 5.319000000000019,
+      "heapMiB": 2.9185562133789062,
+      "cpuSeconds": {
+        "browser": 0.019999999999999962,
+        "renderer": 0.6900000000000004,
+        "GPU": 0.71,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 4,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 4,
+          "disposed": 3,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 262,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 33.30000000000109,
+      "p95Ms": 50,
+      "maxMs": 66.69999999999891,
+      "mainThreadMs": 261.80100000000016,
+      "scriptMs": 26.24700000000002,
+      "layoutMs": 5.879999999999996,
+      "heapMiB": 2.8671302795410156,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.4499999999999993,
+        "GPU": 1.169999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 4,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 4,
+          "disposed": 3,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 262,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 33.30000000000109,
+      "p95Ms": 50,
+      "maxMs": 50.100000000000364,
+      "mainThreadMs": 267.3690000000004,
+      "scriptMs": 23.57899999999996,
+      "layoutMs": 4.900999999999989,
+      "heapMiB": 2.8734703063964844,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.5199999999999996,
+        "GPU": 1.25,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 4,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 4,
+          "disposed": 4,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 33.29999999999927,
+      "mainThreadMs": 484.49600000000004,
+      "scriptMs": 40.681999999999995,
+      "layoutMs": 7.051000000000002,
+      "heapMiB": 2.9498367309570312,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.8100000000000005,
+        "GPU": 0.7799999999999994,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 4,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 4,
+          "disposed": 4,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.799999999999272,
+      "mainThreadMs": 428.96399999999966,
+      "scriptMs": 26.905000000000012,
+      "layoutMs": 5.791000000000018,
+      "heapMiB": 2.949024200439453,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.6999999999999993,
+        "GPU": 0.6900000000000013,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "expanded",
+      "enabled": true,
+      "adaptive": {
+        "mode": "svg",
+        "reason": "",
+        "live": true,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "svg",
+          "reason": "",
+          "live": true,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 4,
+          "resolved": {
+            "profile": "bar",
+            "preset": "balanced",
+            "variant": "regular",
+            "scheme": "light",
+            "radius": 24,
+            "thickness": 11.76,
+            "refraction": 10.2,
+            "blur": 0,
+            "saturation": 108,
+            "specularIntensity": 0,
+            "tint": "rgba(255,255,255,0.28)",
+            "usesFallback": false,
+            "quality": "balanced",
+            "width": 262,
+            "height": 874
+          }
+        },
+        "liveCount": 2
+      },
+      "medianMs": 33.29999999999927,
+      "p95Ms": 50.10000000000218,
+      "maxMs": 66.60000000000218,
+      "mainThreadMs": 275.6259999999999,
+      "scriptMs": 28.974,
+      "layoutMs": 7.651999999999992,
+      "heapMiB": 2.8756866455078125,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.4900000000000002,
+        "GPU": 1.1600000000000001,
+        "network.mojom.NetworkService": 0
+      },
+      "video": null
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 33.39999999999782,
+      "mainThreadMs": 145.613,
+      "scriptMs": 10.689000000000004,
+      "layoutMs": 15.529000000000014,
+      "heapMiB": 3.54290771484375,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.34999999999999964,
+        "GPU": 0.5099999999999998,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2083689999999994,
+        "dropped": 0,
+        "frames": 29
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "video",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.799999999999272,
+      "mainThreadMs": 201.65699999999998,
+      "scriptMs": 16.72800000000002,
+      "layoutMs": 23.526999999999994,
+      "heapMiB": 3.5557937622070312,
+      "cpuSeconds": {
+        "browser": 0.030000000000000027,
+        "renderer": 0.47000000000000064,
+        "GPU": 0.5199999999999996,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2255959999999995,
+        "dropped": 0,
+        "frames": 29
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "video",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.80000000000291,
+      "maxMs": 16.80000000000291,
+      "mainThreadMs": 139.6620000000004,
+      "scriptMs": 11.95999999999997,
+      "layoutMs": 15.681999999999974,
+      "heapMiB": 3.5684432983398438,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.33999999999999986,
+        "GPU": 0.5999999999999996,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2117049999999998,
+        "dropped": 0,
+        "frames": 30
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.29999999999927,
+      "mainThreadMs": 136.99500000000063,
+      "scriptMs": 6.8589999999999485,
+      "layoutMs": 16.195999999999987,
+      "heapMiB": 3.54974365234375,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.379999999999999,
+        "GPU": 0.5299999999999994,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2128870000000003,
+        "dropped": 0,
+        "frames": 29
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "paused",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "paused",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 16.799999999999272,
+      "mainThreadMs": 182.07500000000022,
+      "scriptMs": 15.19500000000007,
+      "layoutMs": 20.07500000000001,
+      "heapMiB": 3.5491561889648438,
+      "cpuSeconds": {
+        "browser": 0.010000000000000009,
+        "renderer": 0.41000000000000014,
+        "GPU": 0.5299999999999994,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.2376120000000004,
+        "dropped": 0,
+        "frames": 30
+      }
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "adaptive": {
+        "mode": "plain",
+        "reason": "video",
+        "live": false,
+        "suspended": false,
+        "builds": 5,
+        "sidebar": {
+          "mode": "plain",
+          "reason": "video",
+          "live": false,
+          "suspended": false,
+          "builds": 5,
+          "disposed": 5,
+          "resolved": null
+        },
+        "liveCount": 0
+      },
+      "medianMs": 16.700000000000728,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 16.80000000000291,
+      "mainThreadMs": 123.03800000000109,
+      "scriptMs": 11.68199999999997,
+      "layoutMs": 16.593000000000025,
+      "heapMiB": 3.570423126220703,
+      "cpuSeconds": {
+        "browser": 0,
+        "renderer": 0.33999999999999986,
+        "GPU": 0.5899999999999999,
+        "network.mojom.NetworkService": 0
+      },
+      "video": {
+        "advance": 1.214842,
+        "dropped": 0,
+        "frames": 29
+      }
+    }
+  ],
+  "summary": [
+    {
+      "scene": "gallery",
+      "enabled": false,
+      "medianFrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000728,
+      "mainThreadMs": 571.0899999999999,
+      "heapMiB": 2.924835205078125,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "gallery",
+      "enabled": true,
+      "medianFrameMs": 16.700000000000728,
+      "p95FrameMs": 33.400000000000546,
+      "mainThreadMs": 391.54800000000023,
+      "heapMiB": 2.8406448364257812,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "expanded",
+      "enabled": false,
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.700000000000728,
+      "mainThreadMs": 428.96399999999966,
+      "heapMiB": 2.949024200439453,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "expanded",
+      "enabled": true,
+      "medianFrameMs": 33.30000000000109,
+      "p95FrameMs": 50,
+      "mainThreadMs": 267.3690000000004,
+      "heapMiB": 2.8734703063964844,
+      "videoDropped": 0,
+      "videoFrames": 0
+    },
+    {
+      "scene": "video",
+      "enabled": false,
+      "medianFrameMs": 16.700000000000728,
+      "p95FrameMs": 16.799999999999272,
+      "mainThreadMs": 145.613,
+      "heapMiB": 3.5491561889648438,
+      "videoDropped": 0,
+      "videoFrames": 88
+    },
+    {
+      "scene": "video",
+      "enabled": true,
+      "medianFrameMs": 16.700000000000728,
+      "p95FrameMs": 16.700000000000728,
+      "mainThreadMs": 139.6620000000004,
+      "heapMiB": 3.5684432983398438,
+      "videoDropped": 0,
+      "videoFrames": 88
+    }
+  ],
+  "limits": "Linux headless Chromium; synthetic local MP4, standalone layout simulation only. Process CPU time is not hardware GPU utilization; JS heap excludes GPU textures.",
+  "initial": {
+    "firstContentfulPaint": 320,
+    "navigationToReadySample": 1275.7000000029802,
+    "settings": {
+      "profile": "bar",
+      "preset": "balanced",
+      "variant": "regular",
+      "scheme": "light",
+      "radius": 24,
+      "thickness": 11.76,
+      "refraction": 10.2,
+      "blur": 0,
+      "saturation": 108,
+      "specularIntensity": 0,
+      "tint": "rgba(255,255,255,0.28)",
+      "usesFallback": false,
+      "quality": "balanced",
+      "width": 1328,
+      "height": 72
+    }
+  },
+  "final": {
+    "mode": "svg",
+    "reason": "",
+    "live": true,
+    "suspended": false,
+    "builds": 6,
+    "disposed": 5,
+    "resolved": {
+      "profile": "bar",
+      "preset": "balanced",
+      "variant": "regular",
+      "scheme": "light",
+      "radius": 24,
+      "thickness": 11.76,
+      "refraction": 10.2,
+      "blur": 0,
+      "saturation": 108,
+      "specularIntensity": 0,
+      "tint": "rgba(255,255,255,0.28)",
+      "usesFallback": false,
+      "quality": "balanced",
+      "width": 1328,
+      "height": 60
+    },
+    "sidebar": {
+      "mode": "svg",
+      "reason": "",
+      "live": true,
+      "suspended": false,
+      "builds": 6,
+      "disposed": 5,
+      "resolved": {
+        "profile": "bar",
+        "preset": "balanced",
+        "variant": "regular",
+        "scheme": "light",
+        "radius": 24,
+        "thickness": 11.76,
+        "refraction": 10.2,
+        "blur": 0,
+        "saturation": 108,
+        "specularIntensity": 0,
+        "tint": "rgba(255,255,255,0.28)",
+        "usesFallback": false,
+        "quality": "balanced",
+        "width": 62,
+        "height": 874
+      }
+    },
+    "liveCount": 2
+  }
+}

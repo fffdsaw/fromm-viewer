@@ -1,5 +1,6 @@
+import './web-glass-controls.js?v=droplet-20261108';
 import {mountGlassSettings} from './web-glass-settings.js?v=clear-20261108';
-import('./web-header-glass.js?v=clear-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
+import('./web-header-glass.js?v=droplet-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));

@@ -62,8 +62,8 @@ reset, cross-tab sync, invalid-value clamping and unavailable-storage operation.
 Existing save-button activation remains a short separate decoration.
 
 Normal scrolling keeps the actual native SVG filters attached with unchanged
-maps. Sidebar width animation briefly uses basic clear material; the header
-stays active. Playing video releases both SVG owners and uses plain translucent
+maps. Sidebar width animation retains the same live SVG lens from its first frame;
+the SDK updates its map in place after resize. The header stays active. Playing video releases both SVG owners and uses plain translucent
 white without backdrop blur to protect playback. Pause/end restores idle optics.
 Reduced motion/transparency, forced colors, mobile, <=2GB/2-core hints,
 >360,000 CSS pixels per pane, unsupported paths and import/map failures retain
@@ -72,7 +72,7 @@ the appropriate readable fallback. The settings note reports actual fallback.
 Performance trials of moving blur outside SVG or dividing the output into rim
 strips did not yield consistent improvements; neither custom renderer is shipped.
 The implementation retains the public SDK directly, with blur/specular zero by
-default. In the final VM sample, normal scrolling p95 was16.8ms with/without
+default. In the PR82 VM sample, normal scrolling p95 was16.8ms with/without
 panes, expanded-sidebar scrolling increased16.8→33.4ms, and video dropped0/89
 versus0/87. Higher user-selected blur/gloss can cost more. See the raw paired
 samples, not a hardware-FPS guarantee.
@@ -80,3 +80,18 @@ samples, not a hardware-FPS guarantee.
 No WebGL/DOM capture, framework, CDN, new dependency or app-version change.
 Actual OS-installed PWA, Safari/Firefox, physical GPU and real account streams
 remain separate verification from Chromium layout/UA simulations.
+
+
+## PC droplets and Controls
+
+`web-glass-controls.js` reuses the pinned demo Controls' `LiquidGlass`,
+`LiquidInteractive` and core PointerField. The existing single rail hover skin,
+selected menu and selected artist get decorative lenses. Existing routing owns
+selection; the demo's click-owning `LiquidSelection` is deliberately not mounted.
+Visible download/play/search/sort/filter/scroll-top controls share a basic clear
+face; at most eight small SVG owners prioritize hover, keyboard focus and rail
+selection. Only decorative skins tilt/squish/illuminate; real hit boxes and
+foreground glyphs stay fixed. Motion reduction disables optical motion; playing
+video releases the small lenses as well as panes. Offscreen/removed controls,
+login and pagehide clean up. See `docs/design-review/glass-controls/` for current
+recording, tests and paired VM samples; expanded-pane scroll cost remains.

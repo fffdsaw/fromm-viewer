@@ -52,6 +52,7 @@
   },{passive:true});
   nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
   nav.addEventListener('scroll',clearRailLight,{passive:true});
+  new ResizeObserver(()=>{if(lightPoint)scheduleRailLight();}).observe(nav);
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});
   document.addEventListener('keydown',clearRailLight,true);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});
   reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});

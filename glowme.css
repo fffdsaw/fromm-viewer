@@ -1207,3 +1207,24 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet)>.control-glass-surface{transform:none!important;transition:none!important}
  .pc-control-glass.glowme-phase3.pc-layout :is(.control-glass-surface,.rail-pointer-light)::after{display:none}
 }
+
+/* Clear menu droplets; artist rows keep their existing material and markers. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout .glowme-nav button.glass-droplet>.control-glass-surface,
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.glass-droplet{background:linear-gradient(150deg,#ffffff3d,#ffffff08);border-color:#ffffffc7;box-shadow:inset 0 1px 2px #fffc,inset 0 -1px 2px #244c4029,0 2px 5px #194b3814}
+ .pc-control-glass.glowme-phase3.pc-layout .glowme-nav button.glass-droplet{border-color:transparent!important}
+ .glowme-phase3.pc-layout .rail-pointer-light.rail-light-moving{transition:transform 240ms cubic-bezier(.2,.8,.2,1),opacity 120ms ease}
+ .glowme-phase3.pc-layout .glowme-nav button:focus:not(:focus-visible){outline:none}
+ #glassSettingsDialog .settings-install{margin:0 0 20px;padding:0 0 16px;border-bottom:1px solid #d9e9e0}
+ #glassSettingsDialog .settings-install .glowme-install:not([hidden]){display:block;width:100%;margin:0;min-height:40px}
+ #glassSettingsDialog .settings-install p{margin:8px 0 0;color:#567366;font-size:12px;line-height:1.5}
+ #glassSettingsDialog .settings-install:has(.glowme-install:not([hidden])) p{display:none}
+}
+@media(prefers-reduced-motion:reduce){.glowme-phase3.pc-layout .rail-pointer-light.rail-light-moving{transition:none}}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3 :is(.card-download,.replay-download)[data-download-phase="queued"] .download-feedback-icon{opacity:.3}
+ .glowme-phase3 :is(.card-download,.replay-download)[data-download-phase="queued"]::after{content:"대기";position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:white;pointer-events:none}
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ html.glowme-phase3.pc-layout .glowme-nav button.active[aria-current="page"]{box-shadow:none!important;border-color:transparent!important;border-radius:999px}
+}

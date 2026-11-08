@@ -1,7 +1,7 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=mint-controls-20261108';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=menu-tools-20261108';
 const controls='.card-download,.replay-download,.chat-media-download,.replay-play,#chatToolsBtn,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -29,11 +29,12 @@ function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
  const {el,drop}=item;
  const strength=el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
- const brightness=settings.opacity/100;
+ const menu=el.matches('.rail-pointer-light,.glowme-nav button');
+ const brightness=menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
  return {
   thickness:settings.thickness,refraction:settings.refraction*strength,
-  blur:settings.blur,saturation:settings.saturation,
-  tint:drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
+  blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
+  tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
   specular:settings.specular>0,specularIntensity:settings.specular/100
  };
 }

@@ -47,9 +47,10 @@ test('pagination cleanup restarts pending thumbnails even when the terminal page
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
  for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
+ const lf=s=>s.replace(/\r\n/g,'\n');
  const slice=(s,start,end)=>s.slice(s.indexOf(start),s.indexOf(end));
  for(const file of ['web-native-live.js','web-live-pip.js','web-live-chat-probe.js']){
-  const current=fs.readFileSync(path.join(root,file),'utf8'),previous=execFileSync('git',['show',`b78f2b1:${file}`],{cwd:root,encoding:'utf8'});
+  const current=lf(fs.readFileSync(path.join(root,file),'utf8')),previous=lf(execFileSync('git',['show',`b78f2b1:${file}`],{cwd:root,encoding:'utf8'}));
   if(file==='web-native-live.js'){
    assert.equal(slice(current,'  function call(','  window.addEventListener'),slice(previous,'  function call(','  window.addEventListener'),'Native bridge requests preserved');
    const frame=s=>slice(s,"    if (value?.type === 'frame'",'  const originalEncryption').replace('max-height:75vh','max-height:100%');
@@ -59,7 +60,7 @@ test('startup changes preserve LIVE/auth/download and automatic pagination sourc
  }
 
  // LIVE controls may evolve visually; lifecycle wrappers/readiness wiring stay fixed.
- const controls=fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8'),oldControls=execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'});
+ const controls=lf(fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8')),oldControls=lf(execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'}));
  const marker='  const originalRender=renderLiveView';assert.ok(controls.includes(marker)&&oldControls.includes(marker));
  assert.equal(controls.slice(controls.indexOf(marker)),oldControls.slice(oldControls.indexOf(marker)),'LIVE lifecycle and receive readiness wiring');
  assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/'],{cwd:root,encoding:'utf8'}),'');

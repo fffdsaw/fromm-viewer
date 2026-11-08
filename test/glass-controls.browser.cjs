@@ -60,6 +60,7 @@ async function press(p,selector){
     const original=fetchMediaBlob;
     fetchMediaBlob=async (media,progress)=>{
      fetchMediaBlob=original;
+     await new Promise(resolve=>{window.measureDownloadFixture=resolve;});
      progress(.46);
      await new Promise(resolve=>{window.finishDownloadFixture=resolve;});
      return original(media,progress);
@@ -69,8 +70,26 @@ async function press(p,selector){
   const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');
   if(opt.width===1440){
    const button=p.locator('.card-download').first();
-   await button.locator('.download-feedback-ring').waitFor({state:'visible'});
-   assert.equal(await button.evaluate(e=>e.style.getPropertyValue('--download-remaining')),'54');
+   const ring=button.locator('.download-feedback-ring');
+   await ring.waitFor({state:'visible'});
+   const samples=await ring.evaluate(async e=>{
+    const animation=e.getAnimations()[0];
+    animation.pause();
+    await animation.ready;
+    const center=new DOMPoint(e.cx.baseVal.value,e.cy.baseVal.value);
+    const expected=center.matrixTransform(e.ownerSVGElement.getScreenCTM());
+    const start=new DOMPoint(center.x+e.r.baseVal.value,center.y);
+    return [0,250,500,750].map(time=>{
+     animation.currentTime=time;
+     const matrix=e.getScreenCTM();
+     const observed=center.matrixTransform(matrix),tip=start.matrixTransform(matrix);
+     return {offset:Math.hypot(observed.x-expected.x,observed.y-expected.y),x:tip.x-expected.x,y:tip.y-expected.y};
+    });
+   });
+   assert.ok(samples.every(sample=>sample.offset<.1),'the loading arc stays centered at every quarter turn');
+   assert.ok(samples[0].y<0&&samples[1].x>0&&samples[2].y>0&&samples[3].x<0,'the arc rotates clockwise from 12 o’clock');
+   await p.evaluate(()=>window.measureDownloadFixture());
+   await p.waitForFunction(()=>document.querySelector('.card-download').style.getPropertyValue('--download-remaining')==='54');
    assert.equal(await button.locator('.control-glass-surface').isVisible(),true);
    assert.equal(await p.locator('.card-download-panel').count(),0);
    await p.evaluate(()=>window.finishDownloadFixture());

@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
 (async()=>{const server=await serve(),browser=await chromium.launch();try{
- const fixtureBrowser={newContext:async options=>{const context=await browser.newContext(options);await context.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return context;}};
+ const fixtureBrowser={newContext:async options=>{const context=await browser.newContext(options);await context.addInitScript(()=>{localStorage.setItem('fromm.pcGlass.v1',JSON.stringify({enabled:false}));Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return context;}};
  const {page,context,errors}=await open(fixtureBrowser,server.url,{login:true});
  assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').filter(e=>e.name.includes('/vendor/meapri/')).length),0,'login does not download the unused optics engine');
  let release;const held=new Promise(r=>release=r);await page.route('**/vendor/meapri/liquid-glass.js',async route=>{await held;await route.continue();});

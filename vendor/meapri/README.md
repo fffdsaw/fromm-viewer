@@ -5,9 +5,9 @@ Revision: 1613f8311dbc31bc2331afcfe51a143c56dd6308 (version 0.1.0), MIT ©2026 M
 
 Built without source changes using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution.
 
-The Viewer uses `LiquidGlass`, regular/control, balanced (single SVG displacement pass, no chromatic aberration), with no `backdropSource`. It therefore does not request the optional WebGL renderer or clone private conversations/video. The original small-control adapter adds no per-frame animation; the PC save-button adapter below animates a short activation highlight and releases its lens when settled. The upstream pointer field is shared and event-driven.
+The PC panes use `LiquidGlass`, Regular/bar, balanced (single SVG displacement pass, no chromatic aberration), with no `backdropSource`. Existing save/legacy controls use Regular/control. It therefore does not request the optional WebGL renderer or clone private conversations/video. The original small-control adapter adds no per-frame animation; the PC save-button adapter below animates a short activation highlight and releases its lens when settled. The upstream pointer field is shared and event-driven.
 
-Safari/Firefox use the engine's CSS fallback; this does not claim arbitrary backdrop refraction on those browsers. Reduced motion/transparency, forced colors and hidden tabs disable enhancement. The default UI confines filters to small visible controls; the opt-in header experiment below adds one bounded bar surface. App HTML/scripts/vendor code remain network-loaded: the existing service worker caches only its explicit public image allowlist, never authenticated data or media.
+Safari/Firefox use the engine's CSS fallback; this does not claim arbitrary backdrop refraction on those browsers. Reduced motion/transparency, forced colors and hidden tabs disable enhancement. The default PC UI uses two bounded clear panes; the legacy mint option and mobile retain their existing control path. The pane/settings implementation is described below. App HTML/scripts/vendor code remain network-loaded: the existing service worker caches only its explicit public image allowlist, never authenticated data or media.
 
 Apple reference: https://developer.apple.com/videos/play/wwdc2025/219/ — navigation layer separate from content; legibility, restrained motion and adaptive materials. No Apple artwork is copied.
 
@@ -38,44 +38,45 @@ reduced transparency and forced colors use the readable static mint capsule.
 There is no WebGL backdrop capture, private DOM cloning, CDN or framework addition.
 The existing MIT LICENSE and bundled revision are unchanged.
 
-## Opt-in Regular header experiment
+## PC clear panes and settings
 
-`?headerGlass=regular` enables `web-header-glass.js` for PC (the existing 701px +
-hover/fine-pointer branch). The default URL stays the comparison baseline.
-The unchanged vendored `LiquidGlass` public constructor is used with
-`variant: regular`, `profile: bar`, `preset/quality: balanced`, no chromatic
-aberration, mapPixelRatio1, no backdropSource/refractBackground, and edges:false.
-Requested thickness28/refraction34 resolve through the engine's bar
-profile to thickness11.76/refraction10.2 at a 1328×120 surface. Tint is
-rgba(224,241,233,.18), saturation108. Gaussian blur is zero and the extra
-specular map/blend is disabled; the existing CSS rim highlight remains.
-These are measured rendered settings, not copied preview percentages.
+PC now defaults to clear header/sidebar material; no experiment URL is required.
+`web-glass-settings.js` exposes the pinned demo's public `LiquidGlass.update()`
+controls for refraction, thickness, blur, saturation and specularIntensity, plus
+neutral white tint opacity. Sidebar-bottom Settings provides enable/reset and
+validated device-local persistence (`fromm.pcGlass.v1`), without account data.
+The existing 701px + hover/fine-pointer branch limits this UI to PC.
 
-Only an aria-hidden, inert, pointer-transparent decorative sibling receives the
-SVG backdrop filter. A feathered opaque mint center protects text and controls;
-a numeric vector surround mask keeps scrolled content out of the top gap and
-outside the rounded bar. There is no text filter/transform, private DOM clone,
-video capture, WebGL scene, CDN or new framework. Other optical decorations are
-static in this trial to avoid nested lenses; their normal-URL behavior remains.
+Two public LiquidGlass instances use Regular/bar, balanced, light, no chromatic
+aberration or backdropSource. Defaults: thickness28/refraction34/blur0,
+saturation108, white tint28%, specular:false. A1328×120 header resolves to
+thickness11.76/refraction10.2. No vendor JS/worker/license changes.
+The opaque mint face is removed; backdrop colors pass through the entire pane.
+Only decorative siblings are filtered, leaving text/control parents unfiltered.
+The opaque top/rounded-corner surround is retained.
 
-One idle-created instance follows header size changes. Login, hidden pages,
-mobile, <=2GB/2-core hints, reduced motion/transparency, forced colors, areas over
-360,000 CSS pixels, unsupported engine paths and import/map failures use the
-existing readable mint header. The SVG mode is enabled only after the actual
-url(#lg-filter) is installed. QA's read-only snapshot and setPaused A/B switch
-are on `FrommHeaderGlass`; the flag is not persisted. This is a header experiment,
-not final site-wide engine deployment. MIT LICENSE and bundled source unchanged.
+Option updates are throttled to160ms (with change-event flush), including a
+continuous drag. Specular enable/disable waits for the engine's valid new filter
+ID. Count-only changes do not reinitialize panes. Preferences support reload,
+reset, cross-tab sync, invalid-value clamping and unavailable-storage operation.
+Existing save-button activation remains a short separate decoration.
 
-Live scrolling: the initial experiment's scroll-to-frost switch has been removed
-because the lens must remain visible while its backdrop moves. The same native
-SVG stays attached throughout scrolling, with no scroll listener, per-frame
-adapter updates or map regeneration. Zero blur and no specular blend reduce the
-filter graph's work while preserving its original displacement strength. This
-does not guarantee 60fps on every GPU; paired performance samples are recorded.
-Only sidebar expansion/collapse still calls the public suspend()/resume() API
-with a cheap 3px CSS frost while the header changes size. A resize while
-suspended rebuilds once after settling.
-Playing video releases the header engine and uses the original opaque mint bar;
-pause/end permits an idle rebuild. No per-frame map regeneration or video hooks
-that change playback are used. The API snapshot distinguishes svg/frost/plain
-and the reason. See paired raw performance evidence in the experiment review.
+Normal scrolling keeps the actual native SVG filters attached with unchanged
+maps. Sidebar width animation briefly uses basic clear material; the header
+stays active. Playing video releases both SVG owners and uses plain translucent
+white without backdrop blur to protect playback. Pause/end restores idle optics.
+Reduced motion/transparency, forced colors, mobile, <=2GB/2-core hints,
+>360,000 CSS pixels per pane, unsupported paths and import/map failures retain
+the appropriate readable fallback. The settings note reports actual fallback.
+
+Performance trials of moving blur outside SVG or dividing the output into rim
+strips did not yield consistent improvements; neither custom renderer is shipped.
+The implementation retains the public SDK directly, with blur/specular zero by
+default. In the final VM sample, normal scrolling p95 was16.8ms with/without
+panes, expanded-sidebar scrolling increased16.8→33.4ms, and video dropped0/89
+versus0/87. Higher user-selected blur/gloss can cost more. See the raw paired
+samples, not a hardware-FPS guarantee.
+
+No WebGL/DOM capture, framework, CDN, new dependency or app-version change.
+Actual OS-installed PWA, Safari/Firefox, physical GPU and real account streams
+remain separate verification from Chromium layout/UA simulations.

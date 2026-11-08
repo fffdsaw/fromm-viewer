@@ -55,13 +55,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    await page.locator(cards).last().scrollIntoViewIfNeeded();
    const anchor=await page.locator(cards).last().evaluate(el=>{window.pagingAnchor=el;return el.getBoundingClientRect().top;});
    await page.waitForFunction(()=>{const img=window.pagingAnchor.querySelector('img');return img.complete&&img.naturalWidth>0;});
-   await page.locator(cards).first().evaluate(el=>{window.firstCard=el;el.dataset.preserved='yes';el.classList.add('replay-downloading');el.querySelector('.replay-download-progress > span').style.width='37%';});
+   await page.locator(cards).first().evaluate(el=>{window.firstCard=el;el.dataset.preserved='yes';setDownloadButtonFeedback(el.querySelector('.replay-download'),'active',.37);});
    await page.waitForFunction(cards=>document.querySelectorAll(cards).length===47,cards);
    assert.equal(await page.evaluate(()=>window.firstCard.isConnected&&window.firstCard.dataset.preserved==='yes'),true,'existing card DOM retained');
    const delta=await page.evaluate(top=>window.pagingAnchor.getBoundingClientRect().top-top,anchor);
    assert.ok(Math.abs(delta)<2,`append retains reading position: ${delta}`);
    const ids=await page.locator(cards).evaluateAll(els=>els.map(e=>e.dataset.replayPost||e.dataset.channelVideoCard));
-   assert.equal(await page.evaluate(()=>window.firstCard.classList.contains('replay-downloading')&&window.firstCard.querySelector('.replay-download-progress > span').style.width==='37%'),true,'download progress survives page append');
+   assert.equal(await page.evaluate(()=>{
+     const button=window.firstCard.querySelector('.replay-download');
+     return button.dataset.downloadPhase==='active'&&button.style.getPropertyValue('--download-remaining')==='63';
+    }),true,'download ring progress survives page append');
    assert.equal(new Set(ids).size,47);assert.deepEqual(ids,Array.from({length:47},(_,i)=>`a-${i}`));
    assert.equal(await page.locator(more).count(),0,'end-of-list removes retry button');
    assert.equal(await page.locator('.video-list-sentinel').count(),0,'end-of-list removes observer target');

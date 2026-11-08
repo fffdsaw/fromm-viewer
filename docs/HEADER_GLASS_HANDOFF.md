@@ -17,3 +17,5 @@
 - 로그/원본 PNG/성능 JSON: `/workspace/scratch/fromm-header-glass/`. 다음: 최종 성능·짧은 영상 → 검사/스크린샷 검토 → 체크포인트·Draft PR → 필수 CI → 기존 승인 범위에서 opt-in URL 배포·공개 검증. 실제 OS 설치형 PWA/Windows/Safari/Firefox 실기/실계정 스트림 미검증.
 
 - 최종 단독 성능: gallery p95 16.8→16.7ms, mainThread106.0→142.6ms/1.2초, JSheap2.292→2.333MiB; 영상 p9516.8→16.7ms, dropped0/89→0/88, heap3.229→3.232MiB. 전후/단계별PNG·실제 녹화 MP4·픽셀 증거·초기 악화/최종 성능 원시는 docs/design-review/header-regular/에 보존. Node285 PASS/0FAIL/기존SKIP1. 영상 내보내기 CLI의 ss 표기 오류를0.3으로 교정해 원래 녹화를 재사용했고 제품 변경은 없었다. 현재 알려진 검사 실패 없음.
+
+- 구현 체크포인트 cefb797 원격 저장 완료. CI의2코어 힌트에서 광학 경로가 우연히 제외되지 않도록 테스트에만8GB/8코어 힌트를 고정했고 저사양 사례는 명시적2GB로 별도 검사했다. 동일 힌트 기능 검사 PASS. Draft PR https://github.com/fffdsaw/fromm-viewer/pull/80, 마지막 완료 체크포인트 `5c6be1647b45fcb38e078d3bea113d4213dd51c5`. 최종 HEAD는 git log로 확인; 필수 CI 진행 후 최종 복구/병합/배포/실험 URL/공개 검증은 PR 설명 완료 기록에 남긴다.

@@ -1,0 +1,23 @@
+{
+  "1440": {
+    "differentPixelsOver2": 10568,
+    "size": [
+      1330,
+      122
+    ]
+  },
+  "760": {
+    "differentPixelsOver2": 5201,
+    "size": [
+      650,
+      122
+    ]
+  },
+  "900-pwa": {
+    "differentPixelsOver2": 6378,
+    "size": [
+      790,
+      122
+    ]
+  }
+}

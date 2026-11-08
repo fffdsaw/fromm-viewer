@@ -3,7 +3,7 @@ export function createHeaderGlass(){
  const header=document.querySelector('.viewer-header'),pc=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)'),motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
  const surface=document.createElement('div');surface.className='header-glass-surface';surface.setAttribute('aria-hidden','true');surface.inert=true;
  const face=document.createElement('div');face.className='header-glass-face';surface.append(face);header.prepend(surface);
- let glass=null,module=null,loading=false,blocked='',paused=false,ticket=0,idle=0,retry=0,readyTimer=0,styleObserver=null,lastInput=performance.now(),builds=0,disposed=0,mode='plain',reason='pending',lastSize='',suspended=false,frostSize='',scrollUntil=0,busyTimer=0;
+ let glass=null,module=null,loading=false,blocked='',paused=false,ticket=0,idle=0,retry=0,readyTimer=0,styleObserver=null,lastInput=performance.now(),builds=0,disposed=0,mode='plain',reason='pending',lastSize='',suspended=false,frostSize='',busyTimer=0;
  function mark(){if(header.dataset.headerGlass!==mode)header.dataset.headerGlass=mode;if(header.dataset.headerGlassReason!==reason)header.dataset.headerGlassReason=reason;}
  function release(){
   ticket++;clearTimeout(readyTimer);readyTimer=0;styleObserver?.disconnect();styleObserver=null;
@@ -28,11 +28,11 @@ export function createHeaderGlass(){
  }
  function busy(){
   if([...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended))return 'video';
-  if(performance.now()<scrollUntil)return 'scroll';if(window.FrommGlowME?.railAnimating)return 'rail';return '';
+  if(window.FrommGlowME?.railAnimating)return 'rail';return '';
  }
  function wake(work){
   clearTimeout(busyTimer);busyTimer=0;
-  if(work==='scroll'||work==='rail')busyTimer=setTimeout(()=>{busyTimer=0;sync();},Math.max(240,scrollUntil-performance.now()+20));
+  if(work==='rail')busyTimer=setTimeout(()=>{busyTimer=0;sync();},240);
  }
  function sync(){
   const stop=unavailable();
@@ -59,7 +59,9 @@ export function createHeaderGlass(){
    try{
     module||=await import('./vendor/meapri/liquid-glass.js');
     if(generation!==ticket||unavailable()||busy())return;
-    glass=new module.LiquidGlass(surface,{variant:'regular',profile:'bar',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,thickness:28,refraction:34,blur:4.5,saturation:108,chromaticAberration:0,mapPixelRatio:1,tint:'rgba(224,241,233,.18)',specular:true,specularIntensity:.14,edges:false,respectReducedMotion:true});builds++;
+    // Keep real refraction attached while the backdrop scrolls. Zero Gaussian
+    // blur and no extra specular-map blend reduce work without hiding the lens.
+    glass=new module.LiquidGlass(surface,{variant:'regular',profile:'bar',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,thickness:28,refraction:34,blur:0,saturation:108,chromaticAberration:0,mapPixelRatio:1,tint:'rgba(224,241,233,.18)',specular:false,edges:false,respectReducedMotion:true});builds++;
     if(glass.resolved.usesFallback){blocked='unsupported';release();return;}
     const ready=()=>{
      if(!glass||generation!==ticket)return;
@@ -78,7 +80,7 @@ export function createHeaderGlass(){
  new MutationObserver(sync).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  for(const query of [pc,motion,opaque,contrast])query.addEventListener('change',sync);
  for(const type of ['pointerdown','pointermove','keydown','wheel','touchstart'])window.addEventListener(type,()=>{lastInput=performance.now();if(!glass)sync();},{passive:true,capture:true});
- window.addEventListener('scroll',()=>{scrollUntil=performance.now()+180;sync();},{passive:true});
+ // The browser updates the live backdrop during scroll; no JS pause/rebuild.
  for(const type of ['play','playing','pause','ended','emptied','loadeddata'])document.addEventListener(type,sync,true);
  new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});
  document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);

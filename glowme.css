@@ -1131,12 +1131,48 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout{--thumb-download-size:34px;--thumb-download-inset:9px;--thumb-download-glyph:18px}
 }
 
-/* Experimental Regular header. Decorative pixels only; foreground stays unfiltered. */
-.header-glass-surface{display:none}
+/* Clear PC panes. The page keeps its mint; only decorative planes are filtered. */
+.header-glass-surface,.sidebar-glass-surface,.glass-settings-footer,#glassSettingsDialog{display:none}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout .header-glass-surface{display:block;position:absolute;inset:0;border-radius:inherit;z-index:-2;pointer-events:none;visibility:hidden}
- .glowme-phase3.pc-layout .header-glass-face{position:absolute;inset:0;border-radius:inherit;background:var(--pc-header-bg);pointer-events:none;mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 10px),transparent),linear-gradient(180deg,transparent,#000 8px,#000 calc(100% - 8px),transparent);mask-composite:intersect}
- .glowme-phase3.pc-layout .header-glass-ready .header-glass-surface{visibility:visible}
- .glowme-phase3.pc-layout .viewer-header.header-glass-ready::before{z-index:-3;mask-image:var(--header-glass-surround);mask-size:100% 100%;mask-repeat:no-repeat}
- .glowme-phase3.pc-layout .viewer-header.header-glass-ready::after{background:transparent;border-color:#ffffffa6;box-shadow:inset 0 -1px 0 #79a79255}
+ .glowme-phase3.pc-layout .glass-pane-on>.header-glass-surface,.glowme-phase3.pc-layout .glass-pane-on>.sidebar-glass-surface{display:block;position:absolute;inset:0;border-radius:inherit;z-index:-2;pointer-events:none;background:var(--pc-glass-tint,#fff3);backdrop-filter:blur(var(--pc-glass-blur,0px)) saturate(var(--pc-glass-saturation,1.08));-webkit-backdrop-filter:blur(var(--pc-glass-blur,0px)) saturate(var(--pc-glass-saturation,1.08))}
+ .glowme-phase3.pc-layout .viewer-header.glass-pane-on::before{z-index:-3;mask-image:var(--header-glass-surround);mask-size:100% 100%;mask-repeat:no-repeat}
+ .glowme-phase3.pc-layout .viewer-header.glass-pane-on::after{background:transparent;border-color:#ffffffc4;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5}
+ .glowme-phase3.pc-layout #sidebar.glass-pane-on{isolation:isolate;background:none;border-color:#ffffffb3;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5,0 3px 12px #244b3a0a}
+ .glowme-phase3.pc-layout #sidebar.glass-pane-on>.sidebar-glass-surface{z-index:-1}
+ .glowme-phase3.pc-layout .glass-pane-on[data-header-glass-reason="video"]>:is(.header-glass-surface,.sidebar-glass-surface){backdrop-filter:none;-webkit-backdrop-filter:none}
+ .glowme-phase3.pc-layout .glass-pane-on :is(.artist-copy,.pc-mode-heading,.pc-list-info,.rail-artist-name,.glowme-nav button){text-shadow:0 1px 3px #ffffffe6,0 0 7px #ffffffb3}
+ .glowme-phase3.pc-layout .glass-settings-footer{display:block;flex:none;height:40px;min-height:40px}
+ .glowme-phase3.pc-layout .glass-settings-trigger{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:40px;padding:6px;border:1px solid #bdd8ce;border-radius:14px;background:#ffffff38;box-shadow:inset 0 1px 0 #ffffff94;color:#244c40;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
+ .glowme-phase3.pc-layout .glass-settings-trigger svg{width:23px;height:23px;flex:none}
+ .glowme-phase3.pc-layout .glass-settings-trigger span{display:none}
+ .glowme-phase3.pc-layout.sidebar-open .glass-settings-trigger span{display:inline}
+ .glowme-phase3.pc-layout .glass-settings-trigger:hover{background:#fff9}
+ .glowme-phase3.pc-layout .glass-settings-trigger:focus-visible{outline:2px solid #117d69;outline-offset:-3px}
+ #glassSettingsDialog[open]{display:flex;flex-direction:column;position:fixed;inset:76px 20px auto auto;margin:0;width:min(360px,calc(100vw - 40px));max-width:none;max-height:calc(100dvh - 96px);padding:0;border:1px solid #cadfd5;border-radius:24px;background:#f9fcfa;color:#193e34;box-shadow:0 12px 36px #163f3024;overflow:hidden;font-family:inherit}
+ #glassSettingsDialog::backdrop{background:#123d2c09}
+ .glass-settings-head{display:flex;flex:none;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 22px 16px;border-bottom:1px solid #d9e9e0}
+ .glass-settings-head h2{margin:0;font-size:21px;line-height:1.35}
+ .glass-settings-head p{margin:5px 0 0;color:#57776a;font-size:13px}
+ .glass-settings-close{display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:1px solid #cee3d8;border-radius:50%;background:#fff;color:#365e4f;font:inherit;font-size:26px;line-height:1;cursor:pointer}
+ .glass-settings-body{padding:18px 22px;overflow-y:auto;min-height:0}
+ .glass-settings-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;font-size:14px;font-weight:650}
+ .glass-settings-switch input{width:20px;height:20px;margin:0;accent-color:#117d69;cursor:pointer}
+ #glassSettingsDialog fieldset{display:grid;gap:16px;margin:0;padding:0;border:0;min-width:0}
+ #glassSettingsDialog fieldset:disabled{opacity:.45}
+ .glass-setting{display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:5px;font-size:13px;align-items:center}
+ .glass-setting output{text-align:right;color:#426b5c;font-variant-numeric:tabular-nums}
+ .glass-setting input{grid-column:1 / -1;width:100%;min-width:0;height:26px;margin:0;accent-color:#117d69;cursor:pointer}
+ .glass-settings-note{margin:18px 0 0;font-size:12px;color:#567366;line-height:1.6}
+ .glass-settings-actions{display:flex;justify-content:space-between;gap:12px;flex:none;padding:14px 22px 18px;border-top:1px solid #d9e9e0;background:#f9fcfa}
+ #glassSettingsDialog .btn{min-height:36px;padding:7px 14px;border-radius:18px;font-size:13px;cursor:pointer}
+ #glassSettingsDialog .glass-settings-done{background:#117d69;color:#fff;border-color:#117d69}
+ #glassSettingsDialog :is(button,input):focus-visible{outline:2px solid #117d69;outline-offset:2px}
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine) and (max-height:640px){
+ .glowme-phase3.pc-layout .glowme-nav{max-height:calc(100dvh - 240px);min-height:0;overflow-y:auto;scrollbar-width:none;flex-shrink:1}
+ #glassSettingsDialog[open]{top:16px;max-height:calc(100dvh - 32px)}
+}
+@media(forced-colors:active){
+ #glassSettingsDialog[open]{background:Canvas;color:CanvasText;border-color:CanvasText}
+ #glassSettingsDialog :is(.glass-settings-actions,.glass-settings-head){background:Canvas;border-color:CanvasText}
 }

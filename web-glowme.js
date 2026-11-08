@@ -36,7 +36,7 @@
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
     const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect();
-    railLight.style.transform=`translate3d(${box.left-parent.left}px,${box.top-parent.top}px,0)`;
+    railLight.style.transform=`translate3d(${box.left-parent.left+nav.scrollLeft}px,${box.top-parent.top+nav.scrollTop}px,0)`;
     railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
     railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-box.left))}px`);
     railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-box.top))}px`);
@@ -51,6 +51,7 @@
     lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
   },{passive:true});
   nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
+  nav.addEventListener('scroll',clearRailLight,{passive:true});
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});
   document.addEventListener('keydown',clearRailLight,true);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});
   reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});
@@ -138,7 +139,7 @@
       const disabled=!selectionCount||busy;if(save.disabled!==disabled)save.disabled=disabled;saveDisabledForCount=!selectionCount&&!busy;
     }else if(saveDisabledForCount&&!busy){save.disabled=false;saveDisabledForCount=false;}
     clearSelection.disabled=active&&selectionCount===0;saveControl.classList.toggle('save-ready',mediaPC.matches&&selectionCount>0);
-    capsuleMotion?.sync(selectionCount>0,capsuleScope(),active&&!window.FrommHeaderGlassTrial);
+    capsuleMotion?.sync(selectionCount>0,capsuleScope(),active);
     const open=active;
     selectionSlot.classList.toggle('expanded',open);selectionSlot.inert=!open;selectionSlot.setAttribute('aria-hidden',String(!open));
 
@@ -184,6 +185,7 @@
   sidebar.addEventListener('focusout',()=>{closeTimer=setTimeout(()=>{if(!sidebar.contains(document.activeElement)&&!sidebar.matches(':hover'))setRailOpen(false);},160);});
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;
+    if(document.querySelector('#glassSettingsDialog[open]'))return;
     event.frommSelectionOverlay=!!document.fullscreenElement||!!event.target.closest('input,textarea,select,[contenteditable="true"]')||!!document.querySelector('#imageLightbox.open,#saveResultModal.open,dialog[open],details[open]');
     if(panel.contains(document.activeElement)&&panel.classList.contains('open')&&!isSearchPinned()){
       event.stopImmediatePropagation();closeChatToolsPanel();search.focus({preventScroll:true});

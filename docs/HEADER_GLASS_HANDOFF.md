@@ -1,5 +1,10 @@
 # 상단바 Meapri Regular 실험
 
+현재 작업은 [PC 투명 유리/설정](CLEAR_GLASS_SETTINGS_HANDOFF.md)으로 확장됐습니다.
+사용자 요청으로 기본 PC에서 헤더/사이드바 모두 투명한 중성 유리를 사용하고,
+사이드바 하단 설정에서 조절/저장/복원합니다. 아래 opt-in/중앙 불투명 민트 정책은
+과거 기록이며 현재 구현으로 복원하면 안 됩니다.
+
 현재 수정: `fix/header-live-scroll-glass`, 기준 main `83e810c`(PR80).
 사용자가 스크롤 중 효과가 사라지는 방식을 거절하여 scroll→frost 처리를 제거했습니다.
 실제 굴절은 스크롤 내내 연결하고 맵을 재사용합니다. blur=0/specular=false로

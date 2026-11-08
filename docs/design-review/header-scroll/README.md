@@ -1,5 +1,8 @@
 # 스크롤 중에도 상단바 굴절 유지
 
+이 문서는 PR81의 기록입니다. 현재 PC 기본 투명 유리/사이드바/설정은
+[후속 변경](../clear-glass-settings/README.md)에서 설명합니다.
+
 PR80에서 스크롤 시 SVG를 꺼서 frost로 바꾸던 동작을 제거했습니다.
 PC 실험 주소는 그대로 `?headerGlass=regular`이며 기본 주소/모바일 디자인은 유지합니다.
 같은 Meapri Regular/bar 굴절 맵을 스크롤 내내 연결합니다. 스크롤 이벤트에서

@@ -51,10 +51,52 @@ async function press(p,selector){
   for(const key of ['media','image','sound','channel','all','video'])await p.locator(`[data-glow-nav="${key}"]`).hover();assert.equal(await p.locator('.rail-pointer-light').count(),1,'one cursor drop, no trails');
   await p.mouse.move(opt.width-30,350);await p.waitForFunction(()=>!document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));await p.evaluate(()=>FrommGlowME.setRailOpen(false));await p.waitForTimeout(240);
   await press(p,'.card-download');
-  const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');assert.ok(fs.statSync(await(await dl).path()).size>0,'original download returns fixture bytes');
+  if(opt.width===1440){
+   await p.evaluate(()=>{
+    const original=fetchMediaBlob;
+    fetchMediaBlob=async (media,progress)=>{
+     fetchMediaBlob=original;
+     progress(.46);
+     await new Promise(resolve=>{window.finishDownloadFixture=resolve;});
+     return original(media,progress);
+    };
+   });
+  }
+  const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');
+  if(opt.width===1440){
+   const button=p.locator('.card-download').first();
+   await button.locator('.download-feedback-ring').waitFor({state:'visible'});
+   assert.equal(await button.evaluate(e=>e.style.getPropertyValue('--download-remaining')),'54');
+   assert.equal(await button.locator('.control-glass-surface').isVisible(),true);
+   assert.equal(await p.locator('.card-download-panel').count(),0);
+   await p.evaluate(()=>window.finishDownloadFixture());
+  }
+  assert.ok(fs.statSync(await(await dl).path()).size>0,'original download returns fixture bytes');
+  assert.equal(await p.locator('.card-download .download-feedback-check').first().isVisible(),false,'browser handoff is not a confirmed save');
   await p.evaluate(()=>scrollTo(0,900));await p.locator('#scrollTopBtn.visible').waitFor();await lens(p,'#scrollTopBtn');await press(p,'#scrollTopBtn');await p.locator('#scrollTopBtn').click();await p.waitForFunction(()=>scrollY<2);
   for(const mode of ['replay','channel']){
    await collection(p,mode);await lens(p,'.replay-download');await lens(p,'.replay-play');const box=await p.locator('.replay-card').first().evaluate(e=>[e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight]);
+   if(opt.width===1440){
+    await p.evaluate(()=>{
+     const original={createReplayDownloadSink,fetchReplayPostDetail,fetchChannelVideoDetail,downloadReplayStream};
+     createReplayDownloadSink=async()=>({writable:{}});
+     fetchReplayPostDetail=fetchChannelVideoDetail=async()=>({_streamUrl:'https://fixture.test/stream.m3u8'});
+     downloadReplayStream=async (_url,_sink,progress)=>{
+      progress(2,4);
+      await new Promise(resolve=>{window.finishDownloadFixture=resolve;});
+      progress(4,4);
+      ({createReplayDownloadSink,fetchReplayPostDetail,fetchChannelVideoDetail,downloadReplayStream}=original);
+     };
+    });
+    const button=p.locator('.replay-download').first();
+    await button.click();
+    await button.locator('.download-feedback-ring').waitFor({state:'visible'});
+    assert.match(await button.getAttribute('title'),/50%/);
+    assert.equal(await p.locator('.replay-download-progress').count(),0);
+    await p.evaluate(()=>window.finishDownloadFixture());
+    await button.locator('.download-feedback-check').waitFor({state:'visible'});
+    assert.equal(await button.locator('.download-feedback-ring').isVisible(),false);
+   }
    await press(p,'.replay-play');await p.evaluate(()=>scrollTo(0,0));await p.locator('#selectAllBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.deepEqual(await p.locator('.replay-card').first().evaluate(e=>[e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight]),box,'selection does not move the list');
    await shot(p,label+'-'+mode);await p.evaluate(()=>scrollTo(0,650));await p.waitForTimeout(220);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);assert.ok(await p.locator('.replay-download.glass-control').count()>0);await shot(p,label+'-'+mode+'-scrolled');
   }

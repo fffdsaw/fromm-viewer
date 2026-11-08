@@ -53,25 +53,25 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.ok(panelBox.x>=railBox.x+railBox.width,'search preserves access to collapsed rail');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}
  const pc=await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'));
- const opticalTarget=pc?'.header-glass-surface':'.glowme-nav [aria-current="page"]';
+ const opticalTarget=pc?'.glowme-nav [aria-current="page"] .control-glass-surface':'.glowme-nav [aria-current="page"]';
  await page.waitForFunction(selector=>{const e=document.querySelector(selector);return e&&getComputedStyle(e).backdropFilter.includes('url(')},opticalTarget);
  const optics=await page.locator(opticalTarget).first().evaluate(e=>getComputedStyle(e).backdropFilter);assert.match(optics,/url\(/,'Chromium uses actual SVG refraction');
- await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.FrommGlass.count),0);
+ await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>FrommGlass.count===0&&FrommControlGlass.snapshot.live===0);
  assert.deepEqual(errors,[]);results.push({viewport,geometry,optics:'SVG',keyboard:'pass'});await context.close();
  }
  for(const options of [{lowPower:true},{userAgent:'Mozilla/5.0 Version/18.0 Safari/605.1.15'}]){
   const {page,context,errors}=await open(browser,server.url,options);await page.waitForTimeout(150);
-  const filter=await page.locator('.glowme-nav [aria-current="page"]').evaluate(e=>getComputedStyle(e).backdropFilter);
+  const filter=await page.locator('.glowme-nav [aria-current="page"]').evaluate(e=>getComputedStyle(e.querySelector('.control-glass-surface')||e).backdropFilter);
   assert.ok(!filter.includes('url('),'low-power and Safari-UA fallback avoids SVG backdrop');
-  if(options.lowPower)assert.equal(await page.evaluate(()=>FrommGlass.count),0);
+  if(options.lowPower)assert.equal(await page.evaluate(()=>FrommGlass.count+FrommControlGlass.snapshot.live),0);
   assert.deepEqual(errors,[]);await context.close();
  }
  const accessibility=await open(browser,server.url);
  const cdp=await accessibility.context.newCDPSession(accessibility.page);
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
- await accessibility.page.waitForFunction(()=>matchMedia('(prefers-reduced-transparency: reduce)').matches&&FrommGlass.count===0);
+ await accessibility.page.waitForFunction(()=>matchMedia('(prefers-reduced-transparency: reduce)').matches&&FrommGlass.count===0&&FrommControlGlass.snapshot.live===0);
  await accessibility.page.emulateMedia({forcedColors:'active'});await accessibility.page.waitForTimeout(80);
- assert.equal(await accessibility.page.evaluate(()=>FrommGlass.count),0);
+ assert.equal(await accessibility.page.evaluate(()=>FrommGlass.count+FrommControlGlass.snapshot.live),0);
  await accessibility.context.close();
  console.log(JSON.stringify(results));
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

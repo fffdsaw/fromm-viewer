@@ -8,8 +8,8 @@ const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
 const LIMIT=8; // Rail drops + interacted control first; others keep the same basic face.
 let module=null,loading=null,importFailed=false,frame=0,active=null,pressed=null,builds=0,disposed=0,leaving=false;
-const visibility=new IntersectionObserver(entries=>{for(const e of entries)e.isIntersecting?inView.add(e.target):inView.delete(e.target);schedule();});
-function enabled(){return glassPC.matches&&glassPreferences.value.enabled&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
+const visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const e of entries)e.isIntersecting?inView.add(e.target):inView.delete(e.target);schedule();}):null;
+function enabled(){return !!visibility&&glassPC.matches&&glassPreferences.value.enabled&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
 function optics(){return enabled()&&!motion.matches&&!document.hidden&&!(navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2)&&![...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended);}
 function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
 function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
@@ -28,7 +28,7 @@ function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function sync(){
  frame=0;
  const look=!!enabled();if(document.documentElement.classList.contains('pc-control-glass')!==look)document.documentElement.classList.toggle('pc-control-glass',look);
- if(!look){for(const [el,item]of faces)remove(el,item);visibility.disconnect();watched.clear();inView.clear();return;}
+ if(!look){for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();return;}
  const all=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];
  for(const el of all)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
  for(const el of watched)if(!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
@@ -98,7 +98,7 @@ glassPreferences.subscribe(schedule);
 for(const type of ['playing','pause','ended','emptied'])document.addEventListener(type,schedule,true);
 document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});
-window.addEventListener('pagehide',()=>{leaving=true;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility.disconnect();watched.clear();inView.clear();});
+window.addEventListener('pagehide',()=>{leaving=true;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();});
 window.addEventListener('pageshow',()=>{leaving=false;schedule();});
 window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,builds,disposed,limit:LIMIT};}});
 schedule();

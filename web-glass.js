@@ -1,6 +1,5 @@
-import './web-glass-controls.js?v=droplet-20261108';
-import {mountGlassSettings} from './web-glass-settings.js?v=clear-20261108';
-import('./web-header-glass.js?v=droplet-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
+import './web-glass-controls.js?v=mint-controls-20261108';
+import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=mint-controls-20261108';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
@@ -13,7 +12,7 @@ let Engine=null,loading=null,scheduled=false,idleTask=0,retry=0,permitBuild=fals
 for(const type of ['pointerdown','pointermove','keydown','wheel','touchstart'])window.addEventListener(type,()=>{lastInput=performance.now();},{passive:true,capture:true});
 function eligible(){
  const lowPower=(navigator.deviceMemory>0&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2);
- return !window.FrommHeaderGlassTrial&&!!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
+ return !glassPC.matches&&!!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
 }
 function queueBuild(){
  if(idleTask||retry||loading||!eligible())return;
@@ -55,7 +54,7 @@ function sync(){
  });
 }
 window.FrommGlass=Object.freeze({sync,get count(){return instances.size;}});
-for(const query of [reduce,opaque,contrast])query.addEventListener('change',sync);
+for(const query of [glassPC,reduce,opaque,contrast])query.addEventListener('change',sync);
 document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);
 window.addEventListener('pagehide',()=>{
  for(const [el,glass] of instances){glass.destroy();el.classList.remove('meapri-control');}instances.clear();

@@ -1,32 +1,57 @@
 'use strict';
-const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const{serve,open}=require('./helpers/phase3-fixture.cjs');const out=process.env.HEADER_GLASS_DIR;
-async function shot(p,name,clip){const data=await p.screenshot({...(clip?{clip}:{}),animations:'disabled'});if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,name+'.png'),data);}return data;}
-const ready=p=>p.waitForFunction(()=>window.FrommHeaderGlass?.snapshot.mode==='svg'&&FrommHeaderGlass.snapshot.sidebar.mode==='svg',null,{timeout:6500});
-const boxes=p=>p.evaluate(()=>Object.fromEntries(['.viewer-header','.topbar','#artistTitle','#logoutMiniBtn','#sortBtn','.media-card'].map(s=>[s,document.querySelector(s)?.getBoundingClientRect().toJSON()])));
-(async()=>{const s=await serve(),b=await chromium.launch(process.env.PUBLIC_SHA?{proxy:{server:process.env.HTTPS_PROXY||process.env.HTTP_PROXY}}:{}),url=process.env.PUBLIC_SHA?'https://fffdsaw.github.io/fromm-viewer/?headerGlass=regular&deployment='+process.env.PUBLIC_SHA:s.url+'?headerGlass=regular';const enhancedBrowser={newContext:async options=>{const c=await b.newContext(options);await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{configurable:true,get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{configurable:true,get:()=>8});});return c}};try{
- for(const opt of [{width:1440,height:900},{width:760,height:900},{width:900,height:900,installed:true}]){
- const{page:p,context,errors}=await open(enhancedBrowser,url,opt);await p.evaluate(()=>setFilter('image'));await ready(p);const label=opt.width+(opt.installed?'-pwa':'');
- const state=await p.evaluate(()=>FrommHeaderGlass.snapshot);assert.equal(state.resolved.variant,'regular');assert.equal(state.resolved.profile,'bar');assert.equal(state.resolved.quality,'balanced');assert.equal(state.resolved.usesFallback,false);assert.equal(state.live,true);assert.equal(await p.evaluate(()=>FrommGlass.count),0);
- assert.equal(await p.locator('.viewer-header').evaluate(e=>getComputedStyle(e).backdropFilter),'none','actual content parent remains unfiltered');assert.equal(await p.locator('.header-glass-surface').evaluate(e=>getComputedStyle(e).pointerEvents),'none');
- const original=await boxes(p);await p.evaluate(()=>FrommHeaderGlass.setPaused(true));await shot(p,label+'-off');assert.equal(await p.evaluate(()=>FrommHeaderGlass.snapshot.live),false);assert.deepEqual(await boxes(p),original);await p.evaluate(()=>FrommHeaderGlass.setPaused(false));await ready(p);assert.deepEqual(await boxes(p),original);await shot(p,label+'-on');
- await p.locator('.media-card').first().click({position:{x:30,y:30}});await p.waitForFunction(()=>state.selected.size===1);assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);assert.equal(await p.locator('.capsule-save-control').evaluate(e=>getComputedStyle(e).backdropFilter),'none','existing activation lens remains separate from real controls');await p.locator('#clearSelectionBtn').click();
- const scrollBuilds=await p.evaluate(()=>FrommHeaderGlass.snapshot.builds);await p.evaluate(()=>{window.headerScrollSamples=[];window.headerScrollDone=false;const start=performance.now();function frame(t){scrollTo({top:400+160*Math.sin((t-start)/160),behavior:'instant'});const s=FrommHeaderGlass.snapshot;headerScrollSamples.push({mode:s.mode,suspended:s.suspended,builds:s.builds,filter:getComputedStyle(document.querySelector('.header-glass-surface')).backdropFilter});if(t-start<900)requestAnimationFrame(frame);else headerScrollDone=true;}requestAnimationFrame(frame);});await p.waitForFunction(()=>headerScrollSamples.length>=3);await shot(p,label+'-scroll');assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);await p.waitForFunction(()=>headerScrollDone);const scrolling=await p.evaluate(()=>headerScrollSamples);assert.ok(scrolling.length>10);assert.ok(scrolling.every(s=>s.mode==='svg'&&!s.suspended&&s.builds===scrollBuilds&&s.filter.includes('url(')),'real SVG stays attached on every scrolling frame without rebuilding maps');await ready(p);assert.equal(await p.evaluate(()=>FrommHeaderGlass.snapshot.builds),scrollBuilds);await shot(p,label+'-scroll-restored');assert.equal(await p.locator('.header-glass-surface').count(),1);
- for(const mode of ['replay','channel','live','all'])await p.evaluate(mode=>{state.filter=mode==='all'?'all':'live';state.live.centerMode=mode;render();},mode);await p.evaluate(()=>setFilter('image'));await ready(p);assert.equal(await p.evaluate(()=>FrommHeaderGlass.snapshot.builds-FrommHeaderGlass.snapshot.disposed),1,'one live header after tab/height changes');
- // A static diagnostic scene behind the real bar. No production backdrop capture.
- await p.evaluate(()=>{scrollTo(0,0);const h=document.querySelector('.viewer-header').getBoundingClientRect(),d=document.createElement('div');d.id='optical-fixture';Object.assign(d.style,{position:'fixed',left:(h.left-20)+'px',top:'0',width:(h.width+40)+'px',height:(h.height+40)+'px',zIndex:'2',background:'repeating-conic-gradient(#173f32 0% 25%,#edf8f0 0% 50%) 0 0 / 16px 16px'});document.querySelector('.main').prepend(d);});
- await ready(p);await p.waitForTimeout(100);const r=await p.locator('.viewer-header').boundingBox(),center={x:r.x+40,y:r.y+22,width:r.width-80,height:r.height-44};
- const clip={x:r.x,y:r.y,width:r.width,height:r.height};const full=await shot(p,label+'-refraction',clip),sharp=await shot(p,label+'-center',center);
- const scales=await p.locator('svg filter feDisplacementMap').evaluateAll(es=>es.map(e=>{const v=e.getAttribute('scale');e.setAttribute('scale','0');return v}));assert.ok(scales.some(v=>Number(v)>0));await p.waitForTimeout(80);const zero=await shot(p,label+'-zero-refraction',clip),centerZero=await p.screenshot({clip:center});assert.equal(await p.locator('#artistTitle').evaluate(e=>getComputedStyle(e).filter),'none','foreground glyphs are outside the filtered decoration');assert.equal(full.equals(zero),false,'actual SVG displacement changes backdrop pixels, not only CSS tint');
- await p.locator('#optical-fixture').evaluate(e=>e.style.background='#b63e60');await p.waitForTimeout(80);assert.equal((await p.screenshot({clip:center})).equals(centerZero),false,'backdrop colors remain visible through the header center');
- await p.locator('svg filter feDisplacementMap').evaluateAll((es,scales)=>es.forEach((e,i)=>e.setAttribute('scale',scales[i])),scales);await p.locator('#optical-fixture').evaluate(e=>e.remove());
- for(let i=0;i<4;i++){await p.evaluate(()=>FrommHeaderGlass.setPaused(true));assert.equal(await p.locator('.header-glass-surface,.sidebar-glass-surface').evaluateAll(es=>es.filter(e=>/url\(/.test(e.style.backdropFilter)).length),0);await p.evaluate(()=>FrommHeaderGlass.setPaused(false));await ready(p);}assert.equal(await p.locator('.header-glass-surface,.sidebar-glass-surface').evaluateAll(es=>es.filter(e=>{const id=/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)?.[1];return id&&document.getElementById(id);}).length),2);assert.equal(await p.evaluate(()=>FrommHeaderGlass.snapshot.builds-FrommHeaderGlass.snapshot.disposed),1);
- await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommHeaderGlass.snapshot.reason==='motion'&&!FrommHeaderGlass.snapshot.live);await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
- await p.evaluate(()=>showLoginGate());await p.waitForFunction(()=>FrommHeaderGlass.snapshot.reason==='login'&&!FrommHeaderGlass.snapshot.live);await p.evaluate(()=>hideLoginGate());await ready(p);assert.deepEqual(errors,[]);await context.close();console.log(label+': Regular/bar SVG pixel refraction, sharp foreground, stable controls, sticky, single-instance cleanup and reduced/login fallback PASS');
- }
- const cases=[['mobile',{width:390,height:844},null],['low-power',{lowPower:true},null],['unsupported',{userAgent:'Mozilla/5.0 Firefox/130.0'},null],['forced-colors',{},'forcedColors'],['transparency',{},'transparency'],['import-error',{},'import'],['map-timeout',{},'map']];
- for(const[name,opt,kind]of cases){const{page:p,context,errors}=await open(enhancedBrowser,url,{...opt,login:!!kind});if(kind==='forcedColors')await p.emulateMedia({forcedColors:'active'});if(kind==='transparency'){const c=await context.newCDPSession(p);await c.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});}if(kind==='import')await p.route('**/vendor/meapri/liquid-glass.js',r=>r.abort());if(kind==='map')await p.route('**/vendor/meapri/liquid-glass.js',r=>r.fulfill({contentType:'text/javascript',body:'export class LiquidGlass{resolved={usesFallback:false};destroy(){}}'}));if(kind)await require('./helpers/phase3-fixture.cjs').seed(p);
- const reason={mobile:'mobile','low-power':'low-power',unsupported:'unsupported','forced-colors':'contrast',transparency:'transparency','import-error':'unavailable','map-timeout':'map-timeout'}[name];await p.waitForFunction(reason=>window.FrommHeaderGlass?.snapshot.reason===reason&&!FrommHeaderGlass.snapshot.live,reason,{timeout:6500});assert.equal(await p.locator('.header-glass-ready').count(),0);await p.evaluate(()=>setFilter('image'));await p.locator('.media-card').first().click({position:{x:20,y:20}});await p.waitForFunction(()=>state.selected.size===1);assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(name+': readable plain header, zero live engine, selection works PASS');}
- const delayed=await open(enhancedBrowser,url,{login:true});let release;const held=new Promise(r=>release=r);await delayed.page.route('**/vendor/meapri/liquid-glass.js',async r=>{await held;await r.continue()});await require('./helpers/phase3-fixture.cjs').seed(delayed.page);await delayed.page.waitForFunction(()=>FrommHeaderGlass?.snapshot.mode==='pending');await delayed.page.emulateMedia({reducedMotion:'reduce'});release();await delayed.page.waitForFunction(()=>FrommHeaderGlass.snapshot.reason==='motion'&&!FrommHeaderGlass.snapshot.live);await delayed.page.emulateMedia({reducedMotion:'no-preference'});await ready(delayed.page);assert.equal(await delayed.page.locator('.header-glass-surface').count(),1);assert.deepEqual(delayed.errors,[]);await delayed.context.close();console.log('late engine import respects changed preferences and resumes without stale instances PASS');
- const plain=await open(enhancedBrowser,url);await plain.page.evaluate(()=>FrommGlassSettings.set({enabled:false},{immediate:true}));await plain.page.waitForFunction(()=>FrommHeaderGlass.snapshot.liveCount===0);assert.equal(await plain.page.locator('.glass-pane-on').count(),0);assert.equal(await plain.page.evaluate(()=>window.FrommHeaderGlassTrial),false);await plain.context.close();
-}finally{await b.close();await s.close()}})().catch(e=>{console.error(e);process.exitCode=1});
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {serve,open}=require('./helpers/phase3-fixture.cjs');
+const out=process.env.HEADER_GLASS_DIR,mint='rgb(224, 241, 233)';
+function paneStyles(page){
+ return page.evaluate(()=>{
+  const header=document.querySelector('.viewer-header'),sidebar=document.querySelector('#sidebar');
+  return [getComputedStyle(header,'::after').backgroundColor,getComputedStyle(sidebar).backgroundColor,getComputedStyle(header).backdropFilter,getComputedStyle(sidebar).backdropFilter];
+ });
+}
+(async()=>{
+ const server=await serve(),browser=await chromium.launch(process.env.PUBLIC_SHA?{proxy:{server:process.env.HTTPS_PROXY||process.env.HTTP_PROXY}}:{});
+ const url=process.env.PUBLIC_SHA?'https://fffdsaw.github.io/fromm-viewer/?deployment='+process.env.PUBLIC_SHA:server.url;
+ try{
+  for(const viewport of [{width:1440,height:900},{width:760,height:900},{width:900,height:900,installed:true}]){
+   const {page,context,errors}=await open(browser,url,viewport);
+   await page.evaluate(()=>setFilter('image'));
+   const header=page.locator('.viewer-header'),sidebar=page.locator('#sidebar');
+   assert.deepEqual(await paneStyles(page),[mint,mint,'none','none']);
+   assert.equal(await page.locator('.header-glass-surface,.sidebar-glass-surface').count(),0);
+   await page.evaluate(()=>scrollTo(0,400));
+   assert.equal((await header.boundingBox()).y,12);
+   await page.evaluate(()=>FrommGlowME.setRailOpen(true));
+   await page.waitForFunction(()=>!FrommGlowME.railAnimating);
+   assert.deepEqual(await paneStyles(page),[mint,mint,'none','none']);
+
+   // Change an actual backdrop beneath the panels. The captured pane pixels stay the same.
+   await page.evaluate(()=>{
+    const backdrop=document.createElement('div');
+    backdrop.id='pane-fixture';
+    Object.assign(backdrop.style,{position:'fixed',inset:'0',zIndex:'300',pointerEvents:'none',background:'#aa174e'});
+    document.body.append(backdrop);
+   });
+   for(const pane of [header,sidebar]){
+    const box=await pane.boundingBox();
+    const clip={x:Math.ceil(box.x+16),y:Math.ceil(box.y+14),width:40,height:12};
+    const first=await page.screenshot({clip,animations:'disabled'});
+    await page.locator('#pane-fixture').evaluate(e=>e.style.background='#00682c');
+    const second=await page.screenshot({clip,animations:'disabled'});
+    assert.ok(first.equals(second),'background changes cannot bleed through a solid pane');
+    await page.locator('#pane-fixture').evaluate(e=>e.style.background='#aa174e');
+   }
+   await page.locator('#pane-fixture').evaluate(e=>e.remove());
+   await page.evaluate(()=>{FrommGlassSettings.set({enabled:false},{immediate:true});FrommGlowME.setRailOpen(false);});
+   assert.deepEqual(await paneStyles(page),[mint,mint,'none','none']);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.deepEqual(await paneStyles(page),[mint,mint,'none','none']);
+   if(out){
+    fs.mkdirSync(out,{recursive:true});
+    await page.screenshot({path:path.join(out,'mint-'+viewport.width+(viewport.installed?'-pwa':'')+'.png')});
+   }
+   assert.deepEqual(errors,[]);
+   await context.close();
+   console.log(viewport.width+': opaque mint through scrolling, expansion, backdrop changes and preference toggles PASS');
+  }
+ }finally{await browser.close();await server.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

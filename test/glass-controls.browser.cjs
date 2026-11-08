@@ -3,7 +3,7 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=re
 const{serve,open}=require('./helpers/phase3-fixture.cjs');
 const out=process.env.GLASS_CONTROLS_DIR;
 async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,name+'.png')});}}
-const ready=p=>p.waitForFunction(()=>window.FrommHeaderGlass?.snapshot.sidebar.mode==='svg'&&window.FrommControlGlass?.snapshot.live>2);
+const ready=p=>p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2);
 async function lens(p,selector){
  const target=p.locator(selector).first();await target.waitFor({state:'visible'});
  if(!['.rail-pointer-light','.glowme-nav button.active','.room.active'].includes(selector))await target.hover();
@@ -39,13 +39,17 @@ async function press(p,selector){
    const clip=await p.locator('.card-download').first().boundingBox(),optical=await p.screenshot({clip});await map.evaluate(e=>e.setAttribute('scale','0'));await p.waitForTimeout(80);assert.equal(optical.equals(await p.screenshot({clip})),false,'actual control displacement changes backdrop pixels');await map.evaluate((e,s)=>e.setAttribute('scale',s),scale);
    await p.locator('.media-card .thumb').first().evaluate((e,old)=>{e.style.background=old.background;e.querySelector('img').style.opacity=old.opacity},restore);
   }
-  // Every animation frame, including the first, keeps the same live sidebar map.
+  // The rail retains a solid fill from the first frame of width motion.
   const expanding=await p.evaluate(async()=>{
-   const before=FrommHeaderGlass.snapshot.sidebar,rows=[];FrommGlowME.setRailOpen(true);const start=performance.now();
-   await new Promise(resolve=>{function frame(t){const s=FrommHeaderGlass.snapshot.sidebar;rows.push({mode:s.mode,suspended:s.suspended,builds:s.builds,filter:getComputedStyle(document.querySelector('.sidebar-glass-surface')).backdropFilter,width:document.querySelector('#sidebar').clientWidth});t-start<400?requestAnimationFrame(frame):resolve()}requestAnimationFrame(frame)});
-   return{before,rows,after:FrommHeaderGlass.snapshot.sidebar};
+   const sidebar=document.querySelector('#sidebar'),rows=[];
+   FrommGlowME.setRailOpen(true);
+   const start=performance.now();
+   await new Promise(resolve=>{function frame(t){const css=getComputedStyle(sidebar);rows.push({fill:css.backgroundColor,filter:css.backdropFilter,width:sidebar.clientWidth});t-start<400?requestAnimationFrame(frame):resolve()}requestAnimationFrame(frame)});
+   return rows;
   });
-  assert.ok(expanding.rows.length>5);assert.ok(new Set(expanding.rows.map(x=>x.width)).size>1);assert.ok(expanding.rows.every(x=>x.mode==='svg'&&!x.suspended&&x.builds===expanding.before.builds&&x.filter.includes('url(')),'lens stays attached from the first expansion frame');assert.equal(expanding.after.disposed,expanding.before.disposed);
+  assert.ok(expanding.length>5);
+  assert.ok(new Set(expanding.map(x=>x.width)).size>1);
+  assert.ok(expanding.every(x=>x.fill==='rgb(224, 241, 233)'&&x.filter==='none'),'rail stays opaque while the selection lens moves');
   await p.locator('[data-glow-nav="sound"]').hover();await p.waitForFunction(()=>document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));await lens(p,'.rail-pointer-light');
   const light=await p.locator('.rail-pointer-light').boundingBox(),row=await p.locator('[data-glow-nav="sound"]').boundingBox();assert.ok(Math.abs(light.y-row.y)<1);await shot(p,label+'-sidebar');
   for(const key of ['media','image','sound','channel','all','video'])await p.locator(`[data-glow-nav="${key}"]`).hover();assert.equal(await p.locator('.rail-pointer-light').count(),1,'one cursor drop, no trails');
@@ -108,7 +112,7 @@ async function press(p,selector){
   await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.live<=count.limit);assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
   await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').evaluate(e=>getComputedStyle(e).transform),'none');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
   await p.evaluate(()=>showLoginGate());await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0&&FrommControlGlass.snapshot.count===0);assert.equal(await p.locator('.control-glass-surface').count(),0);
-  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': expansion lens from first frame, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');
+  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': opaque rail through expansion, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');
  }
  const noObserver={newContext:async options=>{const c=await high.newContext(options);await c.addInitScript(()=>{delete window.IntersectionObserver;});return c;}};
  const unsupported=await open(noObserver,url);await unsupported.page.evaluate(()=>setFilter('image'));await unsupported.page.waitForTimeout(160);assert.equal(await unsupported.page.evaluate(()=>FrommControlGlass.snapshot.live),0);assert.equal(await unsupported.page.locator('.control-glass-surface').count(),0);await unsupported.page.locator('.media-card').first().click({position:{x:30,y:30}});await unsupported.page.waitForFunction(()=>state.selected.size===1);assert.equal(await unsupported.page.locator('#saveSelectedBtn').isEnabled(),true);assert.deepEqual(unsupported.errors,[]);await unsupported.context.close();console.log('No IntersectionObserver: original controls and selection remain usable, no engine/exception PASS');

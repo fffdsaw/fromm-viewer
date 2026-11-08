@@ -67,7 +67,8 @@ test('Replay and Channel share progress and distinguish a confirmed file from br
   setDownloadButtonFeedback:(_button,phase='idle',ratio)=>transitions.push([phase,ratio]),
   window:{alert:message=>alerts.push(message)},safeErrorDetail:String
  });
- for(const name of ['downloadReplayPost','downloadChannelVideo']) vm.runInContext(fn(name),context);
+ vm.runInContext('const postDownloadQueue=[],postDownloadKeys=new Set();let postDownloadRunning=false;',context);
+ for(const name of ['queuePostDownload','drainPostDownloads','runReplayPostDownload','runChannelVideoDownload','downloadReplayPost','downloadChannelVideo']) vm.runInContext(fn(name),context);
  for(const name of ['downloadReplayPost','downloadChannelVideo']){
   const button={disabled:false};
   const run=()=>context[name](post,button);

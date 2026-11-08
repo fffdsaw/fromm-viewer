@@ -24,18 +24,19 @@
       if(button.disabled)return;button.disabled=true;
       try{if(['live','replay','channel'].includes(key)){
         if(state.filter==='live')await setLiveCenterMode(key);else{state.live.centerMode=key;await setFilter('live');}
-      }else await setFilter(key);}finally{button.disabled=false;syncNavigation();setRailOpen(false);toggle.focus({preventScroll:true});}
+      }else await setFilter(key);}finally{button.disabled=false;syncNavigation();setRailOpen(false);if(!mediaPC.matches||keyboardFocus)toggle.focus({preventScroll:true});else if(document.activeElement===button)button.blur();}
     });nav.append(button);
   }
   railHead.after(nav);
   // A single decoration follows the pointer independently of the optional lens.
   const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null;
-  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;nav.classList.remove('rail-pointer-tracking');}
+  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
   function paintRailLight(){
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
     const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect();
+    railLight.classList.toggle('rail-light-moving',nav.classList.contains('rail-pointer-tracking'));
     railLight.style.transform=`translate3d(${box.left-parent.left+nav.scrollLeft}px,${box.top-parent.top+nav.scrollTop}px,0)`;
     railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
     railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-box.left))}px`);

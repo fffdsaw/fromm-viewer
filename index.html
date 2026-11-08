@@ -1096,8 +1096,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=collection-edge-20261108">
-<link rel="preload" as="script" href="web-glowme.js?v=mint-controls-20261108">
+<link rel="stylesheet" href="glowme.css?v=menu-tools-20261108">
+<link rel="preload" as="script" href="web-glowme.js?v=menu-tools-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 </head>
@@ -1958,20 +1958,72 @@ async function attachChannelVideo(url, video, seq) {
   });
 }
 
-async function downloadChannelVideo(post, button) {
+const postDownloadQueue=[],postDownloadKeys=new Set();
+let postDownloadRunning=false;
+function queuePostDownload(kind,post,button,run){
+ if(!post)return Promise.resolve();
+ const key=kind+":"+(post._channelId||post.channelId||"")+":"+post.id;
+ if(postDownloadKeys.has(key))return Promise.resolve();
+ postDownloadKeys.add(key);
+ const current=channelVideoSession();
+ if(button){button.disabled=true;setDownloadButtonFeedback(button,"picker");}
+ // Reserve the destination in the original trusted click, before waiting.
+ const reservation=createReplayDownloadSink(kind==="channel"?{...post,title:post.title||"Fromm_Channel"}:post).then(sink=>({sink}),error=>({error}));
+ return new Promise(resolve=>{
+  const job={button,current,reservation,run,key,resolve,started:false};
+  postDownloadQueue.push(job);
+  reservation.then(({sink,error})=>{
+   if(job.started)return;
+   if(!sink||error){
+    const index=postDownloadQueue.indexOf(job);if(index>=0)postDownloadQueue.splice(index,1);
+    postDownloadKeys.delete(key);
+    if(button){button.disabled=false;setDownloadButtonFeedback(button,error?"error":"idle");}
+    if(error&&current())window.alert(`영상 다운로드 실패: ${safeErrorDetail(error?.message||error)}`);
+    resolve();
+   }else if(button)setDownloadButtonFeedback(button,"queued");
+  });
+  void drainPostDownloads();
+ });
+}
+async function drainPostDownloads(){
+ if(postDownloadRunning||state.postBulkSaving||channelVideoState.downloading||state.live.replayDownloading)return;
+ const job=postDownloadQueue.shift();if(!job)return;
+ postDownloadRunning=true;job.started=true;
+ const {sink,error}=await job.reservation;
+ try{
+  if(error)throw error;
+  if(!sink||!job.current()){
+   try{await sink?.writable?.abort?.();}catch{}
+   if(job.button)setDownloadButtonFeedback(job.button);
+   return;
+  }
+  await job.run(sink);
+ }catch(e){
+  try{await sink?.writable?.abort?.();}catch{}
+  if(job.button)setDownloadButtonFeedback(job.button,"error");
+  if(job.current())window.alert(`영상 다운로드 실패: ${safeErrorDetail(e?.message||e)}`);
+ }finally{
+  if(job.button)job.button.disabled=false;
+  postDownloadKeys.delete(job.key);postDownloadRunning=false;job.resolve();
+  void drainPostDownloads();
+ }
+}
+function downloadChannelVideo(post,button){
+ return queuePostDownload("channel",post,button,sink=>runChannelVideoDownload(post,button,sink));
+}
+async function runChannelVideoDownload(post, button, preparedSink) {
   const s = channelVideoState;
-  if (!post || s.downloading || state.postBulkSaving || state.live.replayDownloading) return;
+  if (!post) return;
   s.downloading = true;
   const seq = s.requestSeq;
   const sameSession = channelVideoSession();
   let sink;
   if (button) {
     button.disabled = true;
-    setDownloadButtonFeedback(button, "picker");
   }
   try {
     // Keep the save picker in the original user gesture.
-    sink = await createReplayDownloadSink({...post, title: post.title || "Fromm_Channel"});
+    sink = preparedSink;
     if (!sink) {
       if (button) setDownloadButtonFeedback(button);
       return;
@@ -5299,33 +5351,38 @@ function prewarmReplayRuntime(){
   ensureReplayHlsSdk(window).catch(()=>{});
 }
 
-async function downloadReplayPost(post,button){
-  if(state.postBulkSaving || channelVideoState.downloading || state.live.replayDownloading || !post) return;
+function downloadReplayPost(post,button){
+  return queuePostDownload("replay",post,button,sink=>runReplayPostDownload(post,button,sink));
+}
+async function runReplayPostDownload(post,button,preparedSink){
+  if(!post) return;
+  const sameSession=channelVideoSession();
   state.live.replayDownloading=true;
   if(button){
     button.disabled=true;
-    setDownloadButtonFeedback(button,"picker");
   }
 
   let sink=null;
   try{
-    sink=await createReplayDownloadSink(post);
+    sink=preparedSink;
     if(!sink){
       if(button) setDownloadButtonFeedback(button);
       return;
     }
     const writesFile=!!sink.writable;
     if(button) setDownloadButtonFeedback(button,"active");
-    const detail=await fetchReplayPostDetail(post);
+    const detail=await fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
+    if(!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
     const rawUrl=detail._streamUrl || replayStreamUrl(detail);
     await downloadReplayStream(rawUrl,sink,(done,total)=>{
+      if(!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
       if(button) setDownloadButtonFeedback(button,"active",total>0 ? done/total : null);
     });
     if(button) setDownloadButtonFeedback(button,writesFile ? "done" : "handed-off");
   }catch(e){
     try{await sink?.writable?.abort?.();}catch{}
     if(button) setDownloadButtonFeedback(button,"error");
-    window.alert(`Replay 다운로드 실패: ${e?.message || e}`);
+    if(sameSession()) window.alert(`Replay 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
   }finally{
     state.live.replayDownloading=false;
     if(button) button.disabled=false;
@@ -8053,7 +8110,7 @@ function initDownloadMarqueeSelection(){
 }
 
 async function saveSelectedPosts(){
-  if(state.postBulkSaving || state.live.replayDownloading || channelVideoState.downloading) return;
+  if(state.postBulkSaving || state.live.replayDownloading || channelVideoState.downloading || postDownloadRunning) return;
   const scope=downloadSelectionScope();
   const items=scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p)));
   if(!items.length){ window.alert("선택한 영상이 없습니다."); return; }
@@ -8115,6 +8172,7 @@ async function saveSelectedPosts(){
     state.postBulkSaving=false;
     channelVideoState.downloading=false;
     state.live.replayDownloading=false;
+    void drainPostDownloads();
     button.disabled=false;
     button.textContent=oldText;
     syncDownloadSelection();
@@ -9997,6 +10055,7 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null){
   const percent=Number.isFinite(ratio) ? Math.max(0,Math.min(100,ratio*100)) : null;
   const active=phase==="active";
   const status={
+    queued:"다운로드 대기 중",
     picker:"저장 위치 선택 중",
     active:percent===null ? "다운로드 중" : `다운로드 중 ${Math.round(percent)}%`,
     done:"저장 완료",
@@ -10010,7 +10069,7 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null){
   button.title=status;
   const label=feedback.attributes[1][1] || button.textContent.trim() || "다운로드";
   button.setAttribute("aria-label",`${label} · ${status}`);
-  if(active || phase==="picker") button.setAttribute("aria-busy","true");
+  if(active || phase==="picker" || phase==="queued") button.setAttribute("aria-busy","true");
   else{
     button.removeAttribute("aria-busy");
     feedback.timer=setTimeout(()=>setDownloadButtonFeedback(button),phase==="error" ? 2200 : 1400);
@@ -11027,7 +11086,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
-<script src="web-glowme.js?v=mint-controls-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=menu-tools-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>
@@ -11044,6 +11103,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=mint-controls-20261108"></script>
+<script type="module" src="web-glass.js?v=menu-tools-20261108"></script>
 </body>
 </html>

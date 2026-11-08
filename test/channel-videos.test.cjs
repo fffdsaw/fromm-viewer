@@ -76,14 +76,16 @@ test('Channel player creates same-document history, while restoration never push
   assert.equal(h.historyCalls.length, previousCount);
 });
 
-test('Channel single-save ignores a click during Replay or bulk save', async () => {
+test('Channel single-save queues a click during Replay or bulk save', async () => {
   for (const busy of ['replay', 'bulk']) {
     let picked = 0;
     const h = setup({createReplayDownloadSink: async () => {picked++;}});
     if (busy === 'replay') h.state.live.replayDownloading = true;
     else h.state.postBulkSaving = true;
-    await h.context.downloadChannelVideo({id: 'one', _channelId: 'a'});
-    assert.equal(h.s.downloading, false); assert.equal(picked, 0);
+    const pending=h.context.downloadChannelVideo({id:'one',_channelId:'a'});
+    assert.equal(h.s.downloading,false);assert.equal(picked,1);
+    h.state.live.replayDownloading=false;h.state.postBulkSaving=false;
+    await h.context.drainPostDownloads();await pending;
   }
 });
 

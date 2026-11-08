@@ -1,5 +1,5 @@
-import './web-glass-controls.js?v=mint-controls-20261108';
-import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=mint-controls-20261108';
+import './web-glass-controls.js?v=menu-tools-20261108';
+import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=menu-tools-20261108';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));

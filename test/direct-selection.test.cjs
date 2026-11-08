@@ -23,12 +23,12 @@ function setup(kind = 'channel') {
     if (!options?.create && !files.has(name)) throw Object.assign(new Error('missing'), {name: 'NotFoundError'});
     return {async getFile() {return {size: files.has(name) ? 4 : 0};}, async createWritable() {return {async abort() {aborted.push(name);}};}};
   }};
-  const c = vm.createContext({state, channelVideoState, Set, String, Math,
+  const c = vm.createContext({state, channelVideoState, postDownloadRunning:false, Set, String, Math,
     window: {showDirectoryPicker: async () => directory, alert: message => alerts.push(message)},
     $: () => button, supportsDirectorySave: () => true, sleep: async () => {},
     channelVideoSession: () => () => session,
     downloadSelectionScope: () => ({kind, items, context: contextName}),
-    syncDownloadSelection() {}, safeErrorDetail: String,
+    syncDownloadSelection() {}, drainPostDownloads() {}, safeErrorDetail: String,
     replayDownloadFilename: post => `${post.title}.ts`, replayStreamUrl: post => post._streamUrl,
     fetchChannelVideoDetail: async post => {details.push(post.id); return {...post, _streamUrl: post.id};},
     fetchReplayPostDetail: async (post, options) => {
@@ -53,14 +53,18 @@ test('folder cancellation preserves every selection and makes no detail/download
   assert.equal(h.state.postSelected.size, 3); assert.equal(h.details.length, 0);
   assert.equal(h.writes.length, 0); assert.equal(h.alerts.length, 0); unlocked(h);
 });
-test('Replay single-save ignores a click while a Channel or bulk save is active', async () => {
-  for (const busy of ['channel', 'bulk']) {
-    const h = setup('replay'); vm.runInContext(fn('downloadReplayPost'), h.c);
-    if (busy === 'channel') h.channelVideoState.downloading = true;
-    else h.state.postBulkSaving = true;
-    await h.c.downloadReplayPost(h.items[0]); assert.equal(h.state.live.replayDownloading, false);
-    assert.equal(h.details.length, 0); assert.equal(h.writes.length, 0);
-  }
+test('Replay single-save queues a click while a Channel or bulk save is active', async () => {
+ for(const busy of ['channel','bulk']){
+  const h=setup('replay');h.c.createReplayDownloadSink=async()=>null;
+  vm.runInContext('const postDownloadQueue=[],postDownloadKeys=new Set();let postDownloadRunning=false;',h.c);
+  for(const name of ['queuePostDownload','drainPostDownloads','downloadReplayPost'])vm.runInContext(fn(name),h.c);
+  if(busy==='channel')h.channelVideoState.downloading=true;else h.state.postBulkSaving=true;
+  const pending=h.c.downloadReplayPost(h.items[0]);
+  assert.equal(vm.runInContext('postDownloadQueue.length',h.c),1);
+  h.channelVideoState.downloading=false;h.state.postBulkSaving=false;
+  await h.c.drainPostDownloads();await pending;
+  assert.equal(h.details.length,0);assert.equal(h.writes.length,0);
+ }
 });
 test('denied destination preserves selections and releases controls', async () => {
   const h = setup(); h.c.window.showDirectoryPicker = async () => {throw new Error('permission denied');};

@@ -59,19 +59,26 @@ function renderControls(){
  }
  const note=dialog.querySelector('.glass-settings-note'),text=statusText();if(note.textContent!==text)note.textContent=text;
 }
+let installHome=null;
+function placeInstall(){
+ const button=document.querySelector('#installAppBtn');if(!button||!dialog)return;
+ if(!installHome){installHome=document.createComment('install action home');button.before(installHome);}
+ if(glassPC.matches)dialog.querySelector('.settings-install').prepend(button);
+ else installHome.after(button);
+}
 export function mountGlassSettings(){
  if(trigger||!glassPC.matches||!window.FrommGlowME)return;
  const sidebar=document.querySelector('#sidebar'),footer=document.createElement('div');footer.className='glass-settings-footer';
  trigger=document.createElement('button');trigger.type='button';trigger.id='glassSettingsBtn';trigger.className='glass-settings-trigger';
- trigger.title='화면 설정';trigger.setAttribute('aria-label','화면 설정');trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls','glassSettingsDialog');
- trigger.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-.5 2-1.5.9L5 5.4 3.4 8l1.5 1.5v1.8L3.4 13 5 15.6l2-.5 1.5.9.5 2h3l.5-2 1.5-.9 2 .5 1.6-2.6-1.5-1.7V9.5L17.6 8 16 5.4l-2 .5-1.5-.9L12 3H9Z" transform="translate(1.5 1.5)"/><circle cx="12" cy="12" r="3"/></svg><span>화면 설정</span>';
+ trigger.title='설정';trigger.setAttribute('aria-label','설정');trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls','glassSettingsDialog');
+ trigger.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-.5 2-1.5.9L5 5.4 3.4 8l1.5 1.5v1.8L3.4 13 5 15.6l2-.5 1.5.9.5 2h3l.5-2 1.5-.9 2 .5 1.6-2.6-1.5-1.7V9.5L17.6 8 16 5.4l-2 .5-1.5-.9L12 3H9Z" transform="translate(1.5 1.5)"/><circle cx="12" cy="12" r="3"/></svg><span>설정</span>';
  footer.append(trigger);sidebar.insertBefore(footer,document.querySelector('#installAppBtn'));
  dialog=document.createElement('dialog');dialog.id='glassSettingsDialog';dialog.setAttribute('aria-labelledby','glassSettingsTitle');dialog.setAttribute('aria-describedby','glassSettingsDescription');
- dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">화면 설정</h2><p id="glassSettingsDescription">조작부 유리 질감</p></div><button type="button" class="glass-settings-close" aria-label="화면 설정 닫기">×</button></div>
- <div class="glass-settings-body"><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
+ dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">설정</h2><p id="glassSettingsDescription">앱 설치와 화면 효과</p></div><button type="button" class="glass-settings-close" aria-label="설정 닫기">×</button></div>
+ <div class="glass-settings-body"><section class="settings-install" aria-label="앱 설치"><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
  <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset>
  <p class="glass-settings-note" role="status"></p></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
- document.body.append(dialog);
+ document.body.append(dialog);placeInstall();
  trigger.onclick=()=>{if(!glassPC.matches||!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();if(!dialog.open)dialog.showModal();};
  const close=()=>dialog.close();dialog.querySelector('.glass-settings-close').onclick=close;dialog.querySelector('.glass-settings-done').onclick=close;
  dialog.querySelector('.glass-settings-reset').onclick=()=>glassPreferences.reset();
@@ -89,6 +96,6 @@ export function mountGlassSettings(){
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  renderControls();
 }
-function viewport(){if(!glassPC.matches&&dialog?.open)dialog.close();mountGlassSettings();emit();}
+function viewport(){if(!glassPC.matches&&dialog?.open)dialog.close();mountGlassSettings();placeInstall();emit();}
 glassPC.addEventListener('change',viewport);
 window.addEventListener('storage',event=>{if(event.key!==GLASS_KEY&&event.key!==null)return;try{values=normalize(JSON.parse(event.newValue||'null')||defaults);renderControls();emit();}catch{}});

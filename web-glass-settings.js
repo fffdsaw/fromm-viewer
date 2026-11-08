@@ -20,18 +20,19 @@ function normalize(input={}){
 let values={...defaults},stored=true,dialog=null,trigger=null,notifyTimer=0;
 try{const saved=JSON.parse(localStorage.getItem(GLASS_KEY)||'null');if(saved)values=normalize(saved);}catch{stored=false;}
 const listeners=new Set();
-function applyCSS(){
- const root=document.documentElement;
- root.style.setProperty('--pc-glass-tint',`rgba(255,255,255,${values.opacity/100})`);
- root.style.setProperty('--pc-glass-blur',`${values.blur}px`);
- root.style.setProperty('--pc-glass-saturation',`${values.saturation/100}`);
- window.FrommHeaderGlassTrial=glassPC.matches&&values.enabled;
+let lastEnabled=values.enabled;
+function emit(){
+ clearTimeout(notifyTimer);notifyTimer=0;
+ for(const fn of listeners)fn();
+ if(lastEnabled!==values.enabled){
+  lastEnabled=values.enabled;
+  window.dispatchEvent(new Event('fromm-glass-enabled'));
+ }
 }
-function emit(){clearTimeout(notifyTimer);notifyTimer=0;for(const fn of listeners)fn();window.FrommGlass?.sync();}
 function save(){try{localStorage.setItem(GLASS_KEY,JSON.stringify(values));stored=true;}catch{stored=false;}}
 function set(patch,{immediate=false,persist=true}={}){
  const next=normalize({...values,...patch});if(JSON.stringify(next)===JSON.stringify(values))return;
- values=next;applyCSS();if(persist)save();renderControls();
+ values=next;if(persist)save();renderControls();
  // Read the latest values at most every160ms, including during a long drag.
  if(immediate)emit();else if(!notifyTimer)notifyTimer=setTimeout(emit,160);
 }
@@ -44,12 +45,9 @@ export const glassPreferences=Object.freeze({
 window.FrommGlassSettings=glassPreferences;
 function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
- const state=window.FrommHeaderGlass?.snapshot,states=[state,state?.sidebar].filter(Boolean);
  if(!values.enabled)return '기본 민트 화면을 사용합니다. 설정은 자동으로 저장됩니다.';
- if(state?.reason==='video')return '영상 재생 중에는 기본 유리로 표시합니다.';
- if(states.some(s=>['motion','transparency','contrast'].includes(s.reason)))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
- if(states.some(s=>['low-power','unsupported','unavailable','map-timeout','area-budget'].includes(s.reason)))return '일부 영역은 이 환경에 맞는 기본 유리로 표시합니다.';
- return '상단바와 사이드바에 함께 적용되며 자동으로 저장됩니다.';
+ if(['prefers-reduced-motion: reduce','prefers-reduced-transparency: reduce','forced-colors: active'].some(query=>matchMedia('('+query+')').matches))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
+ return '선택 표시와 작은 조작부에 적용되며 자동으로 저장됩니다.';
 }
 function renderControls(){
  if(!dialog)return;
@@ -69,8 +67,8 @@ export function mountGlassSettings(){
  trigger.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-.5 2-1.5.9L5 5.4 3.4 8l1.5 1.5v1.8L3.4 13 5 15.6l2-.5 1.5.9.5 2h3l.5-2 1.5-.9 2 .5 1.6-2.6-1.5-1.7V9.5L17.6 8 16 5.4l-2 .5-1.5-.9L12 3H9Z" transform="translate(1.5 1.5)"/><circle cx="12" cy="12" r="3"/></svg><span>화면 설정</span>';
  footer.append(trigger);sidebar.insertBefore(footer,document.querySelector('#installAppBtn'));
  dialog=document.createElement('dialog');dialog.id='glassSettingsDialog';dialog.setAttribute('aria-labelledby','glassSettingsTitle');dialog.setAttribute('aria-describedby','glassSettingsDescription');
- dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">화면 설정</h2><p id="glassSettingsDescription">상단바 · 사이드바 유리 질감</p></div><button type="button" class="glass-settings-close" aria-label="화면 설정 닫기">×</button></div>
- <div class="glass-settings-body"><label class="glass-settings-switch"><span>투명 유리 사용</span><input id="glassEnabled" type="checkbox" role="switch"></label>
+ dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">화면 설정</h2><p id="glassSettingsDescription">조작부 유리 질감</p></div><button type="button" class="glass-settings-close" aria-label="화면 설정 닫기">×</button></div>
+ <div class="glass-settings-body"><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
  <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset>
  <p class="glass-settings-note" role="status"></p></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
  document.body.append(dialog);
@@ -88,11 +86,9 @@ export function mountGlassSettings(){
  });
  // The rail's global Escape handler must leave the modal to native dialog.
  document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
- window.addEventListener('fromm-glass-status',()=>{if(dialog.open)renderControls();});
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  renderControls();
 }
-function viewport(){applyCSS();if(!glassPC.matches&&dialog?.open)dialog.close();mountGlassSettings();emit();}
+function viewport(){if(!glassPC.matches&&dialog?.open)dialog.close();mountGlassSettings();emit();}
 glassPC.addEventListener('change',viewport);
-window.addEventListener('storage',event=>{if(event.key!==GLASS_KEY&&event.key!==null)return;try{values=normalize(JSON.parse(event.newValue||'null')||defaults);applyCSS();renderControls();emit();}catch{}});
-applyCSS();
+window.addEventListener('storage',event=>{if(event.key!==GLASS_KEY&&event.key!==null)return;try{values=normalize(JSON.parse(event.newValue||'null')||defaults);renderControls();emit();}catch{}});

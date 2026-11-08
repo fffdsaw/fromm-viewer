@@ -3,7 +3,7 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=re
 const{serve,open}=require('./helpers/phase3-fixture.cjs');
 const out=process.env.GLASS_CONTROLS_DIR;
 async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,name+'.png')});}}
-const ready=p=>p.waitForFunction(()=>window.FrommHeaderGlass?.snapshot.sidebar.mode==='svg'&&window.FrommControlGlass?.snapshot.live>2);
+const ready=p=>p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2);
 async function lens(p,selector){
  const target=p.locator(selector).first();await target.waitFor({state:'visible'});
  if(!['.rail-pointer-light','.glowme-nav button.active','.room.active'].includes(selector))await target.hover();
@@ -39,22 +39,68 @@ async function press(p,selector){
    const clip=await p.locator('.card-download').first().boundingBox(),optical=await p.screenshot({clip});await map.evaluate(e=>e.setAttribute('scale','0'));await p.waitForTimeout(80);assert.equal(optical.equals(await p.screenshot({clip})),false,'actual control displacement changes backdrop pixels');await map.evaluate((e,s)=>e.setAttribute('scale',s),scale);
    await p.locator('.media-card .thumb').first().evaluate((e,old)=>{e.style.background=old.background;e.querySelector('img').style.opacity=old.opacity},restore);
   }
-  // Every animation frame, including the first, keeps the same live sidebar map.
+  // The rail retains a solid fill from the first frame of width motion.
   const expanding=await p.evaluate(async()=>{
-   const before=FrommHeaderGlass.snapshot.sidebar,rows=[];FrommGlowME.setRailOpen(true);const start=performance.now();
-   await new Promise(resolve=>{function frame(t){const s=FrommHeaderGlass.snapshot.sidebar;rows.push({mode:s.mode,suspended:s.suspended,builds:s.builds,filter:getComputedStyle(document.querySelector('.sidebar-glass-surface')).backdropFilter,width:document.querySelector('#sidebar').clientWidth});t-start<400?requestAnimationFrame(frame):resolve()}requestAnimationFrame(frame)});
-   return{before,rows,after:FrommHeaderGlass.snapshot.sidebar};
+   const sidebar=document.querySelector('#sidebar'),rows=[];
+   FrommGlowME.setRailOpen(true);
+   const start=performance.now();
+   await new Promise(resolve=>{function frame(t){const css=getComputedStyle(sidebar);rows.push({fill:css.backgroundColor,filter:css.backdropFilter,width:sidebar.clientWidth});t-start<400?requestAnimationFrame(frame):resolve()}requestAnimationFrame(frame)});
+   return rows;
   });
-  assert.ok(expanding.rows.length>5);assert.ok(new Set(expanding.rows.map(x=>x.width)).size>1);assert.ok(expanding.rows.every(x=>x.mode==='svg'&&!x.suspended&&x.builds===expanding.before.builds&&x.filter.includes('url(')),'lens stays attached from the first expansion frame');assert.equal(expanding.after.disposed,expanding.before.disposed);
+  assert.ok(expanding.length>5);
+  assert.ok(new Set(expanding.map(x=>x.width)).size>1);
+  assert.ok(expanding.every(x=>x.fill==='rgb(224, 241, 233)'&&x.filter==='none'),'rail stays opaque while the selection lens moves');
   await p.locator('[data-glow-nav="sound"]').hover();await p.waitForFunction(()=>document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));await lens(p,'.rail-pointer-light');
   const light=await p.locator('.rail-pointer-light').boundingBox(),row=await p.locator('[data-glow-nav="sound"]').boundingBox();assert.ok(Math.abs(light.y-row.y)<1);await shot(p,label+'-sidebar');
   for(const key of ['media','image','sound','channel','all','video'])await p.locator(`[data-glow-nav="${key}"]`).hover();assert.equal(await p.locator('.rail-pointer-light').count(),1,'one cursor drop, no trails');
   await p.mouse.move(opt.width-30,350);await p.waitForFunction(()=>!document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));await p.evaluate(()=>FrommGlowME.setRailOpen(false));await p.waitForTimeout(240);
   await press(p,'.card-download');
-  const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');assert.ok(fs.statSync(await(await dl).path()).size>0,'original download returns fixture bytes');
+  if(opt.width===1440){
+   await p.evaluate(()=>{
+    const original=fetchMediaBlob;
+    fetchMediaBlob=async (media,progress)=>{
+     fetchMediaBlob=original;
+     progress(.46);
+     await new Promise(resolve=>{window.finishDownloadFixture=resolve;});
+     return original(media,progress);
+    };
+   });
+  }
+  const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');
+  if(opt.width===1440){
+   const button=p.locator('.card-download').first();
+   await button.locator('.download-feedback-ring').waitFor({state:'visible'});
+   assert.equal(await button.evaluate(e=>e.style.getPropertyValue('--download-remaining')),'54');
+   assert.equal(await button.locator('.control-glass-surface').isVisible(),true);
+   assert.equal(await p.locator('.card-download-panel').count(),0);
+   await p.evaluate(()=>window.finishDownloadFixture());
+  }
+  assert.ok(fs.statSync(await(await dl).path()).size>0,'original download returns fixture bytes');
+  assert.equal(await p.locator('.card-download .download-feedback-check').first().isVisible(),false,'browser handoff is not a confirmed save');
   await p.evaluate(()=>scrollTo(0,900));await p.locator('#scrollTopBtn.visible').waitFor();await lens(p,'#scrollTopBtn');await press(p,'#scrollTopBtn');await p.locator('#scrollTopBtn').click();await p.waitForFunction(()=>scrollY<2);
   for(const mode of ['replay','channel']){
    await collection(p,mode);await lens(p,'.replay-download');await lens(p,'.replay-play');const box=await p.locator('.replay-card').first().evaluate(e=>[e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight]);
+   if(opt.width===1440){
+    await p.evaluate(()=>{
+     const original={createReplayDownloadSink,fetchReplayPostDetail,fetchChannelVideoDetail,downloadReplayStream};
+     createReplayDownloadSink=async()=>({writable:{}});
+     fetchReplayPostDetail=fetchChannelVideoDetail=async()=>({_streamUrl:'https://fixture.test/stream.m3u8'});
+     downloadReplayStream=async (_url,_sink,progress)=>{
+      progress(2,4);
+      await new Promise(resolve=>{window.finishDownloadFixture=resolve;});
+      progress(4,4);
+      ({createReplayDownloadSink,fetchReplayPostDetail,fetchChannelVideoDetail,downloadReplayStream}=original);
+     };
+    });
+    const button=p.locator('.replay-download').first();
+    await button.click();
+    await button.locator('.download-feedback-ring').waitFor({state:'visible'});
+    assert.match(await button.getAttribute('title'),/50%/);
+    assert.equal(await p.locator('.replay-download-progress').count(),0);
+    await p.evaluate(()=>window.finishDownloadFixture());
+    await button.locator('.download-feedback-check').waitFor({state:'visible'});
+    assert.equal(await button.locator('.download-feedback-ring').isVisible(),false);
+   }
    await press(p,'.replay-play');await p.evaluate(()=>scrollTo(0,0));await p.locator('#selectAllBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.deepEqual(await p.locator('.replay-card').first().evaluate(e=>[e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight]),box,'selection does not move the list');
    await shot(p,label+'-'+mode);await p.evaluate(()=>scrollTo(0,650));await p.waitForTimeout(220);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);assert.ok(await p.locator('.replay-download.glass-control').count()>0);await shot(p,label+'-'+mode+'-scrolled');
   }
@@ -66,7 +112,7 @@ async function press(p,selector){
   await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.live<=count.limit);assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
   await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').evaluate(e=>getComputedStyle(e).transform),'none');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
   await p.evaluate(()=>showLoginGate());await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0&&FrommControlGlass.snapshot.count===0);assert.equal(await p.locator('.control-glass-surface').count(),0);
-  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': expansion lens from first frame, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');
+  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': opaque rail through expansion, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');
  }
  const noObserver={newContext:async options=>{const c=await high.newContext(options);await c.addInitScript(()=>{delete window.IntersectionObserver;});return c;}};
  const unsupported=await open(noObserver,url);await unsupported.page.evaluate(()=>setFilter('image'));await unsupported.page.waitForTimeout(160);assert.equal(await unsupported.page.evaluate(()=>FrommControlGlass.snapshot.live),0);assert.equal(await unsupported.page.locator('.control-glass-surface').count(),0);await unsupported.page.locator('.media-card').first().click({position:{x:30,y:30}});await unsupported.page.waitForFunction(()=>state.selected.size===1);assert.equal(await unsupported.page.locator('#saveSelectedBtn').isEnabled(),true);assert.deepEqual(unsupported.errors,[]);await unsupported.context.close();console.log('No IntersectionObserver: original controls and selection remain usable, no engine/exception PASS');

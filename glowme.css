@@ -1110,41 +1110,26 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout #timeline .media-wrap.selected{outline:0}
  .glowme-phase3.pc-layout .chat-media-visual{position:relative;width:fit-content;max-width:100%}
  .glowme-phase3.pc-layout .chat-media-visual .chat-media-download{position:absolute;top:10px;right:10px;z-index:2;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #ffffff24;border-radius:50%;background:#000b;color:#fff;font-size:0;line-height:1;text-decoration:none}
- .glowme-phase3.pc-layout .chat-media-download::after{content:'⇩';font-size:var(--thumb-download-glyph,18px);line-height:1;position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
  .glowme-phase3.pc-layout .chat-media-download:hover{background:#000d}
  .glowme-phase3.pc-layout .chat-media-download:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 4px #147e69}
- .glowme-phase3.pc-layout .chat-media-download[aria-busy=true]::after{content:'…'}
 }
 @media(forced-colors:active){.glowme-phase3.pc-layout .media-card.selected{outline-color:Highlight}.glowme-phase3.pc-layout .download-selection-box{border-color:Highlight;background:transparent}}
 
 /* PC thumbnail download controls follow the existing media-card button.
    Runtime progress text and success/error styling stay with their original handlers. */
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout{--thumb-download-size:38px;--thumb-download-inset:10px;--thumb-download-glyph:20px;--thumb-download-face:rgba(0,0,0,.68);--thumb-download-line:rgba(255,255,255,.08)}
+ .glowme-phase3.pc-layout{--thumb-download-size:38px;--thumb-download-inset:10px;--thumb-download-face:rgba(0,0,0,.68);--thumb-download-line:rgba(255,255,255,.08)}
  .glowme-phase3.pc-layout :is(.card-download,.replay-download,.chat-media-download){top:var(--thumb-download-inset)!important;right:var(--thumb-download-inset)!important;width:var(--thumb-download-size)!important;height:var(--thumb-download-size)!important;padding:0;border-radius:50%;display:grid;place-items:center;font-family:inherit;font-weight:400;line-height:1;text-decoration:none}
- .glowme-phase3.pc-layout .replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download{font-size:0}
- .glowme-phase3.pc-layout .replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download::after{content:'⇩';font-size:var(--thumb-download-glyph);position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;line-height:1}
- .glowme-phase3.pc-layout :is(.media-card:not(.download-active,.download-done,.download-error) .card-download,.replay-card:not(.replay-downloading,.replay-download-done,.replay-download-error) .replay-download,.chat-media-visual .chat-media-download){background:var(--thumb-download-face);border:1px solid var(--thumb-download-line);color:#fff;box-shadow:none}
+ .glowme-phase3.pc-layout :is(.card-download,.replay-download,.chat-media-visual .chat-media-download){background:var(--thumb-download-face);border:1px solid var(--thumb-download-line);color:#fff;box-shadow:none}
  .glowme-phase3.pc-layout :is(.card-download,.replay-download,.chat-media-download):focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 4px #147e69}
 }
 @media(min-width:851px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout{--thumb-download-size:34px;--thumb-download-inset:9px;--thumb-download-glyph:18px}
+ .glowme-phase3.pc-layout{--thumb-download-size:34px;--thumb-download-inset:9px}
 }
 
-/* Clear PC panes. The page keeps its mint; only decorative planes are filtered. */
-.header-glass-surface,.sidebar-glass-surface,.glass-settings-footer,#glassSettingsDialog{display:none}
+/* The large PC panes use the solid mint surfaces above. */
+.glass-settings-footer,#glassSettingsDialog{display:none}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout .glass-pane-on>.header-glass-surface,.glowme-phase3.pc-layout .glass-pane-on>.sidebar-glass-surface{display:block;position:absolute;inset:0;border-radius:inherit;z-index:-2;pointer-events:none;background:var(--pc-glass-tint,#fff3);backdrop-filter:blur(var(--pc-glass-blur,0px)) saturate(var(--pc-glass-saturation,1.08));-webkit-backdrop-filter:blur(var(--pc-glass-blur,0px)) saturate(var(--pc-glass-saturation,1.08))}
- .glowme-phase3.pc-layout .viewer-header.glass-pane-on::before{z-index:-3;mask-image:var(--header-glass-surround);mask-size:100% 100%;mask-repeat:no-repeat}
- .glowme-phase3.pc-layout .viewer-header.glass-pane-on::after{background:transparent;border-color:#ffffffc4;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5}
- .glowme-phase3.pc-layout #sidebar.glass-pane-on{isolation:isolate;background:none;border-color:#ffffffb3;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5,0 3px 12px #244b3a0a}
- .glowme-phase3.pc-layout #sidebar.glass-pane-on>.sidebar-glass-surface{z-index:-1}
- /* Explicit face/content planes keep nested control lenses from sampling the
-    pane's own labels in Chromium's negative-z backdrop compositing path. */
- .glowme-phase3.pc-layout .glass-pane-on>:is(.header-glass-surface,.sidebar-glass-surface){z-index:0}
- .glowme-phase3.pc-layout .viewer-header.glass-pane-on>:not(.header-glass-surface),.glowme-phase3.pc-layout #sidebar.glass-pane-on>:not(.sidebar-glass-surface){position:relative;z-index:1}
- .glowme-phase3.pc-layout .glass-pane-on[data-header-glass-reason="video"]>:is(.header-glass-surface,.sidebar-glass-surface){backdrop-filter:none;-webkit-backdrop-filter:none}
- .glowme-phase3.pc-layout .glass-pane-on :is(.artist-copy,.pc-mode-heading,.pc-list-info,.rail-artist-name,.glowme-nav button){text-shadow:0 1px 3px #ffffffe6,0 0 7px #ffffffb3}
  .glowme-phase3.pc-layout .glass-settings-footer{display:block;flex:none;height:40px;min-height:40px}
  .glowme-phase3.pc-layout .glass-settings-trigger{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:40px;padding:6px;border:1px solid #bdd8ce;border-radius:14px;background:#ffffff38;box-shadow:inset 0 1px 0 #ffffff94;color:#244c40;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
  .glowme-phase3.pc-layout .glass-settings-trigger svg{width:23px;height:23px;flex:none}
@@ -1160,7 +1145,12 @@ html.glowme .reply-content{color:#244c42}
  .glass-settings-close{display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:1px solid #cee3d8;border-radius:50%;background:#fff;color:#365e4f;font:inherit;font-size:26px;line-height:1;cursor:pointer}
  .glass-settings-body{padding:18px 22px;overflow-y:auto;min-height:0}
  .glass-settings-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;font-size:14px;font-weight:650}
- .glass-settings-switch input{width:20px;height:20px;margin:0;accent-color:#117d69;cursor:pointer}
+ .glass-switch-track{position:relative;display:block;flex:none;width:42px;height:24px;border:1px solid #9ebcaf;border-radius:999px;background:#e1eee7}
+ .glass-switch-track:has(input:checked){background:#19816b;border-color:#19816b}
+ .glass-switch-track input{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+ .glass-switch-track:has(input:focus-visible){outline:2px solid #117d69;outline-offset:3px}
+ .glass-switch-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:translate 140ms ease}
+ .glass-switch-track:has(input:checked) .glass-switch-thumb{translate:18px 0}
  #glassSettingsDialog fieldset{display:grid;gap:16px;margin:0;padding:0;border:0;min-width:0}
  #glassSettingsDialog fieldset:disabled{opacity:.45}
  .glass-setting{display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:5px;font-size:13px;align-items:center}
@@ -1176,7 +1166,10 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .glowme-nav{max-height:calc(100dvh - 240px);min-height:0;overflow-y:auto;scrollbar-width:none;flex-shrink:1}
  #glassSettingsDialog[open]{top:16px;max-height:calc(100dvh - 32px)}
 }
+@media(prefers-reduced-motion:reduce){.glass-switch-thumb{transition:none}}
 @media(forced-colors:active){
+ .glass-switch-track input{opacity:1}
+ .glass-switch-thumb{display:none}
  #glassSettingsDialog[open]{background:Canvas;color:CanvasText;border-color:CanvasText}
  #glassSettingsDialog :is(.glass-settings-actions,.glass-settings-head){background:Canvas;border-color:CanvasText}
 }
@@ -1202,9 +1195,6 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout .room.active::before{z-index:2}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.glass-droplet{border-radius:999px;background:radial-gradient(90px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#fff8,transparent 75%),linear-gradient(135deg,#d9fff485,#81d2b64d);border-color:#ffffffde;box-shadow:inset 0 2px 2px #fffc,inset 0 -2px 3px #2c6a4c30,0 2px 5px #173e3024}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-tracking button.active>.control-glass-surface{opacity:.32}
- .pc-control-glass.glowme-phase3.pc-layout :is(.download-active,.download-done,.download-error,.replay-downloading,.replay-download-done,.replay-download-error) :is(.card-download,.replay-download)>.control-glass-surface{opacity:0}
- .pc-control-glass.glowme-phase3.pc-layout :is(.download-active,.download-done,.replay-downloading,.replay-download-done) :is(.card-download,.replay-download){background:#22c55e!important}
- .pc-control-glass.glowme-phase3.pc-layout :is(.download-error,.replay-download-error) :is(.card-download,.replay-download){background:#ef4444!important}
  .pc-control-glass.glowme-phase3.pc-layout :is(.card-download,.replay-download){transform:none!important}
  .pc-control-glass.glowme-phase3.pc-layout :is(.replay-filter.active,.live-mini-btn[aria-pressed="true"])>.control-glass-surface{background:#99ddc366!important;border-color:#d5f9e9}
  .pc-control-glass.glowme-phase3.pc-layout .glass-control:disabled>.control-glass-surface{opacity:.38}

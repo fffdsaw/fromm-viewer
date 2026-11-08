@@ -78,34 +78,6 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .card-badge { position: absolute; top: 11px; left: 11px; background: rgba(0, 0, 0, 0.72); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 6px 9px; font-size: 12px; font-weight: 800; }
 .card-download { position: absolute; top: 10px; right: 10px; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.68); color: rgb(255, 255, 255); text-decoration: none; font-size: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
 .card-download { transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease; overflow: visible; }
-.card-download::before { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid transparent; opacity: 0; pointer-events: none; }
-.card-download-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; z-index: 4; opacity: 0; overflow: hidden; background: rgba(59,130,246,.13); transition: opacity .16s ease; pointer-events: none; }
-.card-download-progress > span { display: block; width: 0%; height: 100%; background: rgb(59,130,246); box-shadow: 0 0 10px rgba(59,130,246,.55); transition: width .16s linear, background .18s ease; }
-.media-card.download-active .card-download { background: rgb(34,197,94); border-color: rgba(255,255,255,.34); box-shadow: 0 4px 16px rgba(34,197,94,.28); transform: scale(1.04); color: transparent; }
-.media-card.download-active .card-download::before { opacity: 1; border-color: rgba(255,255,255,.28); border-top-color: #fff; animation: cardDownloadSpin .85s linear infinite; }
-.media-card.download-active .card-download::after { content: "↓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 900; animation: cardDownloadBob .9s ease-in-out infinite; }
-.media-card.download-active .card-download-progress { opacity: 1; }
-.media-card.download-active.download-indeterminate .card-download-progress > span { width: 34% !important; animation: cardDownloadIndeterminate 1.05s ease-in-out infinite; }
-.media-card.download-done .card-download { background: rgb(34,197,94); border-color: rgba(255,255,255,.34); box-shadow: 0 4px 16px rgba(34,197,94,.22); color: transparent; }
-.media-card.download-done .card-download::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 900; animation: cardDownloadPop .25s ease-out both; }
-.media-card.download-done .card-download-progress { opacity: 1; }
-.media-card.download-done .card-download-progress > span { width: 100% !important; background: rgb(34,197,94); box-shadow: 0 0 10px rgba(34,197,94,.5); }
-.media-card.download-error .card-download { background: rgb(239,68,68); border-color: rgba(255,255,255,.34); color: transparent; }
-.media-card.download-error .card-download::after { content: "!"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 900; animation: cardDownloadPop .25s ease-out both; }
-.media-card.download-error .card-download-progress { opacity: 1; }
-.media-card.download-error .card-download-progress > span { width: 100% !important; background: rgb(239,68,68); box-shadow: none; }
-@keyframes cardDownloadSpin { to { transform: rotate(360deg); } }
-@keyframes cardDownloadBob { 0%,100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
-@keyframes cardDownloadPop { 0% { transform: scale(.55); opacity: .2; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes cardDownloadIndeterminate { 0% { transform: translateX(-120%); } 100% { transform: translateX(310%); } }
-@media (prefers-reduced-motion: reduce) {
-  .media-card.download-active .card-download::before,
-  .media-card.download-active .card-download::after,
-  .media-card.download-active.download-indeterminate .card-download-progress > span,
-  .media-card.download-done .card-download::after,
-  .media-card.download-error .card-download::after { animation: none !important; }
-}
-
 .card-select { display: none; }
 .card-body { padding: 13px 14px 15px; }
 .card-title { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -736,194 +708,6 @@ html.image-lightbox-open { overflow-y:hidden; }
 }
 
 
-/* v87 · target-style download progress panel */
-.media-card { position: relative; overflow: hidden; }
-.card-download-panel{
-  position:absolute; left:0; right:0; bottom:0; z-index:8;
-  padding:7px 8px 8px;
-  background:rgba(10,14,20,.96);
-  border-top:1px solid rgb(55,65,81);
-  opacity:0;
-  transform:translateY(100%);
-  pointer-events:none;
-  transition:opacity .18s ease, transform .18s ease;
-}
-.card-download-panel.visible{
-  opacity:1;
-  transform:translateY(0);
-}
-.card-download-meta{
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  margin-bottom:5px;
-  color:rgb(96,165,250);
-  font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-.card-download-meta span:last-child{ color:rgb(147,197,253); }
-.card-download-track{
-  width:100%; height:6px; overflow:hidden;
-  background:rgb(55,65,81);
-  border-radius:999px;
-}
-.card-download-bar{
-  width:0%; height:100%;
-  background:rgb(59,130,246);
-  border-radius:999px;
-  box-shadow:0 0 10px rgba(59,130,246,.4);
-  transition:width .16s linear, background .18s ease;
-}
-.card-download-panel.indeterminate .card-download-bar{
-  width:32% !important;
-  animation:cardDownloadIndeterminate 1.05s ease-in-out infinite;
-}
-.media-card.download-error .card-download-bar{
-  background:rgb(239,68,68);
-  box-shadow:none;
-}
-.media-card.download-done .card-download-bar{
-  background:rgb(34,197,94);
-  box-shadow:0 0 10px rgba(34,197,94,.35);
-}
-#saveSelectedBtn{
-  position:relative;
-  overflow:hidden;
-}
-#saveSelectedBtn.bulk-saving::after{
-  content:"";
-  position:absolute;
-  left:0; bottom:0;
-  width:var(--bulk-save-progress,0%);
-  height:3px;
-  background:rgb(59,130,246);
-  box-shadow:0 0 8px rgba(59,130,246,.45);
-  transition:width .16s linear;
-}
-@media (prefers-reduced-motion: reduce){
-  .card-download-panel,
-  .card-download-bar,
-  #saveSelectedBtn.bulk-saving::after{ transition:none !important; }
-  .card-download-panel.indeterminate .card-download-bar{ animation:none !important; }
-}
-
-
-
-/* v89 · download progress UI modeled on the uploaded videos.html */
-.media-card { position: relative; overflow: hidden; }
-
-.card-download-panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  padding: 8px;
-  background: rgba(17, 24, 39, 0.95);
-  border-top: 1px solid rgb(55, 65, 81);
-  opacity: 0;
-  transform: translateY(100%);
-  pointer-events: none;
-  transition: opacity .16s ease, transform .16s ease;
-}
-
-.card-download-panel.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.card-download-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  color: rgb(96, 165, 250);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.card-download-status,
-.card-download-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-download-track {
-  width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgb(55, 65, 81);
-}
-
-.card-download-bar {
-  width: 0%;
-  height: 100%;
-  border-radius: 999px;
-  background: rgb(59, 130, 246);
-  transition: width .2s ease;
-}
-
-.card-download-panel.indeterminate .card-download-bar {
-  width: 28% !important;
-  animation: referenceDownloadIndeterminate 1.05s ease-in-out infinite;
-}
-
-@keyframes referenceDownloadIndeterminate {
-  0%   { transform: translateX(-130%); }
-  100% { transform: translateX(360%); }
-}
-
-.media-card.download-active .card-download {
-  background: rgba(0,0,0,.62);
-  border-color: rgba(255,255,255,.12);
-  color: rgb(156,163,175);
-  pointer-events: none;
-}
-
-.media-card.download-active .card-download::before,
-.media-card.download-active .card-download::after {
-  display: none !important;
-}
-
-.media-card.download-done .card-download {
-  background: rgba(20,83,45,.82);
-  border-color: rgb(22,163,74);
-  color: rgb(74,222,128);
-}
-
-.media-card.download-done .card-download::after {
-  content: "✓";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: rgb(74,222,128);
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.media-card.download-error .card-download {
-  background: rgba(127,29,29,.88);
-  border-color: rgb(239,68,68);
-  color: rgb(248,113,113);
-}
-
-.media-card.download-error .card-download::after {
-  content: "!";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: rgb(248,113,113);
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.media-card.download-error .card-download-bar {
-  background: rgb(239,68,68);
-}
-
 #saveSelectedBtn {
   position: relative;
   overflow: hidden;
@@ -937,17 +721,13 @@ html.image-lightbox-open { overflow-y:hidden; }
   width: var(--bulk-save-progress, 0%);
   height: 3px;
   background: rgb(59, 130, 246);
+  box-shadow:0 0 8px rgba(59,130,246,.45);
   transition: width .2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-download-panel,
-  .card-download-bar,
   #saveSelectedBtn.bulk-saving::after {
     transition: none !important;
-  }
-  .card-download-panel.indeterminate .card-download-bar {
-    animation: none !important;
   }
 }
 
@@ -1004,62 +784,63 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
   .main:has(> .live-timeline > .replay-player-page) .topbar{padding:2px 8px}
 }
 
-/* Replay thumbnail download progress */
-.replay-download{
-  transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;
+/* Shared download feedback, including compact icons beside text labels. */
+.download-feedback-icon {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  vertical-align: middle;
+  pointer-events: none;
+  color: inherit;
+  --download-ring-color: #21836e;
 }
-.replay-card.replay-downloading .replay-download{
-  background:rgba(29,78,216,.9);
-  border-color:rgba(147,197,253,.9);
-  color:#fff;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:-.25px;
+:is(.card-download,.replay-download) > .download-feedback-icon {
+  width: 100%;
+  height: 100%;
+  --download-ring-color: #9df9da;
+  filter: drop-shadow(0 1px 1px #12392eaa);
 }
-.replay-card.replay-download-done .replay-download{
-  background:rgba(20,83,45,.9);
-  border-color:rgb(34,197,94);
-  color:rgb(134,239,172);
-  font-size:18px;
-  font-weight:900;
+:is(.replay-page-download,.vote-image-save,.dl) > .download-feedback-icon { margin-inline-end: 4px; }
+.glowme-phase3.pc-layout .chat-media-download > .download-feedback-icon {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  --download-ring-color: #9df9da;
+  filter: drop-shadow(0 1px 1px #12392eaa);
 }
-.replay-card.replay-download-error .replay-download{
-  background:rgba(127,29,29,.92);
-  border-color:rgb(239,68,68);
-  color:rgb(254,202,202);
-  font-size:18px;
-  font-weight:900;
+.glowme-phase3.pc-layout .chat-media-download > .download-feedback-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
 }
-.replay-download-progress{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  height:4px;
-  z-index:5;
-  overflow:hidden;
-  opacity:0;
-  background:rgba(55,65,81,.9);
-  transition:opacity .15s ease;
+.download-feedback-track,.download-feedback-ring,.download-feedback-check,.download-feedback-error { display: none; }
+.download-feedback-track { stroke: currentColor; opacity: .24; }
+.download-feedback-ring {
+  stroke: var(--download-ring-color);
+  stroke-dasharray: 100;
+  stroke-dashoffset: var(--download-remaining, 100);
+  transition: stroke-dashoffset .16s linear;
 }
-.replay-download-progress > span{
-  display:block;
-  width:0%;
-  height:100%;
-  background:rgb(59,130,246);
-  box-shadow:0 0 8px rgba(59,130,246,.55);
-  transition:width .18s linear,background .15s ease;
+[data-download-phase="active"] :is(.download-feedback-track,.download-feedback-ring) { display: inline; }
+[data-download-phase="active"][data-download-unknown] .download-feedback-ring {
+  stroke-dasharray: 25 75;
+  stroke-dashoffset: 100;
+  transform-origin: 50% 50%;
+  transition: none;
+  animation: download-ring-spin 1s linear infinite;
 }
-.replay-card.replay-downloading .replay-download-progress,
-.replay-card.replay-download-done .replay-download-progress,
-.replay-card.replay-download-error .replay-download-progress{
-  opacity:1;
+:is([data-download-phase="done"],[data-download-phase="error"]) .download-feedback-arrow { display: none; }
+[data-download-phase="done"] .download-feedback-check { display: inline; }
+[data-download-phase="error"] .download-feedback-error { display: inline; }
+@keyframes download-ring-spin { to { rotate: 1turn; } }
+@media (prefers-reduced-motion: reduce) {
+  .download-feedback-ring { animation: none !important; transition: none; }
 }
-.replay-card.replay-download-done .replay-download-progress > span{
-  background:rgb(34,197,94);
-}
-.replay-card.replay-download-error .replay-download-progress > span{
-  background:rgb(239,68,68);
+@media (forced-colors: active) {
+  .download-feedback-ring { stroke: Highlight; }
 }
 
 /* Desktop LIVE uses the available viewport, like the Replay player. */
@@ -1313,8 +1094,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=droplet-20261108">
-<link rel="preload" as="script" href="web-glowme.js?v=droplet-20261108">
+<link rel="stylesheet" href="glowme.css?v=mint-controls-20261108">
+<link rel="preload" as="script" href="web-glowme.js?v=mint-controls-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 </head>
@@ -1979,7 +1760,7 @@ function renderChannelVideosView() {
       <div class="replay-page-head">
         <button class="replay-page-back" id="channelBackToList" type="button">← Channel</button>
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(replayDateLabel(selected.displayStartAt))}</span></div>
-        <div class="video-player-actions"><button class="replay-page-download" id="channelDownloadCurrent" type="button">다운로드</button></div>
+        <div class="video-player-actions"><button class="replay-page-download" id="channelDownloadCurrent" type="button">${downloadFeedbackIcon()}다운로드</button></div>
       </div>
       <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : videoLoadingIndicator()}</div>
     </div>`;
@@ -1987,7 +1768,7 @@ function renderChannelVideosView() {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
       const thumb = replayThumb(p);
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
-        <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div></div>
+        <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
@@ -2182,37 +1963,33 @@ async function downloadChannelVideo(post, button) {
   const seq = s.requestSeq;
   const sameSession = channelVideoSession();
   let sink;
-  const card = button?.closest(".replay-card");
-  const progress = card?.querySelector(".replay-download-progress > span");
-  const original = button?.textContent;
-  const originalFontSize = button?.style?.fontSize || "";
-  if (button) { button.disabled = true; button.textContent = "…"; }
-  card?.classList.remove("replay-download-done", "replay-download-error");
-  card?.classList.add("replay-downloading");
-  if (progress) progress.style.width = "0%";
+  if (button) {
+    button.disabled = true;
+    setDownloadButtonFeedback(button, "picker");
+  }
   try {
-    // Preserve the existing user-gesture save picker and bounded HLS downloader.
+    // Keep the save picker in the original user gesture.
     sink = await createReplayDownloadSink({...post, title: post.title || "Fromm_Channel"});
-    if (!sink) return;
+    if (!sink) {
+      if (button) setDownloadButtonFeedback(button);
+      return;
+    }
+    const writesFile = !!sink.writable;
+    if (button) setDownloadButtonFeedback(button, "active");
     const detail = await fetchChannelVideoDetail(post);
     if (!sameSession() || seq !== s.requestSeq) throw new Error("채널 또는 로그인 세션이 변경되었습니다. 다시 시도해주세요.");
     await downloadReplayStream(detail._streamUrl, sink, (done, total) => {
       if (!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
-      const percent = Math.round(done / total * 100);
-      if (button) { button.textContent = `${percent}%`; button.title = `Channel 다운로드 ${done}/${total}`; if (card) button.style.fontSize = "10px"; }
-      if (progress) progress.style.width = `${percent}%`;
+      if (button) setDownloadButtonFeedback(button, "active", total > 0 ? done / total : null);
     });
-    card?.classList.add("replay-download-done");
-    if (button) { button.textContent = "✓"; button.title = "채널 영상 저장 완료"; }
+    if (button) setDownloadButtonFeedback(button, writesFile ? "done" : "handed-off");
   } catch (e) {
     try { await sink?.writable?.abort?.(); } catch {}
-    card?.classList.add("replay-download-error");
-    if (button) { button.textContent = "!"; button.title = "채널 영상 다운로드 실패"; }
+    if (button) setDownloadButtonFeedback(button, "error");
     if (sameSession()) window.alert(`채널 영상 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
   } finally {
     s.downloading = false;
-    card?.classList.remove("replay-downloading");
-    if (button) { button.disabled = false; button.style.fontSize = originalFontSize; if (button.textContent === "…") button.textContent = original; }
+    if (button) button.disabled = false;
   }
 }
 
@@ -3399,20 +3176,28 @@ async function saveVoteImage(vote,index,button,current){
   const option=vote?.options?.[index], url=voteImageSource(option,true);
   if(!url || !current() || button.disabled) return;
   const status=button.parentElement.querySelector(".vote-image-status");
-  button.disabled=true;button.textContent="저장 중…";status.textContent="";
+  button.disabled=true;
+  setDownloadButtonFeedback(button,"active");
+  status.textContent="";
   try{
-    const {blob,contentType}=await fetchMediaBlob({type:"image",content:url});
+    const {blob,contentType}=await fetchMediaBlob({type:"image",content:url},ratio=>{
+      if(current()) setDownloadButtonFeedback(button,"active",ratio);
+    });
     if(!current()) return;
     if(!contentType.startsWith("image/")) throw new Error("NOT_AN_IMAGE");
     const objectUrl=URL.createObjectURL(blob), anchor=document.createElement("a");
     anchor.href=objectUrl;anchor.download=`투표_${voteId(vote.id)}_선택지_${index+1}${contentTypeExt(contentType,"image")}`;
     anchor.hidden=true;document.body.append(anchor);anchor.click();anchor.remove();
     setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
-    status.textContent="사진을 다운로드했습니다.";
+    setDownloadButtonFeedback(button,"handed-off");
+    status.textContent="브라우저에 다운로드를 요청했습니다.";
   }catch{
-    if(current()) status.textContent="사진을 저장하지 못했습니다. 다시 시도해 주세요.";
+    if(current()){
+      setDownloadButtonFeedback(button,"error");
+      status.textContent="사진을 저장하지 못했습니다. 다시 시도해 주세요.";
+    }
   }finally{
-    if(current()){button.disabled=false;button.textContent="사진 저장";}
+    if(current()) button.disabled=false;
   }
 }
 function voteOutsidePoint(event,dialog){
@@ -3428,7 +3213,7 @@ function voteDetailMarkup(vote,profile=null){
       const percent=results ? votePercent(option?.percentage) : null, pick=voteArtistPick(vote,option);
       const image=voteImageSource(option), safeImage=!!image;
       return `<li class="vote-option ${pick ? "artist-pick" : ""}">
-        ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer"><button class="btn vote-image-save" type="button" data-option-index="${index}" aria-label="선택지 ${index+1} 사진 저장">사진 저장</button><span class="vote-image-status" role="status"></span>` : ""}
+        ${safeImage ? `<img src="${esc(image)}" alt="선택지 ${index+1} 사진" loading="lazy" referrerpolicy="no-referrer"><button class="btn vote-image-save" type="button" data-option-index="${index}" aria-label="선택지 ${index+1} 사진 저장">${downloadFeedbackIcon()}사진 저장</button><span class="vote-image-status" role="status"></span>` : ""}
         <div class="vote-option-top"><span>${esc(voteText(option?.text) || `선택지 ${index+1}`)}</span><strong class="vote-percentage">${percent===null ? "미제공" : `${percent}%`}</strong></div>
         ${pick ? voteArtistBadge(profile) : ""}
         ${percent!==null ? `<div class="vote-bar" aria-hidden="true"><span style="width:${percent}%"></span></div>` : ""}</li>`;
@@ -4508,7 +4293,7 @@ function renderReplayPlayerView(){
         <span class="replay-page-divider" aria-hidden="true">|</span>
         <span class="replay-page-meta">${esc(meta)}</span>
       </div>
-      <div class="replay-page-actions video-player-actions"><button class="replay-page-download" id="replayDownloadCurrent" type="button">다운로드</button></div>
+      <div class="replay-page-actions video-player-actions"><button class="replay-page-download" id="replayDownloadCurrent" type="button">${downloadFeedbackIcon()}다운로드</button></div>
     </div>
     <div class="replay-page-stage">${stage}</div>
   </div>`;
@@ -4546,7 +4331,7 @@ function renderReplayView(){
     const thumb=replayThumb(p);
     const active=selected && String(selected.id)===String(p.id) && selected._channelId===p._channelId;
     return `<article class="replay-card ${active?"active":""}" data-replay-post="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" role="button" tabindex="0" aria-label="${esc(p.title || "LIVE Replay")} 재생">
-      <div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">↓</button><div class="replay-download-progress" aria-hidden="true"><span></span></div><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
+      <div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">${downloadFeedbackIcon()}</button><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
       <div class="replay-body"><div class="replay-title">${esc(p.title || "LIVE Replay")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
     </article>`;
   }).join("")}</div>` : `<div class="replay-empty">${state.live.replayLoading?"Replay를 불러오는 중...":state.live.replayError?esc(state.live.replayError):"표시할 Replay가 없습니다."}</div>`;
@@ -5515,87 +5300,33 @@ function prewarmReplayRuntime(){
 async function downloadReplayPost(post,button){
   if(state.postBulkSaving || channelVideoState.downloading || state.live.replayDownloading || !post) return;
   state.live.replayDownloading=true;
-
-  const originalText=button?.textContent || "";
-  const originalTitle=button?.title || "";
-  const card=button?.closest?.(".replay-card") || null;
-  const progressBar=card?.querySelector?.(".replay-download-progress > span") || null;
-  const isThumbButton=!!button?.classList?.contains("replay-download");
-
-  if(card){
-    card.classList.remove("replay-download-done","replay-download-error");
-    card.classList.add("replay-downloading");
-  }
-  if(progressBar) progressBar.style.width="0%";
-
   if(button){
     button.disabled=true;
-    button.textContent="…";
-    button.title="저장 위치 선택 중";
+    setDownloadButtonFeedback(button,"picker");
   }
 
   let sink=null;
   try{
     sink=await createReplayDownloadSink(post);
-    if(!sink) return;
-
+    if(!sink){
+      if(button) setDownloadButtonFeedback(button);
+      return;
+    }
+    const writesFile=!!sink.writable;
+    if(button) setDownloadButtonFeedback(button,"active");
     const detail=await fetchReplayPostDetail(post);
     const rawUrl=detail._streamUrl || replayStreamUrl(detail);
-
     await downloadReplayStream(rawUrl,sink,(done,total)=>{
-      if(!button) return;
-
-      const percent=Math.max(0,Math.min(100,Math.round(done/total*100)));
-      button.title=`Replay 다운로드 ${done}/${total}`;
-
-      // Both the Replay list thumbnail and the player-page button now show %.
-      button.textContent=`${percent}%`;
-      if(isThumbButton) button.style.fontSize=percent===100 ? "10px" : "10px";
-
-      if(progressBar) progressBar.style.width=`${percent}%`;
+      if(button) setDownloadButtonFeedback(button,"active",total>0 ? done/total : null);
     });
-
-    if(card){
-      card.classList.remove("replay-downloading");
-      card.classList.add("replay-download-done");
-    }
-    if(progressBar) progressBar.style.width="100%";
-    if(button){
-      button.textContent="✓";
-      button.title="Replay 저장 완료";
-      button.style.fontSize="";
-    }
+    if(button) setDownloadButtonFeedback(button,writesFile ? "done" : "handed-off");
   }catch(e){
     try{await sink?.writable?.abort?.();}catch{}
-
-    if(card){
-      card.classList.remove("replay-downloading");
-      card.classList.add("replay-download-error");
-    }
-    if(progressBar) progressBar.style.width="100%";
-    if(button){
-      button.textContent="!";
-      button.title="Replay 다운로드 실패";
-      button.style.fontSize="";
-    }
-
+    if(button) setDownloadButtonFeedback(button,"error");
     window.alert(`Replay 다운로드 실패: ${e?.message || e}`);
   }finally{
     state.live.replayDownloading=false;
-
-    if(button){
-      setTimeout(()=>{
-        button.disabled=false;
-        button.textContent=originalText;
-        button.title=originalTitle;
-        button.style.fontSize="";
-
-        if(card){
-          card.classList.remove("replay-downloading","replay-download-done","replay-download-error");
-        }
-        if(progressBar) progressBar.style.width="0%";
-      },900);
-    }
+    if(button) button.disabled=false;
   }
 }
 
@@ -9131,16 +8862,7 @@ function renderMediaCard(m){
   card.innerHTML = `
     ${thumb}
     <div class="card-badge">${label}</div>
-    <a class="card-download" href="${esc(dl)}" title="다운로드">⇩</a>
-    <div class="card-download-panel" aria-hidden="true">
-      <div class="card-download-meta">
-        <span class="card-download-status">Downloading...</span>
-        <span class="card-download-text">0 / 0</span>
-      </div>
-      <div class="card-download-track">
-        <div class="card-download-bar"></div>
-      </div>
-    </div>
+    <a class="card-download" href="${esc(dl)}" aria-label="다운로드" title="다운로드">${downloadFeedbackIcon()}</a>
 
     <div class="card-body">
       <div class="card-title">${esc(baseName(m))}</div>
@@ -9283,7 +9005,7 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">다운로드</a>`;
+        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
         html+=`<span class="stats">${esc(baseName(m))}</span>`;
       }
 
@@ -9330,9 +9052,7 @@ function renderMessage(m){
     chatDownload.onclick = async (e)=>{
       e.preventDefault();
       e.stopPropagation();
-      if(chatDownload.getAttribute("aria-busy")==="true") return;
-      chatDownload.setAttribute("aria-busy","true");
-      try{await downloadSingleMedia(m,chatDownload);}finally{chatDownload.removeAttribute("aria-busy");}
+      await downloadSingleMedia(m,chatDownload);
     };
   }
 
@@ -10239,100 +9959,64 @@ function mediaCardForMessage(m){
   return null;
 }
 
-function setMediaDownloadVisual(m,status="idle",progress=null,loaded=0,total=0){
-  const card=mediaCardForMessage(m);
-  if(!card) return false;
+function downloadFeedbackIcon(){
+  return `<svg class="download-feedback-icon" viewBox="0 0 36 36" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle
+    class="download-feedback-track" cx="18" cy="18" r="16"/><circle
+    class="download-feedback-ring" cx="18" cy="18" r="16" pathLength="100" transform="rotate(-90 18 18)"/><path
+    class="download-feedback-arrow" d="M18 10v15m-5-5 5 5 5-5"/><path
+    class="download-feedback-check" d="m11 18 5 5 9-10"/><path
+    class="download-feedback-error" d="M18 10v10m0 5v.1"/></svg>`;
+}
 
-  const panel=card.querySelector(".card-download-panel");
-  const bar=card.querySelector(".card-download-bar");
-  const statusEl=card.querySelector(".card-download-status");
-  const textEl=card.querySelector(".card-download-text");
-  const button=card.querySelector(".card-download");
-
-  card.classList.remove("download-active","download-done","download-error");
-
-  if(status==="active"){
-    card.classList.add("download-active");
-    panel?.classList.add("visible");
-
-    const hasRatio=Number.isFinite(progress);
-    panel?.classList.toggle("indeterminate",!hasRatio);
-
-    if(statusEl) statusEl.textContent="Downloading...";
-
-    if(hasRatio){
-      const pct=Math.max(0,Math.min(100,progress*100));
-      if(bar) bar.style.width=`${pct}%`;
-
-      if(total>0){
-        const mb=n=>`${(n/1024/1024).toFixed(n>=10*1024*1024?1:2)} MB`;
-        if(textEl) textEl.textContent=`${mb(loaded)} / ${mb(total)}`;
-      }else{
-        if(textEl) textEl.textContent=`${Math.round(pct)}%`;
-      }
-
-      if(button) button.title=`다운로드 중 ${Math.round(pct)}%`;
-    }else{
-      if(bar) bar.style.width="28%";
-      if(textEl){
-        textEl.textContent=loaded>0
-          ? `${(loaded/1024/1024).toFixed(2)} MB`
-          : "0 / 0";
-      }
-      if(button) button.title="다운로드 중";
+const downloadFeedbackState=new WeakMap();
+function setDownloadButtonFeedback(button,phase="idle",ratio=null){
+  if(!button) return;
+  const previous=downloadFeedbackState.get(button);
+  if(previous?.timer) clearTimeout(previous.timer);
+  if(phase==="idle"){
+    if(!previous) return;
+    for(const [name,value] of previous.attributes){
+      if(value===null) button.removeAttribute(name);
+      else button.setAttribute(name,value);
     }
-    return true;
+    delete button.dataset.downloadPhase;
+    delete button.dataset.downloadUnknown;
+    button.style.removeProperty("--download-remaining");
+    downloadFeedbackState.delete(button);
+    return;
   }
 
-  panel?.classList.remove("indeterminate");
+  const feedback=previous || {
+    attributes:["title","aria-label","aria-busy"].map(name=>[name,button.getAttribute(name)]),
+    timer:null
+  };
+  downloadFeedbackState.set(button,feedback);
+  const percent=Number.isFinite(ratio) ? Math.max(0,Math.min(100,ratio*100)) : null;
+  const active=phase==="active";
+  const status={
+    picker:"저장 위치 선택 중",
+    active:percent===null ? "다운로드 중" : `다운로드 중 ${Math.round(percent)}%`,
+    done:"저장 완료",
+    "handed-off":"브라우저에 다운로드 요청됨",
+    error:"다운로드 실패"
+  }[phase];
 
-  if(status==="saving"){
-    card.classList.add("download-active");
-    panel?.classList.add("visible");
-    if(bar) bar.style.width="100%";
-    if(statusEl) statusEl.textContent="Saving file...";
-    if(textEl) textEl.textContent="";
-    if(button) button.title="파일 저장 중";
-    return true;
+  button.dataset.downloadPhase=phase;
+  button.toggleAttribute("data-download-unknown",active && percent===null);
+  button.style.setProperty("--download-remaining",String(100-(percent ?? 0)));
+  button.title=status;
+  const label=feedback.attributes[1][1] || button.textContent.trim() || "다운로드";
+  button.setAttribute("aria-label",`${label} · ${status}`);
+  if(active || phase==="picker") button.setAttribute("aria-busy","true");
+  else{
+    button.removeAttribute("aria-busy");
+    feedback.timer=setTimeout(()=>setDownloadButtonFeedback(button),phase==="error" ? 2200 : 1400);
   }
+}
 
-  if(status==="done"){
-    card.classList.add("download-done");
-    if(bar) bar.style.width="100%";
-    if(statusEl) statusEl.textContent="Saving file...";
-    if(textEl) textEl.textContent="";
-    if(button) button.title="다운로드 완료";
-
-    // Match the reference site: hide the progress panel after the file is saved.
-    setTimeout(()=>panel?.classList.remove("visible"),180);
-    return true;
-  }
-
-  if(status==="error"){
-    card.classList.add("download-error");
-    panel?.classList.add("visible");
-    if(bar) bar.style.width="100%";
-    if(statusEl) statusEl.textContent="Error";
-    if(textEl) textEl.textContent="";
-    if(button) button.title="다운로드 실패";
-
-    setTimeout(()=>{
-      if(card.classList.contains("download-error")){
-        card.classList.remove("download-error");
-        panel?.classList.remove("visible");
-        if(bar) bar.style.width="0%";
-        if(button) button.title="다운로드";
-      }
-    },2200);
-    return true;
-  }
-
-  panel?.classList.remove("visible","indeterminate");
-  if(bar) bar.style.width="0%";
-  if(statusEl) statusEl.textContent="Downloading...";
-  if(textEl) textEl.textContent="0 / 0";
-  if(button) button.title="다운로드";
-  return true;
+function setMediaDownloadVisual(m,phase,ratio=null){
+  setDownloadButtonFeedback(mediaCardForMessage(m)?.querySelector(".card-download"),phase,ratio);
 }
 
 function setBulkSaveButtonProgress(btn,progress=null){
@@ -10348,46 +10032,30 @@ function setBulkSaveButtonProgress(btn,progress=null){
 }
 
 async function downloadSingleMedia(m,button=null){
-  const oldText = button?.textContent;
-  const isCardButton=!!button?.classList?.contains("card-download");
-
-  if(button){
-    button.style.pointerEvents = "none";
-    if(!isCardButton) button.textContent = "…";
-  }
-  setMediaDownloadVisual(m,"active",null);
-
+  if(button?.getAttribute("aria-busy")==="true") return;
+  setDownloadButtonFeedback(button,"active");
   try{
-    const {blob,contentType} = await fetchMediaBlob(
-      m,
-      (ratio,loaded,total)=>setMediaDownloadVisual(m,"active",ratio,loaded,total)
-    );
-    const ext = contentTypeExt(contentType,m.type);
-    setMediaDownloadVisual(m,"saving",1,blob.size,blob.size);
-    const a = document.createElement("a");
-    const objectUrl = URL.createObjectURL(blob);
+    const {blob,contentType}=await fetchMediaBlob(m,ratio=>setDownloadButtonFeedback(button,"active",ratio));
+    const ext=contentTypeExt(contentType,m.type);
+    const a=document.createElement("a");
+    const objectUrl=URL.createObjectURL(blob);
 
-    a.href = objectUrl;
-    a.download = baseName(m)+ext;
-    a.style.display = "none";
+    a.href=objectUrl;
+    a.download=baseName(m)+ext;
+    a.style.display="none";
     document.body.appendChild(a);
     a.click();
     a.remove();
 
     setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
-    setMediaDownloadVisual(m,"done",1);
+    setDownloadButtonFeedback(button,"handed-off");
   }catch(e){
     if(e?.code==="MEDIA_FETCH_NO_RESPONSE" && startDirectMediaDownload(m)){
       console.warn("빈 fetch 응답: 브라우저 직접 다운로드로 전환",e);
-      setMediaDownloadVisual(m,"idle");
+      setDownloadButtonFeedback(button,"handed-off");
     }else{
-      setMediaDownloadVisual(m,"error");
+      setDownloadButtonFeedback(button,"error");
       alert(e.message || String(e));
-    }
-  }finally{
-    if(button){
-      button.style.pointerEvents = "";
-      if(!isCardButton) button.textContent = oldText;
     }
   }
 }
@@ -10636,9 +10304,9 @@ async function runMediaSaveBatch(items,root,btn,current=()=>true){
       const m=items[next++];
       try{
         setMediaDownloadVisual(m,"active",null);
-        await saveOneMediaItem(m,root,(ratio,loaded,total)=>{
+        await saveOneMediaItem(m,root,ratio=>{
           assertMediaSaveCurrent(current);
-          setMediaDownloadVisual(m,"active",ratio,loaded,total);
+          setMediaDownloadVisual(m,"active",ratio);
         },current);
         if(current()) setMediaDownloadVisual(m,"done",1);
         ok++;
@@ -10818,9 +10486,9 @@ async function saveSelectedToDownloads(items,current=()=>true){
         setMediaDownloadVisual(m,"active",null);
         const {blob,contentType} = await fetchMediaBlob(
           m,
-          (ratio,loaded,total)=>{
+          ratio=>{
             assertMediaSaveCurrent(current);
-            setMediaDownloadVisual(m,"active",ratio,loaded,total);
+            setMediaDownloadVisual(m,"active",ratio);
           }
         );
         assertMediaSaveCurrent(current);
@@ -10834,7 +10502,7 @@ async function saveSelectedToDownloads(items,current=()=>true){
         a.click();
         a.remove();
         setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
-        setMediaDownloadVisual(m,"done",1);
+        setMediaDownloadVisual(m,"handed-off");
         ok++;
         // Android browsers may throttle back-to-back downloads.
         if(i+1<items.length) await sleep(450);
@@ -11357,7 +11025,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
-<script src="web-glowme.js?v=droplet-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=mint-controls-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>
@@ -11374,6 +11042,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=droplet-20261108"></script>
+<script type="module" src="web-glass.js?v=mint-controls-20261108"></script>
 </body>
 </html>

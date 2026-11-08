@@ -1,5 +1,15 @@
 # 상단바 Meapri Regular 실험
 
+현재 수정: `fix/header-live-scroll-glass`, 기준 main `83e810c`(PR80).
+사용자가 스크롤 중 효과가 사라지는 방식을 거절하여 scroll→frost 처리를 제거했습니다.
+실제 굴절은 스크롤 내내 연결하고 맵을 재사용합니다. blur=0/specular=false로
+계산을 줄이며 굴절 강도는 유지합니다. 영상/레일 크기 변경 대체는 기존대로입니다.
+현재 근거는 [header-scroll 검토](design-review/header-scroll/README.md)입니다.
+아래 PR80의 scroll/frost 기록은 과거 정책이며 복원하면 안 됩니다.
+Node285 PASS/기존SKIP1, PC1440/760/900standalone·모바일390·대체경로 검사 PASS,
+단독 스크롤 p95 끔/켬16.8/16.8ms, 실제 휠 녹화124프레임 모두 SVG 유지.
+최종 CI/병합/배포/공개 확인은 이번 수정 PR 완료 기록에 이어서 남깁니다.
+
 - 기준: 최신 main `9d783c1004e0afdcb8dbf959bf747c76ca275270`(PR79 사이드바 레이어 수정 포함), 브랜치 `experiment/header-regular-glass`, worktree `/workspace/fromm-viewer-capsule-states`. 시작 clean, 기존 PR50/51·실험 브랜치·인증/미디어 코어 변경 금지.
 - 사용자 요청: 실제 엔진을 상단바에만 실험 적용. 기존 Meapri MIT/핀1613f831 재사용, Regular/bar 프로필의 native SVG backdrop refraction. React/CDN/새 의존성/DOM·영상 캡처/WebGL 도입 없음.
 - 결정: PC 전용 `?headerGlass=regular` 실험 주소에서 적용, 기본 주소는 비교 기준으로 유지. 상단바 외곽의 장식 면 1개에만 엔진, 글자/버튼 별도 전경. 중앙 민트 가독성 면과 상단 여백/둥근 모서리 바깥 가림 유지. 엔진 중첩을 피하려 실험 주소에서는 기존 소형 컨트롤/저장 하이라이트의 광학 장식만 정적 표현으로 유지(기능은 그대로).

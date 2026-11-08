@@ -45,9 +45,10 @@ hover/fine-pointer branch). The default URL stays the comparison baseline.
 The unchanged vendored `LiquidGlass` public constructor is used with
 `variant: regular`, `profile: bar`, `preset/quality: balanced`, no chromatic
 aberration, mapPixelRatio1, no backdropSource/refractBackground, and edges:false.
-Requested thickness28/refraction34/blur4.5 resolve through the engine's bar
-profile to thickness11.76/refraction10.2/blur3.42 at a 1328×120 surface. Tint is
-rgba(224,241,233,.18), saturation108 and specularIntensity.14 (profiled .07).
+Requested thickness28/refraction34 resolve through the engine's bar
+profile to thickness11.76/refraction10.2 at a 1328×120 surface. Tint is
+rgba(224,241,233,.18), saturation108. Gaussian blur is zero and the extra
+specular map/blend is disabled; the existing CSS rim highlight remains.
 These are measured rendered settings, not copied preview percentages.
 
 Only an aria-hidden, inert, pointer-transparent decorative sibling receives the
@@ -65,10 +66,15 @@ url(#lg-filter) is installed. QA's read-only snapshot and setPaused A/B switch
 are on `FrommHeaderGlass`; the flag is not persisted. This is a header experiment,
 not final site-wide engine deployment. MIT LICENSE and bundled source unchanged.
 
-Performance guard: measured continuous wide SVG refraction caused large frame
-spikes in the local experiment. Active scrolling/rail motion now calls the real
-public suspend()/resume() API with a cheap 3px CSS frost, reusing the existing map
-when size is unchanged. A resize while suspended rebuilds once after settling.
+Live scrolling: the initial experiment's scroll-to-frost switch has been removed
+because the lens must remain visible while its backdrop moves. The same native
+SVG stays attached throughout scrolling, with no scroll listener, per-frame
+adapter updates or map regeneration. Zero blur and no specular blend reduce the
+filter graph's work while preserving its original displacement strength. This
+does not guarantee 60fps on every GPU; paired performance samples are recorded.
+Only sidebar expansion/collapse still calls the public suspend()/resume() API
+with a cheap 3px CSS frost while the header changes size. A resize while
+suspended rebuilds once after settling.
 Playing video releases the header engine and uses the original opaque mint bar;
 pause/end permits an idle rebuild. No per-frame map regeneration or video hooks
 that change playback are used. The API snapshot distinguishes svg/frost/plain

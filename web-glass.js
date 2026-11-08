@@ -1,6 +1,6 @@
 const headerTrial=new URLSearchParams(location.search).get('headerGlass')==='regular';
 window.FrommHeaderGlassTrial=headerTrial;
-if(headerTrial)import('./web-header-glass.js?v=regular-rim-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
+if(headerTrial)import('./web-header-glass.js?v=regular-scroll-20261108').then(({createHeaderGlass})=>{window.FrommHeaderGlass=createHeaderGlass();}).catch(()=>{});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{}); // An unavailable optional adapter leaves the plain mint capsule usable.

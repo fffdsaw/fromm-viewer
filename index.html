@@ -827,8 +827,8 @@ html:has(.replay-player-page){overflow-y:hidden;overscroll-behavior-y:none}
   transform: rotate(-90deg);
   transition: stroke-dashoffset .16s linear;
 }
-[data-download-phase="active"] :is(.download-feedback-track,.download-feedback-ring) { display: inline; }
-[data-download-phase="active"][data-download-unknown] .download-feedback-ring {
+:is([data-download-phase="active"],[data-download-phase="queued"]) :is(.download-feedback-track,.download-feedback-ring) { display: inline; }
+:is([data-download-phase="active"][data-download-unknown],[data-download-phase="queued"]) .download-feedback-ring {
   stroke-dasharray: 25 75;
   stroke-dashoffset: 100;
   transition: none;
@@ -1096,8 +1096,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=menu-tools-20261108">
-<link rel="preload" as="script" href="web-glowme.js?v=menu-tools-20261108">
+<link rel="stylesheet" href="glowme.css?v=rail-lens-20261108">
+<link rel="preload" as="script" href="web-glowme.js?v=rail-lens-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 </head>
@@ -11086,7 +11086,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
-<script src="web-glowme.js?v=menu-tools-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=rail-lens-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=0.5.0"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=5"></script>
@@ -11103,6 +11103,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=menu-tools-20261108"></script>
+<script type="module" src="web-glass.js?v=rail-lens-20261108"></script>
 </body>
 </html>

@@ -729,18 +729,22 @@ html.glowme .reply-content{color:#244c42}
 .capsule-save-control{display:contents}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
  .glowme-phase3.pc-layout{--pc-cap-width:312px;--pc-header-radius:24px;--pc-surround:#f0f8f3;--pc-media-inset:8px}
- .glowme-phase3.pc-layout #timeline.gallery{box-sizing:border-box;padding-inline:var(--pc-media-inset)}
+ .glowme-phase3.pc-layout #timeline.gallery,.glowme-phase3.pc-layout.pc-video-list .replay-grid{box-sizing:border-box;padding-inline:var(--pc-media-inset)}
  .glowme-phase3.pc-layout .viewer-header,.glowme-phase3.pc-layout[data-glow-layout="pinned"] .viewer-header{border-color:transparent;border-radius:var(--pc-header-radius);background:none}
  .glowme-phase3.pc-layout .viewer-header::before{inset:-13px -12px -1px;background:var(--pc-surround)}
  .glowme-phase3.pc-layout .viewer-header::after{inset:-1px;border:1px solid #c1ddcf;border-radius:inherit;background:var(--pc-header-bg)}
  /* Round only the visible edge where scrolled media meets the pinned header. */
- .glowme-phase3.pc-layout .pc-media-row:not([hidden])::after{
+ .glowme-phase3.pc-layout .pc-media-row:not([hidden])::after,
+ .glowme-phase3.pc-layout.pc-video-list .topbar::after{
    --media-edge-radius:12px;
    content:"";
+   display:block;
    position:absolute;
    top:calc(100% + 1px);
+   bottom:auto;
    inset-inline:calc(var(--pc-media-inset) - 1px);
    height:var(--media-edge-radius);
+   border:0;border-radius:0;box-shadow:none;z-index:1;
    background:
      radial-gradient(circle var(--media-edge-radius) at bottom right,transparent calc(100% - 1px),var(--pc-surround) 100%) left top / var(--media-edge-radius) 100% no-repeat,
      radial-gradient(circle var(--media-edge-radius) at bottom left,transparent calc(100% - 1px),var(--pc-surround) 100%) right top / var(--media-edge-radius) 100% no-repeat;

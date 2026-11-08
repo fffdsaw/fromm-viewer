@@ -46,11 +46,51 @@ test('pagination cleanup restarts pending thumbnails even when the terminal page
 // Channel selection now follows a shared first-valid rule; paging behavior is exercised in browser tests.
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
- for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','downloadChannelVideo','downloadReplayPost','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
+ for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
  for(const file of ['web-native-live.js','web-live-pip.js','web-live-chat-probe.js'])assert.equal(fs.readFileSync(path.join(root,file),'utf8'),execFileSync('git',['show',`b78f2b1:${file}`],{cwd:root,encoding:'utf8'}),file);
  // LIVE controls may evolve visually; lifecycle wrappers/readiness wiring stay fixed.
  const controls=fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8'),oldControls=execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'});
  const marker='  const originalRender=renderLiveView';assert.ok(controls.includes(marker)&&oldControls.includes(marker));
  assert.equal(controls.slice(controls.indexOf(marker)),oldControls.slice(oldControls.indexOf(marker)),'LIVE lifecycle and receive readiness wiring');
  assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/'],{cwd:root,encoding:'utf8'}),'');
+});
+
+test('Replay and Channel share progress and distinguish a confirmed file from browser handoff',async()=>{
+ const state={live:{}}, channelVideoState={requestSeq:1}, transitions=[];
+ const post={id:'clip',title:'Clip',_streamUrl:'https://fixture.test/clip.m3u8'};
+ let sink, write;
+ const alerts=[];
+ const context=vm.createContext({
+  state,channelVideoState,channelVideoSession:()=>()=>true,
+  createReplayDownloadSink:async()=>sink, fetchChannelVideoDetail:async()=>post, fetchReplayPostDetail:async()=>post,
+  downloadReplayStream:async(url,target,progress)=>{assert.equal(url,post._streamUrl);assert.equal(target,sink);progress(1,2);await write;},
+  setDownloadButtonFeedback:(_button,phase='idle',ratio)=>transitions.push([phase,ratio]),
+  window:{alert:message=>alerts.push(message)},safeErrorDetail:String
+ });
+ for(const name of ['downloadReplayPost','downloadChannelVideo']) vm.runInContext(fn(name),context);
+ for(const name of ['downloadReplayPost','downloadChannelVideo']){
+  const button={disabled:false};
+  const run=()=>context[name](post,button);
+  sink=null;
+  await run();
+  assert.deepEqual(transitions.splice(0),[['picker',undefined],['idle',undefined]]);
+  assert.equal(button.disabled,false);
+
+  let finish;
+  sink={writable:{}};
+  write=new Promise(resolve=>{finish=resolve;});
+  const pending=run();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(transitions.splice(0),[['picker',undefined],['active',undefined],['active',.5]]);
+  assert.equal(button.disabled,true);
+  finish();
+  await pending;
+  assert.deepEqual(transitions.splice(0),[['done',undefined]]);
+  assert.equal(button.disabled,false);
+
+  sink={chunks:[]};
+  await run();
+  assert.deepEqual(transitions.splice(0),[['picker',undefined],['active',undefined],['active',.5],['handed-off',undefined]]);
+ }
+ assert.deepEqual(alerts,[]);
 });

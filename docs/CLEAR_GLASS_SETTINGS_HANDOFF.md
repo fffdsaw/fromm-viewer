@@ -1,5 +1,7 @@
 # PC 투명 유리와 설정
 
+후속 사이드바/버튼 작업: [GLASS_CONTROLS_HANDOFF.md](GLASS_CONTROLS_HANDOFF.md).
+
 - 사용자 요청: 민트는 페이지 배경에 유지하고 상단바/사이드바는 투명 유리로 변경.
   사이드바에도 기존 Meapri 엔진 적용, 데모처럼 웹 설정에서 굴절 등을 조절.
 - 기준 main `3263c6a`(PR81). 브랜치 `feat/clear-glass-settings`, 작업 폴더

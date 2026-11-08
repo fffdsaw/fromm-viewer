@@ -16,8 +16,7 @@ export function createHeaderGlass(){
  }
  function pane(target,name){
   const surface=document.createElement('div');surface.className=name+'-glass-surface';surface.setAttribute('aria-hidden','true');surface.inert=true;target.prepend(surface);
-  let glass=null,loading=false,blocked='',ticket=0,idle=0,retry=0,timer=0,busyTimer=0,observer=null,builds=0,disposed=0,mode='plain',reason='pending',suspended=false,frostSize='',lastOptions='',specular=false;
-  function size(){return target.clientWidth+':'+target.clientHeight;}
+  let glass=null,loading=false,blocked='',ticket=0,idle=0,retry=0,timer=0,observer=null,builds=0,disposed=0,mode='plain',reason='pending',lastOptions='',specular=false;
   function paint(){
    const look=glassPC.matches&&glassPreferences.value.enabled&&!paused&&!opaque.matches&&!contrast.matches;
    if(target.classList.contains('glass-pane-on')!==look)target.classList.toggle('glass-pane-on',look);
@@ -28,7 +27,7 @@ export function createHeaderGlass(){
   function release(){
    ticket++;clearTimeout(timer);timer=0;observer?.disconnect();observer=null;
    if(glass){glass.destroy();glass=null;disposed++;}
-   suspended=false;lastOptions='';surface.removeAttribute('style');target.classList.remove(name+'-glass-ready');
+   lastOptions='';surface.removeAttribute('style');target.classList.remove(name+'-glass-ready');
   }
   function unavailable(){
    if(paused)return 'paused';if(!glassPC.matches)return 'mobile';if(!glassPreferences.value.enabled)return 'disabled';
@@ -40,7 +39,9 @@ export function createHeaderGlass(){
   }
   function busy(){
    if([...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended))return 'video';
-   return name==='sidebar'&&window.FrommGlowME?.railAnimating?'rail':'';
+   // Keep the existing map attached through width motion. The SDK resizes its
+   // map in place after ResizeObserver settles; expansion never destroys it.
+   return '';
   }
   function watchReady(generation){
    observer?.disconnect();clearTimeout(timer);
@@ -59,17 +60,11 @@ export function createHeaderGlass(){
    if(name==='header'&&target.clientWidth)headerMask(target);
    const stop=unavailable();
    if(stop){if(glass||observer)release();mode='plain';reason=stop;paint();return;}
-   const work=busy();clearTimeout(busyTimer);busyTimer=0;
-   if(work==='rail')busyTimer=setTimeout(sync,240);
+   const work=busy();
    if(work==='video'){if(glass||observer)release();mode='plain';reason=work;paint();return;}
-   if(glass&&suspended&&frostSize!==size())release();
    if(glass){
-    if(work&&mode!=='pending'){
-     if(!suspended){glass.suspend();suspended=true;frostSize=size();surface.style.backdropFilter='blur(2px)';surface.style.webkitBackdropFilter='blur(2px)';}
-     mode='frost';reason=work;
-    }else if(!work&&suspended){glass.resume();suspended=false;mode='svg';reason='';}
     const next=options(),key=JSON.stringify(next);
-    if(!suspended&&key!==lastOptions){
+    if(key!==lastOptions){
      const rebuild=specular!==next.specular;specular=next.specular;lastOptions=key;
      try{glass.update(next);if(rebuild){mode='pending';watchReady(ticket);}}catch{blocked='unavailable';release();mode='plain';reason=blocked;}
     }
@@ -94,7 +89,7 @@ export function createHeaderGlass(){
    idle=window.requestIdleCallback?requestIdleCallback(build,{timeout:1200}):setTimeout(build,80);paint();
   }
   new ResizeObserver(sync).observe(target);
-  return {sync,hide(){release();if(idle){if(window.cancelIdleCallback)cancelIdleCallback(idle);else clearTimeout(idle);}idle=0;clearTimeout(retry);retry=0;clearTimeout(busyTimer);mode='plain';reason='hidden';paint();},get live(){return !!glass;},get snapshot(){return {mode,reason,live:!!glass,suspended,builds,disposed,resolved:glass?.resolved||null};}};
+  return {sync,hide(){release();if(idle){if(window.cancelIdleCallback)cancelIdleCallback(idle);else clearTimeout(idle);}idle=0;clearTimeout(retry);retry=0;mode='plain';reason='hidden';paint();},get live(){return !!glass;},get snapshot(){return {mode,reason,live:!!glass,suspended:false,builds,disposed,resolved:glass?.resolved||null};}};
  }
  const header=pane(document.querySelector('.viewer-header'),'header'),sidebar=pane(document.querySelector('#sidebar'),'sidebar');
  const sync=()=>{header.sync();sidebar.sync();};

@@ -1139,6 +1139,10 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .viewer-header.glass-pane-on::after{background:transparent;border-color:#ffffffc4;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5}
  .glowme-phase3.pc-layout #sidebar.glass-pane-on{isolation:isolate;background:none;border-color:#ffffffb3;box-shadow:inset 0 1px 0 #fff9,inset 0 -1px 0 #fff5,0 3px 12px #244b3a0a}
  .glowme-phase3.pc-layout #sidebar.glass-pane-on>.sidebar-glass-surface{z-index:-1}
+ /* Explicit face/content planes keep nested control lenses from sampling the
+    pane's own labels in Chromium's negative-z backdrop compositing path. */
+ .glowme-phase3.pc-layout .glass-pane-on>:is(.header-glass-surface,.sidebar-glass-surface){z-index:0}
+ .glowme-phase3.pc-layout .viewer-header.glass-pane-on>:not(.header-glass-surface),.glowme-phase3.pc-layout #sidebar.glass-pane-on>:not(.sidebar-glass-surface){position:relative;z-index:1}
  .glowme-phase3.pc-layout .glass-pane-on[data-header-glass-reason="video"]>:is(.header-glass-surface,.sidebar-glass-surface){backdrop-filter:none;-webkit-backdrop-filter:none}
  .glowme-phase3.pc-layout .glass-pane-on :is(.artist-copy,.pc-mode-heading,.pc-list-info,.rail-artist-name,.glowme-nav button){text-shadow:0 1px 3px #ffffffe6,0 0 7px #ffffffb3}
  .glowme-phase3.pc-layout .glass-settings-footer{display:block;flex:none;height:40px;min-height:40px}
@@ -1175,4 +1179,37 @@ html.glowme .reply-content{color:#244c42}
 @media(forced-colors:active){
  #glassSettingsDialog[open]{background:Canvas;color:CanvasText;border-color:CanvasText}
  #glassSettingsDialog :is(.glass-settings-actions,.glass-settings-head){background:Canvas;border-color:CanvasText}
+}
+
+/* Meapri Controls: one small optical face, clear foreground, fixed hit box.
+   PointerField illumination + LiquidInteractive tilt, adapted from MIT demo CSS. */
+.control-glass-surface{display:none}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet:not(.rail-pointer-light)){isolation:isolate;box-shadow:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-control{background:transparent!important;border-color:transparent!important}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-control-relative{position:relative}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet):not(.rail-pointer-light,#scrollTopBtn){transform:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet)>.control-glass-surface{display:block!important;visibility:visible!important;position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;box-sizing:border-box;background:linear-gradient(145deg,#ffffff70,#edfff526);border:1px solid #ffffffb8;box-shadow:inset 0 1px 1px #fff9,inset 0 -1px 1px #306e5624,0 2px 5px #173e3014;transform:perspective(700px) rotateX(var(--lg-tilt-x,0deg)) rotateY(var(--lg-tilt-y,0deg));transition:transform 380ms cubic-bezier(.34,1.56,.64,1),opacity 160ms ease}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-on-image{color:#fff;text-shadow:0 1px 3px #000b}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-on-image>.control-glass-surface{background:linear-gradient(145deg,#ffffff52,#102c223d);border-color:#ffffff9c;box-shadow:inset 0 1px 1px #fffd,inset 0 -1px 2px #173e3047,0 2px 6px #0002}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet):not(:disabled):hover>.control-glass-surface{transform:perspective(700px) rotateX(var(--lg-tilt-x,0deg)) rotateY(var(--lg-tilt-y,0deg)) scale(1.04)}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet).glass-pressed:not(:disabled)>.control-glass-surface{transform:perspective(700px) rotateX(calc(var(--lg-tilt-x,0deg)*.5)) rotateY(calc(var(--lg-tilt-y,0deg)*.5)) scale(1.04,.88);transition-duration:90ms;box-shadow:inset 0 2px 3px #1c543b30,inset 0 -1px 0 #fff9}
+ .pc-control-glass.glowme-phase3.pc-layout .control-glass-surface::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:var(--lg-illum,0);background:radial-gradient(circle at calc(var(--lg-illum-x,.5)*100%) calc(var(--lg-illum-y,.5)*100%),#ffffff8a,transparent 72%)}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.control-glass-surface,.rail-pointer-light)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:var(--lg-glow,0);border:1px solid transparent;background:radial-gradient(100px circle at calc(var(--lg-pointer-x,.5)*100%) calc(var(--lg-pointer-y,.5)*100%),#fff,transparent 70%) border-box;mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0) border-box;mask-composite:exclude;transition:opacity 180ms ease}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glowme-nav button.active,.room.active).glass-droplet{background:transparent!important}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-droplet>.control-glass-surface{border-radius:999px;background:linear-gradient(140deg,#e9fffba1,#9bdcc74d);border-color:#ffffffd1;box-shadow:inset 0 2px 2px #fff9,inset 0 -2px 3px #36745c29,0 2px 5px #194b3821}
+ .pc-control-glass.glowme-phase3.pc-layout .room.glass-droplet{border-radius:999px}
+ .pc-control-glass.glowme-phase3.pc-layout .room.active::before{z-index:2}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.glass-droplet{border-radius:999px;background:radial-gradient(90px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#fff8,transparent 75%),linear-gradient(135deg,#d9fff485,#81d2b64d);border-color:#ffffffde;box-shadow:inset 0 2px 2px #fffc,inset 0 -2px 3px #2c6a4c30,0 2px 5px #173e3024}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-tracking button.active>.control-glass-surface{opacity:.32}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.download-active,.download-done,.download-error,.replay-downloading,.replay-download-done,.replay-download-error) :is(.card-download,.replay-download)>.control-glass-surface{opacity:0}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.download-active,.download-done,.replay-downloading,.replay-download-done) :is(.card-download,.replay-download){background:#22c55e!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.download-error,.replay-download-error) :is(.card-download,.replay-download){background:#ef4444!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.card-download,.replay-download){transform:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.replay-filter.active,.live-mini-btn[aria-pressed="true"])>.control-glass-surface{background:#99ddc366!important;border-color:#d5f9e9}
+ .pc-control-glass.glowme-phase3.pc-layout .glass-control:disabled>.control-glass-surface{opacity:.38}
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet)>.control-glass-surface{transform:none!important;transition:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.control-glass-surface,.rail-pointer-light)::after{display:none}
 }

@@ -1059,7 +1059,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 @keyframes video-loading-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.video-loading-ring{animation:none}}
 .live-player-error{position:absolute;z-index:6;left:16px;right:16px;top:50%;transform:translateY(-50%);max-width:420px;margin:auto;padding:12px;border-radius:10px;background:#111722ed;color:#f7f9fc;text-align:center;font-size:13px;pointer-events:none}.live-player-error[hidden]{display:none}
-.live-player-controls{z-index:7}.live-player-controls .mvc-panel{padding-top:32px}.live-controls-enabled .live-comments-overlay{bottom:54px!important;max-height:calc(100% - 54px)!important}
+.live-player-controls{z-index:7}.live-player-controls .mvc-panel{padding-top:32px}.live-controls-enabled .live-comments-overlay{bottom:0!important;max-height:100%!important}
+.live-controls-enabled:has(.live-comments-overlay) .live-player-controls{align-items:flex-start}
+.live-controls-enabled:has(.live-comments-overlay) .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
 .live-player-stage:fullscreen{width:100vw;height:100dvh;max-height:none;aspect-ratio:auto;border-radius:0;background:#080b10}
 .live-player-stage.live-rotated #liveVideoGrid{position:absolute;inset:auto;left:50%;top:50%;width:var(--live-view-width)!important;height:var(--live-view-height)!important;transform:translate(-50%,-50%) rotate(var(--live-view-angle));transform-origin:center}
 .live-player-stage.mvc-menu-fallback{z-index:500}.live-control-badge{font-size:11px;font-weight:700;letter-spacing:.04em;display:flex;align-items:center;gap:6px}.live-control-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff6486}
@@ -11087,10 +11089,10 @@ autoConnectSaved();
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
 <script src="web-glowme.js?v=rail-lens-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
-<script src="web-native-live.js?v=0.5.0"></script>
+<script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
-<script src="web-live-chat-probe.js?v=5"></script>
-<script src="web-live-controls.js?v=2"></script>
+<script src="web-live-chat-probe.js?v=live-fit-20261109"></script>
+<script src="web-live-controls.js?v=live-fit-20261109"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

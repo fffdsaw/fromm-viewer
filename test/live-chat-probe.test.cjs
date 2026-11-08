@@ -156,3 +156,28 @@ test('stop during the interval cannot start another cursor request or deliver la
     onPage: () => {pages++;}, wait: async () => owner.abort()}), error => error.code === 'cancelled');
   assert.equal(pages, 1); assert.equal(h.calls.length, 2);
 });
+
+test('recent startup overlap does not exclude comments when the PC clock is one minute ahead', async () => {
+  const serviceTime = 1792140000000;
+  const calls = [], pages = [];
+  await probe({roomId, token, wallNow: () => serviceTime + 60000, sampleLimit: 2, wait: async () => {}, onPage: p => pages.push(p),
+    fetcher: async url => {
+      const u = new URL(url);calls.push(u);
+      if (u.pathname.includes('/rooms/')) return new Response(JSON.stringify(room));
+      const cursor = Number(u.searchParams.get('cursor'));
+      return new Response(JSON.stringify({success: true, data: {messages: cursor <= serviceTime ? [comment('now', serviceTime)] : [], deletedMessages: [], cursor: serviceTime}}));
+    }});
+  assert.equal(calls[1].searchParams.get('cursor'), String(serviceTime - 60000));
+  assert.equal(pages[0].messages.length, 1, 'first response already contains the recent comment, no minute-long wait');
+  assert.equal(calls[2].searchParams.get('cursor'), String(serviceTime));
+  assert.equal(pages[0].clockSource, 'device-lookback');
+  assert.equal(pages[0].startupWindowMs, 120000);
+});
+test('an exposed service Date anchors startup independently of a badly skewed PC clock', async () => {
+  const serviceTime = 1792140000000, calls = [];
+  const result = await probe({roomId, token, wallNow: () => serviceTime + 3600000, now: () => 0, sampleLimit: 1, fetcher: async url => {
+    calls.push(new URL(url));return new Response(JSON.stringify(calls.length === 1 ? room : messages), {headers: {date: new Date(serviceTime).toUTCString()}});
+  }});
+  assert.equal(calls[1].searchParams.get('cursor'), String(serviceTime - 120000));
+  assert.equal(result.clockSource, 'server');
+});

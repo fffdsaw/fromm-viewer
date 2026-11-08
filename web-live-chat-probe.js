@@ -91,12 +91,13 @@
     return {messageId: parseSendAck(text)};
   }
   async function probe({roomId, token, signal, current = () => true, fetcher = fetch, wait = pause,
-    now = () => performance.now(), sampleLimit = 2, onPage = () => {}}) {
+    now = () => performance.now(), wallNow = () => Date.now(), sampleLimit = 2, onPage = () => {}}) {
     if (typeof roomId !== 'string' || !roomId || roomId.length > 256 ||
         typeof token !== 'string' || !token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) {
       throw new ProbeError('missing-chat-context');
     }
     const assertCurrent = () => { if (!current() || signal?.aborted) throw new ProbeError('cancelled'); };
+    let serverTime = null, serverTimeAt = 0;
     async function get(path, cursor) {
       assertCurrent();
       const url = new URL(path, origin);
@@ -111,6 +112,8 @@
         cache: 'no-store', signal: request.signal, headers: {Accept: 'application/json', Authorization: 'Bearer ' + token}});
       assertCurrent();
       if (!response.ok) throw new ProbeError('http-error', response.status);
+      const date = Date.parse(response.headers.get('date') || '');
+      if (Number.isFinite(date) && date >= 0) { serverTime = date; serverTimeAt = now(); }
       if (Number(response.headers.get('content-length')) > 1048576) throw new ProbeError('response-too-large');
       const text = await response.text();
       assertCurrent();
@@ -133,7 +136,13 @@
     }
     let policy = await readPolicy();
     if (policy.banned) return {status: 'banned', policy, samples: []};
-    let cursor = Date.now();
+    // A local clock ahead of the service can otherwise exclude both incoming
+    // and acknowledged own comments until that future timestamp is reached.
+    // Prefer an exposed service Date; otherwise overlap only two recent minutes.
+    // The existing bounded store deduplicates this recent startup history.
+    const clockSource = serverTime === null ? 'device-lookback' : 'server';
+    const startupWindowMs = 120000;
+    let cursor = Math.max(0, Math.floor((serverTime === null ? wallNow() : serverTime + now() - serverTimeAt) - startupWindowMs));
     const samples = [];
     let received = false, nextPollAt = now(), policyCheckedAt = now();
     for (let index = 0; index < sampleLimit; index++) {
@@ -153,17 +162,21 @@
         throw new ProbeError('unknown-messages-response', 0,
           {messages: type(data.messages), firstMessage: type(data.messages?.[0]), deletedMessages: type(data.deletedMessages), cursor: type(data.cursor)});
       }
-      samples.push({messageCount: data.messages.length, deletedCount: data.deletedMessages.length,
+      const referenceTime = serverTime === null ? wallNow() : serverTime + now() - serverTimeAt;
+      const timestamps = data.messages.map(message => message.createdAt).filter(time => Number.isSafeInteger(time) && time >= 0);
+      const boundAge = ms => Math.min(86400000, Math.max(0, Math.round(ms)));
+      samples.push({cursorLeadMs: data.cursor === null ? null : boundAge(data.cursor - referenceTime),
+        newestMessageAgeMs: timestamps.length ? boundAge(referenceTime - Math.max(...timestamps)) : null, messageCount: data.messages.length, deletedCount: data.deletedMessages.length,
         cursorPresent: data.cursor !== null, requestMs: Math.max(0, Math.round(now() - requestStarted))});
       if (samples.length > 8) samples.shift();
       received ||= data.messages.length > 0;
       if (data.cursor !== null) cursor = data.cursor;
       assertCurrent();
-      onPage({policy, samples: samples.map(sample => ({...sample})), messages: data.messages, deletedMessages: data.deletedMessages});
+      onPage({policy, clockSource, startupWindowMs, samples: samples.map(sample => ({...sample})), messages: data.messages, deletedMessages: data.deletedMessages});
       // At most one poll per second; don't add a full interval after a slow response.
       nextPollAt = requestStarted + 1000;
     }
-    return {status: received ? 'messages-received' : 'connected-no-messages', policy, samples};
+    return {status: received ? 'messages-received' : 'connected-no-messages', policy, clockSource, startupWindowMs, samples};
   }
   function messageStore() { return {items: new Map(), deleted: new Set(), seen: new Set(), version: 0}; }
   function applyMessages(store, messages, deletedMessages) {
@@ -281,18 +294,21 @@
     if (status.textContent !== message) status.textContent = message;
     status.hidden = !message;
   }
+  let ackAt = 0;
   async function submitComment(input) {
     if (sendController || composing || writeBlock() || uncertainDraft(input.value)) return;
-    const context = session, content = input.value.trim();
+    const context = session, content = input.value.trim(), startedAt = performance.now();
     if (!content) return;
     const owner = sendController = new AbortController();
     activeAttempt = {roomId: context.roomId, token: context.token, sequence: context.sequence, content};
-    report.send = {status: 'sending'}; ackId = null; show();
+    report.send = {status: 'sending'}; ackId = null; ackAt = 0; show();
     try {
       const result = await sendNormalComment({...context, content, signal: owner.signal});
       if (sendController !== owner || !context.current()) return;
       ackId = result.messageId;
-      report.send = {status: comments.seen.has(ackId) ? 'delivered' : 'accepted'};
+      ackAt = performance.now();
+      const delivered = comments.seen.has(ackId);
+      report.send = {status: delivered ? 'delivered' : 'accepted', acceptedAfterMs: Math.round(ackAt - startedAt), ...(delivered ? {echoAfterAckMs: 0} : {})};
       input.value = '';
     } catch (error) {
       if (sendController !== owner || !context.current()) return;
@@ -446,7 +462,7 @@
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
     comments = messageStore(); renderedVersion = -1; followLatest = true; unreadCount = 0; lastDiagnostic = '';
-    report = {probeVersion: 4, mode: 'interactive-comments', pollIntervalMs: 1000, status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
+    report = {probeVersion: 5, mode: 'interactive-comments', pollIntervalMs: 1000, status: 'checking', receivedCount: 0, invalidMessageCount: 0, liveChatPresent: !!live.liveChat,
       chatTokenPresent: typeof token === 'string' && !!token, liveChatErrorPresent: !!live.liveChatError,
       provider: typeof live.chatProvider === 'string' && live.chatProvider.toLowerCase() === 'fromm' ? 'fromm' : live.chatProvider ? 'other' : 'missing'};
     if (live.entry?.kind !== 'channel' || typeof roomId !== 'string' || !roomId) {
@@ -466,9 +482,11 @@
         if (!current()) return;
         const updated = applyMessages(comments, page.messages, page.deletedMessages);
         report.receivedCount += updated.addedCount; report.invalidMessageCount += updated.invalidCount;
-        Object.assign(report, {policy: page.policy, samples: page.samples,
+        Object.assign(report, {policy: page.policy, clockSource: page.clockSource, startupWindowMs: page.startupWindowMs, samples: page.samples,
           status: comments.items.size ? 'messages-received' : updated.invalidCount ? 'unrenderable-messages' : 'connected-no-messages'});
-        if (ackId && comments.seen.has(ackId) && report.send?.status === 'accepted') report.send.status = 'delivered';
+        if (ackId && comments.seen.has(ackId) && report.send?.status === 'accepted') {
+          report.send.status = 'delivered';report.send.echoAfterAckMs = Math.max(0, Math.round(performance.now() - ackAt));
+        }
         if (updated.invalidCount) {
           const invalid = page.messages[0];
           report.messageShape = {messageId: type(invalid?.messageId), content: type(invalid?.content), nickname: type(invalid?.nickname), createdAt: type(invalid?.createdAt)};

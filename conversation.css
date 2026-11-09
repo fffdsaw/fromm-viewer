@@ -79,3 +79,21 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-error{display:block;font-size:12px;color:#8c4d3a;margin-top:5px;overflow-wrap:anywhere}
 
 .conversation-pending-bubble .emoticon-img{display:block;width:160px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+
+/* Standard Unicode emoji live alongside Fromm sticker packs. */
+#conversationEmoticonPacks .conversation-emoji-tab{font-size:23px;line-height:1;display:grid;place-items:center;background:#e6f5ee;border-color:#c2e5d6}
+#conversationEmoticonPacks .conversation-emoji-tab[aria-pressed="true"]{background:#ccebdd;border-color:#63b59c}
+#conversationEmoticonItems.conversation-standard-emoji{grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+#conversationEmoticonItems.conversation-standard-emoji button{display:grid;place-items:center;padding:0;font-size:clamp(18px,3vw,24px);line-height:1}
+
+/* Give sticker-only messages breathing room at their rounded top-left corner. */
+#timeline .bubble.emoticon-only{padding:12px 14px 14px}
+#timeline .bubble.emoticon-only>.meta{margin:0 0 10px;padding-inline:2px}
+
+/* The PC voice download belongs before the filename, below the player. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout .chat-sound-bubble>.meta{min-height:0;padding-inline-end:0}
+ .glowme-phase3.pc-layout .chat-sound-bubble .media-actions{display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;gap:10px;min-height:var(--thumb-download-size,34px)}
+ .glowme-phase3.pc-layout .chat-sound-bubble .chat-sound-download{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;flex:0 0 var(--thumb-download-size,34px);width:var(--thumb-download-size,34px)!important;height:var(--thumb-download-size,34px)!important;margin:0;padding:0!important;display:grid;place-items:center}
+ .glowme-phase3.pc-layout .chat-sound-bubble .media-actions>.stats{min-width:0;overflow-wrap:anywhere}
+}

@@ -12,6 +12,8 @@
  }
  let mounted=false,context=null,dock,input,status,send,count,storage,newButton,dialog,emoteButton,emotePanel,emotePreview,restoreJob=null;
  let emoteVersion=0,emoteRequest=null;
+ // Standard Unicode emoji remain plain message text, never a Fromm sticker payload.
+ const STANDARD_EMOJI=['❤️','🩷','🧡','💛','💚','🩵','💙','💜','🤍','🖤','💕','💞','💖','💗','💘','💝','🥹','😂','🤣','😊','😍','🥰','😘','😭','😢','😆','😁','😄','😃','🙂','😉','😎','🤔','🥺','😳','😱','😴','😮','🤩','😋','😇','🙃','😌','🤗','🫶','👍','👏','🙌','🙏','💪','👀','🔥','✨','⭐','🌟','🎉','🎊','💐','🌸','🌷','🌹','🍀','🌈','☀️'];
  let saveTimer=0,layoutFrame=0,saving=Promise.resolve(),pendingCount=0,resumeIdentityPending=false;
  const sdk=()=>import('./vendor/firebase/conversation-10.12.2.js');
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);
@@ -96,22 +98,51 @@
    c.emoteItems.set(item.id,item);return item;
   }finally{owner.close();}
  }
+ function showStandardEmoji(c){
+  if(!viewing(c)||emotePanel.hidden)return;
+  emoteVersion++;emoteRequest?.abort();emoteRequest?.close();emoteRequest=null;
+  const packsBox=emotePanel.querySelector('#conversationEmoticonPacks'),itemsBox=emotePanel.querySelector('#conversationEmoticonItems');
+  for(const button of packsBox.children)button.setAttribute('aria-pressed',String(button.dataset.emojiTab==='standard'));
+  itemsBox.classList.add('conversation-standard-emoji');itemsBox.replaceChildren();
+  emotePanel.querySelector('#conversationEmoticonStatus').hidden=true;
+  emotePanel.querySelector('#conversationEmoticonRetry').hidden=true;
+  for(const emoji of STANDARD_EMOJI){
+   const button=document.createElement('button');button.type='button';button.textContent=emoji;button.title=emoji;
+   button.setAttribute('aria-label',emoji);button.dataset.unicodeEmoji=emoji;
+   button.onclick=()=>{
+    if(!viewing(c)||c.sending||c.denied||input.disabled)return;
+    const start=input.selectionStart,end=input.selectionEnd,max=c.rules?.max||450;
+    if(input.value.length-(end-start)+emoji.length>max){c.notice='메시지 최대 길이를 초과했습니다.';paint();return;}
+    input.setRangeText(emoji,start,end,'end');
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    closeEmoticons();input.focus({preventScroll:true});
+   };
+   itemsBox.append(button);
+  }
+ }
+ function appendStandardEmojiTab(c,packsBox){
+  const button=document.createElement('button');button.type='button';button.className='conversation-emoji-tab';
+  button.dataset.emojiTab='standard';button.textContent='😊';button.title='일반 이모지';
+  button.setAttribute('aria-label','일반 이모지');button.setAttribute('aria-pressed','false');
+  button.onclick=()=>showStandardEmoji(c);packsBox.append(button);return button;
+ }
  async function loadEmoticons(c,pack=null){
   if(!viewing(c)||emotePanel.hidden)return;
   emoteRequest?.abort();emoteRequest?.close();const owner=requestOwner(c),version=++emoteVersion;emoteRequest=owner;
   const valid=()=>viewing(c)&&!emotePanel.hidden&&version===emoteVersion&&!owner.signal.aborted;
   const message=emotePanel.querySelector('#conversationEmoticonStatus'),retry=emotePanel.querySelector('#conversationEmoticonRetry');
   const packsBox=emotePanel.querySelector('#conversationEmoticonPacks'),itemsBox=emotePanel.querySelector('#conversationEmoticonItems');
-  message.textContent='이모티콘 불러오는 중…';message.hidden=false;retry.hidden=true;itemsBox.replaceChildren();
+  message.textContent='이모티콘 불러오는 중…';message.hidden=false;retry.hidden=true;itemsBox.classList.remove('conversation-standard-emoji');itemsBox.replaceChildren();
   try{
    if(!pack){
     packsBox.replaceChildren();
+    const emojiTab=appendStandardEmojiTab(c,packsBox);
     const packs=core.readEmoticonPacks(await frommApiRequest(`/v2/chat/emoticons/${encodeURIComponent(c.host)}`,{signal:owner.signal}));if(!valid())return;
     c.emotePacks=packs;
     for(const entry of packs){
      const button=document.createElement('button');button.type='button';button.title=entry.name;button.setAttribute('aria-label',entry.name);button.dataset.pack=entry.id;
      if(entry.imageUrl){const image=document.createElement('img');image.src=entry.imageUrl;image.alt='';button.append(image);}else button.textContent=entry.name.slice(0,2);
-     button.onclick=()=>void loadEmoticons(c,entry);packsBox.append(button);
+     button.onclick=()=>void loadEmoticons(c,entry);packsBox.insertBefore(button,emojiTab);
     }
     pack=packs.find(entry=>entry.id===c.selectedEmoticon?.packId)||packs[0];
    }

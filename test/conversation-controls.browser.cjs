@@ -39,13 +39,20 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
   assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const filename=await bubble.locator('.stats').innerText();assert.ok(filename.length>0);
-  if(cfg.width>700){
-   const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await bubble.locator('.stats').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
-   assert.ok(button.y>=player.y+player.height-2,'download sits below the audio player: '+JSON.stringify({button,player}));
-   assert.ok(file.x>=button.x+button.width+4&&Math.abs((button.y+button.height/2)-(file.y+file.height/2))<5,'filename follows circle in the same row: '+JSON.stringify({button,file}));
-   assert.ok(Math.abs(button.x-actions.x)<3,'circle starts at filename row left: '+JSON.stringify({button,actions}));
-   assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'relative');assert.ok(await download.locator('.download-feedback-label').evaluate(e=>getComputedStyle(e).clipPath.includes('50%')));
-  }else assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'static','mobile keeps its existing audio action row');
+  // The same translucent glass circle now lives before the filename on both desktop and mobile.
+  const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await bubble.locator('.stats').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
+  assert.ok(button.y>=player.y+player.height-2,'download stays below audio player: '+JSON.stringify({button,player}));
+  assert.ok(file.x>=button.x+button.width+4&&Math.abs((button.y+button.height/2)-(file.y+file.height/2))<5,'filename follows circle: '+JSON.stringify({button,file}));
+  assert.ok(Math.abs(button.x-actions.x)<3,'circle begins at file row left: '+JSON.stringify({button,actions}));
+  assert.ok(Math.abs(button.width-button.height)<1,'download is circular: '+JSON.stringify(button));
+  const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,background:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
+  assert.equal(appearance.position,'relative');
+  assert.equal(appearance.borderRadius,'50%');
+  assert.match(appearance.backdropFilter,/blur\(/,'frosted glass style');
+  assert.ok(appearance.background.includes('gradient'),'translucent surface: '+JSON.stringify(appearance));
+  assert.ok(appearance.svgWidth>=button.width-3&&appearance.svgWidth<=button.width,'SVG progress ring fills the circular control');
+  assert.ok(appearance.clipPath.includes('50%'),'visible download label must be hidden');
+  assert.ok((await download.getAttribute('aria-label')).includes('다운로드'),'download remains accessible by name');
   const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await bubble.locator('.stats').innerText(),filename);
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);assert.equal(await page.locator('#conversationNew').innerText(),'');

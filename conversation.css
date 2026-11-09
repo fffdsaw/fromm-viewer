@@ -81,8 +81,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .conversation-pending-bubble .emoticon-img{display:block;width:160px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain}
 
 /* Standard Unicode emoji live alongside Fromm sticker packs. */
-#conversationEmoticonPacks .conversation-emoji-tab{font-size:23px;line-height:1;display:grid;place-items:center;background:#e6f5ee;border-color:#c2e5d6}
-#conversationEmoticonPacks .conversation-emoji-tab[aria-pressed="true"]{background:#ccebdd;border-color:#63b59c}
+#conversationEmoticonPacks button.conversation-emoji-tab{font-size:23px;line-height:1;display:grid;place-items:center;background:transparent;border:0;box-shadow:none}
+#conversationEmoticonPacks button.conversation-emoji-tab[aria-pressed="true"]{background:#d4eee280;border:0;box-shadow:none}
 #conversationEmoticonItems.conversation-standard-emoji{grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
 #conversationEmoticonItems.conversation-standard-emoji button{display:grid;place-items:center;padding:0;font-size:clamp(18px,3vw,24px);line-height:1}
 
@@ -90,10 +90,43 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .bubble.emoticon-only{padding:12px 14px 14px}
 #timeline .bubble.emoticon-only>.meta{margin:0 0 10px;padding-inline:2px}
 
-/* The PC voice download belongs before the filename, below the player. */
-@media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout .chat-sound-bubble>.meta{min-height:0;padding-inline-end:0}
- .glowme-phase3.pc-layout .chat-sound-bubble .media-actions{display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;gap:10px;min-height:var(--thumb-download-size,34px)}
- .glowme-phase3.pc-layout .chat-sound-bubble .chat-sound-download{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;flex:0 0 var(--thumb-download-size,34px);width:var(--thumb-download-size,34px)!important;height:var(--thumb-download-size,34px)!important;margin:0;padding:0!important;display:grid;place-items:center}
- .glowme-phase3.pc-layout .chat-sound-bubble .media-actions>.stats{min-width:0;overflow-wrap:anywhere}
+/* Keep the original glass-like circular voice download control in the filename
+   row on both touch and desktop. Only its placement/appearance changes; the
+   shared SVG progress ring, completion check and download handler are unchanged. */
+#timeline .chat-sound-bubble>.meta{min-height:0;padding-inline-end:0}
+#timeline .chat-sound-bubble .media-actions{
+ display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;
+ gap:10px;min-height:var(--thumb-download-size,40px)
+}
+#timeline .chat-sound-bubble .media-actions a.chat-sound-download{
+ position:relative!important;inset:auto!important;
+ flex:0 0 var(--thumb-download-size,40px);box-sizing:border-box;
+ width:var(--thumb-download-size,40px)!important;height:var(--thumb-download-size,40px)!important;
+ margin:0;padding:0!important;display:grid;place-items:center;
+ border-radius:50%!important;
+ background:linear-gradient(150deg,#ffffff94,#e7f6ef50)!important;
+ border:1px solid #ffffffc2!important;
+ color:#275d51!important;
+ box-shadow:inset 0 1px 0 #ffffffb8,0 2px 9px #1b594325!important;
+ -webkit-backdrop-filter:blur(12px) saturate(1.2);
+ backdrop-filter:blur(12px) saturate(1.2);
+ font-size:0;line-height:1;text-decoration:none;cursor:pointer
+}
+#timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
+ background:linear-gradient(150deg,#ffffffc7,#e5f6ed77)!important
+}
+#timeline .chat-sound-bubble .media-actions a.chat-sound-download:focus-visible{
+ outline:2px solid #147e69;outline-offset:3px
+}
+#timeline .chat-sound-bubble .chat-sound-download>.download-feedback-icon{
+ width:100%;height:100%;margin:0!important;
+ --download-ring-color:#328a75;filter:none
+}
+#timeline .chat-sound-bubble .chat-sound-download>.download-feedback-label{
+ position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);
+ white-space:nowrap
+}
+#timeline .chat-sound-bubble .media-actions>.stats{min-width:0;overflow-wrap:anywhere}
+@media(forced-colors:active){
+ #timeline .chat-sound-bubble .media-actions a.chat-sound-download{background:Canvas!important;border:1px solid ButtonText!important;color:ButtonText!important}
 }

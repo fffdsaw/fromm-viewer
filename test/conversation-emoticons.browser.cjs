@@ -60,7 +60,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false);assert.equal(await page.locator('[data-message-id="sent-1"] .emoticon-img').getAttribute('src'),'https://fixture.test/p1.svg');
   const sentSticker=page.locator('[data-message-id="sent-1"] .bubble');
   assert.equal(await sentSticker.locator('.meta .type').count(),0,'text/emoticon type label is hidden');
-  assert.match(await sentSticker.locator('.meta span').nth(1).innerText(),/^\\d{2}:\\d{2}$/,'chat metadata uses 24-hour time');
+  assert.match(await sentSticker.locator('.meta span').nth(1).innerText(),/^\d{2}:\d{2}$/,'chat metadata uses 24-hour time');
   assert.ok(await sentSticker.evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))>=12,'sticker card has room around name and rounded corner');
   await page.locator('#conversationEmoticonButton').click();await page.locator('[data-pack="p2"]').click();await page.locator('[data-emoticon="p2-item"]').click();await page.locator('#conversationInput').fill('함께 보내요 😊');
   rejectSend=true;await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationStatus').textContent.includes('보내지 못했습니다'));assert.equal(posts.length,2);assert.equal(await page.locator('#conversationInput').inputValue(),'함께 보내요 😊');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true);

@@ -6,7 +6,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   const {page,context,errors}=await open(browser,server.url,{login:true});
-  let identity='fan-A',mode='ok',posts=[],history=0,holdRules=null,releaseRules=null;
+  let identity='fan-A',mode='ok',posts=[],history=0,holdRules=null,releaseRules=null,holdHistory=null,releaseHistory=null;
   const rows=Array.from({length:12},(_,i)=>({messageId:'star-'+i,userType:'star',type:'text',content:'대화 '+i,createdAt:Date.now()-60000+i*1000}));
   page.on('dialog',dialog=>dialog.accept());
   await page.route('**/*',async route=>{
@@ -20,7 +20,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    }
    if(u.pathname.endsWith('/messages')){
     const from=Date.parse(u.searchParams.get('findStartAt')),end=Date.parse(u.searchParams.get('findEndAt')),limit=Number(u.searchParams.get('limit'));
-    if(from<946684800001)history++;
+    if(from<946684800001)history++;if(holdHistory){const wait=holdHistory;holdHistory=null;await wait;}
     return answer({success:true,data:{messages:rows.filter(m=>m.createdAt>=from&&m.createdAt<=end).sort((a,b)=>b.createdAt-a.createdAt).slice(0,limit)}});
    }
    if(u.pathname.endsWith('/replies')){
@@ -63,6 +63,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.evaluate(()=>setFilter('all'));await page.waitForFunction(()=>FrommConversation.status.phase==='connected');assert.equal(await page.locator('#conversationInput').inputValue(),'화면 전환 중 전송 금지');
   // A deliberate server refresh must not silently rehydrate the old disk cache.
   const before=history;await page.locator('#scanBtn').click();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected');assert.ok(history>before);assert.equal(await page.evaluate(()=>state.messages.length),rows.length);
+  // A partial snapshot must be visible while older server pages are still pending.
+  await page.evaluate(async()=>{await FrommConversation.flush();FrommConversation.stop();const store=FrommConversationCore.createStore();try{const saved=await store.read('user:fan-A','host-room'),last=saved.messages.sort((a,b)=>a.createdAt-b.createdAt).slice(-6);await store.clearRoom('user:fan-A','host-room');await store.write('user:fan-A','host-room',last,{count:6,complete:false,cursorEnd:new Date(last[0].createdAt-1).toISOString()})}finally{await store.close()}});
+  holdHistory=new Promise(resolve=>releaseHistory=resolve);const reenter=enter();await page.waitForFunction(()=>FrommConversation.canShowCached()&&!state.chatHistoryComplete&&state.messages.length===6);assert.equal(await page.locator('#timeline .msg').count(),6,'cached partial history visible before older requests finish');releaseHistory();await reenter;assert.equal(await page.evaluate(()=>state.messages.length),rows.length);
   await page.evaluate(()=>FrommConversation.flush());await page.locator('#conversationStorage').click();await page.locator('#conversationClear').click();await page.waitForFunction(()=>document.querySelector('#conversationStorageState').textContent.includes('지우고'));
   assert.equal(await read('user:fan-A'),null);assert.ok(await read('user:fan-B'),'clearing A preserves B');await page.evaluate(()=>FrommConversation.flush());assert.equal(await read('user:fan-A'),null,'cleared account stays off');
   await page.locator('#conversationStorageClose').click();

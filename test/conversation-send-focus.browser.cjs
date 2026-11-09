@@ -15,7 +15,7 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   if(u.pathname==='/v2/chat/emoticons/host')return answer({emoticonPacks:[{id:'pack',nameAdmin:'인사',tabIconUrl:'https://fixture.test/tab.svg'}]});
   if(u.pathname==='/v2/chat/emoticons/host/emoticon/pack')return answer({emoticonItems:[{id:'heart',imageUrl:'https://fixture.test/heart.svg'}]});
   if(u.pathname.endsWith('/messages')){const start=Date.parse(u.searchParams.get('findStartAt')),end=Date.parse(u.searchParams.get('findEndAt'));return answer({messages:rows.filter(m=>m.createdAt>=start&&m.createdAt<=end).sort((a,b)=>b.createdAt-a.createdAt).slice(0,Number(u.searchParams.get('limit')))});}
-  if(u.pathname.endsWith('/replies')){const body=route.request().postDataJSON();posts.push(body);if(holdPost){const promise=holdPost;holdPost=null;await promise;}if(mode==='denied')return answer({},403);return answer({});}
+  if(u.pathname.endsWith('/replies')){const body=route.request().postDataJSON();posts.push(body);if(holdPost){const promise=holdPost;holdPost=null;await promise;}if(mode==='denied')return answer({},403);if(mode==='direct'){const message={messageId:'fast-sticker',type:'text',userType:'fan',...body,createdAt:Date.now()-1};rows.push(message);return answer({message});}return answer({});}
   return route.fallback();
  });
  await page.evaluate(()=>{setActiveAuth('synthetic','device','');hideLoginGate();FrommConversation.loadFirebase=async()=>{throw Error('fixture fallback')};state.rooms=[{id:'fan',hostChatRoomId:'host',host:{nick:'아티스트'}}];const button=document.createElement('button');button.className='room';document.querySelector('#rooms').replaceChildren(button);selectRoom(0,button)});
@@ -41,6 +41,11 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   await page.waitForFunction(id=>{const bubble=document.querySelector(`[data-message-id="${id}"] .bubble`)?.getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect();return bubble&&bubble.bottom<=dock.top-5;},id);
   assert.equal(await page.locator(`[data-message-id="${id}"]`).count(),1,'receipt reconciles without a duplicate');if(sticker)assert.equal(await page.locator(`[data-message-id="${id}"] .emoticon-img`).count(),1);await quiet();
  }
+ // A direct POST reply can beat the first scroll/preview-resize frame.
+ await older();await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="heart"]').click();await page.locator('#conversationInput').fill('바로 전송한 이모티콘');mode='direct';
+ await page.locator('#conversationSend').click();await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='fast-sticker'));
+ assert.equal(await page.locator('[data-message-id="fast-sticker"] .emoticon-img').count(),1,'fast canonical reply is rendered immediately');
+ await page.waitForFunction(()=>{const bubble=document.querySelector('[data-message-id="fast-sticker"] .bubble').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect();return bubble.bottom<=dock.top-5;});await quiet();
  // A rejected send keeps the real error and draft; quiet progress never hides failures.
  await older();mode='denied';await page.locator('#conversationInput').fill('권한 오류 초안');await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationStatus').textContent.includes('보내지 못했습니다'));
  assert.equal(await page.locator('#conversationStatus').isVisible(),true);assert.equal(await page.locator('#conversationInput').inputValue(),'권한 오류 초안');assert.equal(await page.locator('#conversationPending').count(),0);

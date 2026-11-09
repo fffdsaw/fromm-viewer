@@ -313,7 +313,11 @@
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
   else if(state.mediaSequenceStamp?.source===state.messages)state.mediaSequenceStamp.length=state.messages.length;
   if(!roomCurrent(c))return;
-  updateView(oldList,changes,follow);renderCountsOnly();updateChatSearchCount();renderDateCalendar();
+  updateView(oldList,changes,follow||reconciled);
+  // A pending sticker and its composer preview can change height before the
+  // first follow frame. A confirmed own send must still enter the latest window.
+  if(reconciled)showLatest(c);
+  renderCountsOnly();updateChatSearchCount();renderDateCalendar();
   saveSoon();
  }
  async function connectPush(c){

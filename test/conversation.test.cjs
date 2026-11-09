@@ -47,6 +47,15 @@ test('a saturated same-timestamp boundary fails visibly instead of skipping mess
 });
 test('production integration uses verified send fields, fresh rules and a single explicit POST',()=>{
  const js=fs.readFileSync(require.resolve('../web-conversation.js'),'utf8');
- assert.match(js,/\/v2\/chat\/fanChatRooms\//);assert.match(js,/\/replies/);assert.match(js,/body:\{code,chatRoomId:c\.roomId,content:text\}/);assert.match(js,/getRules\(c,\{fresh:true\}\)/);assert.match(js,/isComposing/);assert.match(js,/inMemoryPersistence/);
+ assert.match(js,/\/v2\/chat\/fanChatRooms\//);assert.match(js,/\/replies/);assert.match(js,/const body=\{code,chatRoomId:c\.roomId,content:text\}/);assert.match(js,/if\(emoticon\)body\.emoticonItemId=emoticon\.apiId/);assert.match(js,/getRules\(c,\{fresh:true\}\)/);assert.match(js,/isComposing/);assert.match(js,/inMemoryPersistence/);
  assert.equal((js.match(/method:'POST'/g)||[]).length,1,'no background or retry send path');
+});
+
+test('emoticon payloads use verified envelopes and allow text-free sends only with a selection',()=>{
+ const {cleanEmoticon,readEmoticonPacks,readEmoticonItems}=require('../web-conversation-core.js'),rule=readRules(rules());
+ assert.throws(()=>validateText('',rule));assert.equal(validateText('',rule,{allowEmpty:true}),'');assert.throws(()=>validateText('금지',rule,{allowEmpty:true}));
+ assert.throws(()=>readEmoticonPacks({data:{packs:[]}}));assert.throws(()=>readEmoticonItems({data:{items:[]}},'p'));
+ assert.deepEqual(readEmoticonPacks({data:{emoticonPacks:[]}}),[]);assert.equal(readEmoticonPacks({data:{emoticonPacks:[{id:'p',titleNameOverseas:{ko:'인사'},tabIconUrl:'https://fixture.test/tab.svg'}]}})[0].name,'인사');
+ const items=readEmoticonItems({data:{emoticonItems:[{id:'ok',imageUrl:'https://fixture.test/sticker.svg'},{id:'x',imageUrl:'javascript:alert(1)'},{imageUrl:'https://fixture.test/no-id.svg'}]}},'p');
+ assert.equal(readEmoticonItems({data:{emoticonItems:[{id:12,imageUrl:'https://fixture.test/e.svg'}]}},'p')[0].apiId,12);assert.equal(items.length,1);assert.equal(items[0].packId,'p');assert.equal(cleanEmoticon({...items[0],packId:''}),null);assert.equal(cleanEmoticon({...items[0],imageUrl:'data:image/svg+xml,x',thumbnailUrl:''}),null);
 });

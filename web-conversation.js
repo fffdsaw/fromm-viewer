@@ -5,8 +5,13 @@
  if(!core)return;
  const store=core.createStore(),memories=new Map();
  const memoryKey=c=>JSON.stringify([c.accountEmail||c.token,c.uuid,c.host]);
- const cleanPending=value=>value&&typeof value.code==='string'&&value.code.length<=128&&typeof value.content==='string'&&value.content.length<=10000?{code:value.code,content:value.content,createdAt:value.createdAt}:null;
- let mounted=false,context=null,dock,input,status,send,count,storage,newButton,dialog,restoreJob=null;
+ function cleanPending(value){
+  if(!value||typeof value.code!=='string'||value.code.length>128||typeof value.content!=='string'||value.content.length>10000)return null;
+  const emoticon=core.cleanEmoticon(value.emoticon);
+  return{code:value.code,content:value.content,createdAt:value.createdAt,...(emoticon?{emoticon,emoticonItemId:emoticon.id}:{})};
+ }
+ let mounted=false,context=null,dock,input,status,send,count,storage,newButton,dialog,emoteButton,emotePanel,emotePreview,restoreJob=null;
+ let emoteVersion=0,emoteRequest=null;
  let saveTimer=0,layoutFrame=0,saving=Promise.resolve(),pendingCount=0,resumeIdentityPending=false;
  const sdk=()=>import('./vendor/firebase/conversation-10.12.2.js');
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);
@@ -20,7 +25,7 @@
   const owner=new AbortController(),parent=c.owner,cancel=()=>owner.abort();
   if(parent.signal.aborted)cancel();else parent.signal.addEventListener('abort',cancel,{once:true});
   const timer=setTimeout(cancel,ms);
-  return{signal:owner.signal,parent,close(){clearTimeout(timer);parent.signal.removeEventListener('abort',cancel);}};
+  return{signal:owner.signal,parent,abort(){owner.abort();},close(){clearTimeout(timer);parent.signal.removeEventListener('abort',cancel);}};
  }
  const authCurrent=c=>{const a=currentAuth();return!!c&&!!a.token&&c.token===a.token&&c.uuid===a.uuid&&c.account===currentAccountScope();};
  const roomCurrent=c=>authCurrent(c)&&context===c&&c.host===String(state.room?.hostChatRoomId||'')&&c.roomId===String(state.room?.id||'')&&c.generation===state.scanGeneration;
@@ -32,7 +37,7 @@
   }return c.lastView||null;
  }
  const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
-  syncedUntil:c.syncedUntil||0,draft:c.draft||'',outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
+  syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
  function layout(){
   cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(()=>{
    if(!dock||dock.hidden)return;
@@ -42,25 +47,94 @@
    document.body.style.setProperty('--conversation-height',dock.getBoundingClientRect().height+'px');
   });
  }
+ function resizeInput(){
+  if(!input||dock.hidden)return;
+  input.style.height='34px';input.style.height=Math.min(104,Math.max(34,input.scrollHeight+2))+'px';
+ }
+ function clearSentEmoticon(c,item){
+  if(item&&c.selectedEmoticon?.id===item.id&&c.selectedEmoticon?.packId===item.packId)c.selectedEmoticon=null;
+ }
+ function closeEmoticons(focus=false){
+  emoteVersion++;emoteRequest?.abort();emoteRequest?.close();emoteRequest=null;
+  const open=emotePanel&&!emotePanel.hidden;if(emotePanel)emotePanel.hidden=true;
+  emoteButton?.setAttribute('aria-expanded','false');if(open&&focus)emoteButton.focus({preventScroll:true});
+ }
+ async function verifyEmoticon(c,choice){
+  const owner=requestOwner(c);
+  try{
+   const packs=core.readEmoticonPacks(await frommApiRequest(`/v2/chat/emoticons/${encodeURIComponent(c.host)}`,{signal:owner.signal}));
+   if(!roomCurrent(c)||owner.signal.aborted)throw new DOMException('대화방이 바뀌었습니다.','AbortError');
+   if(!packs.some(pack=>pack.id===choice.packId))throw Object.assign(new Error('이 대화방에서 사용할 수 없는 이모티콘입니다. 다시 골라주세요.'),{code:'EMOTICON_UNAVAILABLE'});
+   const items=core.readEmoticonItems(await frommApiRequest(`/v2/chat/emoticons/${encodeURIComponent(c.host)}/emoticon/${encodeURIComponent(choice.packId)}`,{signal:owner.signal}),choice.packId);
+   if(!roomCurrent(c)||owner.signal.aborted)throw new DOMException('대화방이 바뀌었습니다.','AbortError');
+   const item=items.find(item=>item.id===choice.id);if(!item)throw Object.assign(new Error('사용할 수 없는 이모티콘입니다. 다시 골라주세요.'),{code:'EMOTICON_UNAVAILABLE'});
+   c.emoteItems.set(item.id,item);return item;
+  }finally{owner.close();}
+ }
+ async function loadEmoticons(c,pack=null){
+  if(!viewing(c)||emotePanel.hidden)return;
+  emoteRequest?.abort();emoteRequest?.close();const owner=requestOwner(c),version=++emoteVersion;emoteRequest=owner;
+  const valid=()=>viewing(c)&&!emotePanel.hidden&&version===emoteVersion&&!owner.signal.aborted;
+  const message=emotePanel.querySelector('#conversationEmoticonStatus'),retry=emotePanel.querySelector('#conversationEmoticonRetry');
+  const packsBox=emotePanel.querySelector('#conversationEmoticonPacks'),itemsBox=emotePanel.querySelector('#conversationEmoticonItems');
+  message.textContent='이모티콘 불러오는 중…';message.hidden=false;retry.hidden=true;itemsBox.replaceChildren();
+  try{
+   if(!pack){
+    packsBox.replaceChildren();
+    const packs=core.readEmoticonPacks(await frommApiRequest(`/v2/chat/emoticons/${encodeURIComponent(c.host)}`,{signal:owner.signal}));if(!valid())return;
+    c.emotePacks=packs;
+    for(const entry of packs){
+     const button=document.createElement('button');button.type='button';button.title=entry.name;button.setAttribute('aria-label',entry.name);button.dataset.pack=entry.id;
+     if(entry.imageUrl){const image=document.createElement('img');image.src=entry.imageUrl;image.alt='';button.append(image);}else button.textContent=entry.name.slice(0,2);
+     button.onclick=()=>void loadEmoticons(c,entry);packsBox.append(button);
+    }
+    pack=packs.find(entry=>entry.id===c.selectedEmoticon?.packId)||packs[0];
+   }
+   c.emotePack=pack||null;
+   if(!pack){message.textContent='사용할 수 있는 이모티콘이 없습니다.';return;}
+   for(const button of packsBox.children)button.setAttribute('aria-pressed',String(button.dataset.pack===pack.id));
+   const items=core.readEmoticonItems(await frommApiRequest(`/v2/chat/emoticons/${encodeURIComponent(c.host)}/emoticon/${encodeURIComponent(pack.id)}`,{signal:owner.signal}),pack.id);if(!valid())return;
+   for(const [index,item] of items.entries()){
+    c.emoteItems.set(item.id,item);const button=document.createElement('button');button.type='button';button.setAttribute('aria-label',`${item.name} ${index+1}`);button.title=item.name;button.dataset.emoticon=item.id;
+    const image=document.createElement('img');image.src=item.thumbnailUrl;image.alt='';image.loading='lazy';button.append(image);
+    button.onclick=()=>{if(!viewing(c)||c.sending)return;c.selectedEmoticon=item;closeEmoticons();input.focus({preventScroll:true});saveSoon();paint();};itemsBox.append(button);
+   }
+   message.textContent=items.length?'':'이 팩에 이모티콘이 없습니다.';message.hidden=items.length>0;
+  }catch(error){if(viewing(c)&&!emotePanel.hidden&&version===emoteVersion){message.textContent=[401,403].includes(error.status)?'이모티콘 이용 권한을 확인해주세요.':'이모티콘을 불러오지 못했습니다.';retry.hidden=[401,403].includes(error.status);}}
+  finally{owner.close();if(emoteRequest===owner)emoteRequest=null;}
+ }
+ function mountEmoticons(){
+  emoteButton=dock.querySelector('#conversationEmoticonButton');emotePanel=dock.querySelector('#conversationEmoticons');emotePreview=dock.querySelector('#conversationEmoticonPreview');
+  emoteButton.onclick=()=>{const c=context;if(!viewing(c)||c.sending||c.denied)return;if(!emotePanel.hidden){closeEmoticons(true);return;}emotePanel.hidden=false;emoteButton.setAttribute('aria-expanded','true');emotePanel.querySelector('#conversationEmoticonClose').focus({preventScroll:true});void loadEmoticons(c);};
+  emotePanel.querySelector('#conversationEmoticonClose').onclick=()=>closeEmoticons(true);
+  emotePanel.querySelector('#conversationEmoticonRetry').onclick=()=>void loadEmoticons(context);
+  emotePreview.querySelector('button').onclick=()=>{if(!roomCurrent(context)||context.sending)return;context.selectedEmoticon=null;saveSoon();paint();input.focus({preventScroll:true});};
+  document.addEventListener('pointerdown',event=>{if(emotePanel&&!emotePanel.hidden&&!emotePanel.contains(event.target)&&!emoteButton.contains(event.target))closeEmoticons();},true);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&emotePanel&&!emotePanel.hidden){event.preventDefault();event.stopImmediatePropagation();closeEmoticons(true);}},true);
+ }
  function paint(){
   if(!dock)return;
   const c=context,show=roomCurrent(c)&&state.filter==='all'&&document.querySelector('#loginGate')?.classList.contains('hidden');
   dock.hidden=!show;document.body.classList.toggle('conversation-open',show);
-  if(!show){document.querySelector('#conversationPending')?.remove();if(dialog?.open)dialog.close();return;}
-  const labels={connecting:'새 대화 연결 중…',syncing:'새 대화 확인 중…',connected:c.pushOnline?'실시간 수신 중':'자동 수신 중',retry:'연결 재시도 중…',denied:'로그인·구독 권한을 확인해주세요.',paused:'연결 대기 중'};
-  const statusText=c.notice||labels[c.phase]||'대화를 준비하고 있어요.';if(status.textContent!==statusText)status.textContent=statusText;
-  status.title=status.textContent;
+  if(!show){closeEmoticons();document.querySelector('#conversationPending')?.remove();if(dialog?.open)dialog.close();return;}
+  const labels={retry:'연결 재시도 중…',denied:'로그인·구독 권한을 확인해주세요.'};
+  const statusText=c.notice||labels[c.phase]||'';if(status.textContent!==statusText)status.textContent=statusText;
+  status.hidden=!statusText;
   const max=c.rules?.max||450;count.textContent=`${input.value.length} / ${max}`;input.maxLength=max;
-  input.disabled=c.denied;send.disabled=!!(c.sending||c.denied||!c.rules||!input.value.trim()||input.value.length>max||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore);
+  resizeInput();input.disabled=c.denied;send.disabled=!!(c.sending||c.denied||!c.rules||!input.value.trim()&&!c.selectedEmoticon||input.value.length>max||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore);
   send.textContent=c.sending?'전송 중':'전송';
-  storage.textContent=!c.enabled?'자동 저장 꺼짐':c.storageError?'저장 확인 필요':c.saving?'저장 중…':c.saved?'기기에 저장됨':'대화 저장';
+  storage.title=c.storageError?'대화 저장 설정 · 저장 공간을 확인해주세요.':'대화 저장 설정';storage.classList.toggle('storage-error',!!c.storageError);
+  emoteButton.disabled=!!(c.sending||c.denied);emotePreview.hidden=!c.selectedEmoticon;
+  if(c.selectedEmoticon){const image=emotePreview.querySelector('img');if(image.getAttribute('src')!==c.selectedEmoticon.imageUrl)image.src=c.selectedEmoticon.imageUrl;}
+  emotePreview.querySelector('button').disabled=!!c.sending;
   dock.querySelector('#conversationRetry').hidden=!!c.ruleJob||c.denied||!!c.rules&&!['error','retry'].includes(c.phase);
   const resolve=dock.querySelector('#conversationResolve');resolve.hidden=!c.outbox?.uncertain||c.sending;
   let pending=document.querySelector('#conversationPending');
   if(c.outbox||c.accepted.length){
    if(!pending){pending=document.createElement('div');pending.id='conversationPending';pending.className='conversation-pending';pending.setAttribute('role','status');document.querySelector('#timeline').after(pending);}
-   const text=[...c.accepted,...(c.outbox?[c.outbox]:[])].map(message=>message.content+'\n'+(message===c.outbox?(c.sending?'전송 중…':'전송 결과 확인 중'):'서버 접수 · 대화 반영 확인 중')).join('\n\n');if(pending.textContent!==text)pending.textContent=text;
+   const text=[...c.accepted,...(c.outbox?[c.outbox]:[])].map(message=>(message.content||'이모티콘')+'\n'+(message===c.outbox?(c.sending?'전송 중…':'전송 결과 확인 중'):'서버 접수 · 대화 반영 확인 중')).join('\n\n');if(pending.textContent!==text)pending.textContent=text;
   }else pending?.remove();
+  dock.querySelector('.conversation-meta').hidden=!statusText&&dock.querySelector('#conversationRetry').hidden&&resolve.hidden&&pendingCount===0;
   newButton.hidden=pendingCount===0;newButton.textContent=`새 메시지 ${pendingCount}개 ↓`;
   layout();
  }
@@ -75,17 +149,17 @@
  }
  function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),450);}
  function stop(c=context){
-  if(!c)return;c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
+  if(!c)return;if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
   c.pushClose?.();c.pushClose=null;c.pushOnline=false;clearTimeout(c.pushRetry);c.pushRetry=0;
  }
  function beforeRoom(room,{restore=true}={}){
-  const previous=context,carry=roomCurrent(previous)&&String(room?.hostChatRoomId)===previous.host?{draft:input?.value||'',outbox:previous.outbox,accepted:previous.accepted}:null;
-  if(context&&roomCurrent(context)){context.draft=input?.value||'';memories.delete(memoryKey(context));memories.set(memoryKey(context),{draft:context.draft,outbox:context.outbox,accepted:context.accepted.slice(),lastView:viewPosition(context),sendNotBefore:context.sendNotBefore,readNotBefore:context.readNotBefore});if(memories.size>120)memories.delete(memories.keys().next().value);void persist();}
+  const previous=context,carry=roomCurrent(previous)&&String(room?.hostChatRoomId)===previous.host?{draft:input?.value||'',selectedEmoticon:previous.selectedEmoticon,outbox:previous.outbox,accepted:previous.accepted}:null;
+  if(context&&roomCurrent(context)){context.draft=input?.value||'';memories.delete(memoryKey(context));memories.set(memoryKey(context),{draft:context.draft,selectedEmoticon:context.selectedEmoticon,outbox:context.outbox,accepted:context.accepted.slice(),lastView:viewPosition(context),sendNotBefore:context.sendNotBefore,readNotBefore:context.readNotBefore});if(memories.size>120)memories.delete(memories.keys().next().value);void persist();}
   stop();clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();
   const auth=currentAuth(),host=String(room?.hostChatRoomId||'');
   if(!host||!auth.token||!auth.uuid){context=null;restoreJob=null;paint();return;}
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
-   owner:new AbortController(),persisted:new Map(),draft:'',outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
+   owner:new AbortController(),persisted:new Map(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
    phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);if(input)input.value=c.draft;
   context=c;
@@ -109,11 +183,11 @@
       if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
       c.cached=true;c.saved=true;c.syncedUntil=Number.isFinite(cached.meta.syncedUntil)&&cached.meta.syncedUntil>0&&cached.meta.syncedUntil<Date.now()+60000?cached.meta.syncedUntil:newest(messages);
       for(const m of messages)c.persisted.set(core.messageKey(m),m);
-      if(!remembered){c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
+      if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
       const view=remembered?.lastView||cached.meta.view;
       if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(!view.latest)c.restoreView=view;}
       input.value=c.draft;buildMediaSequences();render();
-     }else if(!remembered){c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
+     }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
    }catch{if(roomCurrent(c)){c.storageError=true;if(!c.storageAccount)c.enabled=false;}}
    finally{c.restoring=false;if(roomCurrent(c)){paint();sync();}}
@@ -179,11 +253,14 @@
  async function merge(c,rows){
   if(!roomCurrent(c))return;
   const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false;
-  for(const row of rows){
+  for(let row of rows){
    const key=core.messageKey(row);if(!key||!core.messageTime(row)||(row.hostChatRoomId&&String(row.hostChatRoomId)!==c.host))continue;
-   if(c.outbox&&row.code===c.outbox.code){if(input.value.trim()===c.outbox.content){input.value='';c.draft='';}c.outbox=null;reconciled=true;}
+   const previous=byId.get(key),emoticonId=String(row.emoticonItemId??'');
+   const known=c.emoteItems.get(emoticonId)||[c.outbox,...c.accepted].map(value=>value?.emoticon).find(item=>item?.id===emoticonId);
+   const image=known?.imageUrl||(String(previous?.emoticonItemId||'')===emoticonId?previous?.emoticonItem?.imageUrl:'');
+   if(emoticonId&&image&&!resolveEmoticonUrl(row))row={...row,emoticonItem:{imageUrl:image}};
+   if(c.outbox&&row.code===c.outbox.code){clearSentEmoticon(c,c.outbox.emoticon);if(input.value.trim()===c.outbox.content){input.value='';c.draft='';}c.outbox=null;reconciled=true;}
    const accepted=c.accepted.filter(message=>message.code!==row.code);if(accepted.length!==c.accepted.length){c.accepted=accepted;reconciled=true;}
-   const previous=byId.get(key);
    if(previous&&JSON.stringify(previous)===JSON.stringify(row))continue;
    // Replace only confirmed canonical records, never invent a successful send.
    if(previous){const index=state.messages.indexOf(previous);state.messages[index]=row;}
@@ -236,7 +313,7 @@
   c.feed=core.createFeed({current:()=>viewing(c)&&complete(c),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
    requestPage:async({start,end,limit,signal})=>{if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));},
    onMessages:rows=>merge(c,rows),onSynced:time=>{c.syncedUntil=time;saveSoon();},
-   onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&!c.sending&&!c.outbox)c.notice='';paint();}});
+   onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&c.rules&&!c.sending&&!c.outbox)c.notice='';paint();}});
   c.feed.start();void connectPush(c);if(!c.rules)void getRules(c).catch(()=>{});
  }
  function sync(){
@@ -267,30 +344,31 @@
  async function submit(event){
   event?.preventDefault();const c=context;
   if(!viewing(c)||c.sending||c.denied||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore)return;
-  const draft=input.value;let text,code='';
-  try{text=core.validateText(draft,c.rules);}catch(error){c.notice=error.message;paint();return;}
+  const draft=input.value,choice=c.selectedEmoticon;let text,code='',emoticon=null;
+  try{text=core.validateText(draft,c.rules,{allowEmpty:!!choice});}catch(error){c.notice=error.message;paint();return;}
   c.sending=true;c.notice='전송 규칙 확인 중…';paint();
   const owner=c.owner;let requestStarted=false;
   try{
-   const rules=await getRules(c,{fresh:true});if(!viewing(c)||owner.signal.aborted)return;
-   text=core.validateText(draft,rules);
-   const follow=atLatest();code=crypto.randomUUID();c.outbox={code,content:text,createdAt:new Date().toISOString(),uncertain:true};
+   const [rules,verified]=await Promise.all([getRules(c,{fresh:true}),choice?verifyEmoticon(c,choice):Promise.resolve(null)]);emoticon=verified;if(!viewing(c)||owner.signal.aborted)return;
+   text=core.validateText(draft,rules,{allowEmpty:!!emoticon});
+   const follow=atLatest();code=crypto.randomUUID();c.outbox={code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:true};
    await persist({metadataOnly:true});if(!viewing(c)||owner.signal.aborted){c.outbox=null;return;}
    if(follow)requestAnimationFrame(()=>{if(viewing(c))scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
    c.notice='메시지 전송 중…';paint();requestStarted=true;
+   const body={code,chatRoomId:c.roomId,content:text};if(emoticon)body.emoticonItemId=emoticon.apiId;
    const request=new AbortController(),cancel=()=>request.abort();owner.signal.addEventListener('abort',cancel,{once:true});
    const timer=setTimeout(()=>request.abort(),15000);let reply;
-   try{reply=await frommApiRequest(`/v2/chat/message/${encodeURIComponent(c.host)}/replies`,{method:'POST',body:{code,chatRoomId:c.roomId,content:text},signal:request.signal});}finally{clearTimeout(timer);owner.signal.removeEventListener('abort',cancel);}
+   try{reply=await frommApiRequest(`/v2/chat/message/${encodeURIComponent(c.host)}/replies`,{method:'POST',body,signal:request.signal});}finally{clearTimeout(timer);owner.signal.removeEventListener('abort',cancel);}
    if(!roomCurrent(c))return;
-   if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='전송됐습니다. 대화 반영을 확인하고 있어요.';
-   if(input.value===draft){input.value='';c.draft='';}
+   if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='전송됐습니다. 대화 반영을 확인하고 있어요.';
+   if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);
    const message=reply?.data?.message;
    if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}]);
    c.feed?.poke();void persist({metadataOnly:true});
   }catch(error){
    if(!roomCurrent(c))return;
-   if(requestStarted&&state.messages.some(message=>message.code===code)){c.outbox=null;c.notice='메시지가 대화에 반영됐습니다.';if(input.value===draft){input.value='';c.draft='';}void persist();return;}
-   if(!requestStarted||(Number(error.status)>=400&&Number(error.status)<500&&Number(error.status)!==408)||error.status===200){c.outbox=null;c.notice=error.status===429?'전송 횟수 제한입니다. 잠시 후 다시 시도해주세요.':'메시지를 보내지 못했습니다. 입력 내용은 유지됩니다.';
+   if(requestStarted&&state.messages.some(message=>message.code===code)){c.outbox=null;c.notice='메시지가 대화에 반영됐습니다.';if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);void persist();return;}
+   if(!requestStarted||(Number(error.status)>=400&&Number(error.status)<500&&Number(error.status)!==408)||error.status===200){c.outbox=null;c.notice=error.code==='EMOTICON_UNAVAILABLE'?error.message:error.status===429?'전송 횟수 제한입니다. 잠시 후 다시 시도해주세요.':'메시지를 보내지 못했습니다. 입력 내용은 유지됩니다.';
     if([401,403].includes(error.status)){c.denied=true;stop(c);}
     if(error.status===429){c.sendNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);setTimeout(()=>{if(roomCurrent(c))paint();},c.sendNotBefore-Date.now());}
    }
@@ -306,9 +384,10 @@
  function mount(){
   if(mounted)return;mounted=true;
   dock=document.createElement('form');dock.id='conversationDock';dock.hidden=true;dock.setAttribute('aria-label','메시지 보내기');
-  dock.innerHTML='<div class="conversation-meta"><span id="conversationStatus" role="status" aria-live="polite"></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button><button id="conversationNew" type="button" hidden></button><button id="conversationStorage" type="button" aria-haspopup="dialog">대화 저장</button></div><div class="conversation-compose"><textarea id="conversationInput" rows="1" aria-label="메시지 입력" placeholder="메시지 입력 · Enter 전송 / Shift+Enter 줄바꿈"></textarea><output id="conversationCount"></output><button id="conversationSend" type="submit" disabled>전송</button></div>';
+  dock.innerHTML='<div class="conversation-meta" hidden><span id="conversationStatus" role="status" aria-live="polite" hidden></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button><button id="conversationNew" type="button" hidden></button></div><div id="conversationEmoticonPreview" hidden><img alt="선택한 이모티콘"><button type="button" aria-label="이모티콘 선택 해제">×</button></div><div class="conversation-compose"><button id="conversationEmoticonButton" class="conversation-icon" type="button" aria-label="이모티콘 고르기" aria-haspopup="dialog" aria-controls="conversationEmoticons" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M8 9h1m6 0h1"/></svg></button><textarea id="conversationInput" rows="1" aria-label="메시지 입력" aria-describedby="conversationCount" placeholder="메시지 입력" enterkeyhint="send"></textarea><output id="conversationCount" class="conversation-sr-only"></output><button id="conversationSend" type="submit" disabled>전송</button><button id="conversationStorage" class="conversation-icon" type="button" aria-label="대화 저장 설정" title="대화 저장 설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div><section id="conversationEmoticons" role="dialog" aria-labelledby="conversationEmoticonTitle" hidden><div class="conversation-emoticon-head"><strong id="conversationEmoticonTitle">이모티콘</strong><button type="button" id="conversationEmoticonClose" aria-label="이모티콘 창 닫기">×</button></div><div id="conversationEmoticonPacks" aria-label="이모티콘 팩"></div><p id="conversationEmoticonStatus" role="status"></p><div id="conversationEmoticonItems" aria-label="이모티콘 목록"></div><button id="conversationEmoticonRetry" type="button" hidden>다시 불러오기</button></section>';
   document.body.append(dock);input=dock.querySelector('textarea');status=dock.querySelector('#conversationStatus');send=dock.querySelector('#conversationSend');count=dock.querySelector('output');storage=dock.querySelector('#conversationStorage');newButton=dock.querySelector('#conversationNew');
-  dock.addEventListener('submit',submit);input.addEventListener('input',()=>{if(!roomCurrent(context))return;context.draft=input.value;clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),250);paint();});
+  mountEmoticons();
+  dock.addEventListener('submit',submit);input.addEventListener('input',()=>{if(!roomCurrent(context))return;context.draft=input.value;resizeInput();clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),250);paint();});
   input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.keyCode!==229){event.preventDefault();void submit();}});
   newButton.onclick=()=>{if(!roomCurrent(context))return;pendingCount=0;window.FrommViewState?.cancel();const list=filteredMessages();if(list.length)renderChatWindow(list,list.length-1);window.FrommViewState?.settleLatest(()=>viewing(context));paint();};
   dock.querySelector('#conversationRetry').onclick=()=>{const c=context;if(!roomCurrent(c))return;if(c.phase==='error'){c.feed?.stop();c.feed=null;c.feedLimit=500;}c.feed?.poke();c.notice='';sync();};
@@ -318,7 +397,7 @@
   dialog.querySelector('#conversationStoreEnabled').onchange=event=>{const c=context;if(!roomCurrent(c)||!c.storageAccount)return;c.enabled=event.target.checked;try{localStorage.setItem(storageKey(c.storageAccount),c.enabled?'on':'off');}catch{}if(c.enabled)void persist({force:true});paint();};
   dialog.querySelector('#conversationStorageClose').onclick=()=>dialog.close();dialog.querySelector('#conversationClear').onclick=async()=>{
    const c=context;if(!authCurrent(c)||!c.storageAccount||!confirm('이 계정의 기기에 저장된 대화와 작성 중인 글을 지울까요? 서버 대화는 유지됩니다.'))return;
-   clearTimeout(saveTimer);memories.clear();c.enabled=false;try{localStorage.setItem(storageKey(c.storageAccount),'off');localStorage.removeItem(lastRoomKey(c.storageAccount));}catch{}await store.clear(c.storageAccount);if(roomCurrent(c)){c.persisted.clear();c.saved=false;c.storageError=false;c.draft='';input.value='';dialog.querySelector('#conversationStoreEnabled').checked=false;dialog.querySelector('#conversationStorageState').textContent='기기 저장 기록을 지우고 자동 저장을 껐습니다. 다시 켜면 현재 대화를 저장합니다.';paint();}
+   clearTimeout(saveTimer);memories.clear();c.enabled=false;try{localStorage.setItem(storageKey(c.storageAccount),'off');localStorage.removeItem(lastRoomKey(c.storageAccount));}catch{}await store.clear(c.storageAccount);if(roomCurrent(c)){c.persisted.clear();c.saved=false;c.storageError=false;c.draft='';c.selectedEmoticon=null;input.value='';dialog.querySelector('#conversationStoreEnabled').checked=false;dialog.querySelector('#conversationStorageState').textContent='기기 저장 기록을 지우고 자동 저장을 껐습니다. 다시 켜면 현재 대화를 저장합니다.';paint();}
   };
   dialog.addEventListener('close',()=>storage.focus({preventScroll:true}));
   new ResizeObserver(layout).observe(document.querySelector('.main'));new ResizeObserver(layout).observe(dock);

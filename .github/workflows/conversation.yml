@@ -44,6 +44,7 @@ jobs:
           node test/conversation-state.browser.cjs
           node test/conversation-emoticons.browser.cjs
           node test/conversation-controls.browser.cjs
+          node test/conversation-send-focus.browser.cjs
           node test/conversation-audio.browser.cjs
           node test/rail-glyph-lens.browser.cjs
       - uses: actions/upload-artifact@v4

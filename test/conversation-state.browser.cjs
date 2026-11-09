@@ -39,7 +39,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
     state.rooms=[{id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트'}}];
     const button=document.createElement('button');button.className='room';document.querySelector('#rooms').replaceChildren(button);selectRoom(0,button);
    },token);
-   await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected'&&!document.querySelector('#conversationSend').textContent.includes('중'));
+   await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected'&&document.querySelector('#conversationSend').getAttribute('aria-busy')!=='true');
   }
   async function read(account){return page.evaluate(async account=>{const s=FrommConversationCore.createStore();try{return await s.read(account,'host-room')}finally{await s.close()}},account)}
   await enter();await page.locator('#conversationInput').fill('A의 개인 초안');await page.evaluate(()=>FrommConversation.flush());
@@ -59,7 +59,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await page.locator('[data-message-id="echo-accepted"]').count(),1);
   // Switching away while the fresh rules request is unresolved must not send.
   holdRules=new Promise(resolve=>releaseRules=resolve);await page.locator('#conversationInput').fill('화면 전환 중 전송 금지');await page.locator('#conversationSend').click();
-  await page.waitForFunction(()=>document.querySelector('#conversationSend').textContent==='전송 중');await page.evaluate(()=>setFilter('image'));releaseRules();await page.waitForTimeout(250);assert.equal(posts.length,2);
+  await page.waitForFunction(()=>document.querySelector('#conversationSend').getAttribute('aria-busy')==='true');await page.evaluate(()=>setFilter('image'));releaseRules();await page.waitForTimeout(250);assert.equal(posts.length,2);
   await page.evaluate(()=>setFilter('all'));await page.waitForFunction(()=>FrommConversation.status.phase==='connected');assert.equal(await page.locator('#conversationInput').inputValue(),'화면 전환 중 전송 금지');
   // A deliberate server refresh must not silently rehydrate the old disk cache.
   const before=history;await page.locator('#scanBtn').click();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected');assert.ok(history>before);assert.equal(await page.evaluate(()=>state.messages.length),rows.length);

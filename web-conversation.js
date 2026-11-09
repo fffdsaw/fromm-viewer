@@ -38,6 +38,14 @@
  }
  const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
   syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
+ function showLatest(c){
+  if(!viewing(c))return;
+  c.restoreView=null;pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
+  const list=filteredMessages();
+  if(list.length&&state.infiniteRendered<list.length)renderChatWindow(list,list.length-1);
+  if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));
+  else requestAnimationFrame(()=>{if(viewing(c))scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
+ }
  function updateLatestButton(){
   if(!newButton)return;
   const c=context,list=state.infiniteList||[],away=roomCurrent(c)&&state.filter==='all'&&list.length>0&&(state.infiniteRendered<list.length||document.documentElement.scrollHeight-scrollY-innerHeight>100);
@@ -139,9 +147,9 @@
   status.hidden=!statusText;
   const max=c.rules?.max||450;count.textContent=`${input.value.length} / ${max}`;input.maxLength=max;
   resizeInput();input.disabled=c.denied;send.disabled=!!(c.sending||c.denied||!c.rules||!input.value.trim()&&!c.selectedEmoticon||input.value.length>max||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore);
-  send.textContent=c.sending?'전송 중':'전송';
+  send.textContent='전송';send.setAttribute('aria-busy',String(!!c.sending));
   storage.title=c.storageError?'대화 저장 설정 · 저장 공간을 확인해주세요.':'대화 저장 설정';storage.classList.toggle('storage-error',!!c.storageError);
-  emoteButton.disabled=!!(c.sending||c.denied);emotePreview.hidden=!c.selectedEmoticon;
+  emoteButton.disabled=!!(c.sending||c.denied);emotePreview.hidden=!c.selectedEmoticon||!!c.outbox;
   if(c.selectedEmoticon){const image=emotePreview.querySelector('img');if(image.getAttribute('src')!==c.selectedEmoticon.imageUrl)image.src=c.selectedEmoticon.imageUrl;}
   emotePreview.querySelector('button').disabled=!!c.sending;
   dock.querySelector('#conversationRetry').hidden=!!c.ruleJob||c.denied||!!c.rules&&!['error','retry'].includes(c.phase);
@@ -149,10 +157,12 @@
   let pending=document.querySelector('#conversationPending');
   if(c.outbox||c.accepted.length){
    if(!pending){pending=document.createElement('div');pending.id='conversationPending';pending.className='conversation-pending';pending.setAttribute('role','status');document.querySelector('#timeline').after(pending);}
-   const messages=[...c.accepted,...(c.outbox?[c.outbox]:[])],signature=JSON.stringify(messages.map(message=>[message.content||'이모티콘',message===c.outbox?(c.sending?'전송 중…':'전송 결과 확인 중'):'서버 접수 · 대화 반영 확인 중']));
+   const messages=[...c.accepted,...(c.outbox?[c.outbox]:[])],signature=JSON.stringify(messages.map(message=>[message.content||'',message.emoticon?.imageUrl||'',message===c.outbox?(c.sending?'메시지 전송 중':'전송 결과 확인 중'):'서버 접수 완료']));
    if(pending.dataset.signature!==signature){
-    pending.dataset.signature=signature;pending.replaceChildren(...JSON.parse(signature).map(([content,label])=>{
-     const bubble=document.createElement('div'),text=document.createElement('div'),status=document.createElement('small');bubble.className='conversation-pending-bubble';text.textContent=content;status.textContent=label;bubble.append(text,status);return bubble;
+    pending.dataset.signature=signature;pending.replaceChildren(...JSON.parse(signature).map(([content,imageUrl,label])=>{
+     const bubble=document.createElement('div');bubble.className='conversation-pending-bubble';bubble.setAttribute('aria-label',label);
+     if(imageUrl){const image=document.createElement('img');image.className='emoticon-img';image.width=160;image.height=160;image.src=imageUrl;image.alt='이모티콘';bubble.append(image);}
+     if(content||!imageUrl){const text=document.createElement('div');text.className='text';text.textContent=content||'이모티콘';bubble.append(text);}return bubble;
     }));
    }
   }else pending?.remove();
@@ -296,7 +306,7 @@
    else{state.messages.push(row);state.seenMessageKeys.add(key);}
    byId.set(key,row);changes.push(row);
   }
-  if(reconciled)c.notice='메시지가 대화에 반영됐습니다.';
+  if(reconciled)c.notice='';
   if(!changes.length){if(reconciled){saveSoon();paint();}return;}
   state.messages.sort((a,b)=>compareMessages(a,b,'asc'));state.chatMessages=state.messages;chatMatchCache=null;
   state.chatCache.set(chatCacheKey(),state.chatMessages);saveRoomCache();
@@ -375,28 +385,28 @@
   if(!viewing(c)||c.sending||c.denied||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore)return;
   const draft=input.value,choice=c.selectedEmoticon;let text,code='',emoticon=null;
   try{text=core.validateText(draft,c.rules,{allowEmpty:!!choice});}catch(error){c.notice=error.message;paint();return;}
-  c.sending=true;c.notice='전송 규칙 확인 중…';paint();
+  c.sending=true;c.notice='';paint();showLatest(c);
   const owner=c.owner;let requestStarted=false;
   try{
    const [rules,verified]=await Promise.all([getRules(c,{fresh:true}),choice?verifyEmoticon(c,choice):Promise.resolve(null)]);emoticon=verified;if(!viewing(c)||owner.signal.aborted)return;
    text=core.validateText(draft,rules,{allowEmpty:!!emoticon});
-   const follow=atLatest();code=crypto.randomUUID();c.outbox={code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:true};
+   code=crypto.randomUUID();c.outbox={code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:true};
    await persist({metadataOnly:true});if(!viewing(c)||owner.signal.aborted){c.outbox=null;return;}
-   if(follow){if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));else requestAnimationFrame(()=>{if(viewing(c))scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});}
-   c.notice='메시지 전송 중…';paint();requestStarted=true;
+   showLatest(c);
+   c.notice='';paint();requestStarted=true;
    const body={code,chatRoomId:c.roomId,content:text};if(emoticon)body.emoticonItemId=emoticon.apiId;
    const request=new AbortController(),cancel=()=>request.abort();owner.signal.addEventListener('abort',cancel,{once:true});
    const timer=setTimeout(()=>request.abort(),15000);let reply;
    try{reply=await frommApiRequest(`/v2/chat/message/${encodeURIComponent(c.host)}/replies`,{method:'POST',body,signal:request.signal});}finally{clearTimeout(timer);owner.signal.removeEventListener('abort',cancel);}
    if(!roomCurrent(c))return;
-   if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='전송됐습니다. 대화 반영을 확인하고 있어요.';
+   if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='';
    if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);
    const message=reply?.data?.message;
    if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}]);
    c.feed?.poke();void persist({metadataOnly:true});
   }catch(error){
    if(!roomCurrent(c))return;
-   if(requestStarted&&state.messages.some(message=>message.code===code)){c.outbox=null;c.notice='메시지가 대화에 반영됐습니다.';if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);void persist();return;}
+   if(requestStarted&&state.messages.some(message=>message.code===code)){c.outbox=null;c.notice='';if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);void persist();return;}
    if(!requestStarted||(Number(error.status)>=400&&Number(error.status)<500&&Number(error.status)!==408)||error.status===200){c.outbox=null;c.notice=error.code==='EMOTICON_UNAVAILABLE'?error.message:error.status===429?'전송 횟수 제한입니다. 잠시 후 다시 시도해주세요.':'메시지를 보내지 못했습니다. 입력 내용은 유지됩니다.';
     if([401,403].includes(error.status)){c.denied=true;stop(c);}
     if(error.status===429){c.sendNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);setTimeout(()=>{if(roomCurrent(c))paint();},c.sendNotBefore-Date.now());}
@@ -418,7 +428,7 @@
   mountEmoticons();
   dock.addEventListener('submit',submit);input.addEventListener('input',()=>{if(!roomCurrent(context))return;context.draft=input.value;resizeInput();clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),250);paint();});
   input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.keyCode!==229){event.preventDefault();void submit();}});
-  newButton.onclick=()=>{if(!roomCurrent(context))return;pendingCount=0;window.FrommViewState?.cancel();const list=filteredMessages();if(list.length)renderChatWindow(list,list.length-1);window.FrommViewState?.settleLatest(()=>viewing(context));paint();};
+  newButton.onclick=()=>{showLatest(context);paint();};
   dock.querySelector('#conversationRetry').onclick=()=>{const c=context;if(!roomCurrent(c))return;if(c.phase==='error'){c.feed?.stop();c.feed=null;c.feedLimit=500;}c.feed?.poke();c.notice='';sync();};
   dock.querySelector('#conversationResolve').onclick=()=>{const c=context;if(!roomCurrent(c)||!c.outbox)return;c.feed?.poke();if(confirm('전송 결과가 확인되지 않았습니다. 대화 목록을 확인한 뒤 보류 상태를 해제할까요? 같은 글을 다시 보내면 중복될 수 있습니다.')){c.outbox=null;c.notice='보류 상태를 해제했습니다. 입력 내용을 확인해주세요.';void persist();paint();}};
   dialog=document.createElement('dialog');dialog.id='conversationStorageDialog';dialog.setAttribute('aria-labelledby','conversationStorageTitle');dialog.innerHTML='<h2 id="conversationStorageTitle">대화 저장</h2><p>이 브라우저에 계정·아티스트별 대화를 저장하고, 다시 방문하면 저장된 기록을 먼저 복원합니다. 원본 사진·영상 파일은 저장하지 않습니다.</p><label><input id="conversationStoreEnabled" type="checkbox">이 기기에 대화 자동 저장</label><p role="status" id="conversationStorageState"></p><div class="conversation-dialog-actions"><button class="btn" type="button" id="conversationClear">이 계정의 저장 기록 지우기</button><button class="btn good" type="button" id="conversationStorageClose">닫기</button></div>';

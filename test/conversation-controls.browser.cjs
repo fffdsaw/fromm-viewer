@@ -56,7 +56,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    const bounds=await own.evaluate(e=>{const r=e.getBoundingClientRect(),b=e.querySelector('.bubble'),box=b.getBoundingClientRect();return{left:box.left-r.left,right:r.right-box.right,scroll:b.scrollWidth,width:b.clientWidth}});
    assert.ok(bounds.left>=-1&&bounds.right>=-1&&bounds.scroll<=bounds.width+1,JSON.stringify(bounds));
   }
-  await page.locator('#conversationInput').fill('보낸 글 '.repeat(80));await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationPending .conversation-pending-bubble small')?.textContent.includes('서버 접수'));
+  await page.locator('#conversationInput').fill('보낸 글 '.repeat(80));await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationPending .conversation-pending-bubble')&&document.querySelector('#conversationSend').getAttribute('aria-busy')==='false'&&document.querySelector('#conversationInput').value==='');
   await page.locator('#conversationPending').scrollIntoViewIfNeeded();
   const pending=await page.locator('#conversationPending').evaluate(e=>{const column=document.querySelector('#timeline').getBoundingClientRect(),r=e.getBoundingClientRect(),b=e.firstElementChild,box=b.getBoundingClientRect();return{column:column.toJSON(),rect:r.toJSON(),bubble:box.toJSON(),scroll:b.scrollWidth,width:b.clientWidth}});
   assert.ok(Math.abs(pending.column.left-pending.rect.left)<1&&Math.abs(pending.column.right-pending.rect.right)<1,JSON.stringify(pending));

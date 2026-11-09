@@ -43,7 +43,7 @@ async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.s
   await p.locator('[name="refraction"]').fill('60');
   await p.locator('[name="refraction"]').dispatchEvent('change');
   assert.deepEqual(await geometry(p),before,'material changes do not move cards or tools');
-  for(let i=0;i<13;i++){await p.keyboard.press('Tab');assert.equal(await p.locator('dialog').evaluate(e=>e.contains(document.activeElement)),true,'native dialog contains keyboard focus');}
+  for(let i=0;i<13;i++){await p.keyboard.press('Tab');assert.equal(await p.locator('#glassSettingsDialog').evaluate(e=>e.contains(document.activeElement)),true,'native dialog contains keyboard focus');}
   await p.keyboard.press('Escape');assert.equal(await p.locator('dialog[open]').count(),0);assert.equal(await p.evaluate(()=>document.activeElement.id),'glassSettingsBtn');assert.equal(await p.evaluate(()=>state.selected.size),1);
   await p.reload();await seed(p);await p.evaluate(()=>setFilter('image'));await ready(p);assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,...chosen},'sliders restore after reload');
   await p.locator('#glassSettingsBtn').click();await p.locator('#glassEnabled').uncheck();await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);assert.equal(await p.locator('#glass-refraction').isDisabled(),true);assert.equal(await p.locator('.control-glass-surface').count(),0);

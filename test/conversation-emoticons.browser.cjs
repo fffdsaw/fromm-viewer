@@ -6,7 +6,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});let posts=[],owned=true,rejectSend=false,packsRequests=0,itemsRequests=0,holdItems=null,releaseItems=null;
-  const room={id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트 아티스트'}},rows=[{messageId:'first',userType:'star',type:'text',content:'안녕하세요',createdAt:Date.now()-60000}];
+  const room={id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트 아티스트'}},rows=Array.from({length:1200},(_,i)=>({messageId:'m'+i,userType:'star',type:'text',content:'이전 대화 '+i,createdAt:Date.now()-1300000+i*1000}));
   page.on('dialog',dialog=>dialog.accept());
   await page.addInitScript(()=>Object.defineProperty(window,'FrommConversation',{configurable:true,set(api){Object.defineProperty(window,'FrommConversation',{value:api,writable:true,configurable:true});api.loadFirebase=async()=>{throw new Error('Synthetic polling fallback')};}}));
   await page.route('**/*',async route=>{
@@ -41,11 +41,11 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.waitForFunction(()=>FrommConversation.status.phase==='connected'&&state.chatHistoryComplete);
   const compose=await page.locator('#conversationDock').boundingBox();assert.ok(compose.height<=54,JSON.stringify(compose));assert.equal(await page.locator('.conversation-meta').isVisible(),false);assert.equal(await page.locator('#conversationStorage').innerText(),'');assert.equal(await page.locator('#conversationStatus').isVisible(),false);
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'composer-'+cfg.width+'.png')});}
-  await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').waitFor();assert.equal(await page.locator('[data-emoticon="unsafe"]').count(),0);
+  await page.waitForTimeout(1800);await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').waitFor();assert.equal(await page.locator('[data-emoticon="unsafe"]').count(),0);
   const popup=await page.locator('#conversationEmoticons').boundingBox();assert.ok(popup.x>=0&&popup.y>=0&&popup.x+popup.width<=cfg.width+1,JSON.stringify(popup));
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'picker-'+cfg.width+'.png')});
   await page.keyboard.press('Escape');assert.equal(await page.locator('#conversationEmoticons').isVisible(),false);assert.equal(await page.evaluate(()=>document.activeElement.id),'conversationEmoticonButton');
-  await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').click();assert.equal(posts.length,0,'choosing an emoticon never sends immediately');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true);assert.equal(await page.locator('#conversationSend').isEnabled(),true);
+  await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').click();await page.waitForTimeout(150);const bounds=await page.evaluate(()=>({last:[...document.querySelectorAll('#timeline .msg')].at(-1).getBoundingClientRect().bottom,dock:document.querySelector('#conversationDock').getBoundingClientRect().top}));assert.ok(bounds.last<=bounds.dock-5,'preview keeps the latest message above the composer: '+JSON.stringify(bounds));assert.equal(posts.length,0,'choosing an emoticon never sends immediately');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true);assert.equal(await page.locator('#conversationSend').isEnabled(),true);
   await page.evaluate(()=>FrommConversation.flush());await page.reload();await page.waitForFunction(()=>FrommConversation.status.phase==='connected'&&state.chatHistoryComplete);assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true,'unsent emoticon restored with the draft');
   const beforePacks=packsRequests,beforeItems=itemsRequests;await page.locator('#conversationSend').click();await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='sent-1'));
   assert.equal(posts.length,1);assert.equal(posts[0].content,'');assert.equal(posts[0].emoticonItemId,'p1-item');assert.equal(posts[0].chatRoomId,'fan-room');assert.ok(packsRequests>beforePacks&&itemsRequests>beforeItems,'current room ownership and item availability revalidated before POST');
@@ -62,6 +62,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   holdItems=new Promise(resolve=>releaseItems=resolve);const previousItems=itemsRequests;await page.locator('#conversationEmoticonButton').click();while(itemsRequests===previousItems)await page.waitForTimeout(10);await page.evaluate(()=>setFilter('image'));releaseItems();await page.waitForTimeout(100);assert.equal(await page.locator('#conversationEmoticons').isVisible(),false);
   await page.evaluate(()=>setFilter('all'));await page.waitForFunction(()=>FrommConversation.status.phase==='connected');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false);
   await page.locator('#conversationInput').fill('일반 글 😊');await page.locator('#conversationSend').click();await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='sent-4'));assert.equal(posts[3].emoticonItemId,undefined,'plain text never inherits an old sticker');
+  await page.evaluate(()=>{FrommViewState.cancel();renderChatWindow(filteredMessages(),500);scrollTo(0,800)});await page.waitForTimeout(200);
+  const anchor=await page.evaluate(()=>{const row=[...document.querySelectorAll('#timeline .msg')].find(row=>row.getBoundingClientRect().bottom>chatHeaderInset()+8);return{id:row.dataset.messageId,top:row.getBoundingClientRect().top}});
+  await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').click();await page.waitForTimeout(100);
+  assert.ok(Math.abs(await page.locator(`[data-message-id="${anchor.id}"]`).evaluate(row=>row.getBoundingClientRect().top)-anchor.top)<3,'preview does not move an older reader');
+  await page.getByRole('button',{name:'이모티콘 선택 해제',exact:true}).click();await page.waitForTimeout(100);
+  assert.ok(Math.abs(await page.locator(`[data-message-id="${anchor.id}"]`).evaluate(row=>row.getBoundingClientRect().top)-anchor.top)<3,'closing preview preserves an older reader');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();
   console.log(`${cfg.width}${cfg.installed?' PWA simulation':''}: compact row/no persistent labels, owned catalog, picker/focus, draft restore, sticker-only/text+sticker/Unicode, reject/revoke and late tab response PASS`);
  }}finally{await browser.close();await server.close()}

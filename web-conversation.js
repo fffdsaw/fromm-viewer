@@ -44,7 +44,11 @@
    const rect=document.querySelector('#timeline').getBoundingClientRect(),viewport=window.visualViewport;
    dock.style.setProperty('--conversation-left',Math.max(6,rect.left)+'px');dock.style.setProperty('--conversation-right',Math.max(6,innerWidth-rect.right)+'px');
    dock.style.setProperty('--conversation-keyboard',Math.max(0,viewport?innerHeight-viewport.height-viewport.offsetTop:0)+'px');
-   document.body.style.setProperty('--conversation-height',dock.getBoundingClientRect().height+'px');
+   const height=dock.getBoundingClientRect().height,previous=parseFloat(document.body.style.getPropertyValue('--conversation-height')),position=scrollY,follow=atLatest();
+   document.body.style.setProperty('--conversation-height',height+'px');
+   // Preserve the gap to the newest message as the draft/preview grows or shrinks.
+   // An absolute target also avoids double scrolling after the browser clamps a shrink.
+   if(follow&&previous>0&&Math.abs(height-previous)>.5)scrollTo({top:Math.max(0,position+height-previous),behavior:'instant'});
   });
  }
  function resizeInput(){

@@ -48,7 +48,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,background:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
   assert.equal(appearance.position,'relative');
   assert.equal(appearance.borderRadius,'50%');
-  assert.match(appearance.backdropFilter,/blur\\(/,'frosted glass style');
+  assert.match(appearance.backdropFilter,/blur\(/,'frosted glass style');
   assert.ok(appearance.background.includes('gradient'),'translucent surface: '+JSON.stringify(appearance));
   assert.ok(Math.abs(appearance.svgWidth-button.width)<1,'SVG progress ring fills the circular control');
   assert.ok(appearance.clipPath.includes('50%'),'visible download label must be hidden');

@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=controls-rail-20261109';
+import './web-glass-controls.js?v=chat-rim-20261109';
 import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-lens-20261108';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{

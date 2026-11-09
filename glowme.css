@@ -1248,3 +1248,13 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]{z-index:3}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]::before{background:none}
 }
+
+/* The cursor lens samples real backdrop only at its rim; menu centres stay clear. */
+@media(min-width:701px){
+ .pc-control-glass.glowme-phase3.pc-layout .rail-lens-surface{
+  box-sizing:border-box;padding:5px;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+ }
+}

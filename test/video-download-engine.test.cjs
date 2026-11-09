@@ -96,3 +96,10 @@ test('long direct-to-disk stream keeps a constant buffer bound; disk failure and
  await assert.rejects(disk.transfer([{url:f.url}],{writable:{async write(){throw new Error('disk full')},async close(){closed=true},async abort(){aborted=true}}},()=>{},iv),/disk full/);assert.equal(aborted,true);assert.equal(closed,false);
  const aes=create();t.after(()=>aes.dispose());const broken=sink();await assert.rejects(aes.transfer([{url:f.url,key:{url:f.url}}],broken.output,()=>{},iv),e=>e.code==='SEGMENT_LIMIT'||e.code==='CRYPTO');assert.equal(broken.closed,false);assert.equal(broken.aborted,true);
 });
+test('partial OPFS implementations without writable streams retain the bounded Blob fallback',async()=>{
+ const removed=[];const directory={async *entries(){},async getFileHandle(){return{}},async removeEntry(name){removed.push(name)}};
+ const c=context({extra:{navigator:{storage:{async getDirectory(){return{async getDirectoryHandle(){return directory}}}}}}});
+ assert.equal(await c.prepareReplayDownloadStage(new AbortController().signal),null);assert.equal(removed.length,1);assert.match(removed[0],/^stage-.*\.tmp$/);
+ directory.getFileHandle=async()=>{throw new DOMException('quota','QuotaExceededError')};
+ assert.equal(await c.prepareReplayDownloadStage(new AbortController().signal),null);assert.equal(removed.length,2);
+});

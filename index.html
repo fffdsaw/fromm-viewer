@@ -5283,7 +5283,9 @@ async function prepareReplayDownloadStage(signal){
   const name="stage-"+(window.crypto?.randomUUID?.() || Date.now().toString(36)+"-"+Math.random().toString(36).slice(2))+".tmp";
   let handle,writer;
   try{
-    handle=await directory.getFileHandle(name,{create:true});writer=await handle.createWritable();
+    handle=await directory.getFileHandle(name,{create:true});
+    if(typeof handle.createWritable!=="function"){await directory.removeEntry(name);return null;}
+    writer=await handle.createWritable();
   }catch(e){try{await directory.removeEntry(name);}catch{}if(["SecurityError","NotAllowedError","NotSupportedError","QuotaExceededError"].includes(e?.name))return null;throw e;}
   return {writer,file:()=>handle.getFile(),discard:async()=>{try{await writer.abort();}catch{}try{await directory.removeEntry(name);}catch{}}};
 }

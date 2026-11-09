@@ -79,6 +79,6 @@ PLAYWRIGHT_CHANNEL=msedge node test/video-download-engine.browser.cjs
 
 최종 CI·배포 결과는 PR과 완료 보고에 기록한다. 실제 CDN 속도, 실제 모바일 장치·Safari, 수 GiB 실제 영상의 브라우저별 최고 메모리 및 수동 OS 저장창은 이 fixture로 확인하지 못한 항목이다.
 
-로컬 전체 검사: **308개 중 307 통과, 실패 0, 선택적 Agora 설치 선언 검사 1개 건너뜀**. 다운로드 전용 16개는 모두 통과. 기존 direct-selection PC/모바일 브라우저 검사, 실제 HLS 최고/수동 화질·PiP·회전/설정 검사도 통과했다.
+로컬 전체 검사: **309개 중 308 통과, 실패 0, 선택적 Agora 설치 선언 검사 1개 건너뜀**. 다운로드 전용 17개는 모두 통과. 기존 direct-selection PC/모바일 브라우저 검사, 실제 HLS 최고/수동 화질·PiP·회전/설정 검사도 통과했다.
 
 진행 표시 복원 전후(합성 데이터, 동일한 탭 재진입 상황): [변경 전](progress-before.png) · [변경 후](progress-after.png). 변경 전 다운로드는 계속되지만 버튼 상태가 초기화되는 것을 기존 main으로 재현했다. [로컬 브라우저 결과](browser-local.json)와 PR 자동 검사 아티팩트에 넓은 PC·좁은 standalone·모바일 대표 화면 결과가 있다.

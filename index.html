@@ -1103,6 +1103,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 <script src="web-video-download.js?v=pool-20261109"></script>
+<link rel="stylesheet" href="conversation.css?v=20261109">
+<script src="web-conversation-core.js?v=20261109"></script>
+<script src="web-conversation.js?v=20261109"></script>
 </head>
 <body>
 
@@ -6327,6 +6330,7 @@ function clearStoredAuth(){
 }
 
 function resetUserScopedMemory(){
+  globalThis.FrommConversation?.stop();
   window.FrommViewState?.clear();
   stopHistoryWork();
   resetPreviewWork();
@@ -7073,6 +7077,7 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
+  globalThis.FrommConversation?.beforeRoom(state.rooms[i]);
   window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
@@ -7322,6 +7327,7 @@ async function publishCompleteHistory(current=()=>true){
 }
 
 async function loadMoreHistory({initial=false,forceAll=false,background=false}={}){
+  if(globalThis.FrommConversation?.restoring) await globalThis.FrommConversation.ready;
   if(forceAll) return ensureAllHistory();
   if(!state.room) return 0;
   // Join even after the final empty page while atomic numbering is still preparing.
@@ -7400,6 +7406,7 @@ async function loadMoreHistory({initial=false,forceAll=false,background=false}={
           armInfiniteObserver(state.infiniteVersion);
         }
         scheduleHistoryBackground();
+        globalThis.FrommConversation?.historyChanged();
       }
     }
     return addedTotal;
@@ -8469,7 +8476,7 @@ function renderFullConversation(version){
     return;
   }
 
-  if(state.chatHistoryLoading || !state.chatHistoryComplete){
+  if((state.chatHistoryLoading || !state.chatHistoryComplete) && !globalThis.FrommConversation?.canShowCached()){
     const progress = state.chatHistoryProgress
       ? ` ${state.chatHistoryProgress.toLocaleString()}개 확인 중`
       : "";
@@ -8516,6 +8523,7 @@ function renderFullConversation(version){
 }
 
 function render(){
+  globalThis.FrommConversation?.sync();
   chatMatchCache=null; // Refresh author/quote amendments even when the array length is unchanged.
   window.FrommViewState?.beforeRender();
   syncMyReplyTools();
@@ -10888,6 +10896,7 @@ $("#scanBtn").onclick=async ()=>{
 
   // Keep the current DOM visible while fresh data is fetched.
   // This avoids the empty-screen -> cards-again jump from previous versions.
+  globalThis.FrommConversation?.beforeRoom(state.room,{restore:false});
   stopHistoryWork();
   resetPreviewWork();
   state.scanGeneration++;
@@ -11156,6 +11165,7 @@ $("#scrollTopBtn").onclick=()=>{
 mountSidebarToggle();
 restoreSidebarState();
 render();
+globalThis.FrommConversation?.mount();
 autoConnectSaved();
 </script>
 

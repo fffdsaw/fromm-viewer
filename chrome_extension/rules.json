@@ -153,6 +153,45 @@
         "media",
         "image",
         "other"
+      ],
+      "excludedRequestDomains": [
+        "firestore.googleapis.com",
+        "identitytoolkit.googleapis.com",
+        "securetoken.googleapis.com"
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "priority": 30,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "user-agent",
+          "operation": "set",
+          "value": "Fromm(fan-1.49.1;android;17;SM-S936N)"
+        },
+        {
+          "header": "origin",
+          "operation": "remove"
+        },
+        {
+          "header": "referer",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "|https://api.frommyarti.com/v2/auth/signin/firebase/secure/reader|",
+      "requestDomains": [
+        "api.frommyarti.com"
+      ],
+      "initiatorDomains": [
+        "fffdsaw.github.io"
+      ],
+      "resourceTypes": [
+        "xmlhttprequest"
       ]
     }
   }

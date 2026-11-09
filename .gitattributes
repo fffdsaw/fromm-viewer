@@ -1,1 +1,4 @@
 native-live/vendor/index.html -text
+# Keep generated SDK template literals and upstream license notices byte-exact.
+vendor/firebase/conversation-10.12.2.js whitespace=-blank-at-eol
+vendor/firebase/conversation-10.12.2.js.LEGAL.txt whitespace=-blank-at-eol

@@ -63,7 +63,12 @@ test('startup changes preserve LIVE/auth/download and automatic pagination sourc
  const controls=lf(fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8')),oldControls=lf(execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'}));
  const marker='  const originalRender=renderLiveView';assert.ok(controls.includes(marker)&&oldControls.includes(marker));
  assert.equal(controls.slice(controls.indexOf(marker)),oldControls.slice(oldControls.indexOf(marker)),'LIVE lifecycle and receive readiness wiring');
- assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/'],{cwd:root,encoding:'utf8'}),'');
+ assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/',':(exclude)chrome_extension/rules.json'],{cwd:root,encoding:'utf8'}),'');
+ const rules=JSON.parse(fs.readFileSync(path.join(root,'chrome_extension/rules.json'),'utf8')),oldRules=JSON.parse(execFileSync('git',['show','b78f2b1:chrome_extension/rules.json'],{cwd:root,encoding:'utf8'}));
+ const preserved=JSON.parse(JSON.stringify(rules.slice(0,oldRules.length)));delete preserved[3].condition.excludedRequestDomains;
+ assert.deepEqual(preserved,oldRules,'existing API, media and LIVE transport rules preserved except native Firebase CORS');
+ assert.deepEqual(rules[3].condition.excludedRequestDomains,['firestore.googleapis.com','identitytoolkit.googleapis.com','securetoken.googleapis.com']);
+ assert.equal(rules.length,oldRules.length+1);assert.equal(rules.at(-1).condition.urlFilter,'|https://api.frommyarti.com/v2/auth/signin/firebase/secure/reader|');assert.deepEqual(rules.at(-1).condition.initiatorDomains,['fffdsaw.github.io']);
 });
 
 test('Replay and Channel share progress and distinguish a confirmed file from browser handoff',async()=>{

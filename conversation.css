@@ -1,0 +1,23 @@
+/* Conversation controls only; the existing gallery, rail and player keep their layout. */
+#conversationDock[hidden],#conversationNew[hidden]{display:none!important}
+#conversationDock{position:fixed;left:var(--conversation-left,12px);right:var(--conversation-right,12px);bottom:var(--conversation-keyboard,0px);z-index:65;padding:9px 12px max(9px,env(safe-area-inset-bottom));border:1px solid var(--line,#badfdf);border-radius:18px 18px 0 0;background:#f0faf7;color:var(--text,#172e36);box-shadow:0 -3px 14px #145f5710;font:13px system-ui,sans-serif}
+.conversation-meta .btn{font-size:12px;min-height:24px;padding:3px 7px;white-space:nowrap}
+.conversation-meta{display:flex;align-items:center;gap:10px;min-height:25px;margin-bottom:6px;min-width:0}
+#conversationStatus{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted,#4c6570)}
+#conversationStorage{border:0;background:transparent;color:var(--muted,#4c6570);padding:4px;white-space:nowrap;cursor:pointer}
+#conversationNew{border:1px solid var(--line);border-radius:999px;background:#d6f4e9;color:#145b53;padding:4px 12px;white-space:nowrap;cursor:pointer}
+.conversation-compose{display:flex;gap:8px;align-items:flex-end}
+#conversationInput{box-sizing:border-box;flex:1;min-width:0;min-height:42px;max-height:130px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font:inherit;line-height:1.5}
+#conversationSend{min-width:64px;min-height:42px;border:1px solid #167b65;border-radius:14px;background:#167b65;color:white;font:inherit;font-weight:700;cursor:pointer}
+#conversationSend:disabled{opacity:.4;cursor:default}
+#conversationCount{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;font-size:11px;align-self:center}
+#conversationDock :focus-visible,#conversationStorageDialog :focus-visible{outline:2px solid #087e83;outline-offset:2px}
+body.conversation-open .main{padding-bottom:calc(var(--conversation-height,112px) + 18px)}
+body.conversation-open #scrollTopBtn{bottom:calc(var(--conversation-height,112px) + 18px)}
+.conversation-pending{max-width:870px;box-sizing:border-box;margin:8px auto;padding:8px 12px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;text-align:right}
+#conversationStorageDialog{box-sizing:border-box;width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-radius:20px;padding:22px;background:#f0faf7;color:var(--text)}
+#conversationStorageDialog::backdrop{background:#163f4955}
+#conversationStorageDialog p{font-size:14px;line-height:1.6}
+.conversation-dialog-actions{display:flex;gap:10px;justify-content:flex-end}
+@media(max-width:700px){#conversationDock{padding:7px 9px max(7px,env(safe-area-inset-bottom));border-radius:14px 14px 0 0}.conversation-meta .btn{font-size:12px;min-height:24px;padding:3px 7px;white-space:nowrap}
+.conversation-meta{gap:5px;font-size:11px}#conversationNew{padding:4px 7px}#conversationCount{font-size:10px}#conversationSend{min-width:54px}}

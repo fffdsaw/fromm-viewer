@@ -1249,12 +1249,26 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]::before{background:none}
 }
 
-/* The cursor lens samples real backdrop only at its rim; menu centres stay clear. */
-@media(min-width:701px){
- .pc-control-glass.glowme-phase3.pc-layout .rail-lens-surface{
-  box-sizing:border-box;padding:5px;
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;
+/* One optical face per menu highlight. Fade real SVG optics into a clear
+   centre along the capsule's rounded contour, without a second inner border. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.glass-droplet{
+  background:none;border-color:transparent;box-shadow:none;transition:none;
+ }
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light::before,
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light::after,
+ .pc-control-glass.glowme-phase3.pc-layout :is(.rail-lens-surface,.glowme-nav button>.control-glass-surface)::before,
+ .pc-control-glass.glowme-phase3.pc-layout :is(.rail-lens-surface,.glowme-nav button>.control-glass-surface)::after{content:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-tracking button.active>.control-glass-surface{visibility:hidden!important;opacity:0}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.rail-lens-surface,.glowme-nav button>.control-glass-surface){
+  padding:0;background:#ffffff0d;border:1px solid #ffffff66;box-shadow:inset 0 1px 1px #ffffff40;transform:none!important;
+ }
+ .pc-control-glass.glowme-phase3.pc-layout :is(.rail-pointer-light,.glowme-nav button)[data-control-optics="engine"]>.control-glass-surface{
+  border:0!important;background:none!important;box-shadow:none!important;
+  --rail-rim-mask:radial-gradient(circle var(--rail-lens-radius,20px) at 100% 50%,transparent calc(var(--rail-lens-radius,20px) - 6px),#000 var(--rail-lens-radius,20px)) left center/var(--rail-lens-radius,20px) 100% no-repeat,
+   linear-gradient(to bottom,#000,transparent 6px,transparent calc(100% - 6px),#000) center/calc(100% - 2 * var(--rail-lens-radius,20px)) 100% no-repeat,
+   radial-gradient(circle var(--rail-lens-radius,20px) at 0 50%,transparent calc(var(--rail-lens-radius,20px) - 6px),#000 var(--rail-lens-radius,20px)) right center/var(--rail-lens-radius,20px) 100% no-repeat;
+  -webkit-mask:var(--rail-rim-mask);mask:var(--rail-rim-mask);
+  -webkit-mask-composite:source-over;mask-composite:add;
  }
 }

@@ -30,18 +30,31 @@
   railHead.after(nav);
   // A single decoration follows the pointer independently of the optional lens.
   const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
-  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null;
-  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
-  function paintRailLight(){
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null;
+  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
+  function paintRailLight(now=performance.now()){
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
     const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect();
-    railLight.classList.toggle('rail-light-moving',nav.classList.contains('rail-pointer-tracking'));
-    railLight.style.transform=`translate3d(${box.left-parent.left+nav.scrollLeft}px,${box.top-parent.top+nav.scrollTop}px,0)`;
+    const left=box.left-parent.left+nav.scrollLeft;
+    const target=box.top-parent.top+nav.scrollTop+box.height/2+Math.max(-3,Math.min(3,(y-box.top-box.height/2)*.14));
+    const tracking=nav.classList.contains('rail-pointer-tracking');
+    if(!lightState||!tracking)lightState={y:target,velocity:0,time:now};
+    const dt=Math.max(.001,Math.min(.032,(now-lightState.time)/1000));lightState.time=now;
+    // A damped, bounded spring carries the existing SVG lens between
+    // rows. Only its decoration stretches; the buttons and glyph hit areas stay put.
+    lightState.velocity+=(520*(target-lightState.y)-40*lightState.velocity)*dt;
+    lightState.y+=lightState.velocity*dt;
+    const moving=Math.abs(target-lightState.y)>.04||Math.abs(lightState.velocity)>.4;
+    if(!moving){lightState.y=target;lightState.velocity=0;}
+    const stretch=1+Math.min(.12,Math.abs(lightState.velocity)/4000),top=lightState.y-box.height/2;
+    railLight.classList.toggle('rail-light-moving',tracking);
+    railLight.style.transform=`translate3d(${left}px,${top}px,0) scale(${1/Math.sqrt(stretch)},${stretch})`;
     railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
-    railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-box.left))}px`);
-    railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-box.top))}px`);
+    railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-parent.left-left+nav.scrollLeft))}px`);
+    railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-parent.top-top+nav.scrollTop))}px`);
     nav.classList.add('rail-pointer-tracking');
+    if(moving)lightFrame=requestAnimationFrame(paintRailLight);
   }
   function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}
   nav.addEventListener('pointermove',event=>{
@@ -56,7 +69,7 @@
   new ResizeObserver(()=>{if(lightPoint)scheduleRailLight();}).observe(nav);
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});
   document.addEventListener('keydown',clearRailLight,true);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});
-  reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});
+  reducedMotion.addEventListener('change',clearRailLight);hover.addEventListener('change',clearRailLight);window.addEventListener('resize',clearRailLight,{passive:true});window.addEventListener('pagehide',clearRailLight);
   // Remove duplicate controls, keeping their existing filters and routes on the rail.
   $('.toolbar').querySelectorAll(':scope > [data-filter]').forEach(el=>el.remove());
   const batchTools=document.createElement('div');batchTools.className='batch-selection-tools';batchTools.setAttribute('role','group');batchTools.setAttribute('aria-label','선택 항목 저장');batchTools.hidden=true;

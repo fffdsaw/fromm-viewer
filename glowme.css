@@ -1234,3 +1234,17 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light>.rail-lens-surface{z-index:0;border-color:transparent;background-image:none;box-shadow:none;transform:none!important}
  .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-tracking .rail-pointer-light[data-control-optics="engine"]::after{opacity:.7;background:radial-gradient(80px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#fff,transparent 75%) border-box}
 }
+
+/* Audio keeps its native controls and filename; its download uses the same
+   PC circle as visual media, anchored to the message's metadata corner. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout .chat-sound-bubble{position:relative}
+ .glowme-phase3.pc-layout .chat-sound-bubble>.meta{min-height:var(--thumb-download-size);padding-inline-end:calc(var(--thumb-download-size) + 8px);align-items:center}
+ .glowme-phase3.pc-layout .chat-sound-bubble .media-wrap.download-selectable{position:static}
+ .glowme-phase3.pc-layout .chat-sound-download{position:absolute;z-index:2;background:var(--thumb-download-face);border:1px solid var(--thumb-download-line);color:#fff;box-shadow:none;text-decoration:none}
+ /* The moving glass samples the actual menu glyphs underneath it. */
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light{z-index:0;transform-origin:center;transition:opacity 120ms ease;will-change:transform}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.rail-light-moving{transition:opacity 120ms ease}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]{z-index:3}
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light[data-control-optics="engine"]::before{background:none}
+}

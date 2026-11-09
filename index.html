@@ -1098,14 +1098,14 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=rail-lens-20261108">
-<link rel="preload" as="script" href="web-glowme.js?v=rail-lens-20261108">
+<link rel="stylesheet" href="glowme.css?v=controls-rail-20261109">
+<link rel="preload" as="script" href="web-glowme.js?v=controls-rail-20261109">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=composer-20261109">
+<link rel="stylesheet" href="conversation.css?v=controls-rail-20261109">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=composer-20261109"></script>
+<script src="web-conversation.js?v=controls-rail-20261109"></script>
 </head>
 <body>
 
@@ -9047,6 +9047,7 @@ function renderMessage(m){
 
   const bubble=document.createElement("div");
   bubble.className="bubble";
+  if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
   let html=`<div class="meta"><span>${esc(who)}</span><span>${esc(timeLabel(m))}</span><span class="type">${esc(t)}</span></div>`;
@@ -9107,7 +9108,7 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
+        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-media-download chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
         html+=`<span class="stats">${esc(baseName(m))}</span>`;
       }
 
@@ -11179,7 +11180,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
-<script src="web-glowme.js?v=rail-lens-20261108" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=controls-rail-20261109" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=live-fit-20261109"></script>

@@ -2,7 +2,7 @@ name: Verify GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['web-conversation*.js', 'conversation.css', 'vendor/firebase/**', 'test/conversation*.cjs', 'web-video-download.js', 'index.html', 'web-live-chat-probe.js', 'web-native-live.js', 'web-live-pip.js', 'web-live-controls.js', '.github/workflows/pages-verify.yml']
+    paths: ['glowme.css', 'web-glowme.js', 'web-glass-controls.js', 'web-conversation*.js', 'conversation.css', 'vendor/firebase/**', 'test/conversation*.cjs', 'web-video-download.js', 'index.html', 'web-live-chat-probe.js', 'web-native-live.js', 'web-live-pip.js', 'web-live-controls.js', '.github/workflows/pages-verify.yml']
 permissions:
   contents: read
   actions: read
@@ -26,7 +26,7 @@ jobs:
           const expected = hash(readFileSync('index.html'));
           const expectedNative = hash(readFileSync('web-native-live.js'));
           const expectedComments = hash(readFileSync('web-live-chat-probe.js'));
-          const extraAssets = Object.fromEntries(['web-live-pip.js','web-live-controls.js','web-video-download.js','web-conversation-core.js','web-conversation.js','conversation.css','vendor/firebase/conversation-10.12.2.js','chrome_extension.zip'].map(file=>[file,hash(readFileSync(file))]));
+          const extraAssets = Object.fromEntries(['glowme.css','web-glowme.js','web-glass-controls.js','web-live-pip.js','web-live-controls.js','web-video-download.js','web-conversation-core.js','web-conversation.js','conversation.css','vendor/firebase/conversation-10.12.2.js','chrome_extension.zip'].map(file=>[file,hash(readFileSync(file))]));
           const url = `https://fffdsaw.github.io/fromm-viewer/?deployment=${process.env.GITHUB_SHA}`;
           (async () => {
             let observed = 'not fetched';

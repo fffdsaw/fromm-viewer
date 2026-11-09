@@ -19,8 +19,8 @@ function remove(el,item){releaseEngine(item);stopInteractive(item);el.removeAttr
 function create(el,relative){
  const rail=el.matches('.rail-pointer-light'),drop=rail||el.matches(selected);
  if(!rail&&relative)el.classList.add('glass-control-relative');
- // Keep the translating carrier separate from its lens. The rail's light
- // field sits behind this surface so even a solid backdrop has light to bend.
+ // Keep the translating carrier separate from its lens. The rail lens
+ // samples menu glyphs underneath it without owning their hit targets.
  const face=document.createElement('span');
  face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
@@ -30,15 +30,15 @@ function create(el,relative){
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
  const {el,drop,rail}=item;
- const strength=el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
+ const strength=rail ? .85 : el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
- const brightness=rail?Math.min(.06,settings.opacity/100):menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
+ const brightness=rail?Math.min(.025,settings.opacity/100):menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
  return {
   thickness:settings.thickness,refraction:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
-  // A flat mint backdrop has no detail to refract. Keep the cursor lens's
-  // baked optical rim visible there; the gloss preference adds to this baseline.
+  // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
+  // the gloss preference adds to this baseline.
   specular:rail||settings.specular>0,specularIntensity:rail?.32+settings.specular/100:settings.specular/100
  };
 }

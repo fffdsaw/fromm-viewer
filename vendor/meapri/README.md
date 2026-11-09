@@ -97,14 +97,19 @@ login and pagehide clean up. See `docs/design-review/glass-controls/` for curren
 recording, tests and paired VM samples; expanded-pane scroll cost remains.
 
 
-### Cursor optical light field correction
+### Moving menu lens
 
-The mint rail is opaque and uniform; a displacement-only hover lens there had
-no visible detail to bend. Its translating carrier now owns one child optical
-face and a small neutral ambient light field behind that face. The unchanged
-`LiquidGlass` native displacement/specular maps refract that local light field;
-foreground labels remain above it. Cursor tint is capped at6%, with32% baseline
-specular intensity plus the existing gloss preference. Other control/artist
-profiles, map budget, fallback and playback/low-power gates stay unchanged.
-See `test/rail-lens-spinner.browser.cjs`: zeroing actual SVG displacement changes
-the normal cursor pixels, without injecting a checkerboard into the backdrop.
+The rail carrier now sits above the menu glyphs with `pointer-events: none`.
+Its one unchanged `LiquidGlass` instance refracts actual menu text/icons as it
+moves, rather than a synthetic ambient field behind the text. A bounded damped
+spring carries it between rows, with at most 12% decorative stretch, then stops
+requesting frames at rest. Real menu hit areas and the artist list keep their
+existing geometry and styling. Cursor tint is capped at 2.5%; refraction uses
+85% of the existing preference and the previous baseline rim/specular remains.
+
+The carrier still reuses one SVG map, respects reduced motion/transparency,
+hidden-page cleanup and the existing eight-map/low-power/playback gates. No
+vendor engine, worker or license changed. `test/rail-glyph-lens.browser.cjs`
+compares a live glyph-crossing frame with its actual SVG displacement set to
+zero and tests traversal, settling, retained map identity and clickable routes.
+`test/rail-lens-spinner.browser.cjs` retains its broader lifecycle/fallback checks.

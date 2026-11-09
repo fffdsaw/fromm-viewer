@@ -191,7 +191,9 @@ test('cold HLS SDK and signed playlists prepare concurrently without creating an
   const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
   const gate=deferred(),sdk=h.c.ensureReplayHlsSdk();h.c.ensureReplayHlsSdk=()=>gate.promise;
   const pending=h.attach();
-  for(let i=0;i<12;i++)await Promise.resolve();
+  // Real Response.text() crosses stream tasks on Node 22; wait for the
+  // observable request while the SDK gate remains closed, not a microtask count.
+  for(let i=0;i<100&&!h.calls.some(url=>url.endsWith('/high.m3u8'));i++)await new Promise(setImmediate);
   assert.ok(h.calls.some(url=>url.endsWith('/high.m3u8')),'leaf request does not wait for the SDK');
   assert.equal(h.engines.length,0,'no engine before SDK ready');
   gate.resolve(await sdk);await pending;assert.equal(h.engines.length,1);
@@ -201,7 +203,7 @@ test('cold HLS SDK and signed playlists prepare concurrently without creating an
 test('leaving while SDK is unresolved cancels preparation and releases prepared blobs immediately',async()=>{
   const h=runtimeSetup({bodies:{'/artist/master.m3u8':master(['BANDWIDTH=3000000,RESOLUTION=1920x1080','high.m3u8']),'/artist/high.m3u8':leaf('high')}});
   h.c.ensureReplayHlsSdk=()=>new Promise(()=>{});
-  const pending=h.attach();for(let i=0;i<20;i++)await Promise.resolve();
+  const pending=h.attach();for(let i=0;i<100&&!h.blobs.size;i++)await new Promise(setImmediate);
   assert.ok(h.blobs.size>0);h.c.disposeVideoQualityPlayer('replay');await pending;
   assert.equal(h.revoked.length,h.blobs.size);assert.equal(h.engines.length,0);
 });

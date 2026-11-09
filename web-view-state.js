@@ -158,7 +158,7 @@
   };
   function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
   latestCleanup=cleanup;
-  if(typeof ResizeObserver==='function'&&tl){observer=new ResizeObserver(schedule);observer.observe(tl);}
+  if(typeof ResizeObserver==='function'&&tl){observer=new ResizeObserver(schedule);for(const node of [tl,document.querySelector('.main'),document.querySelector('#conversationDock')])if(node)observer.observe(node);}
   document.fonts?.addEventListener('loadingdone',schedule);
   document.fonts?.addEventListener('loadingerror',schedule);
   timer=setTimeout(()=>{align();cleanup();},1400);

@@ -233,7 +233,7 @@
  function atLatest(){return getSelection()?.isCollapsed!==false&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(220,(dock?.offsetHeight||0)+60);}
  function updateView(oldList,changes,follow){
   if(state.filter!=='all'||!context)return;
-  const next=filteredMessages(),timeline=document.querySelector('#timeline');
+  const c=context,next=filteredMessages(),timeline=document.querySelector('#timeline');
   const nodes=new Map([...timeline.querySelectorAll('.msg')].map(el=>[el.dataset.messageId,el]));
   const oldKeys=new Set(oldList.map(messageStableKey));
   const anchor=[...nodes.values()].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8),anchorTop=anchor?.getBoundingClientRect().top;
@@ -260,7 +260,10 @@
     }
     for(const node of [...timeline.childNodes])if(!wanted.has(node))node.remove();
     state.chatWindowStart=begin;state.infiniteRendered=next.length;
-    requestAnimationFrame(()=>{if(state.filter==='all')window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
+    // A new row can change height after its first content-visibility paint.
+    // Reuse the bounded, user-cancellable latest alignment instead of one scroll.
+    if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));
+    else requestAnimationFrame(()=>{if(viewing(c))window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
    }else pendingCount+=changes.filter(m=>!oldKeys.has(messageStableKey(m))).length;
    for(const message of changes){const node=nodes.get(messageStableKey(message));
     if(node?.isConnected&&normType(message.type)==='text'){const replacement=renderMessage(message);node.replaceChildren(...replacement.childNodes);node.className=replacement.className;}
@@ -375,7 +378,7 @@
    text=core.validateText(draft,rules,{allowEmpty:!!emoticon});
    const follow=atLatest();code=crypto.randomUUID();c.outbox={code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:true};
    await persist({metadataOnly:true});if(!viewing(c)||owner.signal.aborted){c.outbox=null;return;}
-   if(follow)requestAnimationFrame(()=>{if(viewing(c))scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
+   if(follow){if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));else requestAnimationFrame(()=>{if(viewing(c))scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});}
    c.notice='메시지 전송 중…';paint();requestStarted=true;
    const body={code,chatRoomId:c.roomId,content:text};if(emoticon)body.emoticonItemId=emoticon.apiId;
    const request=new AbortController(),cancel=()=>request.abort();owner.signal.addEventListener('abort',cancel,{once:true});

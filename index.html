@@ -1101,7 +1101,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="glowme.css?v=chat-rim-20261109">
 <link rel="preload" as="script" href="web-glowme.js?v=chat-rim-20261109">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
+<link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=chat-audio-20261109">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
@@ -8009,7 +8009,7 @@ function undoDownloadDoubleClick(el){
 }
 
 function downloadSelectionControl(event){
-  if(event.target.closest("a,button,input,audio,.reply-quote")) return true;
+  if(event.target.closest("a,button,input,audio,.chat-audio-player,.reply-quote")) return true;
   const video=event.target.closest("video");
   // Keep native controls clickable; the picture above them selects/opens the file.
   return !!video && event.clientY>=video.getBoundingClientRect().bottom-54;
@@ -11182,7 +11182,7 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=chat-loading-latest-20261108"></script>
+<script src="web-view-state.js?v=chat-audio-20261109"></script>
 <script src="web-glowme.js?v=chat-rim-20261109" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>

@@ -33,6 +33,8 @@ jobs:
       - name: Chromium
         if: runner.os == 'Linux'
         run: npx playwright install --with-deps chromium
+      - name: Browser recording helper
+        run: npx playwright install ffmpeg
       - name: Real browser storage, rendering and synthetic send contracts
         env:
           PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}

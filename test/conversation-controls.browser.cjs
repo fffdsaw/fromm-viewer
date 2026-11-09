@@ -40,9 +40,11 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
   assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const filename=await bubble.locator('.stats').innerText();assert.ok(filename.length>0);
   if(cfg.width>700){
-   const box=await bubble.boundingBox(),button=await download.boundingBox(),nativeAudio=await bubble.locator('.chat-audio-player').boundingBox(),inset=Number(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--thumb-download-inset').replace('px','')));
-   assert.ok(Math.abs(button.y-box.y-inset)<2&&Math.abs(box.x+box.width-button.x-button.width-inset)<2,JSON.stringify({box,button,inset}));assert.ok(nativeAudio.y>=button.y+button.height,'download does not cover native audio controls');
-   assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'absolute');assert.ok(await download.locator('.download-feedback-label').evaluate(e=>getComputedStyle(e).clipPath.includes('50%')));
+   const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await bubble.locator('.stats').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
+   assert.ok(button.y>=player.y+player.height-2,'download sits below the audio player: '+JSON.stringify({button,player}));
+   assert.ok(file.x>=button.x+button.width+4&&Math.abs((button.y+button.height/2)-(file.y+file.height/2))<5,'filename follows circle in the same row: '+JSON.stringify({button,file}));
+   assert.ok(Math.abs(button.x-actions.x)<3,'circle starts at filename row left: '+JSON.stringify({button,actions}));
+   assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'relative');assert.ok(await download.locator('.download-feedback-label').evaluate(e=>getComputedStyle(e).clipPath.includes('50%')));
   }else assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'static','mobile keeps its existing audio action row');
   const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await bubble.locator('.stats').innerText(),filename);
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});

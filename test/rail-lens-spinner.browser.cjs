@@ -13,12 +13,11 @@ async function cursorLens(p,label){
  const carrier=p.locator('.rail-pointer-light'),clip=await carrier.boundingBox();
  const id=await p.locator('.rail-lens-surface').evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]);
  const map=p.locator(`#${id} feDisplacementMap`),scale=await map.getAttribute('scale');assert.ok(Number(scale)>0);
- // Real rendered displacement over the normal solid sidebar, with no injected
- // checkerboard. The neutral light field is behind the SDK face, not painted
- // over it. Removing displacement must visibly change the cursor lens itself.
- const optical=await p.screenshot({clip});await shot(p,label+'-lens',clip);
+ // A settled cursor now has a clear centre rather than warping the menu label.
+ const text=await p.locator('[data-glow-nav="sound"] span').boundingBox(),centre={x:text.x,y:text.y,width:text.width,height:text.height};
+ const optical=await p.screenshot({clip:centre});await shot(p,label+'-lens',clip);
  await map.evaluate(e=>e.setAttribute('scale','0'));await p.waitForTimeout(80);
- assert.equal(optical.equals(await p.screenshot({clip})),false,'actual engine bends the cursor light field on a uniform rail');
+ assert.equal(optical.equals(await p.screenshot({clip:centre})),true,'settled label stays clear inside the rim-only lens');
  await shot(p,label+'-zero-displacement',clip);await map.evaluate((e,s)=>e.setAttribute('scale',s),scale);
  const initial=await p.evaluate(()=>FrommControlGlass.snapshot.builds);
  for(const key of ['image','channel','video']){await p.locator(`[data-glow-nav="${key}"]`).hover();await p.waitForTimeout(280);}

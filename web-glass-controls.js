@@ -34,12 +34,12 @@ function opticalSettings(item){
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  const brightness=rail?Math.min(.025,settings.opacity/100):menu?Math.min(.18,settings.opacity/100):settings.opacity/100;
  return {
-  thickness:settings.thickness,refraction:settings.refraction*strength,
+  thickness:rail?Math.min(8,settings.thickness):settings.thickness,refraction:rail?Math.min(12,settings.refraction*strength):settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
   // the gloss preference adds to this baseline.
-  specular:rail||settings.specular>0,specularIntensity:rail?.32+settings.specular/100:settings.specular/100
+  specular:rail||settings.specular>0,specularIntensity:rail?.18+settings.specular/200:settings.specular/100
  };
 }
 function sync(){

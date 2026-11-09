@@ -14,6 +14,14 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const samples=await page.evaluate(async()=>{const light=document.querySelector('.rail-pointer-light'),samples=[],start=performance.now();return new Promise(resolve=>{function frame(){const box=light.getBoundingClientRect();samples.push({time:performance.now()-start,top:box.top,height:box.height});if(performance.now()-start<400)requestAnimationFrame(frame);else resolve(samples)}requestAnimationFrame(frame)})});
   const target=await page.locator('[data-glow-nav="image"]').boundingBox(),last=samples.at(-1);assert.ok(samples.length>=5);assert.ok(samples.some(sample=>sample.top<before.y-3&&sample.top>target.y+3),'lens visibly traverses intermediate positions');assert.ok(Math.abs(last.top-target.y)<4,JSON.stringify({last,target}));assert.ok(Math.max(...samples.map(sample=>sample.height))<=target.height*1.13,'stretch is bounded');
   assert.equal(await page.evaluate(()=>FrommControlGlass.snapshot.builds),builds);assert.equal(await page.locator('.rail-lens-surface').evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]),mapId);
+  // Settled menu text lies in the clear centre: changing SVG displacement must not move it.
+  await page.locator('[data-glow-nav="sound"]').hover();await page.waitForTimeout(350);
+  const centre=await page.locator('[data-glow-nav="sound"] span').boundingBox(),centreClip={x:centre.x,y:centre.y,width:centre.width,height:centre.height},displacement=page.locator(`#${mapId} feDisplacementMap`),normalScale=await displacement.getAttribute('scale');
+  const centreOptical=await page.screenshot({clip:centreClip});
+  if(out)await page.screenshot({path:path.join(out,'clear-centre-'+cfg.width+'.png')});
+  await displacement.evaluate(e=>e.setAttribute('scale','0'));await page.waitForTimeout(80);
+  assert.ok(centreOptical.equals(await page.screenshot({clip:centreClip})),'settled menu text stays unchanged by rim displacement');
+  await displacement.evaluate((e,value)=>e.setAttribute('scale',value),normalScale);
   // Freeze the live carrier precisely where its top edge crosses a text glyph.
   await page.locator('[data-glow-nav="sound"]').hover();await page.waitForTimeout(350);
   const ready=page.waitForFunction(()=>{

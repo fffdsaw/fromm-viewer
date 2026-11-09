@@ -7,6 +7,8 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
   const room={id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트 아티스트'}},rows=Array.from({length:1200},(_,i)=>({messageId:'m'+i,userType:'star',type:'text',content:'이전 대화 '+i,createdAt:Date.now()-1300000+i*1000}));
+  rows.push({messageId:'own-long',userType:'fan',type:'text',content:'가나다 abcdefghij '.repeat(30),createdAt:Date.now()-2000});
+  rows.push({messageId:'own-url',userType:'fan',type:'text',content:'https://example.test/'+ 'abcdefgh'.repeat(50),createdAt:Date.now()-1500});
   rows.push({messageId:'sound',userType:'star',type:'sound',content:'https://fixture.test/sound.wav',createdAt:Date.now()-1000});
   await page.route('**/*',async route=>{
    let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
@@ -16,6 +18,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    if(u.pathname==='/v2/user/fan/profile')return answer({success:true,data:{profile:{id:'fan-self'}}});
    if(u.pathname==='/v2/chat/fanChatRooms/fan-room')return answer({success:true,data:{chatRoom:{sendChatRules:{chatMaxLength:450,forbiddenWords:[]}}}});
    if(u.pathname==='/v2/chat/emoticons/host-room')return answer({success:true,data:{emoticonPacks:[]}});
+   if(u.pathname.endsWith('/replies'))return answer({success:true,data:{}});
    if(u.pathname.endsWith('/messages')){
     const start=Date.parse(u.searchParams.get('findStartAt')),end=Date.parse(u.searchParams.get('findEndAt')),limit=Number(u.searchParams.get('limit'));
     return answer({success:true,data:{messages:rows.filter(m=>m.createdAt>=start&&m.createdAt<=end).sort((a,b)=>b.createdAt-a.createdAt).slice(0,limit)}});
@@ -42,10 +45,23 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   }else assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'static','mobile keeps its existing audio action row');
   const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await bubble.locator('.stats').innerText(),filename);
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
-  await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.match(await page.locator('#conversationNew').innerText(),/최신 대화/);
+  await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);assert.equal(await page.locator('#conversationNew').innerText(),'');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'latest-jump-'+cfg.width+'.png')});
   const beforeHeight=await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height);await page.locator('#conversationNew').click();await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<3&&document.querySelector('#conversationNew').hidden);
   assert.equal(await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height),beforeHeight,'latest shortcut does not reserve another composer row');
+  // Both canonical replies and ACKed replies waiting for the REST echo stay in the chat column.
+  for(const id of ['own-long','own-url']){
+   const own=page.locator(`[data-message-id="${id}"]`);await own.scrollIntoViewIfNeeded();
+   const bounds=await own.evaluate(e=>{const r=e.getBoundingClientRect(),b=e.querySelector('.bubble'),box=b.getBoundingClientRect();return{left:box.left-r.left,right:r.right-box.right,scroll:b.scrollWidth,width:b.clientWidth}});
+   assert.ok(bounds.left>=-1&&bounds.right>=-1&&bounds.scroll<=bounds.width+1,JSON.stringify(bounds));
+  }
+  await page.locator('#conversationInput').fill('보낸 글 '.repeat(80));await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationPending .conversation-pending-bubble small')?.textContent.includes('서버 접수'));
+  await page.locator('#conversationPending').scrollIntoViewIfNeeded();
+  const pending=await page.locator('#conversationPending').evaluate(e=>{const column=document.querySelector('#timeline').getBoundingClientRect(),r=e.getBoundingClientRect(),b=e.firstElementChild,box=b.getBoundingClientRect();return{column:column.toJSON(),rect:r.toJSON(),bubble:box.toJSON(),scroll:b.scrollWidth,width:b.clientWidth}});
+  assert.ok(Math.abs(pending.column.left-pending.rect.left)<1&&Math.abs(pending.column.right-pending.rect.right)<1,JSON.stringify(pending));
+  assert.ok(pending.bubble.left>=pending.column.left-1&&pending.bubble.right<=pending.column.right+1&&pending.scroll<=pending.width+1,JSON.stringify(pending));
+  if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'sent-bounds-'+cfg.width+'.png')});
+
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();
   console.log(`${cfg.width}${cfg.installed?' PWA simulation':''}: inline storage checkbox, input-right emoticon, audio download position/actual WAV bytes/name, scroll-up latest shortcut and no overflow PASS`);
  }}finally{await browser.close();await server.close()}

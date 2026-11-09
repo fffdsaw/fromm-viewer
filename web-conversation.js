@@ -38,6 +38,14 @@
  }
  const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
   syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
+ function updateLatestButton(){
+  if(!newButton)return;
+  const c=context,list=state.infiniteList||[],away=roomCurrent(c)&&state.filter==='all'&&list.length>0&&(state.infiniteRendered<list.length||document.documentElement.scrollHeight-scrollY-innerHeight>100);
+  if(!away&&roomCurrent(c)&&state.filter==='all'&&!state.chatAutoTopPending)pendingCount=0;
+  newButton.hidden=!away||!!emotePanel&&!emotePanel.hidden;
+  newButton.textContent=pendingCount?`새 메시지 ${pendingCount}개 ↓`:'최신 대화 ↓';
+  newButton.setAttribute('aria-label',pendingCount?`새 메시지 ${pendingCount}개 · 최신 대화로 이동`:'최신 대화로 이동');
+ }
  function layout(){
   cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(()=>{
    if(!dock||dock.hidden)return;
@@ -49,6 +57,7 @@
    // Preserve the gap to the newest message as the draft/preview grows or shrinks.
    // An absolute target also avoids double scrolling after the browser clamps a shrink.
    if(follow&&previous>0&&Math.abs(height-previous)>.5)scrollTo({top:Math.max(0,position+height-previous),behavior:'instant'});
+   updateLatestButton();
   });
  }
  function resizeInput(){
@@ -61,7 +70,7 @@
  function closeEmoticons(focus=false){
   emoteVersion++;emoteRequest?.abort();emoteRequest?.close();emoteRequest=null;
   const open=emotePanel&&!emotePanel.hidden;if(emotePanel)emotePanel.hidden=true;
-  emoteButton?.setAttribute('aria-expanded','false');if(open&&focus)emoteButton.focus({preventScroll:true});
+  emoteButton?.setAttribute('aria-expanded','false');updateLatestButton();if(open&&focus)emoteButton.focus({preventScroll:true});
  }
  async function verifyEmoticon(c,choice){
   const owner=requestOwner(c);
@@ -109,7 +118,7 @@
  }
  function mountEmoticons(){
   emoteButton=dock.querySelector('#conversationEmoticonButton');emotePanel=dock.querySelector('#conversationEmoticons');emotePreview=dock.querySelector('#conversationEmoticonPreview');
-  emoteButton.onclick=()=>{const c=context;if(!viewing(c)||c.sending||c.denied)return;if(!emotePanel.hidden){closeEmoticons(true);return;}emotePanel.hidden=false;emoteButton.setAttribute('aria-expanded','true');emotePanel.querySelector('#conversationEmoticonClose').focus({preventScroll:true});void loadEmoticons(c);};
+  emoteButton.onclick=()=>{const c=context;if(!viewing(c)||c.sending||c.denied)return;if(!emotePanel.hidden){closeEmoticons(true);return;}emotePanel.hidden=false;updateLatestButton();emoteButton.setAttribute('aria-expanded','true');emotePanel.querySelector('#conversationEmoticonClose').focus({preventScroll:true});void loadEmoticons(c);};
   emotePanel.querySelector('#conversationEmoticonClose').onclick=()=>closeEmoticons(true);
   emotePanel.querySelector('#conversationEmoticonRetry').onclick=()=>void loadEmoticons(context);
   emotePreview.querySelector('button').onclick=()=>{if(!roomCurrent(context)||context.sending)return;context.selectedEmoticon=null;saveSoon();paint();input.focus({preventScroll:true});};
@@ -138,8 +147,8 @@
    if(!pending){pending=document.createElement('div');pending.id='conversationPending';pending.className='conversation-pending';pending.setAttribute('role','status');document.querySelector('#timeline').after(pending);}
    const text=[...c.accepted,...(c.outbox?[c.outbox]:[])].map(message=>(message.content||'이모티콘')+'\n'+(message===c.outbox?(c.sending?'전송 중…':'전송 결과 확인 중'):'서버 접수 · 대화 반영 확인 중')).join('\n\n');if(pending.textContent!==text)pending.textContent=text;
   }else pending?.remove();
-  dock.querySelector('.conversation-meta').hidden=!statusText&&dock.querySelector('#conversationRetry').hidden&&resolve.hidden&&pendingCount===0;
-  newButton.hidden=pendingCount===0;newButton.textContent=`새 메시지 ${pendingCount}개 ↓`;
+  dock.querySelector('.conversation-meta').hidden=!statusText&&dock.querySelector('#conversationRetry').hidden&&resolve.hidden;
+  updateLatestButton();
   layout();
  }
  function persist({force=false,metadataOnly=false}={}){
@@ -388,7 +397,7 @@
  function mount(){
   if(mounted)return;mounted=true;
   dock=document.createElement('form');dock.id='conversationDock';dock.hidden=true;dock.setAttribute('aria-label','메시지 보내기');
-  dock.innerHTML='<div class="conversation-meta" hidden><span id="conversationStatus" role="status" aria-live="polite" hidden></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button><button id="conversationNew" type="button" hidden></button></div><div id="conversationEmoticonPreview" hidden><img alt="선택한 이모티콘"><button type="button" aria-label="이모티콘 선택 해제">×</button></div><div class="conversation-compose"><button id="conversationEmoticonButton" class="conversation-icon" type="button" aria-label="이모티콘 고르기" aria-haspopup="dialog" aria-controls="conversationEmoticons" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M8 9h1m6 0h1"/></svg></button><textarea id="conversationInput" rows="1" aria-label="메시지 입력" aria-describedby="conversationCount" placeholder="메시지 입력" enterkeyhint="send"></textarea><output id="conversationCount" class="conversation-sr-only"></output><button id="conversationSend" type="submit" disabled>전송</button><button id="conversationStorage" class="conversation-icon" type="button" aria-label="대화 저장 설정" title="대화 저장 설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div><section id="conversationEmoticons" role="dialog" aria-labelledby="conversationEmoticonTitle" hidden><div class="conversation-emoticon-head"><strong id="conversationEmoticonTitle">이모티콘</strong><button type="button" id="conversationEmoticonClose" aria-label="이모티콘 창 닫기">×</button></div><div id="conversationEmoticonPacks" aria-label="이모티콘 팩"></div><p id="conversationEmoticonStatus" role="status"></p><div id="conversationEmoticonItems" aria-label="이모티콘 목록"></div><button id="conversationEmoticonRetry" type="button" hidden>다시 불러오기</button></section>';
+  dock.innerHTML='<div class="conversation-meta" hidden><span id="conversationStatus" role="status" aria-live="polite" hidden></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button></div><button id="conversationNew" type="button" hidden></button><div id="conversationEmoticonPreview" hidden><img alt="선택한 이모티콘"><button type="button" aria-label="이모티콘 선택 해제">×</button></div><div class="conversation-compose"><div class="conversation-input-shell"><textarea id="conversationInput" rows="1" aria-label="메시지 입력" aria-describedby="conversationCount" placeholder="메시지 입력" enterkeyhint="send"></textarea><button id="conversationEmoticonButton" class="conversation-icon" type="button" aria-label="이모티콘 고르기" aria-haspopup="dialog" aria-controls="conversationEmoticons" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M8 9h1m6 0h1"/></svg></button></div><output id="conversationCount" class="conversation-sr-only"></output><button id="conversationSend" type="submit" disabled>전송</button><button id="conversationStorage" class="conversation-icon" type="button" aria-label="대화 저장 설정" title="대화 저장 설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div><section id="conversationEmoticons" role="dialog" aria-labelledby="conversationEmoticonTitle" hidden><div class="conversation-emoticon-head"><strong id="conversationEmoticonTitle">이모티콘</strong><button type="button" id="conversationEmoticonClose" aria-label="이모티콘 창 닫기">×</button></div><div id="conversationEmoticonPacks" aria-label="이모티콘 팩"></div><p id="conversationEmoticonStatus" role="status"></p><div id="conversationEmoticonItems" aria-label="이모티콘 목록"></div><button id="conversationEmoticonRetry" type="button" hidden>다시 불러오기</button></section>';
   document.body.append(dock);input=dock.querySelector('textarea');status=dock.querySelector('#conversationStatus');send=dock.querySelector('#conversationSend');count=dock.querySelector('output');storage=dock.querySelector('#conversationStorage');newButton=dock.querySelector('#conversationNew');
   mountEmoticons();
   dock.addEventListener('submit',submit);input.addEventListener('input',()=>{if(!roomCurrent(context))return;context.draft=input.value;resizeInput();clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),250);paint();});
@@ -406,7 +415,7 @@
   dialog.addEventListener('close',()=>storage.focus({preventScroll:true}));
   new ResizeObserver(layout).observe(document.querySelector('.main'));new ResizeObserver(layout).observe(dock);
   window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);
-  window.addEventListener('scroll',()=>{if(viewing(context)&&!context.restoring){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),500);}},{passive:true});
+  window.addEventListener('scroll',()=>{updateLatestButton();if(viewing(context)&&!context.restoring){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),500);}},{passive:true});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(roomCurrent(context)){context.draft=input.value;void persist();}stop();}else sync();});
   window.addEventListener('pagehide',()=>{if(roomCurrent(context)){context.draft=input.value;void persist();}stop();});window.addEventListener('pageshow',sync);window.addEventListener('online',sync);
   window.addEventListener('storage',event=>{const c=context;if(c&&event.key===epochKey(c.storageAccount,c.host)&&c.cacheEpoch!==epoch(c.storageAccount,c.host)){clearTimeout(saveTimer);c.notice='다른 창에서 저장 기록을 갱신했습니다. 이 창을 새로고침하면 이어서 저장합니다.';paint();}if(c&&event.key===storageKey(c.storageAccount)){c.enabled=storageEnabled(c.storageAccount);if(!c.enabled)clearTimeout(saveTimer);paint();}});

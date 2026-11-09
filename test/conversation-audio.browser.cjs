@@ -21,8 +21,9 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width
  await first.scrollIntoViewIfNeeded();await page.waitForTimeout(200);
  assert.equal(await time.innerText(),'0:00 / —:—');assert.equal(await seek.isDisabled(),true);assert.equal(await first.locator('.type').innerText(),'음성');
  assert.ok(requested.size>0&&requested.size<10,'only visible cards request metadata');assert.ok(max<=3,'metadata concurrency is bounded at three');
- release();await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] audio').duration===24);
- await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] output').textContent==='0:00 / 0:24');
+ // User playback wins even while metadata is pending.
+ await player.getByRole('button',{name:'음성 재생',exact:true}).click();release();await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] audio').duration===24);
+ await page.waitForFunction(()=>{const a=document.querySelector('[data-message-id="sound-0"] audio');return !a.paused&&a.currentTime>0;});await player.getByRole('button',{name:'음성 일시정지',exact:true}).click();await seek.press('Home');assert.equal(await time.innerText(),'0:00 / 0:24');
  assert.equal(await seek.isEnabled(),true);
  if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-ready-'+cfg.width+'.png')});}
  const layout=await player.evaluate(e=>{const r=e.getBoundingClientRect(),seek=e.querySelector('.chat-audio-seek').getBoundingClientRect(),time=e.querySelector('output').getBoundingClientRect();return{r:r.toJSON(),seek:seek.toJSON(),time:time.toJSON(),scroll:e.scrollWidth,width:e.clientWidth}});

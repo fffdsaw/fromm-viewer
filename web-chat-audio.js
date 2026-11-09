@@ -83,11 +83,11 @@
    if(!item.visible&&!item.activated)unload(item);
   });
   on(audio,'durationchange',()=>{if(item.loaded&&Number.isFinite(audio.duration)&&audio.duration>0){item.duration=audio.duration;paint(item);}});
-  for(const event of ['timeupdate','seeked','play','pause','ended','volumechange'])on(audio,event,()=>{if(item.loaded&&audio.readyState>=1)item.position=audio.currentTime;paint(item);});
+  for(const event of ['timeupdate','seeked','play','pause','ended','volumechange'])on(audio,event,()=>{if(item.loaded&&audio.readyState>=1)item.position=audio.currentTime;paint(item);if((event==='pause'||event==='ended')&&!item.visible)unload(item);});
   on(audio,'error',()=>{finish(item);if(item.activated)notice('음성을 불러오지 못했습니다. 재생 버튼으로 다시 시도해주세요.');paint(item);pump();});
   on(audio,'playing',()=>notice(''));
   on(item.play,'click',async()=>{
-   item.activated=true;finish(item);pump();
+   item.activated=true;item.attempted=true;finish(item);pump();
    if(!audio.paused&&!audio.ended){audio.pause();return;}
    if(audio.ended||item.duration>0&&item.position>=item.duration){item.position=0;audio.currentTime=0;}
    source(item);audio.preload='metadata';notice('');if(audio.error)audio.load();

@@ -40,6 +40,7 @@ jobs:
         run: |
           node test/conversation.browser.cjs
           node test/conversation-state.browser.cjs
+          node test/conversation-emoticons.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

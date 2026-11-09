@@ -69,11 +69,29 @@
   if(!room||!Number.isInteger(max)||max<=0||max>10000)throw new Error('메시지 전송 규칙을 확인하지 못했습니다.');
   return{max,forbidden:Array.isArray(raw.forbiddenWords)?raw.forbiddenWords.filter(w=>typeof w==='string'&&w.trim()).map(w=>w.toLowerCase()):[],maxCount:Number(raw.maxSendChatCount)||0,intervalSeconds:Number(raw.chatCountInterval)||0};
  }
- function validateText(text,rules){
-  if(typeof text!=='string'||!text.trim())throw new Error('메시지를 입력해주세요.');
+ function validateText(text,rules,{allowEmpty=false}={}){
+  if(typeof text!=='string'||!text.trim()&&!allowEmpty)throw new Error('메시지를 입력해주세요.');
   if(!rules||text.length>rules.max)throw new Error(`메시지는 최대 ${rules?.max||0}자까지 보낼 수 있습니다.`);
   if(rules.forbidden.some(word=>text.toLowerCase().includes(word)))throw new Error('전송 제한 단어가 포함되어 있습니다.');
   return text.trim();
+ }
+ const emoticonId=value=>(typeof value==='string'||typeof value==='number')&&String(value).trim().length>0&&String(value).length<=128?String(value):'';
+ function imageUrl(value){try{const url=new URL(value);return url.protocol==='https:'?url.href:'';}catch{return'';}}
+ function cleanEmoticon(value){
+  if(!value||!emoticonId(value.id)||!emoticonId(value.packId))return null;
+  const image=imageUrl(value.imageUrl)||imageUrl(value.thumbnailUrl);if(!image)return null;
+  const apiId=value.apiId!==undefined&&emoticonId(value.apiId)===emoticonId(value.id)?value.apiId:value.id;
+  return{id:emoticonId(value.id),apiId,packId:emoticonId(value.packId),imageUrl:image,thumbnailUrl:imageUrl(value.thumbnailUrl)||image,name:String(value.name||'이모티콘').slice(0,128)};
+ }
+ function readEmoticonPacks(payload){
+  const packs=payload?.data?.emoticonPacks;
+  if(payload?.success===false||payload?.ok===false||!Array.isArray(packs))throw new Error('이모티콘 목록을 확인하지 못했습니다.');
+  return packs.filter(p=>emoticonId(p?.id)).map(p=>({id:emoticonId(p.id),name:String(p.titleNameOverseas?.ko||p.nameAdmin||'이모티콘').slice(0,128),imageUrl:imageUrl(p.tabIconUrl)||imageUrl(p.thumbnailUrl)}));
+ }
+ function readEmoticonItems(payload,packId){
+  const items=payload?.data?.emoticonItems;
+  if(payload?.success===false||payload?.ok===false||!Array.isArray(items))throw new Error('이모티콘을 확인하지 못했습니다.');
+  return items.map(item=>cleanEmoticon({...item,packId,name:item?.name||item?.titleNameOverseas?.ko||'이모티콘'})).filter(Boolean);
  }
  function createFeed({requestPage,onMessages,onState=()=>{},onSynced=()=>{},latest=()=>0,current=()=>true,now=Date.now,interval=3000,limit=100}){
   let timer=null,owner=null,stopped=true,running=false,poked=false,window=null,failures=0,notBefore=0;
@@ -124,5 +142,5 @@
    get active(){return!stopped;},get busy(){return running;}
   };
  }
- return Object.freeze({createStore,createFeed,readRules,validateText,messageKey,messageTime});
+ return Object.freeze({createStore,createFeed,readRules,validateText,messageKey,messageTime,cleanEmoticon,readEmoticonPacks,readEmoticonItems});
 });

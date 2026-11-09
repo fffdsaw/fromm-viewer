@@ -1103,9 +1103,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=20261109">
-<script src="web-conversation-core.js?v=20261109"></script>
-<script src="web-conversation.js?v=20261109"></script>
+<link rel="stylesheet" href="conversation.css?v=composer-20261109">
+<script src="web-conversation-core.js?v=composer-20261109"></script>
+<script src="web-conversation.js?v=composer-20261109"></script>
 </head>
 <body>
 
@@ -2390,6 +2390,7 @@ function resolveEmoticonUrl(m){
 
   const candidates = [
     m.emoticon,
+    m.emoticonItem,
     m.emoticonUrl,
     m.emoticonURL,
     m.emoticonImage,
@@ -2437,6 +2438,7 @@ function hasEmoticonData(m){
   if(!m || typeof m !== "object") return false;
   return !!(
     m.emoticon ||
+    m.emoticonItem || m.emoticonItemId ||
     m.emoticonUrl ||
     m.emoticonURL ||
     m.emoticonImage ||
@@ -9067,15 +9069,16 @@ function renderMessage(m){
   }else if(t==="text"){
     const textContent = String(m.content || "").trim();
     const special = !textContent ? specialTextState(m) : null;
-    const emoticonSrc = !textContent ? emoticonProxyUrl(m) : "";
+    const emoticonSrc = emoticonProxyUrl(m);
 
+    if(emoticonSrc){
+      if(!textContent) bubble.classList.add("emoticon-only");
+      html+=`<div class="emoticon-wrap"><img class="emoticon-img" loading="lazy" src="${esc(emoticonSrc)}" alt="이모티콘"></div>`;
+    }
     if(textContent){
       html+=`<div class="text">${highlightText(m.content||"", state.filter==="all" ? state.chatQuery : "")}</div>`;
     }else if(emoticonSrc){
-      bubble.classList.add("emoticon-only");
-      html+=`<div class="emoticon-wrap">
-        <img class="emoticon-img" loading="lazy" src="${esc(emoticonSrc)}" alt="이모티콘">
-      </div>`;
+      // The verified emoticon image was rendered above.
     }else if(special?.kind==="emoticon"){
       bubble.classList.add("emoticon-only");
       html+=`<div class="emoticon-unavailable">이모티콘 데이터 있음 · 이미지 URL 미확인</div>`;

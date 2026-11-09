@@ -1,6 +1,6 @@
 # 전체 대화의 자동 수신·전송·기기 저장
 
-전체 대화 하단에서 글을 입력하고 **전송** 또는 Enter로 보냅니다. Shift+Enter는 줄바꿈이며 한글 조합 중 Enter는 전송하지 않습니다. 길이·금칙어·전송 가능 여부는 현재 아티스트의 서버 규칙을 전송 직전에 다시 확인합니다. 이모티콘 선택기는 이번 범위에 포함하지 않습니다.
+전체 대화 하단은 LIVE 댓글창처럼 한 줄 입력칸과 전송 버튼으로 구성합니다. 정상 수신·저장 상태 문구는 표시하지 않고, 오류·전송 결과 확인이 필요할 때만 안내합니다. 글을 입력하고 **전송** 또는 Enter로 보냅니다. Shift+Enter는 줄바꿈이며 한글 조합 중 Enter는 전송하지 않습니다. 길이·금칙어·전송 가능 여부는 현재 아티스트의 서버 규칙을 전송 직전에 다시 확인합니다. 입력창 옆 웃는 얼굴 버튼으로 현재 대화방에서 사용할 수 있는 이모티콘을 고릅니다. 선택 후 전송 버튼을 누르며, 이모티콘만 보내거나 글과 함께 보낼 수 있습니다. 선택한 이모티콘도 초안으로 저장합니다. 전송 직전에 팩과 항목의 이용 가능 여부를 다시 확인합니다.
 
 ## 저장과 재방문
 
@@ -8,7 +8,7 @@
 - 다시 로그인한 뒤 권한이 있는 마지막 아티스트의 저장 기록을 먼저 보여주고 새 대화를 동기화합니다. 정상적으로 저장이 끝난 전체 기록은 과거 전체 조회를 반복하지 않습니다. 첫 이용·지워진 저장소·부분 기록은 나머지 기록을 받아야 합니다.
 - 로그인 검증과 새 메시지 확인에는 네트워크가 필요합니다. 오프라인 로그인이나 앱 전체 오프라인 실행을 제공하지 않습니다.
 - 이메일이 없는 고급 로그인에서는 서버가 확인한 본인 프로필 ID로 저장 계정을 구분합니다. 기기 ID만으로 기록을 공유하지 않습니다. 신원을 확인할 수 없으면 기기 저장을 끄고 조회를 계속합니다.
-- **기기에 저장됨 / 대화 저장**을 누르면 자동 저장을 끄거나 이 계정의 기기 기록을 지울 수 있습니다. 삭제하면 자동 저장도 꺼지며 서버 대화와 다른 계정의 기록은 유지됩니다. 로그아웃은 기기 기록 삭제와 별개입니다.
+- 입력창 오른쪽 **대화 저장 설정** 아이콘을 누르면 자동 저장을 끄거나 이 계정의 기기 기록을 지울 수 있습니다. 삭제하면 자동 저장도 꺼지며 서버 대화와 다른 계정의 기록은 유지됩니다. 로그아웃은 기기 기록 삭제와 별개입니다.
 - 비공개 창, 사이트 데이터 삭제, 저장 공간 부족, 브라우저의 데이터 정리는 기록 보존을 제한할 수 있습니다. 실패 시 저장됐다고 표시하지 않습니다. 인증 토큰·기기 ID를 대화 DB에 추가로 저장하지 않습니다.
 
 ## 수신·전송 방식
@@ -18,7 +18,9 @@
 | 용도 | 기존 Fromm 인증을 사용하는 주소 |
 | --- | --- |
 | 전송 규칙 | GET `/v2/chat/fanChatRooms/{fanRoomId}` → `data.chatRoom.sendChatRules` |
-| 글 전송 | POST `/v2/chat/message/{hostRoomId}/replies`, `{code, chatRoomId: fanRoomId, content}` |
+| 이모티콘 팩 | GET `/v2/chat/emoticons/{hostRoomId}` → `data.emoticonPacks` |
+| 이모티콘 항목 | GET `/v2/chat/emoticons/{hostRoomId}/emoticon/{packId}` → `data.emoticonItems` |
+| 글 전송 | POST `/v2/chat/message/{hostRoomId}/replies`, `{code, chatRoomId: fanRoomId, content}`, 이모티콘 선택 시 `emoticonItemId` 추가 |
 | 확정 대화 | GET `/v2/chat/message/{hostRoomId}/messages` |
 | 실시간 알림 인증 | GET `/v2/auth/signin/firebase/secure/reader` |
 
@@ -36,6 +38,6 @@
 
 ## 검증 범위
 
-`node --test test/conversation.test.cjs`와 Playwright의 `test/conversation.browser.cjs`, `test/conversation-state.browser.cjs`를 사용합니다. 1,200개 기록·오프라인 기간의 증분 복구·중복 알림·IME·규칙·전송·429·계정 분리·불확실한 전송·화면 전환·명시적 새로고침·기기 기록 삭제·10,001개 DB 저장·읽던 위치 복원을 확인합니다. PC 1440px, 설치형 PWA 780px 에뮬레이션, 모바일 390px에서 검사합니다. 실제 IndexedDB/DOM/공식 SDK 로딩을 사용하되 서버와 전송 응답은 합성 데이터입니다.
+`node --test test/conversation.test.cjs`와 Playwright의 `test/conversation.browser.cjs`, `test/conversation-state.browser.cjs`, `test/conversation-emoticons.browser.cjs`를 사용합니다. 1,200개 기록·오프라인 기간의 증분 복구·중복 알림·IME·규칙·전송·429·계정 분리·불확실한 전송·화면 전환·명시적 새로고침·기기 기록 삭제·10,001개 DB 저장·읽던 위치 복원을 확인합니다. PC 1440px, 설치형 PWA 780px 에뮬레이션, 모바일 390px에서 검사합니다. 실제 IndexedDB/DOM/공식 SDK 로딩을 사용하되 서버와 전송 응답은 합성 데이터입니다.
 
 **실제 구독 계정의 수신·전송 및 운영 Firestore 규칙 호환성은 자동 테스트로 확인한 사실이 아닙니다.** 사용자의 실제 글을 테스트 목적으로 전송하지 않습니다. 새 API 경로·실시간 인증이 운영 서버에서 거부되면 상태를 표시하고 기존 조회를 유지합니다. SDK의 Apache 2.0 및 포함된 라이선스는 `vendor/firebase/`에 보존합니다.

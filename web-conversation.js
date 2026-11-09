@@ -51,9 +51,12 @@
    if(!dock||dock.hidden)return;
    const rect=document.querySelector('#timeline').getBoundingClientRect(),viewport=window.visualViewport;
    document.body.style.setProperty('--conversation-column-width',rect.width+'px');
-   dock.style.setProperty('--conversation-left',Math.max(6,rect.left)+'px');dock.style.setProperty('--conversation-right',Math.max(6,innerWidth-rect.right)+'px');
+   dock.style.width=rect.width+'px';dock.style.right='auto';
+   dock.style.setProperty('--conversation-left',Math.max(6,rect.left)+'px');
    dock.style.setProperty('--conversation-keyboard',Math.max(0,viewport?innerHeight-viewport.height-viewport.offsetTop:0)+'px');
-   const height=dock.getBoundingClientRect().height,previous=parseFloat(document.body.style.getPropertyValue('--conversation-height')),position=scrollY,follow=atLatest();
+   const inputRect=input.getBoundingClientRect(),dockRect=dock.getBoundingClientRect();
+   document.body.style.setProperty('--conversation-actions-width',Math.max(0,rect.right-inputRect.right)+'px');
+   const height=dockRect.height,previous=parseFloat(document.body.style.getPropertyValue('--conversation-height')),position=scrollY,follow=atLatest();
    document.body.style.setProperty('--conversation-height',height+'px');
    // Preserve the gap to the newest message as the draft/preview grows or shrinks.
    // An absolute target also avoids double scrolling after the browser clamps a shrink.

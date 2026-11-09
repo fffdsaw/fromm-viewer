@@ -6,6 +6,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const wav=Buffer.alloc(1644);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(1600,40);
  try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
+  let echo=false,lastPost=null;
   const room={id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트 아티스트'}},rows=Array.from({length:1200},(_,i)=>({messageId:'m'+i,userType:'star',type:'text',content:'이전 대화 '+i,createdAt:Date.now()-1300000+i*1000}));
   rows.push({messageId:'own-long',userType:'fan',type:'text',content:'가나다 abcdefghij '.repeat(30),createdAt:Date.now()-2000});
   rows.push({messageId:'own-url',userType:'fan',type:'text',content:'https://example.test/'+ 'abcdefgh'.repeat(50),createdAt:Date.now()-1500});
@@ -18,7 +19,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    if(u.pathname==='/v2/user/fan/profile')return answer({success:true,data:{profile:{id:'fan-self'}}});
    if(u.pathname==='/v2/chat/fanChatRooms/fan-room')return answer({success:true,data:{chatRoom:{sendChatRules:{chatMaxLength:450,forbiddenWords:[]}}}});
    if(u.pathname==='/v2/chat/emoticons/host-room')return answer({success:true,data:{emoticonPacks:[]}});
-   if(u.pathname.endsWith('/replies'))return answer({success:true,data:{}});
+   if(u.pathname.endsWith('/replies')){lastPost=route.request().postDataJSON();if(!echo)return answer({success:true,data:{}});const message={messageId:'own-short',type:'text',userType:'fan',...lastPost,createdAt:Date.now()-1};rows.push(message);return answer({success:true,data:{message}});}
    if(u.pathname.endsWith('/messages')){
     const start=Date.parse(u.searchParams.get('findStartAt')),end=Date.parse(u.searchParams.get('findEndAt')),limit=Number(u.searchParams.get('limit'));
     return answer({success:true,data:{messages:rows.filter(m=>m.createdAt>=start&&m.createdAt<=end).sort((a,b)=>b.createdAt-a.createdAt).slice(0,limit)}});
@@ -37,9 +38,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
-  assert.equal(await bubble.locator('audio').getAttribute('controls'),'');const filename=await bubble.locator('.stats').innerText();assert.ok(filename.length>0);
+  assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const filename=await bubble.locator('.stats').innerText();assert.ok(filename.length>0);
   if(cfg.width>700){
-   const box=await bubble.boundingBox(),button=await download.boundingBox(),nativeAudio=await bubble.locator('audio').boundingBox(),inset=Number(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--thumb-download-inset').replace('px','')));
+   const box=await bubble.boundingBox(),button=await download.boundingBox(),nativeAudio=await bubble.locator('.chat-audio-player').boundingBox(),inset=Number(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--thumb-download-inset').replace('px','')));
    assert.ok(Math.abs(button.y-box.y-inset)<2&&Math.abs(box.x+box.width-button.x-button.width-inset)<2,JSON.stringify({box,button,inset}));assert.ok(nativeAudio.y>=button.y+button.height,'download does not cover native audio controls');
    assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'absolute');assert.ok(await download.locator('.download-feedback-label').evaluate(e=>getComputedStyle(e).clipPath.includes('50%')));
   }else assert.equal(await download.evaluate(e=>getComputedStyle(e).position),'static','mobile keeps its existing audio action row');
@@ -61,6 +62,16 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(Math.abs(pending.column.left-pending.rect.left)<1&&Math.abs(pending.column.right-pending.rect.right)<1,JSON.stringify(pending));
   assert.ok(pending.bubble.left>=pending.column.left-1&&pending.bubble.right<=pending.column.right+1&&pending.scroll<=pending.width+1,JSON.stringify(pending));
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'sent-bounds-'+cfg.width+'.png')});
+  const pendingBubble=await page.locator('#conversationPending .conversation-pending-bubble').boundingBox(),inputEnd=await page.locator('#conversationInput').boundingBox();assert.ok(pendingBubble.x+pendingBubble.width<=inputEnd.x+inputEnd.width+1,'pending reply ends before send/settings');
+  rows.push({messageId:'own-reconciled',type:'text',userType:'fan',...lastPost,createdAt:Date.now()-1});await page.waitForFunction(()=>!document.querySelector('#conversationPending'));
+  echo=true;await page.locator('#conversationInput').fill('안녕?');await page.locator('#conversationSend').click();await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='own-short'));
+  await page.waitForTimeout(200);
+  const geometry=await page.evaluate(()=>{const bubble=document.querySelector('[data-message-id="own-short"] .bubble').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),column=document.querySelector('#timeline').getBoundingClientRect(),input=document.querySelector('#conversationInput').getBoundingClientRect();return{bubble:bubble.toJSON(),dock:dock.toJSON(),column:column.toJSON(),input:input.toJSON()}});
+  assert.ok(geometry.bubble.right<=geometry.input.right+1&&geometry.bubble.left>=geometry.column.left-1,JSON.stringify(geometry));
+  assert.ok(geometry.bubble.bottom<=geometry.dock.top-8,'latest sent reply is above the fixed composer '+JSON.stringify(geometry));
+  assert.ok(Math.abs(geometry.dock.right-geometry.column.right)<1,'fixed dock includes the scrollbar gutter correctly '+JSON.stringify(geometry));
+  if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'sent-short-'+cfg.width+'.png')});
+
 
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();
   console.log(`${cfg.width}${cfg.installed?' PWA simulation':''}: inline storage checkbox, input-right emoticon, audio download position/actual WAV bytes/name, scroll-up latest shortcut and no overflow PASS`);

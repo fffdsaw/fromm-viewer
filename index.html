@@ -1103,9 +1103,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=chat-rim-20261109">
+<link rel="stylesheet" href="conversation.css?v=chat-audio-20261109">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=chat-rim-20261109"></script>
+<script src="web-conversation.js?v=chat-audio-20261109"></script>
+<script src="web-chat-audio.js?v=chat-audio-20261109"></script>
 </head>
 <body>
 
@@ -9050,7 +9051,7 @@ function renderMessage(m){
   if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
-  let html=`<div class="meta"><span>${esc(who)}</span><span>${esc(timeLabel(m))}</span><span class="type">${esc(t)}</span></div>`;
+  let html=`<div class="meta"><span>${esc(who)}</span><span>${esc(timeLabel(m))}</span><span class="type">${esc(t==="sound"?"음성":t)}</span></div>`;
 
   const quoted = getQuotedMessage(m);
   if(quoted){
@@ -9163,8 +9164,9 @@ function renderMessage(m){
     const chatAudio = bubble.querySelector(".media-wrap audio");
     if(chatAudio){
       chatAudio.addEventListener("error",()=>{
-        repairAudioElement(chatAudio,m);
-      },{once:true});
+        if(!window.FrommChatAudio || FrommChatAudio.shouldRepair(chatAudio)) repairAudioElement(chatAudio,m);
+      });
+      window.FrommChatAudio?.enhance(chatAudio);
     }
   }
 
@@ -10042,6 +10044,7 @@ async function repairAudioElement(audio,m){
 
   try{
     const {blob} = await fetchMediaBlob(m);
+    if(!audio.isConnected) return false;
     const blobUrl = URL.createObjectURL(blob);
     audio.dataset.blobUrl = blobUrl;
     audio.src = blobUrl;

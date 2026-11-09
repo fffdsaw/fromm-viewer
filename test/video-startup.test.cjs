@@ -46,7 +46,7 @@ test('pagination cleanup restarts pending thumbnails even when the terminal page
 // Channel selection now follows a shared first-valid rule; paging behavior is exercised in browser tests.
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
- for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','downloadReplayStream','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','resolveReplayMediaPlaylist','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
+ for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
  const lf=s=>s.replace(/\r\n/g,'\n');
  const slice=(s,start,end)=>s.slice(s.indexOf(start),s.indexOf(end));
  for(const file of ['web-native-live.js','web-live-pip.js','web-live-chat-probe.js']){
@@ -72,7 +72,7 @@ test('Replay and Channel share progress and distinguish a confirmed file from br
  let sink, write;
  const alerts=[];
  const context=vm.createContext({
-  state,channelVideoState,channelVideoSession:()=>()=>true,
+  setPostDownloadFeedback:(_kind,_post,b,phase,ratio)=>context.setDownloadButtonFeedback(b,phase,ratio??undefined),state,channelVideoState,channelVideoSession:()=>()=>true,
   createReplayDownloadSink:async()=>sink, fetchChannelVideoDetail:async()=>post, fetchReplayPostDetail:async()=>post,
   downloadReplayStream:async(url,target,progress)=>{assert.equal(url,post._streamUrl);assert.equal(target,sink);progress(1,2);await write;},
   setDownloadButtonFeedback:(_button,phase='idle',ratio)=>transitions.push([phase,ratio]),

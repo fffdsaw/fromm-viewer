@@ -1102,6 +1102,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-glowme.js?v=rail-lens-20261108">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-loading-latest-20261108">
+<script src="web-video-download.js?v=pool-20261109"></script>
 </head>
 <body>
 
@@ -1797,12 +1798,16 @@ function renderChannelVideosView() {
   }
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
   for (const btn of document.querySelectorAll("[data-channel-video-play]")) btn.onclick = () => playChannelVideo(btn.dataset.channelVideoPlay);
-  for (const btn of document.querySelectorAll("[data-channel-video-download]")) btn.onclick = () => downloadChannelVideo(posts.find(p => String(p.id) === btn.dataset.channelVideoDownload), btn);
+  for (const btn of document.querySelectorAll("[data-channel-video-download]")){
+    const post=posts.find(p=>String(p.id)===btn.dataset.channelVideoDownload);
+    bindPostDownloadFeedback(btn,"channel",post);btn.onclick=()=>downloadChannelVideo(post,btn);
+  }
   if (!selected) bindVideoListAuto("channel", s.channelId);
   else disconnectVideoListAuto();
   const refreshButton = $("#channelRefresh");
   if (refreshButton) refreshButton.onclick = () => { videoListAuto.paused = false; videoListAuto.emptyPages = 0; stopChannelVideoPlayback(); loadChannelVideos({refresh: true}); };
   $("#channelBackToList")?.addEventListener("click", returnToChannelList);
+  bindPostDownloadFeedback($("#channelDownloadCurrent"),"channel",selected);
   $("#channelDownloadCurrent")?.addEventListener("click", e => downloadChannelVideo(selected, e.currentTarget));
   updateSelectedCount();
   if (selected?._streamUrl && !s.playerError) {
@@ -1968,21 +1973,22 @@ function queuePostDownload(kind,post,button,run){
  if(postDownloadKeys.has(key))return Promise.resolve();
  postDownloadKeys.add(key);
  const current=channelVideoSession();
- if(button){button.disabled=true;setDownloadButtonFeedback(button,"picker");}
+ const feedback=(phase,ratio)=>setPostDownloadFeedback(kind,post,button,phase,ratio,current);
+ if(button){button.disabled=true;feedback("picker");}
  // Reserve the destination in the original trusted click, before waiting.
  const reservation=createReplayDownloadSink(kind==="channel"?{...post,title:post.title||"Fromm_Channel"}:post).then(sink=>({sink}),error=>({error}));
  return new Promise(resolve=>{
-  const job={button,current,reservation,run,key,resolve,started:false};
+  const job={button,kind,post,current,reservation,run,key,resolve,started:false};
   postDownloadQueue.push(job);
   reservation.then(({sink,error})=>{
    if(job.started)return;
    if(!sink||error){
     const index=postDownloadQueue.indexOf(job);if(index>=0)postDownloadQueue.splice(index,1);
     postDownloadKeys.delete(key);
-    if(button){button.disabled=false;setDownloadButtonFeedback(button,error?"error":"idle");}
+    if(button){button.disabled=false;feedback(error?"error":"idle");}
     if(error&&current())window.alert(`영상 다운로드 실패: ${safeErrorDetail(error?.message||error)}`);
     resolve();
-   }else if(button)setDownloadButtonFeedback(button,"queued");
+   }else if(button)feedback("queued");
   });
   void drainPostDownloads();
  });
@@ -1992,17 +1998,18 @@ async function drainPostDownloads(){
  const job=postDownloadQueue.shift();if(!job)return;
  postDownloadRunning=true;job.started=true;
  const {sink,error}=await job.reservation;
+ const feedback=phase=>setPostDownloadFeedback(job.kind,job.post,job.button,phase,null,job.current);
  try{
   if(error)throw error;
   if(!sink||!job.current()){
    try{await sink?.writable?.abort?.();}catch{}
-   if(job.button)setDownloadButtonFeedback(job.button);
+   if(job.button)feedback("idle");
    return;
   }
   await job.run(sink);
  }catch(e){
   try{await sink?.writable?.abort?.();}catch{}
-  if(job.button)setDownloadButtonFeedback(job.button,"error");
+  if(job.button)feedback("error");
   if(job.current())window.alert(`영상 다운로드 실패: ${safeErrorDetail(e?.message||e)}`);
  }finally{
   if(job.button)job.button.disabled=false;
@@ -2019,6 +2026,7 @@ async function runChannelVideoDownload(post, button, preparedSink) {
   s.downloading = true;
   const seq = s.requestSeq;
   const sameSession = channelVideoSession();
+  const feedback=(phase,ratio)=>setPostDownloadFeedback("channel",post,button,phase,ratio,sameSession);
   let sink;
   if (button) {
     button.disabled = true;
@@ -2027,21 +2035,21 @@ async function runChannelVideoDownload(post, button, preparedSink) {
     // Keep the save picker in the original user gesture.
     sink = preparedSink;
     if (!sink) {
-      if (button) setDownloadButtonFeedback(button);
+      if (button) feedback("idle");
       return;
     }
     const writesFile = !!sink.writable;
-    if (button) setDownloadButtonFeedback(button, "active");
+    if (button) feedback("active");
     const detail = await fetchChannelVideoDetail(post);
     if (!sameSession() || seq !== s.requestSeq) throw new Error("채널 또는 로그인 세션이 변경되었습니다. 다시 시도해주세요.");
     await downloadReplayStream(detail._streamUrl, sink, (done, total) => {
       if (!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
-      if (button) setDownloadButtonFeedback(button, "active", total > 0 ? done / total : null);
-    });
-    if (button) setDownloadButtonFeedback(button, writesFile ? "done" : "handed-off");
+      if (button) feedback("active", total > 0 ? done / total : null);
+    },{current:sameSession});
+    if (button) feedback(writesFile ? "done" : "handed-off");
   } catch (e) {
     try { await sink?.writable?.abort?.(); } catch {}
-    if (button) setDownloadButtonFeedback(button, "error");
+    if (button) feedback("error");
     if (sameSession()) window.alert(`채널 영상 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
   } finally {
     s.downloading = false;
@@ -4354,6 +4362,7 @@ function renderReplayPlayerView(){
     <div class="replay-page-stage">${stage}</div>
   </div>`;
   $("#replayBackToList")?.addEventListener("click",returnToReplayList);
+  bindPostDownloadFeedback($("#replayDownloadCurrent"),"replay",selected);
   $("#replayDownloadCurrent")?.addEventListener("click",e=>downloadReplayPost(selected,e.currentTarget));
 
   requestAnimationFrame(()=>fitReplayPlayerViewport({scrollIntoPlace:true}));
@@ -4422,6 +4431,7 @@ function renderReplayView(){
     playButton.addEventListener("click",e=>{e.stopPropagation();play();});
   }
   for(const btn of document.querySelectorAll("[data-replay-download]")){
+    bindPostDownloadFeedback(btn,"replay",state.live.replayPosts.find(p=>String(p.id)===String(btn.dataset.replayDownload)&&p._channelId===String(btn.dataset.replayChannel)));
     btn.onclick=e=>{
       e.stopPropagation();
       const post=state.live.replayPosts.find(p=>String(p.id)===String(btn.dataset.replayDownload)&&p._channelId===String(btn.dataset.replayChannel));
@@ -5070,10 +5080,10 @@ function rewriteReplayMediaPlaylist(text,playlistUrl,authParams){
   }).join("\n");
 }
 
-async function resolveReplayMediaPlaylist(rawUrl){
+async function resolveReplayMediaPlaylist(rawUrl,{fetchText=fetchReplayText,cache=state.live.replayPlaylistCache}={}){
   const key=String(rawUrl || "");
   const now=Date.now();
-  const cached=state.live.replayPlaylistCache.get(key);
+  const cached=cache.get(key);
 
   // Signed Replay URLs can expire, so keep this deliberately short.
   if(cached && now-cached.at < 45_000){
@@ -5088,7 +5098,7 @@ async function resolveReplayMediaPlaylist(rawUrl){
     for(let depth=0;depth<6;depth++) {
       if(seen.has(mediaUrl)) throw new Error("Replay 재생목록이 순환하고 있습니다.");
       seen.add(mediaUrl);
-      const mediaText=await fetchReplayText(mediaUrl);
+      const mediaText=await fetchText(mediaUrl);
       effectiveAuth=videoQualityAuth(mediaUrl,effectiveAuth);
       const variantUrl=replayVariantFromMaster(mediaText,mediaUrl,effectiveAuth);
       if(!variantUrl) {
@@ -5100,12 +5110,12 @@ async function resolveReplayMediaPlaylist(rawUrl){
     throw new Error("Replay 재생목록 단계가 너무 많습니다.");
   })();
 
-  state.live.replayPlaylistCache.set(key,{at:now,promise});
+  cache.set(key,{at:now,promise});
   try{
     return await promise;
   }catch(e){
-    if(state.live.replayPlaylistCache.get(key)?.promise===promise){
-      state.live.replayPlaylistCache.delete(key);
+    if(cache.get(key)?.promise===promise){
+      cache.delete(key);
     }
     throw e;
   }
@@ -5189,22 +5199,31 @@ function replayDownloadFilename(post){
 }
 
 function postDownloadNames(post){
-  const base=replayDownloadFilename(post);
+  const base=replayDownloadFilename(post), key=replayPostKey(post);
+  // Keep the name chosen for this post stable when another list later reveals
+  // a same-title peer. A different video still receives the existing suffix.
+  if(!postDownloadNames.session?.()){
+    postDownloadNames.names=new Map();postDownloadNames.session=channelVideoSession();
+  }
+  const names=postDownloadNames.names, reservation=key+"\n"+base;
+  if(names.has(reservation)) return names.get(reservation).value;
   const peers=[...(state.live.replayPosts || [])];
   for(const page of channelVideoState.pages.values()) peers.push(...(page.posts || []));
   peers.push(post);
-  const key=replayPostKey(post);
   const identities=new Set(peers.filter(p=>replayDownloadFilename(p).toLowerCase()===base.toLowerCase()).map(p=>replayPostKey(p)));
   // Only real title collisions need a short, stable suffix. Individual and bulk
   // saves consult the same loaded posts, including when a player is open.
   let filename=base;
-  if(identities.size>1){
+  const reserved=[...names.values()].some(entry=>entry.key!==key&&entry.value.filename.toLowerCase()===base.toLowerCase());
+  if(identities.size>1 || reserved){
     let hash=0xcbf29ce484222325n;
     for(const char of key) hash=BigInt.asUintN(64,(hash ^ BigInt(char.codePointAt(0)))*0x100000001b3n);
     filename=base.replace(/\.ts$/, ' - '+hash.toString(16).padStart(16,'0')+'.ts');
   }
   const legacy=base.replace(/\.ts$/, ' ('+String(post._channelId).replace(/[^\w-]/g,'_')+'-'+String(post.id).replace(/[^\w-]/g,'_')+').ts');
-  return {filename,legacy};
+  const value={filename,legacy};names.set(reservation,{key,value});
+  if(names.size>500) names.delete(names.keys().next().value);
+  return value;
 }
 
 async function existingPostDownload(directory,names){
@@ -5242,50 +5261,59 @@ async function fetchReplayBuffer(url){
   return response.arrayBuffer();
 }
 
-async function downloadReplayStream(rawUrl,sink,onProgress=()=>{}){
-  const {authParams,mediaUrl,mediaText}=await resolveReplayMediaPlaylist(rawUrl);
-  const segments=parseReplayDownloadPlaylist(mediaText,mediaUrl,authParams);
-  const keyCache=new Map();
-  const getKey=keyInfo=>{
-    if(!keyInfo) return Promise.resolve(null);
-    if(!window.crypto?.subtle) return Promise.reject(new Error("이 브라우저에서 Replay AES 복호화를 지원하지 않습니다."));
-    if(!keyCache.has(keyInfo.url)) keyCache.set(keyInfo.url,(async()=>{
-      const raw=await fetchReplayBuffer(keyInfo.url);
-      if(raw.byteLength!==16) throw new Error("Replay AES 키 길이가 올바르지 않습니다.");
-      return window.crypto.subtle.importKey("raw",raw,{name:"AES-CBC"},false,["decrypt"]);
-    })());
-    return keyCache.get(keyInfo.url);
-  };
-  let completed=0;
-  const batchSize=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 6 : 12;
-  for(let i=0;i<segments.length;i+=batchSize){
-    const batch=segments.slice(i,i+batchSize);
-    const buffers=await Promise.all(batch.map(async segment=>{
-      const encrypted=await fetchReplayBuffer(segment.url);
-      if(!segment.key) return encrypted;
-      const key=await getKey(segment.key);
-      return window.crypto.subtle.decrypt({name:"AES-CBC",iv:replayDownloadIv(segment.sequence,segment.key.iv)},key,encrypted);
-    }));
-    for(const buffer of buffers){
-      if(sink.writable) await sink.writable.write(new Uint8Array(buffer));
-      else sink.chunks.push(buffer);
-      completed++;
-      onProgress(completed,segments.length);
+async function prepareReplayDownloadStage(signal){
+  if(!navigator.storage?.getDirectory) return null;
+  let directory;
+  try{
+    const root=await navigator.storage.getDirectory();
+    directory=await root.getDirectoryHandle("fromm-video-downloads-v1",{create:true});
+  }catch(e){
+    if(["SecurityError","NotAllowedError","NotSupportedError","QuotaExceededError"].includes(e?.name)) return null;
+    throw e;
+  }
+  // Completed browser handoffs may still be reading their File snapshot.
+  // Only old, app-owned staging files are reclaimed on later downloads.
+  let inspected=0;
+  for await(const [name,handle] of directory.entries()){
+    if(signal.aborted) throw new Error("영상 다운로드가 취소되었습니다.");
+    if(++inspected>64) break;
+    if(handle.kind!=="file" || !/^stage-[a-z0-9-]+\.tmp$/.test(name)) continue;
+    try{if(Date.now()-(await handle.getFile()).lastModified>86400000) await directory.removeEntry(name);}catch{}
+  }
+  const name="stage-"+(window.crypto?.randomUUID?.() || Date.now().toString(36)+"-"+Math.random().toString(36).slice(2))+".tmp";
+  let handle,writer;
+  try{
+    handle=await directory.getFileHandle(name,{create:true});
+    if(typeof handle.createWritable!=="function"){await directory.removeEntry(name);return null;}
+    writer=await handle.createWritable();
+  }catch(e){try{await directory.removeEntry(name);}catch{}if(["SecurityError","NotAllowedError","NotSupportedError","QuotaExceededError"].includes(e?.name))return null;throw e;}
+  return {writer,file:()=>handle.getFile(),discard:async()=>{try{await writer.abort();}catch{}try{await directory.removeEntry(name);}catch{}}};
+}
+
+async function downloadReplayStream(rawUrl,sink,onProgress=()=>{},options={}){
+  if(!globalThis.FrommVideoDownload) throw new Error("영상 다운로드 엔진을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.");
+  const runtime=FrommVideoDownload.create({
+    mobile:/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),fetcher:(url,init)=>fetch(url,init),crypto:window.crypto,
+    storageRoot:signal=>prepareReplayDownloadStage(signal),...options
+  });
+  const onHide=()=>runtime.abort();
+  window.addEventListener?.("pagehide",onHide,{once:true});
+  let result;
+  try{
+    // A download owns its abort/retry transport and manifest cache. Playback's
+    // existing resolver/default cache and highest-rendition choice stay intact.
+    const {authParams,mediaUrl,mediaText}=await resolveReplayMediaPlaylist(rawUrl,{fetchText:url=>runtime.text(url),cache:new Map()});
+    const segments=parseReplayDownloadPlaylist(mediaText,mediaUrl,authParams);
+    result=await runtime.transfer(segments,sink,onProgress,replayDownloadIv);
+    if(result.blob){
+      const objectUrl=URL.createObjectURL(result.blob);
+      const anchor=document.createElement("a");anchor.href=objectUrl;anchor.download=sink.filename;
+      document.body.appendChild(anchor);anchor.click();anchor.remove();
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),60_000);
     }
-  }
-  if(sink.writable){
-    await sink.writable.close();
-    sink.writable=null;
-  }else{
-    const objectUrl=URL.createObjectURL(new Blob(sink.chunks,{type:"video/mp2t"}));
-    const anchor=document.createElement("a");
-    anchor.href=objectUrl;
-    anchor.download=sink.filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(()=>URL.revokeObjectURL(objectUrl),60_000);
-  }
+    return result;
+  }catch(e){try{await result?.discard?.();}catch{}throw e;}
+  finally{runtime.dispose();window.removeEventListener?.("pagehide",onHide);}
 }
 
 function replayPostKey(postOrId,channelId=""){
@@ -5359,6 +5387,7 @@ function downloadReplayPost(post,button){
 async function runReplayPostDownload(post,button,preparedSink){
   if(!post) return;
   const sameSession=channelVideoSession();
+  const feedback=(phase,ratio)=>setPostDownloadFeedback("replay",post,button,phase,ratio,sameSession);
   state.live.replayDownloading=true;
   if(button){
     button.disabled=true;
@@ -5368,22 +5397,22 @@ async function runReplayPostDownload(post,button,preparedSink){
   try{
     sink=preparedSink;
     if(!sink){
-      if(button) setDownloadButtonFeedback(button);
+      if(button) feedback("idle");
       return;
     }
     const writesFile=!!sink.writable;
-    if(button) setDownloadButtonFeedback(button,"active");
+    if(button) feedback("active");
     const detail=await fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
     if(!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
     const rawUrl=detail._streamUrl || replayStreamUrl(detail);
     await downloadReplayStream(rawUrl,sink,(done,total)=>{
       if(!sameSession()) throw new Error("로그인 세션이 변경되었습니다.");
-      if(button) setDownloadButtonFeedback(button,"active",total>0 ? done/total : null);
-    });
-    if(button) setDownloadButtonFeedback(button,writesFile ? "done" : "handed-off");
+      if(button) feedback("active",total>0 ? done/total : null);
+    },{current:sameSession});
+    if(button) feedback(writesFile ? "done" : "handed-off");
   }catch(e){
     try{await sink?.writable?.abort?.();}catch{}
-    if(button) setDownloadButtonFeedback(button,"error");
+    if(button) feedback("error");
     if(sameSession()) window.alert(`Replay 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
   }finally{
     state.live.replayDownloading=false;
@@ -8156,7 +8185,7 @@ async function saveSelectedPosts(){
         await downloadReplayStream(detail._streamUrl || replayStreamUrl(detail),sink,(done,total)=>{
           if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
           button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(done/total*100)}%`;
-        });
+        },{current});
         ok++;
         state.postSelected.delete(downloadSelectionKey(scope.kind,post));
         syncDownloadSelection();
@@ -10076,6 +10105,55 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null){
     button.removeAttribute("aria-busy");
     feedback.timer=setTimeout(()=>setDownloadButtonFeedback(button),phase==="error" ? 2200 : 1400);
   }
+}
+
+function postDownloadFeedbackEntries(){
+  return postDownloadFeedbackEntries.items ||= new Map();
+}
+
+function bindPostDownloadFeedback(button,kind,post){
+  if(!button || !post) return;
+  const key=kind+":"+String(post._channelId || post.channelId || "")+":"+String(post.id);
+  button.dataset.postDownloadKey=key;
+  const entries=postDownloadFeedbackEntries(),entry=entries.get(key);
+  if(entry && (!entry.current() || entry.expiresAt<=Date.now())){
+    clearTimeout(entry.timer);entries.delete(key);
+  }
+  const live=entries.get(key);
+  if(live){
+    button.disabled=["picker","queued","active"].includes(live.phase);
+    setDownloadButtonFeedback(button,live.phase,live.ratio);
+  }else if(entry && button.dataset.downloadPhase){
+    // Retained cards may also use the generic feedback API directly. Only
+    // clear a bound entry we actually invalidated, not an unrelated live ring.
+    setDownloadButtonFeedback(button);button.disabled=false;
+  }
+}
+
+function setPostDownloadFeedback(kind,post,button,phase="idle",ratio=null,current=channelVideoSession()){
+  if(!post) return;
+  const key=kind+":"+String(post._channelId || post.channelId || "")+":"+String(post.id);
+  const entries=postDownloadFeedbackEntries(),previous=entries.get(key);
+  if(!current()){
+    if(previous && !previous.current()){
+      clearTimeout(previous.timer);entries.delete(key);
+      for(const node of document.querySelectorAll("[data-post-download-key]"))if(node.dataset.postDownloadKey===key){setDownloadButtonFeedback(node);node.disabled=false;}
+    }
+    return;
+  }
+  if(previous) clearTimeout(previous.timer);
+  const duration=phase==="error"?2200:1400;
+  const terminal=["done","error","handed-off"].includes(phase);
+  const entry={phase,ratio,current,expiresAt:terminal?Date.now()+duration:Infinity,timer:null};
+  if(phase==="idle") entries.delete(key);else entries.set(key,entry);
+  if(button){button.dataset.postDownloadKey=key;button.disabled=["picker","queued","active"].includes(phase);setDownloadButtonFeedback(button,phase,ratio);}
+  for(const node of document.querySelectorAll("[data-post-download-key]")){
+    if(node!==button && node.dataset.postDownloadKey===key){node.disabled=["picker","queued","active"].includes(phase);setDownloadButtonFeedback(node,phase,ratio);}
+  }
+  if(terminal) entry.timer=setTimeout(()=>{
+    if(entries.get(key)!==entry) return;entries.delete(key);
+    for(const node of document.querySelectorAll("[data-post-download-key]"))if(node.dataset.postDownloadKey===key){setDownloadButtonFeedback(node);node.disabled=false;}
+  },duration);
 }
 
 function setMediaDownloadVisual(m,phase,ratio=null){

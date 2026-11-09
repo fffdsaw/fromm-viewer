@@ -31,7 +31,7 @@ function setup(overrides = {}) {
     },
     back() {historyCalls.push({back: true});},
   };
-  const context = vm.createContext({state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
+  const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
     sleep: async () => {},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
@@ -98,7 +98,7 @@ test('Replay download and Native transport/auth contracts remain protected aroun
   // automatic list pagination has its own browser coverage; stream fetching,
   // decryption and download wire paths remain unchanged. Playback/source selection
   // now has dedicated real HLS quality-switch and lifecycle tests.
-  for (const name of names.filter(name => !['renderReplayView', 'visibleReplayPosts', 'replayHasMore', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  for (const name of names.filter(name => !['downloadReplayStream','renderReplayView', 'visibleReplayPosts', 'replayHasMore', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
   const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
@@ -348,7 +348,7 @@ test('existing AES-128 downloader decrypts ordered segments using the fresh chan
   const output = [], requested = [];
   const h = setup({createReplayDownloadSink: async () => ({filename: 'synthetic.ts', writable: {write: async b => output.push(Buffer.from(b)), close: async () => {}}, chunks: null}),
     resolveReplayMediaPlaylist: async () => ({authParams: new URLSearchParams('Policy=synthetic'), mediaUrl: 'https://cdn.example/list.m3u8', mediaText: '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:10\n#EXT-X-KEY:METHOD=AES-128,URI="key"\n1.ts\n2.ts'}),
-    fetchReplayBuffer: async url => {requested.push(url); return url.includes('/key?') ? keyBytes.buffer : encrypted[url.includes('/1.ts?') ? 0 : 1];},
+    fetch: async url => {requested.push(url);const data=url.includes('/key?')?keyBytes:encrypted[url.includes('/1.ts?')?0:1];return new Response(data,{headers:{'content-length':data.byteLength}});},
   });
   vm.runInContext(fn('downloadReplayStream'), h.context);
   await h.context.loadChannelVideos();

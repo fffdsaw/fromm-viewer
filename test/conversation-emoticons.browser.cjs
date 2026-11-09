@@ -49,6 +49,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').waitFor();
   const emojiTab=page.locator('[data-emoji-tab="standard"]');assert.equal(await emojiTab.evaluate(e=>e===e.parentElement.lastElementChild),true,'standard emoji tab follows Fromm packs');
   await emojiTab.click();assert.ok(await page.locator('#conversationEmoticonItems').evaluate(e=>e.classList.contains('conversation-standard-emoji')));
+  assert.equal(await emojiTab.evaluate(e=>getComputedStyle(e).borderTopWidth),'0px','standard emoji tab has no visible border even when selected');
   await page.locator('[data-unicode-emoji="❤️"]').click();assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 ❤️','standard emoji is inserted as draft text');
   assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false,'Unicode emoji is not a Fromm sticker');
   assert.equal(posts.length,0,'choosing Unicode emoji never sends a message');

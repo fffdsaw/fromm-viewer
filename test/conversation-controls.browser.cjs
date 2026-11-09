@@ -64,6 +64,11 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'sent-bounds-'+cfg.width+'.png')});
   const pendingBubble=await page.locator('#conversationPending .conversation-pending-bubble').boundingBox(),inputEnd=await page.locator('#conversationInput').boundingBox();assert.ok(pendingBubble.x+pendingBubble.width<=inputEnd.x+inputEnd.width+1,'pending reply ends before send/settings');
   rows.push({messageId:'own-reconciled',type:'text',userType:'fan',...lastPost,createdAt:Date.now()-1});await page.waitForFunction(()=>!document.querySelector('#conversationPending'));
+  // A large pending reply may have been centred by scrollIntoView; explicitly
+  // enter the latest view before asserting its follow behaviour.
+  if(await page.locator('#conversationNew').isVisible())await page.locator('#conversationNew').click();
+  await page.evaluate(()=>scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));
+  await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<3);
   echo=true;await page.locator('#conversationInput').fill('안녕?');await page.locator('#conversationSend').click();await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='own-short'));
   await page.waitForTimeout(200);
   const geometry=await page.evaluate(()=>{const bubble=document.querySelector('[data-message-id="own-short"] .bubble').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),column=document.querySelector('#timeline').getBoundingClientRect(),input=document.querySelector('#conversationInput').getBoundingClientRect();return{bubble:bubble.toJSON(),dock:dock.toJSON(),column:column.toJSON(),input:input.toJSON()}});

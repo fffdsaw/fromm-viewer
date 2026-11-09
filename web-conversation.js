@@ -230,7 +230,11 @@
    throw error;
   }finally{owner.close();if(c.ruleJob===job)c.ruleJob=null;if(roomCurrent(c))paint();}
  }
- function atLatest(){return getSelection()?.isCollapsed!==false&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(220,(dock?.offsetHeight||0)+60);}
+ function atLatest(){
+  // Selection inside the composer is editing, not a selected passage in history.
+  const readingSelection=!dock?.contains(document.activeElement)&&getSelection()?.isCollapsed===false;
+  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(220,(dock?.offsetHeight||0)+60);
+ }
  function updateView(oldList,changes,follow){
   if(state.filter!=='all'||!context)return;
   const c=context,next=filteredMessages(),timeline=document.querySelector('#timeline');

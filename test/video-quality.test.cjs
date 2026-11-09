@@ -122,7 +122,7 @@ test('unusual actual dimensions remain actual options instead of being rounded t
 test('download format, AES, signature rewriting and authenticated API contracts stay unchanged', () => {
   const baseline = execFileSync('git', ['show', '38fca89:index.html'], {cwd:root, encoding:'utf8', maxBuffer:4e6});
   const normalize = text => text.replace(/\r\n/g, '\n');
-  for (const name of ['downloadReplayStream', 'parseReplayDownloadPlaylist', 'replayDownloadIv',
+  for (const name of ['parseReplayDownloadPlaylist', 'replayDownloadIv',
     'rewriteReplayMediaPlaylist', 'replaySignedUrl', 'replayAuthParams', 'frommApiRequest']) {
     assert.equal(normalize(fn(name)), normalize(fn(name, baseline)), name);
   }
@@ -163,10 +163,10 @@ function runtimeSetup({bodies={}, supported=true, refreshUrl=null}={}) {
     let value=bodies[key];
     if(typeof value==='function')value=await value(url);
     if(value==null)throw new Error('Unexpected fixture URL: '+key);
-    if(value&&typeof value==='object'&&'status' in value)return {ok:false,status:value.status,text:async()=>''};
-    return {ok:true,status:200,text:async()=>value};
+    if(value&&typeof value==='object'&&'status' in value)return new Response('',{status:value.status});
+    return new Response(value,{headers:{'content-length':Buffer.byteLength(value)}});
   };
-  const c=vm.createContext({URL,URLSearchParams,AbortController,DOMException,setTimeout,clearTimeout,
+  const c=vm.createContext({FrommVideoDownload:require('../web-video-download.js'),URL,URLSearchParams,AbortController,DOMException,setTimeout,clearTimeout,
     fetch:read,localProxyUrl:value=>value,state:{live:{replayPlaylistCache:new Map()}},
     channelVideoSession:()=>()=>active,window:owner,navigator:{userAgent:'desktop fixture'},ensureReplayHlsSdk:async()=>Hls});
   vm.runInContext('const videoQualityPlayers={replay:null,channel:null};const videoPlaybackCatalogCache={entries:new Map(),sameSession:null,timer:null};',c);
@@ -247,7 +247,7 @@ test('download resolver follows nested highest masters and retains its independe
   const h=runtimeSetup({bodies:{
     '/artist/master.m3u8':master(['BANDWIDTH=6000000,RESOLUTION=640x360','low.m3u8'],['BANDWIDTH=4000000,RESOLUTION=1920x1080','nested.m3u8']),
     '/artist/nested.m3u8':master(['BANDWIDTH=600000,RESOLUTION=640x360','low.m3u8'],['BANDWIDTH=3000000,RESOLUTION=1920x1080','highest.m3u8']),
-    '/artist/highest.m3u8':leaf('highest'),'/artist/low.m3u8':leaf('low')
+    '/artist/highest.m3u8':leaf('highest'),'/artist/low.m3u8':leaf('low'),'/artist/highest.ts':Uint8Array.from([72,73,71,72])
   }});
   const url=base+'?CloudFront-Policy=fixture-policy&CloudFront-Signature=fixture-signature';
   const best=await h.c.resolveReplayMediaPlaylist(url);
@@ -259,7 +259,7 @@ test('download resolver follows nested highest masters and retains its independe
   const cached=await h.c.resolveReplayMediaPlaylist(url);
   assert.strictEqual(cached,best,'manual playback cannot replace the highest download cache');
   const writes=[];let closed=false;
-  h.c.fetchReplayBuffer=async segment=>{assert.equal(new URL(segment).pathname,'/artist/highest.ts');return Uint8Array.from([72,73,71,72]).buffer;};
+  // Exercise the real pool/transport through the highest rendition fixture.
   await h.c.downloadReplayStream(url,{writable:{async write(bytes){writes.push(...bytes);},async close(){closed=true;}},chunks:null});
   assert.deepEqual(writes,[72,73,71,72]);assert.equal(closed,true);
   h.c.disposeVideoQualityPlayer('replay');

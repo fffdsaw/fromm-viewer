@@ -1,0 +1,50 @@
+[
+  {
+    "width": 1440,
+    "installed": false,
+    "sha256": "2b7d7386491443eebe8a9a359ddad444c418247375afa6c4d30c3981c35d4bb5",
+    "segments": 128,
+    "result": "PASS",
+    "coverage": [
+      "Replay/Channel real OPFS direct writes",
+      "highest AES rendition",
+      "progress and queue remount",
+      "real directory bulk and existing-file skip",
+      "staged and memory handoff",
+      "403 no retry",
+      "session abort"
+    ]
+  },
+  {
+    "width": 780,
+    "installed": true,
+    "sha256": "2b7d7386491443eebe8a9a359ddad444c418247375afa6c4d30c3981c35d4bb5",
+    "segments": 128,
+    "result": "PASS",
+    "coverage": [
+      "Replay/Channel real OPFS direct writes",
+      "highest AES rendition",
+      "progress and queue remount",
+      "real directory bulk and existing-file skip",
+      "staged and memory handoff",
+      "403 no retry",
+      "session abort"
+    ]
+  },
+  {
+    "width": 390,
+    "installed": false,
+    "sha256": "2b7d7386491443eebe8a9a359ddad444c418247375afa6c4d30c3981c35d4bb5",
+    "segments": 128,
+    "result": "PASS",
+    "coverage": [
+      "Replay/Channel real OPFS direct writes",
+      "highest AES rendition",
+      "progress and queue remount",
+      "real directory bulk and existing-file skip",
+      "staged and memory handoff",
+      "403 no retry",
+      "session abort"
+    ]
+  }
+]

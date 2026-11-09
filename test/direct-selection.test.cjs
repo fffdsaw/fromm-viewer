@@ -23,7 +23,7 @@ function setup(kind = 'channel') {
     if (!options?.create && !files.has(name)) throw Object.assign(new Error('missing'), {name: 'NotFoundError'});
     return {async getFile() {return {size: files.has(name) ? 4 : 0};}, async createWritable() {return {async abort() {aborted.push(name);}};}};
   }};
-  const c = vm.createContext({state, channelVideoState, postDownloadRunning:false, Set, String, Math,
+  const c = vm.createContext({setPostDownloadFeedback(){},state, channelVideoState, postDownloadRunning:false, Set, String, Math,
     window: {showDirectoryPicker: async () => directory, alert: message => alerts.push(message)},
     $: () => button, supportsDirectorySave: () => true, sleep: async () => {},
     channelVideoSession: () => () => session,
@@ -121,6 +121,8 @@ test('single-save picker and bulk save share clean names, including genuine same
   h.items[1].title = 'one';
   const names = h.items.map(post => h.c.postDownloadNames(post).filename);
   assert.equal(new Set(names).size, 3); assert.ok(names.every(name => !name.includes('(')));
+  assert.equal(names[0],'one.ts','loading a later same-title peer cannot rename an already chosen file');
+  assert.match(names[1],/^one - [0-9a-f]{16}\.ts$/,'the genuinely different post still gets collision protection');
   let suggested;
   h.c.window.showSaveFilePicker = async options => {suggested = options.suggestedName; return {createWritable: async () => ({})};};
   vm.runInContext(fn('createReplayDownloadSink'), h.c);

@@ -103,3 +103,12 @@ test('partial OPFS implementations without writable streams retain the bounded B
  directory.getFileHandle=async()=>{throw new DOMException('quota','QuotaExceededError')};
  assert.equal(await c.prepareReplayDownloadStage(new AbortController().signal),null);assert.equal(removed.length,2);
 });
+test('memory fallback does not retain oversized backing buffers for tiny unknown-length fragments',async t=>{
+ const f=await fixture(t,async(_req,res)=>{res.write('ab');await pause(1);res.end('c')});
+ const engine=create({concurrency:6,maxMemoryFileBytes:192});t.after(()=>engine.dispose());const output={writable:null,chunks:[]};let peak=0;
+ const result=await engine.transfer(Array.from({length:64},()=>({url:f.url})),output,()=>{
+  const retained=output.chunks.reduce((n,b)=>n+b.buffer.byteLength,0);peak=Math.max(peak,retained);
+  assert.ok(output.chunks.every(b=>b.byteLength===b.buffer.byteLength));
+ },iv);
+ assert.equal(result.blob.size,192);assert.equal(await result.blob.text(),'abc'.repeat(64));assert.equal(peak,192);
+});

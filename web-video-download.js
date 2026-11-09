@@ -178,7 +178,10 @@
             if(writer)await writer.write(entry.data);
             else{
               if(metrics.writtenBytes+entry.data.byteLength>memoryLimit)throw new DownloadError('MEMORY_LIMIT','메모리 저장 한도를 초과했습니다. 파일 직접 저장이 가능한 Chrome·Edge를 이용해주세요.');
-              sink.chunks.push(entry.data);
+              // Retaining a tiny subarray of an unknown-length response would
+              // otherwise retain its entire growable backing buffer per segment.
+              // Only the bounded Blob fallback needs this exact-size copy.
+              sink.chunks.push(entry.data.byteLength===entry.data.buffer.byteLength?entry.data:entry.data.slice());
             }
             check();metrics.writtenBytes+=entry.data.byteLength;metrics.writtenSegments++;
             ready.delete(nextWrite);metrics.readyBytes-=entry.data.buffer.byteLength;release(entry.token);nextWrite++;notify();emit();

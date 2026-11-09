@@ -10123,7 +10123,9 @@ function bindPostDownloadFeedback(button,kind,post){
   if(live){
     button.disabled=["picker","queued","active"].includes(live.phase);
     setDownloadButtonFeedback(button,live.phase,live.ratio);
-  }else if(button.dataset.downloadPhase){
+  }else if(entry && button.dataset.downloadPhase){
+    // Retained cards may also use the generic feedback API directly. Only
+    // clear a bound entry we actually invalidated, not an unrelated live ring.
     setDownloadButtonFeedback(button);button.disabled=false;
   }
 }

@@ -25,7 +25,7 @@ function create(el,relative){
  face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
  if(el.matches('.card-download,.replay-download,.chat-media-download,.replay-play'))el.classList.add('glass-on-image');
- if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',Math.min(el.clientWidth,el.clientHeight)/2+'px');
+ if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
 }
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
@@ -35,7 +35,7 @@ function opticalSettings(item){
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  const brightness=menu?Math.min(.025,settings.opacity/100):settings.opacity/100;
  return {
-  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?Math.min(12,settings.refraction*strength):settings.refraction*strength,
+  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;

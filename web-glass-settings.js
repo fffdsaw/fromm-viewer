@@ -87,11 +87,14 @@ export function mountGlassSettings(){
  for(const[key]of controls){const input=dialog.querySelector(`[name="${key}"]`);input.oninput=()=>set({[key]:Number(input.value)});input.onchange=()=>emit();}
  dialog.addEventListener('close',()=>{
   emit();
-  if(!glassPC.matches||document.querySelector('.app')?.inert)return;
-  // The gear is hidden while the rail is collapsed. Restore a visible
-  // focus target after closing the native modal by keyboard or mouse.
-  if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});
-  if(trigger.checkVisibility())trigger.focus({preventScroll:true});
+  // Browser-native dialog focus restoration may finish after the 'close'
+  // callback, especially with a constrained viewport. Reapply once next frame.
+  const restore=()=>{
+   if(!glassPC.matches||document.querySelector('.app')?.inert||dialog.open)return;
+   if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});
+   if(trigger.checkVisibility())trigger.focus({preventScroll:true});
+  };
+  restore();requestAnimationFrame(restore);
  });
  dialog.addEventListener('keydown',event=>{
   if(event.key!=='Tab')return;

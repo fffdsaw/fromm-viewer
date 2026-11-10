@@ -38,11 +38,11 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
-  assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const filename=await bubble.locator('.stats').innerText();assert.ok(filename.length>0);
-  // The same translucent glass circle now lives before the filename on both desktop and mobile.
-  const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await bubble.locator('.stats').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
+  assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const footer=page.locator('[data-message-id="sound"] .chat-message-foot');const filename=await footer.locator('.chat-message-filename').innerText();assert.ok(filename.length>0);assert.match(await footer.locator('time').innerText(),/^\d{2}:\d{2}$/);
+  // The same glass download control remains, while filename/time live below the bubble.
+  const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await footer.locator('.chat-message-filename').boundingBox(),time=await footer.locator('time').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
   assert.ok(button.y>=player.y+player.height-2,'download stays below audio player: '+JSON.stringify({button,player}));
-  assert.ok(file.x>=button.x+button.width+4&&Math.abs((button.y+button.height/2)-(file.y+file.height/2))<5,'filename follows circle: '+JSON.stringify({button,file}));
+  assert.ok(file.y>=button.y+button.height-1,'filename is below the voice control: '+JSON.stringify({button,file}));assert.ok(time.x>=file.x+file.width-1,'timestamp follows filename: '+JSON.stringify({file,time}));
   assert.ok(Math.abs(button.x-actions.x)<3,'circle begins at file row left: '+JSON.stringify({button,actions}));
   assert.ok(Math.abs(button.width-button.height)<1,'download is circular: '+JSON.stringify(button));
   const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,background:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
@@ -53,7 +53,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(appearance.svgWidth>=button.width-3&&appearance.svgWidth<=button.width,'SVG progress ring fills the circular control');
   assert.ok(appearance.clipPath.includes('50%'),'visible download label must be hidden');
   assert.ok((await download.getAttribute('aria-label')).includes('다운로드'),'download remains accessible by name');
-  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await bubble.locator('.stats').innerText(),filename);
+  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').innerText(),filename);
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);assert.equal(await page.locator('#conversationNew').innerText(),'');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'latest-jump-'+cfg.width+'.png')});

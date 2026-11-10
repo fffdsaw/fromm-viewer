@@ -79,6 +79,7 @@
   previewAudio.pause();previewAudio.currentTime=0;return previewAudio.play().catch(()=>{});
  }catch{return Promise.resolve();}}
  function announce(host){
+  if(!prefs.sound&&!prefs.desktop)return;
   const now=Date.now();if(now-(lastAlerts.get(host)||0)<3500)return;lastAlerts.set(host,now);
   playSound();
   if(!prefs.desktop||!('Notification' in window)||Notification.permission!=='granted')return;

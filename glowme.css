@@ -1278,11 +1278,18 @@ html.glowme .reply-content{color:#244c42}
    rightmost rim instead of a second full-size glass layer. */
 .glowme-phase3 #sidebar,.glowme-phase3.pc-layout #sidebar{
  background:linear-gradient(160deg,#f3fffbe9 0%,#eaf9f2ed 54%,#e2f6efeb 100%) #e0f1e9!important;
- border:1px solid #a9d8cb;border-right:0!important;box-shadow:0 8px 22px #23584513,inset 0 1px 0 #ffffffc2;
+ border:1px solid #a9d8cb;border-right-color:transparent!important;box-shadow:0 8px 22px #23584513,inset 0 1px 0 #ffffffc2;
 }
 .glowme-phase3 #sidebar::before{display:none!important}
-/* No right-edge pseudo-element: it created the thin mint seam beside chat. */
-.glowme-phase3 #sidebar::after,.glowme-phase3.pc-layout #sidebar::after{content:none!important;display:none!important}
+/* Keep the transparent optical composition plane (Liquid Glass needs its
+   original stacking order), but paint no vertical edge or mint stripe. */
+.glowme-phase3 #sidebar::after{
+ display:block!important;content:"";position:absolute;inset:0;z-index:1;
+ pointer-events:none;border:0;border-radius:inherit;
+ background:none!important;box-shadow:none;
+ -webkit-mask-image:linear-gradient(90deg,transparent calc(100% - 15px),#000 calc(100% - 11px));
+ mask-image:linear-gradient(90deg,transparent calc(100% - 15px),#000 calc(100% - 11px));
+}
 .glowme-phase3.pc-layout .rail-head{position:relative}
 .glowme-phase3.pc-layout .glass-settings-footer{
  position:absolute;top:4px;right:0;z-index:4;display:block;flex:none;

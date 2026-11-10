@@ -18,7 +18,14 @@ async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.s
   assert.equal(await p.evaluate(()=>FrommGlass.count),0);
   assert.equal(await p.locator('.header-glass-surface,.sidebar-glass-surface').count(),0);
   assert.equal(await p.locator('.viewer-header').evaluate(e=>getComputedStyle(e,'::after').backgroundColor),'rgb(224, 241, 233)');
-  assert.equal(await p.locator('#sidebar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(224, 241, 233)');
+  // Glow ME now uses one gentle mint gradient rather than the legacy
+  // solid fill or a second full-size glass overlay.
+  const railStyle=await p.locator('#sidebar').evaluate(e=>({
+   background:getComputedStyle(e).backgroundImage,
+   innerLayer:getComputedStyle(e,'::before').display
+  }));
+  assert.match(railStyle.background,/linear-gradient/,'single-pane rail retains its own mint face');
+  assert.equal(railStyle.innerLayer,'none','no nested rail glass pane');
   await p.waitForFunction(selector=>document.querySelector(selector)?.style.backdropFilter.includes('url('),navFace);
   const originalScale=await scale(p);
   await p.locator('.media-card').first().click({position:{x:30,y:30}});await p.waitForFunction(()=>state.selected.size===1);

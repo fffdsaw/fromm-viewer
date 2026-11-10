@@ -188,6 +188,7 @@
  window.addEventListener('storage',event=>{if(!scope)return;if(event.key===PREFIX+scope||event.key===PREF+scope){const remembered=load(PREFIX+scope,{});if(remembered.seen)seen=remembered.seen;const saved=load(PREF+scope,{});prefs={sound:saved.sound===true,desktop:saved.desktop===true};unread.clear();paint();window.dispatchEvent(new Event('fromm-unread-prefs'));}});
  syncTimer=setInterval(sync,4000);
  pollTimer=setInterval(()=>{void poll();if(!online){stop();void startPush(session);}},180000);
- window.addEventListener('pagehide',()=>{stop();clearInterval(syncTimer);clearInterval(pollTimer);});
+ // A bfcache-restored page receives pageshow again; preserve the monitor timers.
+ window.addEventListener('pagehide',stop);
  sync();
 })();

@@ -9051,8 +9051,8 @@ function renderMessage(m){
   if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
-  const visibleType=(t==="text"||t==="emoticon")?"":(t==="sound"?"음성":t);
-  let html=`<div class="meta"><span>${esc(who)}</span><span>${esc(timeLabel(m))}</span>${visibleType?`<span class="type">${esc(visibleType)}</span>`:""}</div>`;
+  // The sender stays in the bubble; timestamp and filename are below it.
+  let html=`<div class="meta"><span>${esc(who)}</span></div>`;
 
   const quoted = getQuotedMessage(m);
   if(quoted){
@@ -9111,7 +9111,7 @@ function renderMessage(m){
 
       if(artist){
         html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-media-download chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
-        html+=`<span class="stats">${esc(baseName(m))}</span>`;
+        // Filename is displayed once in the common message footer.
       }
 
       html+=`</div></div>`;
@@ -9201,7 +9201,25 @@ function renderMessage(m){
     }
   }
 
-  wrap.appendChild(bubble);
+  // Keep existing media, quote and selection handlers attached to the bubble.
+  const frame=document.createElement("div");
+  frame.className="chat-message-frame";
+  const foot=document.createElement("div");
+  foot.className="chat-message-foot";
+  if(["image","video","sound"].includes(t) && proxyUrl(m,false)){
+    const name=document.createElement("span");
+    name.className="chat-message-filename";
+    name.textContent=baseName(m);
+    foot.append(name);
+  }
+  const timestamp=document.createElement("time");
+  timestamp.className="chat-message-time";
+  timestamp.textContent=timeLabel(m);
+  const when=new Date(m.createdAt);
+  if(Number.isFinite(when.getTime()))timestamp.dateTime=when.toISOString();
+  timestamp.title=dateKey(m)+" "+timeLabel(m);
+  foot.append(timestamp);
+  frame.append(bubble,foot);wrap.append(frame);
   return wrap;
 }
 

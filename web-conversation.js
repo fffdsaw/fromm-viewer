@@ -13,7 +13,7 @@
  let mounted=false,context=null,dock,input,status,send,count,storage,newButton,dialog,emoteButton,emotePanel,emotePreview,restoreJob=null;
  let emoteVersion=0,emoteRequest=null;
  // Standard Unicode emoji remain plain message text, never a Fromm sticker payload.
- const STANDARD_EMOJI=['❤️','🩷','🧡','💛','💚','🩵','💙','💜','🤍','🖤','💕','💞','💖','💗','💘','💝','🥹','😂','🤣','😊','😍','🥰','😘','😭','😢','😆','😁','😄','😃','🙂','😉','😎','🤔','🥺','😳','😱','😴','😮','🤩','😋','😇','🙃','😌','🤗','🫶','👍','👏','🙌','🙏','💪','👀','🔥','✨','⭐','🌟','🎉','🎊','💐','🌸','🌷','🌹','🍀','🌈','☀️'];
+ const STANDARD_EMOJI=['❤️','🩷','🧡','💛','💚','🩵','💙','💜','🤍','🖤','💕','💞','💖','💗','💘','💝','🥹','😂','🤣','😊','😍','🥰','😘','😭','😢','😆','😁','😄','😃','🙂','😉','😎','🤔','🥺','😳','😱','😴','😮','🤩','😋','😇','🙃','😌','🤗','🫶','🫳','👍','👏','🙌','🙏','💪','👀','🔥','✨','⭐','🌟','🎉','🎊','🎂','🍮','💐','🌸','🌷','🌹','🍀','🌈','☀️'];
  let saveTimer=0,layoutFrame=0,saving=Promise.resolve(),pendingCount=0,resumeIdentityPending=false;
  const sdk=()=>import('./vendor/firebase/conversation-10.12.2.js');
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);

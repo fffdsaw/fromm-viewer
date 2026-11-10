@@ -55,7 +55,14 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok((await download.getAttribute('aria-label')).includes('다운로드'),'download remains accessible by name');
   const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').innerText(),filename);
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
-  await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);assert.equal(await page.locator('#conversationNew').innerText(),'');
+  await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
+  const placement=await page.locator('#conversationNew').evaluate(el=>{
+   const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),r=el.getBoundingClientRect(),send=document.querySelector('#conversationSend').getBoundingClientRect();
+   return{parent:el.parentElement.className,left:r.left,inputRight:input.right,right:r.right,sendLeft:send.left,top:r.top,inputTop:input.top};
+  });
+  assert.equal(placement.parent,'conversation-compose','latest arrow is in the composer action row');
+  assert.ok(placement.left>=placement.inputRight-2&&placement.right<=placement.sendLeft+2,'latest arrow sits after input and before send: '+JSON.stringify(placement));
+  assert.ok(Math.abs(placement.top-placement.inputTop)<=4,'latest arrow aligns with the composer: '+JSON.stringify(placement));assert.equal(await page.locator('#conversationNew').innerText(),'');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'latest-jump-'+cfg.width+'.png')});
   const beforeHeight=await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height);await page.locator('#conversationNew').click();await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<3&&document.querySelector('#conversationNew').hidden);
   assert.equal(await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height),beforeHeight,'latest shortcut does not reserve another composer row');

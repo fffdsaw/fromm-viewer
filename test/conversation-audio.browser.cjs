@@ -6,6 +6,19 @@ function wav(seconds){const data=8000*2*seconds,b=Buffer.alloc(44+data);b.write(
 (async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})}),body=wav(24);
 try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width:320}]){
  const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
+ if(cfg.width===1440){
+  const sample=await page.evaluate(async()=>{
+   const response=await fetch('assets/glowme/mellow-glass.mp3');
+   if(!response.ok)return{error:'HTTP '+response.status};
+   const audio=new AudioContext();
+   try{
+    const decoded=await audio.decodeAudioData(await response.arrayBuffer());
+    return{duration:decoded.duration,channels:decoded.numberOfChannels};
+   }catch(error){return{error:String(error)}}finally{await audio.close();}
+  });
+  assert.ok(sample.duration>0.45&&sample.duration<3,
+   'Mellow Glass notification audio must be a decodable short sound: '+JSON.stringify(sample));
+ }
  let requested=new Set(),release,gate=new Promise(resolve=>release=resolve),failed=false,repairFetches=0;
  await page.route('**/*',async route=>{
   let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));

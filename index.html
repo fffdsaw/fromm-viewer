@@ -7078,9 +7078,10 @@ function syncArtistHeaderProfile(){
   img.src = url;
 }
 
-function selectRoom(i, btn){
-  // Artist changes start at the newest message, not a previous viewport.
-  globalThis.FrommConversation?.beforeRoom(state.rooms[i],{restoreViewOnEntry:false});
+function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
+  // Explicit artist clicks enter latest; authenticated startup may restore
+  // the saved reader position after a reload.
+  globalThis.FrommConversation?.beforeRoom(state.rooms[i],{restoreViewOnEntry:restoreHistoryPosition});
   window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
@@ -7095,7 +7096,7 @@ function selectRoom(i, btn){
 
   state.room = state.rooms[i];
   if(nextFilter==="all")window.FrommUnread?.markSeen(String(state.room?.hostChatRoomId||""));
-  window.FrommViewState?.enter(nextFilter,{autoTop:false});
+  const restorePosition=window.FrommViewState?.enter(nextFilter,{autoTop:!keepMediaTab&&restoreHistoryPosition});
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7156,7 +7157,7 @@ function selectRoom(i, btn){
 
   restoreFullChatCache();
   ensureReplyIdentity();
-  state.chatAutoTopPending = !keepMediaTab;
+  state.chatAutoTopPending = !keepMediaTab && !restorePosition;
 
   if(keepMediaTab){
     state.sortDirection = "desc";

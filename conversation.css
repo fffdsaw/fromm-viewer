@@ -143,7 +143,10 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .chat-sound-bubble>.meta{min-height:0!important;padding-inline-end:0!important}
 #timeline .chat-sound-bubble .media-actions{min-height:0}
 @media(max-width:850px){#timeline .chat-message-frame{max-width:94%}}
-@media(min-width:701px){#conversationNew{left:-12px;bottom:calc(100% + 10px)}}
+/* The latest arrow is an inline composer action, not a floating chat overlay. */
+#conversationDock #conversationNew{position:relative;inset:auto;bottom:auto;left:auto;right:auto;top:auto;flex:0 0 34px;width:34px;height:34px;align-self:flex-end;margin:0;z-index:1}
+#conversationDock #conversationNew[hidden]{display:none!important}
+#conversationDock .conversation-compose{min-width:0}
 @media(forced-colors:active){#timeline .chat-message-foot{color:CanvasText}}
 
 /* Chat settings dialog: storage and independent optional notification channels. */

@@ -1320,5 +1320,17 @@ html.glowme .reply-content{color:#244c42}
 }
 @media(prefers-reduced-transparency:reduce){.glowme-phase3 #sidebar::after{display:none!important}}
 
+/* Production rail: remove the faint double vertical mint seam completely.
+   Preserve the single solid mint panel and its outer elevation only. */
+.glowme-phase3 #sidebar,
+.glowme-phase3.pc-layout #sidebar{
+ border:0!important;
+ box-shadow:0 8px 22px #23584513!important;
+}
+.glowme-phase3 #sidebar::after,
+.glowme-phase3.pc-layout #sidebar::after{
+ display:none!important;
+ content:none!important;
+}
 /* Explicit hidden precedence: the author-level flex rule must not resurrect empty unread badges. */
 .glowme-phase3 .rail-unread[hidden]{display:none!important}

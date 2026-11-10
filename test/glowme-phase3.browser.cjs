@@ -10,6 +10,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.equal(await page.locator('#artistTitle').textContent(),'테스트 아티스트');
  await page.waitForFunction(()=>document.querySelector('.rail-avatar img')?.naturalWidth>0);
  assert.equal(await page.locator('#rooms .room').count(),30);
+ assert.equal(await page.locator('#sidebar .rail-artists > strong').count(),0,'artist section label is removed while retaining aria-label on the room list');
  await page.locator('#sidebarToggleBtn').focus();await page.keyboard.press('Enter');await page.waitForTimeout(230);
  assert.equal(await page.evaluate(()=>document.activeElement.dataset.glowNav),'all');
  const after=await page.locator('#timeline').boundingBox();assert.ok(Math.abs(after.width-base.width)<1);
@@ -27,6 +28,23 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  if(process.env.PHASE3_SCREENSHOT_DIR){fs.mkdirSync(process.env.PHASE3_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PHASE3_SCREENSHOT_DIR,`rail-${viewport.width}${viewport.installed?'-pwa':''}.png`)});}
  await page.keyboard.press('Escape');
  if(await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'))){
+  // Aim at a collapsed artist avatar: expanding the rail must not shift
+  // the same artist under a stationary pointer or change the click target.
+  await page.locator('#rooms').evaluate(el=>{el.scrollTop=0;});
+  await page.evaluate(()=>FrommGlowME.setRailOpen(false));
+  await page.waitForTimeout(240);
+  const artistTarget=page.locator('#rooms .room').nth(2),closedArtist=await artistTarget.boundingBox();
+  const aim={x:closedArtist.x+Math.min(24,closedArtist.width/2),y:closedArtist.y+closedArtist.height/2};
+  await page.mouse.move(aim.x,aim.y);
+  await page.waitForFunction(()=>document.documentElement.classList.contains('sidebar-open'));
+  await page.waitForTimeout(240);
+  const openedArtist=await artistTarget.boundingBox();
+  assert.ok(Math.abs(closedArtist.y-openedArtist.y)<=2,'artist target does not move vertically while opening: '+JSON.stringify({closedArtist,openedArtist}));
+  assert.ok(Math.abs(closedArtist.height-openedArtist.height)<=1,'artist row height stays fixed');
+  const pointedArtist=await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.closest('#rooms .room')?.getAttribute('aria-label')||null,aim);
+  assert.equal(pointedArtist,await artistTarget.getAttribute('aria-label'),'the aimed artist remains the clickable artist after expansion');
+  await page.mouse.move(900,400);
+  await page.waitForTimeout(310);
   // The width eases over 200ms; stacking must stay above the pinned header throughout.
   const layers=await page.evaluate(async()=>{
    const rail=document.querySelector('#sidebar'),header=document.querySelector('.viewer-header');

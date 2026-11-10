@@ -53,6 +53,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('[data-unicode-emoji="❤️"]').click();assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 ❤️','standard emoji is inserted as draft text');
   assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false,'Unicode emoji is not a Fromm sticker');
   assert.equal(posts.length,0,'choosing Unicode emoji never sends a message');
+  for(const emoji of ['🫳','🎂','🍮']){
+   await page.locator('#conversationEmoticonButton').click();
+   await page.locator('[data-emoji-tab="standard"]').click();
+   await page.locator('[data-unicode-emoji="'+emoji+'"]').click();
+   assert.ok((await page.locator('#conversationInput').inputValue()).endsWith(emoji),'new standard emoji inserts as plain text: '+emoji);
+   assert.equal(posts.length,0,'selecting '+emoji+' must not submit a message');
+  }
   await page.locator('#conversationInput').fill('');
   await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').click();await page.waitForTimeout(150);const bounds=await page.evaluate(()=>({last:[...document.querySelectorAll('#timeline .msg')].at(-1).getBoundingClientRect().bottom,dock:document.querySelector('#conversationDock').getBoundingClientRect().top}));assert.ok(bounds.last<=bounds.dock-5,'preview keeps the latest message above the composer: '+JSON.stringify(bounds));assert.equal(posts.length,0,'choosing an emoticon never sends immediately');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true);assert.equal(await page.locator('#conversationSend').isEnabled(),true);
   await page.evaluate(()=>FrommConversation.flush());await page.reload();await page.waitForFunction(()=>FrommConversation.status.phase==='connected'&&state.chatHistoryComplete);assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true,'unsent emoticon restored with the draft');

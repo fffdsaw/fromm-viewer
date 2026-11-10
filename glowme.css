@@ -1277,7 +1277,7 @@ html.glowme .reply-content{color:#244c42}
 /* Single-pane Glow ME sidebar: one quiet surface, optics restricted to the
    rightmost rim instead of a second full-size glass layer. */
 .glowme-phase3 #sidebar,.glowme-phase3.pc-layout #sidebar{
- background:linear-gradient(160deg,#f3fffbe9 0%,#eaf9f2ed 54%,#e2f6efeb 100%)!important;
+ background:linear-gradient(160deg,#f3fffbe9 0%,#eaf9f2ed 54%,#e2f6efeb 100%) #e0f1e9!important;
  border:1px solid #a9d8cb;box-shadow:0 8px 22px #23584513,inset 0 1px 0 #ffffffc2;
 }
 .glowme-phase3 #sidebar::before{display:none!important}

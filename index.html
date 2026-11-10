@@ -7176,6 +7176,10 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
     !!(cached && cached.messages?.length) ||
     (!keepMediaTab && !!(state.chatHistoryComplete && state.chatMessages.length));
 
+  // A complete hot cache is already rendered here. Rendering it again in
+  // the deferred loading task would replace the newest virtual window with
+  // the oldest initial batches after chatAutoTopPending has cleared.
+  const alreadyRenderedCompleteChat=!keepMediaTab&&hasImmediateData&&state.chatHistoryComplete;
   if(hasImmediateData){
     render();
   }else{
@@ -7207,7 +7211,7 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
         if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
       }
 
-      render();
+      if(!alreadyRenderedCompleteChat) render();
     }catch(e){
       if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
       console.error("아티스트 화면 전환 실패:",e);

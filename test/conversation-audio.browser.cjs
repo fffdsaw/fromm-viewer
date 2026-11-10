@@ -19,7 +19,7 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width
  });
  const first=page.locator('[data-message-id="sound-0"]'),player=first.locator('.chat-audio-player'),audio=first.locator('audio'),time=player.locator('output'),seek=player.locator('.chat-audio-seek');
  await first.scrollIntoViewIfNeeded();const maxProbes=await page.evaluate(async()=>{let max=0;for(let i=0;i<12;i++){max=Math.max(max,[...document.querySelectorAll('.media-wrap audio')].filter(a=>a.getAttribute('src')&&a.preload==='metadata'&&a.readyState===0&&a.paused).length);await new Promise(requestAnimationFrame);}return max;});
- assert.equal(await time.innerText(),'0:00 / —:—');assert.equal(await seek.isDisabled(),true);assert.equal(await first.locator('.type').innerText(),'음성');
+ assert.equal(await time.innerText(),'0:00 / —:—');assert.equal(await seek.isDisabled(),true);assert.equal(await first.locator('.type').count(),0,'media type label is hidden');assert.match(await first.locator('.chat-message-time').innerText(),/^\d{2}:\d{2}$/,'voice sent time appears below the bubble');
  assert.ok(requested.size>0&&requested.size<10,'only visible cards request metadata');assert.ok(maxProbes>0&&maxProbes<=3,'metadata cards in flight are bounded at three: '+maxProbes);
  // User playback wins even while metadata is pending.
  await player.getByRole('button',{name:'음성 재생',exact:true}).click();release();await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] audio').duration===24);

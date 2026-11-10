@@ -7079,7 +7079,8 @@ function syncArtistHeaderProfile(){
 }
 
 function selectRoom(i, btn){
-  globalThis.FrommConversation?.beforeRoom(state.rooms[i]);
+  // Artist changes start at the newest message, not a previous viewport.
+  globalThis.FrommConversation?.beforeRoom(state.rooms[i],{restoreViewOnEntry:false});
   window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
@@ -7094,7 +7095,7 @@ function selectRoom(i, btn){
 
   state.room = state.rooms[i];
   if(nextFilter==="all")window.FrommUnread?.markSeen(String(state.room?.hostChatRoomId||""));
-  const restorePosition = window.FrommViewState?.enter(nextFilter, {autoTop: !keepMediaTab});
+  window.FrommViewState?.enter(nextFilter,{autoTop:false});
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7155,7 +7156,7 @@ function selectRoom(i, btn){
 
   restoreFullChatCache();
   ensureReplyIdentity();
-  state.chatAutoTopPending = !keepMediaTab && !restorePosition;
+  state.chatAutoTopPending = !keepMediaTab;
 
   if(keepMediaTab){
     state.sortDirection = "desc";
@@ -9051,8 +9052,9 @@ function renderMessage(m){
   if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
-  // The sender stays in the bubble; timestamp and filename are below it.
-  let html=`<div class="meta"><span>${esc(who)}</span></div>`;
+  // Media bubbles omit redundant sender names; only timestamps stay beneath them.
+  const chatMedia=["image","video","sound"].includes(t);
+  let html=chatMedia?"":`<div class="meta"><span>${esc(who)}</span></div>`;
 
   const quoted = getQuotedMessage(m);
   if(quoted){
@@ -9110,7 +9112,7 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-media-download chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
+        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
         // Filename is displayed once in the common message footer.
       }
 
@@ -9206,23 +9208,7 @@ function renderMessage(m){
   frame.className="chat-message-frame";
   const foot=document.createElement("div");
   foot.className="chat-message-foot";
-  if(["image","video","sound"].includes(t) && proxyUrl(m,false)){
-    const name=document.createElement("span");
-    name.className="chat-message-filename";
-    name.textContent=baseName(m);
-    // Mobile filename selection remains available after moving it below the card.
-    if(artist && hasUsableMedia(m)){
-      name.tabIndex=0;
-      name.setAttribute("role","button");
-      name.setAttribute("aria-label",`${baseName(m)} 선택`);
-      name.addEventListener("click",event=>chooseDownloadItem("media",m,event));
-      name.addEventListener("keydown",event=>{
-        if(!["Enter"," "].includes(event.key))return;
-        event.preventDefault();chooseDownloadItem("media",m,event);
-      });
-    }
-    foot.append(name);
-  }
+  // Download/selection controls retain the original filename in accessible labels.
   const timestamp=document.createElement("time");
   timestamp.className="chat-message-time";
   timestamp.textContent=timeLabel(m);

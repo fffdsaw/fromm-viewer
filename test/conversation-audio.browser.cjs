@@ -6,6 +6,19 @@ function wav(seconds){const data=8000*2*seconds,b=Buffer.alloc(44+data);b.write(
 (async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})}),body=wav(24);
 try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width:320}]){
  const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
+ if(cfg.width===1440){
+  const sample=await page.evaluate(async()=>{
+   const response=await fetch('assets/glowme/mellow-glass.mp3');
+   if(!response.ok)return{error:'HTTP '+response.status};
+   const audio=new AudioContext();
+   try{
+    const decoded=await audio.decodeAudioData(await response.arrayBuffer());
+    return{duration:decoded.duration,channels:decoded.numberOfChannels};
+   }catch(error){return{error:String(error)}}finally{await audio.close();}
+  });
+  assert.ok(sample.duration>0.45&&sample.duration<3,
+   'Mellow Glass notification audio must be a decodable short sound: '+JSON.stringify(sample));
+ }
  let requested=new Set(),release,gate=new Promise(resolve=>release=resolve),failed=false,repairFetches=0;
  await page.route('**/*',async route=>{
   let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
@@ -19,7 +32,7 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width
  });
  const first=page.locator('[data-message-id="sound-0"]'),player=first.locator('.chat-audio-player'),audio=first.locator('audio'),time=player.locator('output'),seek=player.locator('.chat-audio-seek');
  await first.scrollIntoViewIfNeeded();const maxProbes=await page.evaluate(async()=>{let max=0;for(let i=0;i<12;i++){max=Math.max(max,[...document.querySelectorAll('.media-wrap audio')].filter(a=>a.getAttribute('src')&&a.preload==='metadata'&&a.readyState===0&&a.paused).length);await new Promise(requestAnimationFrame);}return max;});
- assert.equal(await time.innerText(),'0:00 / —:—');assert.equal(await seek.isDisabled(),true);assert.equal(await first.locator('.type').innerText(),'음성');
+ assert.equal(await time.innerText(),'0:00 / —:—');assert.equal(await seek.isDisabled(),true);assert.equal(await first.locator('.type').count(),0,'media type label is hidden');assert.match(await first.locator('.chat-message-time').innerText(),/^\d{2}:\d{2}$/,'voice sent time appears below the bubble');
  assert.ok(requested.size>0&&requested.size<10,'only visible cards request metadata');assert.ok(maxProbes>0&&maxProbes<=3,'metadata cards in flight are bounded at three: '+maxProbes);
  // User playback wins even while metadata is pending.
  await player.getByRole('button',{name:'음성 재생',exact:true}).click();release();await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] audio').duration===24);

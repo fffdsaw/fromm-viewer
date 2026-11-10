@@ -1,7 +1,7 @@
 name: Conversation receive send and persistence
 on:
   pull_request:
-    paths: ['index.html', 'web-conversation*.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/rail-glyph-lens.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
+    paths: ['index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/rail-glyph-lens.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
 permissions:
   contents: read
 jobs:
@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: '22'
       - name: Incremental reads and message rules
-        run: node --test test/conversation.test.cjs
+        run: node --test test/conversation.test.cjs test/unread.test.cjs
       - name: Browser tooling
         run: npm install --no-save --package-lock=false playwright@1.62.1
       - name: Chromium

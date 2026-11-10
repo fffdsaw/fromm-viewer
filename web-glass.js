@@ -1,5 +1,5 @@
-import './web-glass-controls.js?v=single-glass-20261110';
-import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-lens-20261108';
+import './web-glass-controls.js?v=unified-rail-settings-20261110';
+import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-top-settings-20261110';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));

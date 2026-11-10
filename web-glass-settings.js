@@ -71,8 +71,9 @@ export function mountGlassSettings(){
  const sidebar=document.querySelector('#sidebar'),footer=document.createElement('div');footer.className='glass-settings-footer';
  trigger=document.createElement('button');trigger.type='button';trigger.id='glassSettingsBtn';trigger.className='glass-settings-trigger';
  trigger.title='설정';trigger.setAttribute('aria-label','설정');trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls','glassSettingsDialog');
- trigger.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-.5 2-1.5.9L5 5.4 3.4 8l1.5 1.5v1.8L3.4 13 5 15.6l2-.5 1.5.9.5 2h3l.5-2 1.5-.9 2 .5 1.6-2.6-1.5-1.7V9.5L17.6 8 16 5.4l-2 .5-1.5-.9L12 3H9Z" transform="translate(1.5 1.5)"/><circle cx="12" cy="12" r="3"/></svg><span>설정</span>';
- footer.append(trigger);sidebar.insertBefore(footer,document.querySelector('#installAppBtn'));
+ trigger.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 3-.5 2-1.5.9L5 5.4 3.4 8l1.5 1.5v1.8L3.4 13 5 15.6l2-.5 1.5.9.5 2h3l.5-2 1.5-.9 2 .5 1.6-2.6-1.5-1.7V9.5L17.6 8 16 5.4l-2 .5-1.5-.9L12 3H9Z" transform="translate(1.5 1.5)"/><circle cx="12" cy="12" r="3"/></svg>';
+ // Settings live in the rail header, not as a second glass footer.
+ footer.append(trigger);sidebar.querySelector('.rail-head')?.append(footer);
  dialog=document.createElement('dialog');dialog.id='glassSettingsDialog';dialog.setAttribute('aria-labelledby','glassSettingsTitle');dialog.setAttribute('aria-describedby','glassSettingsDescription');
  dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">설정</h2><p id="glassSettingsDescription">앱 설치와 화면 효과</p></div><button type="button" class="glass-settings-close" aria-label="설정 닫기">×</button></div>
  <div class="glass-settings-body"><section class="settings-install" aria-label="앱 설치"><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
@@ -84,7 +85,17 @@ export function mountGlassSettings(){
  dialog.querySelector('.glass-settings-reset').onclick=()=>glassPreferences.reset();
  dialog.querySelector('#glassEnabled').onchange=event=>set({enabled:event.target.checked},{immediate:true});
  for(const[key]of controls){const input=dialog.querySelector(`[name="${key}"]`);input.oninput=()=>set({[key]:Number(input.value)});input.onchange=()=>emit();}
- dialog.addEventListener('close',()=>{emit();if(glassPC.matches&&trigger.checkVisibility()&&!document.querySelector('.app')?.inert)trigger.focus({preventScroll:true});});
+ dialog.addEventListener('close',()=>{
+  emit();
+  // Browser-native dialog focus restoration may finish after the 'close'
+  // callback, especially with a constrained viewport. Reapply once next frame.
+  const restore=()=>{
+   if(!glassPC.matches||document.querySelector('.app')?.inert||dialog.open)return;
+   if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});
+   if(trigger.checkVisibility())trigger.focus({preventScroll:true});
+  };
+  restore();requestAnimationFrame(restore);
+ });
  dialog.addEventListener('keydown',event=>{
   if(event.key!=='Tab')return;
   const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.checkVisibility()),first=items[0],last=items.at(-1);

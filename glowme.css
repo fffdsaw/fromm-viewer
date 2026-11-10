@@ -1272,3 +1272,53 @@ html.glowme .reply-content{color:#244c42}
   -webkit-mask-composite:source-over;mask-composite:add;
  }
 }
+
+
+/* Single-pane Glow ME sidebar: one quiet surface, optics restricted to the
+   rightmost rim instead of a second full-size glass layer. */
+.glowme-phase3 #sidebar,.glowme-phase3.pc-layout #sidebar{
+ background:linear-gradient(160deg,#f3fffbe9 0%,#eaf9f2ed 54%,#e2f6efeb 100%) #e0f1e9!important;
+ border:1px solid #a9d8cb;box-shadow:0 8px 22px #23584513,inset 0 1px 0 #ffffffc2;
+}
+.glowme-phase3 #sidebar::before{display:none!important}
+.glowme-phase3 #sidebar::after{
+ display:block!important;position:absolute;inset:0;z-index:1;pointer-events:none;
+ border:0;border-right:1px solid #ffffffd8;border-radius:inherit;
+ background:linear-gradient(90deg,transparent calc(100% - 15px),#f7ffff12 calc(100% - 13px),#a4e8d94a calc(100% - 8px),#f6ffff82 calc(100% - 4px),#c9e4f51c 100%);
+ -webkit-mask-image:linear-gradient(90deg,transparent calc(100% - 15px),#000 calc(100% - 11px));
+ mask-image:linear-gradient(90deg,transparent calc(100% - 15px),#000 calc(100% - 11px));
+ box-shadow:none;
+}
+.glowme-phase3.pc-layout .rail-head{position:relative}
+.glowme-phase3.pc-layout .glass-settings-footer{
+ position:absolute;top:4px;right:0;z-index:4;display:block;flex:none;
+ width:36px;height:36px;min-height:0;margin:0;padding:0;
+}
+.glowme-phase3.pc-layout:not(.sidebar-open) .glass-settings-footer{display:none}
+.glowme-phase3.pc-layout .glass-settings-trigger{
+ display:grid;place-items:center;width:36px;height:36px;padding:6px;
+ background:transparent;border:1px solid transparent;border-radius:50%;box-shadow:none;
+ color:#326456;
+}
+.glowme-phase3.pc-layout .glass-settings-trigger:hover,
+.glowme-phase3.pc-layout .glass-settings-trigger:focus-visible{background:#e1f5ec;border-color:#b7e3d0;box-shadow:inset 0 1px 0 #fff}
+/* The settings icon is absolutely positioned; keep the logo centered. */
+.glowme-phase3.pc-layout .rail-unread{
+ display:inline-flex;align-items:center;justify-content:center;flex:none;
+ min-width:20px;min-height:20px;padding:1px 6px;margin-inline-start:auto;
+ border-radius:999px;background:#d4efe4;color:#25674f;border:1px solid #9fd6c0;
+ font-size:11px;font-weight:750;font-variant-numeric:tabular-nums;
+}
+.glowme-phase3.pc-layout:not(.sidebar-open) .rail-unread{
+ position:absolute;top:0;right:0;min-width:14px;min-height:14px;padding:0 3px;font-size:9px;line-height:13px;
+}
+.glowme-phase3 .room.has-unread .rail-artist-name{font-weight:750}
+@media(forced-colors:active){
+ .glowme-phase3 #sidebar,.glowme-phase3.pc-layout #sidebar{background:Canvas!important;border-color:CanvasText}
+ .glowme-phase3 #sidebar::after{display:none!important}
+ .glowme-phase3.pc-layout .rail-unread{background:Canvas;color:CanvasText;border-color:CanvasText}
+}
+@media(prefers-reduced-transparency:reduce){.glowme-phase3 #sidebar::after{display:none!important}}
+
+/* Explicit hidden precedence: the author-level flex rule must not resurrect empty unread badges. */
+.glowme-phase3 .rail-unread[hidden]{display:none!important}

@@ -130,3 +130,29 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 @media(forced-colors:active){
  #timeline .chat-sound-bubble .media-actions a.chat-sound-download{background:Canvas!important;border:1px solid ButtonText!important;color:ButtonText!important}
 }
+
+
+/* Fromm Viewer message footer layout: a single timestamp convention for
+   text, stickers, media and voice without disturbing bubble interaction. */
+#timeline .chat-message-frame{display:flex;flex-direction:column;align-items:stretch;width:fit-content;max-width:min(76%,680px);min-width:0}
+#timeline .chat-message-frame>.bubble{box-sizing:border-box;max-width:100%;width:100%;min-width:0}
+#timeline .msg.me .chat-message-frame{margin-inline-start:auto}
+#timeline .chat-message-foot{display:flex;align-items:baseline;justify-content:flex-end;gap:10px;min-height:18px;padding:3px 4px 0;font-size:11px;line-height:1.4;color:var(--muted,#4c6570)}
+#timeline .chat-message-filename{min-width:0;flex:1;overflow-wrap:anywhere}
+#timeline .chat-message-time{flex:none;margin-inline-start:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+#timeline .chat-sound-bubble>.meta{min-height:0!important;padding-inline-end:0!important}
+#timeline .chat-sound-bubble .media-actions{min-height:0}
+@media(max-width:850px){#timeline .chat-message-frame{max-width:94%}}
+@media(min-width:701px){#conversationNew{left:-12px;bottom:calc(100% + 10px)}}
+@media(forced-colors:active){#timeline .chat-message-foot{color:CanvasText}}
+
+/* Chat settings dialog: storage and independent optional notification channels. */
+#conversationStorageDialog{max-height:min(86dvh,720px);overflow-y:auto}
+#conversationStorageDialog h3{font-size:14px;margin:16px 0 9px}
+#conversationStorageDialog .conversation-alert-settings{padding:1px 0 8px;border-top:1px solid var(--line,#badfdf);margin-top:16px}
+#conversationStorageDialog .conversation-alert-settings label{min-height:40px;gap:10px}
+#conversationStorageDialog .conversation-alert-settings input{width:18px;height:18px;accent-color:#167b65}
+#conversationStorageDialog .conversation-alert-preview{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;font-size:13px;color:var(--muted,#4c6570)}
+#conversationStorageDialog .conversation-alert-preview .btn{white-space:nowrap}
+#conversationStorageDialog .conversation-alert-settings p{margin:4px 0;font-size:12px;color:var(--muted,#4c6570)}
+@media(max-width:480px){#conversationStorageDialog{padding:16px}.conversation-dialog-actions{flex-wrap:wrap}}

@@ -62,10 +62,14 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    assert.equal(posts.length,0,'selecting '+emoji+' must not submit a message');
   }
   assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 ❤️🫳🎂🍮','consecutive emoji are appended in order');
-  // Cursor insertion still works after consecutive button clicks, without closing the picker.
+  // Click outside to edit the draft, reopen, and insert at the newly chosen caret.
+  await page.locator('#conversationInput').click();
+  assert.equal(await page.locator('#conversationEmoticons').isVisible(),false,'editing draft closes the picker');
   await page.locator('#conversationInput').evaluate(input=>input.setSelectionRange(3,3));
+  await page.locator('#conversationEmoticonButton').click();
+  await page.locator('[data-emoji-tab="standard"]').click();
   await page.locator('[data-unicode-emoji="💚"]').click();
-  assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 💚❤️🫳🎂🍮');
+  assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 💚❤️🫳🎂🍮','reopened picker respects new caret position');
   assert.equal(await page.locator('#conversationEmoticons').isVisible(),true);
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#conversationEmoticons').isVisible(),false,'Escape closes the continuous picker');

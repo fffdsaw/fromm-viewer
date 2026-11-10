@@ -55,10 +55,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(latestLayout.x>=latestLayout.afterInput-1,'latest button is to the right of the input: '+JSON.stringify(latestLayout));
   assert.ok(Math.abs(latestLayout.bottom-latestLayout.inputBottom)<3,'latest button aligns with the input bottom: '+JSON.stringify(latestLayout));
   const seam=await page.locator('#sidebar').evaluate(el=>({
-   border:getComputedStyle(el).borderRightWidth,pseudo:getComputedStyle(el,'::after').display
+   borderColor:getComputedStyle(el).borderRightColor,
+   pseudoImage:getComputedStyle(el,'::after').backgroundImage,
+   pseudoBorder:getComputedStyle(el,'::after').borderRightWidth
   }));
-  assert.equal(seam.border,'0px','sidebar has no right vertical border');
-  assert.equal(seam.pseudo,'none','sidebar has no duplicated right-edge optical stripe');
+  assert.equal(seam.borderColor,'rgba(0, 0, 0, 0)','sidebar right edge is not painted');
+  assert.equal(seam.pseudoImage,'none','optical composition plane paints no mint stripe');
+  assert.equal(seam.pseudoBorder,'0px','composition plane paints no separate vertical line');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'composer-'+cfg.width+'.png')});}
   await page.waitForTimeout(1800);await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').waitFor();assert.equal(await page.locator('[data-emoticon="unsafe"]').count(),0);
   const popup=await page.locator('#conversationEmoticons').boundingBox();assert.ok(popup.x>=0&&popup.y>=0&&popup.x+popup.width<=cfg.width+1,JSON.stringify(popup));

@@ -115,7 +115,9 @@
     if(input.value.length-(end-start)+emoji.length>max){c.notice='메시지 최대 길이를 초과했습니다.';paint();return;}
     input.setRangeText(emoji,start,end,'end');
     input.dispatchEvent(new Event('input',{bubbles:true}));
-    closeEmoticons();input.focus({preventScroll:true});
+    // Unicode emoji are plain text: keep this panel open for consecutive picks.
+    // Do not refocus the textarea after each tap (which opens the mobile keyboard).
+    // Fromm sticker selection still closes its picker independently.
    };
    itemsBox.append(button);
   }

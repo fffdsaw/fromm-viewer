@@ -40,6 +40,25 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   },room);
   await page.waitForFunction(()=>FrommConversation.status.phase==='connected'&&state.chatHistoryComplete);
   const compose=await page.locator('#conversationDock').boundingBox();assert.ok(compose.height<=54,JSON.stringify(compose));assert.equal(await page.locator('.conversation-meta').isVisible(),false);assert.equal(await page.locator('#conversationStorage').innerText(),'');assert.equal(await page.locator('#conversationStatus').isVisible(),false);
+  // The latest-message control must live to the right of the input, not over chat.
+  // Reveal it only for geometry inspection; restore its original scroll-dependent state.
+  const latestLayout=await page.evaluate(()=>{
+   const button=document.querySelector('#conversationNew'),row=document.querySelector('.conversation-compose');
+   const shell=row.querySelector('.conversation-input-shell'),wasHidden=button.hidden;
+   button.hidden=false;
+   const a=button.getBoundingClientRect(),b=shell.getBoundingClientRect();
+   const result={inside:button.parentElement===row,x:a.left,afterInput:b.right,bottom:a.bottom,inputBottom:b.bottom,css:getComputedStyle(button).position};
+   button.hidden=wasHidden;return result;
+  });
+  assert.equal(latestLayout.inside,true,'latest button is an inline composer action');
+  assert.equal(latestLayout.css,'relative','latest button is not an absolute overlay');
+  assert.ok(latestLayout.x>=latestLayout.afterInput-1,'latest button is to the right of the input: '+JSON.stringify(latestLayout));
+  assert.ok(Math.abs(latestLayout.bottom-latestLayout.inputBottom)<3,'latest button aligns with the input bottom: '+JSON.stringify(latestLayout));
+  const seam=await page.locator('#sidebar').evaluate(el=>({
+   border:getComputedStyle(el).borderRightWidth,pseudo:getComputedStyle(el,'::after').display
+  }));
+  assert.equal(seam.border,'0px','sidebar has no right vertical border');
+  assert.equal(seam.pseudo,'none','sidebar has no duplicated right-edge optical stripe');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'composer-'+cfg.width+'.png')});}
   await page.waitForTimeout(1800);await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').waitFor();assert.equal(await page.locator('[data-emoticon="unsafe"]').count(),0);
   const popup=await page.locator('#conversationEmoticons').boundingBox();assert.ok(popup.x>=0&&popup.y>=0&&popup.x+popup.width<=cfg.width+1,JSON.stringify(popup));

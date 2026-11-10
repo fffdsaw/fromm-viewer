@@ -85,7 +85,14 @@ export function mountGlassSettings(){
  dialog.querySelector('.glass-settings-reset').onclick=()=>glassPreferences.reset();
  dialog.querySelector('#glassEnabled').onchange=event=>set({enabled:event.target.checked},{immediate:true});
  for(const[key]of controls){const input=dialog.querySelector(`[name="${key}"]`);input.oninput=()=>set({[key]:Number(input.value)});input.onchange=()=>emit();}
- dialog.addEventListener('close',()=>{emit();if(glassPC.matches&&trigger.checkVisibility()&&!document.querySelector('.app')?.inert)trigger.focus({preventScroll:true});});
+ dialog.addEventListener('close',()=>{
+  emit();
+  if(!glassPC.matches||document.querySelector('.app')?.inert)return;
+  // The gear is hidden while the rail is collapsed. Restore a visible
+  // focus target after closing the native modal by keyboard or mouse.
+  if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});
+  if(trigger.checkVisibility())trigger.focus({preventScroll:true});
+ });
  dialog.addEventListener('keydown',event=>{
   if(event.key!=='Tab')return;
   const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.checkVisibility()),first=items[0],last=items.at(-1);

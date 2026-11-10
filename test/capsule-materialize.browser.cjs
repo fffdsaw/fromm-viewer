@@ -49,7 +49,12 @@ async function rects(p){return p.evaluate(()=>['.media-card','.card-download','#
   const header=await p.locator('.viewer-header').boundingBox();assert.equal(header.y,12);assert.equal(await p.locator('.viewer-header').evaluate(e=>getComputedStyle(e).overflow),'visible','menus/focus are not clipped');
   const png=(await p.screenshot()).toString('base64');
   const pixels=await p.evaluate(async ({png,h})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);return [[h.x+h.width/2,0],[h.x+1,h.y+1],[h.x+1,h.y+h.height-1]].map(([x,y])=>[...ctx.getImageData(Math.floor(x),Math.floor(y),1,1).data].slice(0,3));},{png,h:header});
-  assert.deepEqual(pixels,[[240,248,243],[240,248,243],[240,248,243]],'opaque top/corner surround excludes vivid content behind header');
+  // Browser rasterization can round solid RGB channels by a few units. Keep
+  // testing all three occlusion probes, rejecting any visible magenta bleed.
+  for(const pixel of pixels){
+   assert.ok(pixel.every((channel,i)=>Math.abs(channel-[240,248,243][i])<=4),
+    'opaque top/corner surround excludes vivid content behind header: '+JSON.stringify(pixels));
+  }
   if(output){fs.writeFileSync(path.join(output,'header-probe.json'),JSON.stringify({header,pixels}));}
   await p.locator('#header-occlusion-probe').evaluate(e=>e.remove());assert.deepEqual(errors,[]);await context.close();console.log('capsule: header-occlusion test complete');
   for(const options of [{lowPower:true},{userAgent:'Mozilla/5.0 Version/18.0 Safari/605.1.15'},{installed:true}]){

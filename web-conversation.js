@@ -405,7 +405,7 @@
    if(!cacheNamespace()){if(!resumeIdentityPending){resumeIdentityPending=true;void ensureReplyIdentity().then(ready=>{resumeIdentityPending=false;if(ready)sync();});}return;}
    try{const saved=JSON.parse(localStorage.getItem(lastRoomKey(cacheNamespace()))||'null');
     const index=saved?state.rooms.findIndex(room=>String(room.id)===saved.roomId&&String(room.hostChatRoomId)===saved.host):-1;
-    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button);return;}
+    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button,{restoreHistoryPosition:true});return;}
    }catch{}
   }
   const c=context;

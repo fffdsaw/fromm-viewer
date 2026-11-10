@@ -38,13 +38,31 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
-  assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);const footer=page.locator('[data-message-id="sound"] .chat-message-foot');const filename=await footer.locator('.chat-message-filename').innerText();assert.ok(filename.length>0);assert.match(await footer.locator('time').innerText(),/^\d{2}:\d{2}$/);
-  // The same glass download control remains, while filename/time live below the bubble.
-  const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),file=await footer.locator('.chat-message-filename').boundingBox(),time=await footer.locator('time').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
-  assert.ok(button.y>=player.y+player.height-2,'download stays below audio player: '+JSON.stringify({button,player}));
-  assert.ok(file.y>=button.y+button.height-1,'filename is below the voice control: '+JSON.stringify({button,file}));assert.ok(time.x>=file.x+file.width-1,'timestamp follows filename: '+JSON.stringify({file,time}));
-  assert.ok(Math.abs(button.x-actions.x)<3,'circle begins at file row left: '+JSON.stringify({button,actions}));
+  assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);
+  const footer=page.locator('[data-message-id="sound"] .chat-message-foot');
+  const filename=(await download.getAttribute('aria-label')).replace(/ 다운로드$/,'');
+  assert.ok(filename.length>0);assert.equal(await bubble.locator('.meta').count(),0,'voice sender label removed');
+  assert.equal(await footer.locator('.chat-message-filename').count(),0,'voice filename hidden without losing download name');
+  assert.match(await footer.locator('time').innerText(),/^\d{2}:\d{2}$/);
+  const extraMedia=await page.evaluate(()=>{
+   return ['image','video'].map((type,i)=>{
+    const row=renderMessage({messageId:'media-label-'+i,userType:'star',type,content:'https://fixture.test/sound.wav',createdAt:Date.now()});
+    return{type,sender:row.querySelector('.bubble>.meta')?.textContent||'',file:row.querySelector('.chat-message-filename')?.textContent||'',time:row.querySelector('time')?.textContent||''};
+   });
+  });
+  for(const row of extraMedia){assert.equal(row.sender,'',row.type+' sender hidden');assert.equal(row.file,'',row.type+' filename hidden');assert.match(row.time,/^\d{2}:\d{2}$/,row.type+' time retained');}
+  const button=await download.boundingBox(),player=await bubble.locator('.chat-audio-player').boundingBox(),
+   seek=await bubble.locator('.chat-audio-seek').boundingBox(),actions=await bubble.locator('.media-actions').boundingBox();
+  assert.equal(await download.evaluate(el=>el.closest('.chat-audio-player')!==null),true,'voice download integrated into player');
+  assert.equal(await download.evaluate(el=>el.classList.contains('chat-media-download')),false,'voice action avoids sticky thumbnail glass optics');
   assert.ok(Math.abs(button.width-button.height)<1,'download is circular: '+JSON.stringify(button));
+  assert.ok(button.y>=seek.y-3&&button.y+button.height<=seek.y+seek.height+3,'download shares seek row: '+JSON.stringify({button,seek}));
+  assert.ok(button.x>=seek.x+seek.width-1&&button.x+button.width<=player.x+player.width+2,'download is the right-side secondary action');
+  assert.ok(Math.abs(button.x-actions.x)<3,'circle aligns with integrated action slot: '+JSON.stringify({button,actions}));
+  const play=await bubble.locator('.chat-audio-play').evaluate(el=>({size:el.getBoundingClientRect().width,background:getComputedStyle(el).backgroundColor,glyph:el.querySelector('path')?.getAttribute('d')}));
+  assert.ok(play.size>=39&&play.size<=41,'Replay-family play button dimensions');
+  assert.equal(play.background,'rgba(0, 0, 0, 0.72)','Replay-family play surface');
+  assert.equal(play.glyph,'M8 5v14l11-7z','Replay play icon reused without changing Replay code');
   const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,background:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
   assert.equal(appearance.position,'relative');
   assert.equal(appearance.borderRadius,'50%');
@@ -53,7 +71,10 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(appearance.svgWidth>=button.width-3&&appearance.svgWidth<=button.width,'SVG progress ring fills the circular control');
   assert.ok(appearance.clipPath.includes('50%'),'visible download label must be hidden');
   assert.ok((await download.getAttribute('aria-label')).includes('다운로드'),'download remains accessible by name');
-  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').innerText(),filename);
+  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').count(),0);
+  await download.hover();await page.waitForTimeout(180);
+  assert.equal(await download.evaluate(el=>el.matches(':active')),false,'hover alone does not latch pressed state');
+  assert.equal(await download.evaluate(el=>getComputedStyle(el).transform),'none','hover does not visually press the voice download');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
   const placement=await page.locator('#conversationNew').evaluate(el=>{
@@ -95,6 +116,6 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
 
 
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();
-  console.log(`${cfg.width}${cfg.installed?' PWA simulation':''}: inline storage checkbox, input-right emoticon, audio download position/actual WAV bytes/name, scroll-up latest shortcut and no overflow PASS`);
+  console.log(`${cfg.width}${cfg.installed?' PWA simulation':''}: inline storage checkbox, input-right emoticon, Replay-family audio/compact download/actual WAV bytes and latest shortcut PASS`);
  }}finally{await browser.close();await server.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -1302,7 +1302,7 @@ html.glowme .reply-content{color:#244c42}
 }
 .glowme-phase3.pc-layout .glass-settings-trigger:hover,
 .glowme-phase3.pc-layout .glass-settings-trigger:focus-visible{background:#e1f5ec;border-color:#b7e3d0;box-shadow:inset 0 1px 0 #fff}
-.glowme-phase3.pc-layout.sidebar-open #sidebar .brand{margin-inline-start:12px;margin-inline-end:44px}
+/* The settings icon is absolutely positioned; keep the logo centered. */
 .glowme-phase3.pc-layout .rail-unread{
  display:inline-flex;align-items:center;justify-content:center;flex:none;
  min-width:20px;min-height:20px;padding:1px 6px;margin-inline-start:auto;

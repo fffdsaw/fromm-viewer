@@ -1098,14 +1098,14 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=single-glass-20261110">
+<link rel="stylesheet" href="glowme.css?v=single-pane-unread-20261110">
 <link rel="preload" as="script" href="web-glowme.js?v=chat-rim-20261109">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=voice-glass-circle-20261110">
+<link rel="stylesheet" href="conversation.css?v=chat-footer-settings-20261110">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=emoji-trio-20261110"></script>
+<script src="web-conversation.js?v=alerts-settings-20261110"></script>
 <script src="web-chat-audio.js?v=chat-audio-20261109"></script>
 </head>
 <body>
@@ -7094,6 +7094,7 @@ function selectRoom(i, btn){
   const nextFilter = keepMediaTab ? state.filter : "all";
 
   state.room = state.rooms[i];
+  if(nextFilter==="all")window.FrommUnread?.markSeen(String(state.room?.hostChatRoomId||""));
   const restorePosition = window.FrommViewState?.enter(nextFilter, {autoTop: !keepMediaTab});
 
   if(wasLive){
@@ -9730,6 +9731,7 @@ async function setFilter(f, options={}){
     clearDownloadSelection();
   }
   state.filter=f;
+  if(f==="all")window.FrommUnread?.markSeen(String(state.room?.hostChatRoomId||""));
   $$(".pill").forEach(b=>b.classList.toggle("active",b.dataset.filter===f));
   syncLiveToolbarControls();
 
@@ -11203,6 +11205,7 @@ autoConnectSaved();
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=chat-audio-20261109"></script>
 <script src="web-glowme.js?v=chat-rim-20261109" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=live-fit-20261109"></script>

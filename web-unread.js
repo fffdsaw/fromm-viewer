@@ -132,7 +132,7 @@
      const first=!seeded.has(host);
      let changed=false;
      for(const diff of snapshot.docChanges()){
-      if(diff.type!=='added')continue;
+      if(diff.type!=='added'||!diff.doc||typeof diff.doc.data!=='function')continue;
       const msg=diff.doc.data()||{};
       if(msg.hostChatRoomId&&String(msg.hostChatRoomId)!==host)continue;
       if(!msg.messageId)msg.messageId=diff.doc.id;

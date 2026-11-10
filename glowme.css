@@ -1319,3 +1319,6 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout .rail-unread{background:Canvas;color:CanvasText;border-color:CanvasText}
 }
 @media(prefers-reduced-transparency:reduce){.glowme-phase3 #sidebar::after{display:none!important}}
+
+/* Explicit hidden precedence: the author-level flex rule must not resurrect empty unread badges. */
+.glowme-phase3 .rail-unread[hidden]{display:none!important}

@@ -201,7 +201,23 @@
  });
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){sync();void poll();}});
  window.addEventListener('pageshow',sync);
- window.addEventListener('storage',event=>{if(!scope)return;if(event.key===PREFIX+scope||event.key===PREF+scope){const remembered=load(PREFIX+scope,{});if(remembered.seen)seen=remembered.seen;const saved=load(PREF+scope,{});prefs={sound:saved.sound===true,desktop:saved.desktop===true};unread.clear();paint();window.dispatchEvent(new Event('fromm-unread-prefs'));}});
+ window.addEventListener('storage',event=>{
+  if(!scope)return;
+  if(event.key===PREF+scope){
+   const saved=load(PREF+scope,{});
+   prefs={sound:saved.sound===true,desktop:saved.desktop===true};
+   // Changing sound/desktop preferences never erases unread badges.
+   window.dispatchEvent(new Event('fromm-unread-prefs'));
+  }else if(event.key===PREFIX+scope){
+   const remembered=load(PREFIX+scope,{});
+   if(!remembered.seen||typeof remembered.seen!=='object')return;
+   const oldSeen=seen;seen=remembered.seen;
+   for(const host of roomIds){
+    if(Number(seen[host]||0)>Number(oldSeen[host]||0)&&Number(seen[host])>=Number(latest.get(host)||0))unread.delete(host);
+   }
+   paint();
+  }
+ });
  syncTimer=setInterval(sync,4000);
  pollTimer=setInterval(()=>{void poll();if(!online){stop();void startPush(session);}},180000);
  // A bfcache-restored page receives pageshow again; preserve the monitor timers.

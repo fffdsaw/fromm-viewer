@@ -386,8 +386,6 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3.sidebar-open .glowme-nav button span{visibility:visible}
 .glowme-phase3 .glowme-nav button[aria-current="page"]{background:linear-gradient(145deg,#ffffffbd,#94d9c4b3);border-color:#fff;color:#164b3c;box-shadow:inset 0 1px 1px #fff,0 3px 8px #285c4712}
 .glowme-phase3 #sidebar .rail-artists{display:flex;flex-direction:column;flex:1 1 0;min-height:0;margin:0;padding:8px 0 0;border-top:1px solid #b8d8c8}
-.glowme-phase3 .rail-artists>strong{font-size:12px;line-height:20px;white-space:nowrap;margin:0 8px 4px;display:none}
-.glowme-phase3.sidebar-open .rail-artists>strong{display:block}
 .glowme-phase3 #rooms{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#83b9a7 transparent;margin:0!important;display:flex;flex-direction:column;gap:3px}
 .glowme-phase3 .room{position:relative;display:flex;align-items:center;flex:0 0 44px;min-height:44px;gap:10px;padding:4px 6px;background:transparent!important;border:0!important;border-radius:10px;box-shadow:none!important;color:#244c40}
 .glowme-phase3 .room.active{font-weight:700;background:#94d9c41a!important}

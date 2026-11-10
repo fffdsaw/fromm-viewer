@@ -5,7 +5,8 @@
  const PREFIX='fromm.viewer.unread.v1:',PREF='fromm.viewer.alerts.v1:';
  let scope='',seen={},prefs={sound:false,desktop:false},unread=new Map(),latest=new Map();
  let roomIds=[],session=0,started=false,closePush=null,app=null,db=null,library=null,online=false,pollBusy=false;
- let pollTimer=0,syncTimer=0,lastAlert=0,previewAudio=null;
+ let pollTimer=0,syncTimer=0,previewAudio=null;
+ const lastAlerts=new Map();
  const $=s=>document.querySelector(s);
  const current=()=>{try{return currentAuth();}catch{return null;}};
  const authenticated=()=>!!current()?.token&&!!current()?.uuid&&$('#loginGate')?.classList.contains('hidden');
@@ -28,7 +29,7 @@
   if(next===prev&&!had)return;
   seen[host]=next;unread.delete(host);store();paint();
  }
- function count(host){const e=unread.get(host);return e?Math.min(100,Math.max(e.rt.size,e.rest.size)):0;}
+ function count(host){return Math.min(100,unread.get(host)?.size||0);}
  function paint(){
   const list=$('#rooms');if(!list)return;
   const buttons=[...list.querySelectorAll('.room')];
@@ -44,11 +45,11 @@
    btn.setAttribute('aria-label',n?label+' · 새 메시지 '+(n>=100?'99개 이상':n+'개'):label);
   });
  }
- function newKey(message,source){
+ function newKey(message){
   const id=String(message?.messageId||message?.id||message?.code||message?._id||'');
   if(id)return id;
   const time=Number(new Date(message?.createdAt).getTime())||Number(message?.createdAt)||0;
-  return source+':'+time+':'+String(message?.type||message?.userType||'');
+  return time+':'+String(message?.type||message?.userType||'')+':'+String(message?.content||'').slice(0,32);
  }
  function record(host,msg,source,{fresh=false}={}){
   if(!roomIds.includes(host))return false;
@@ -57,11 +58,11 @@
   latest.set(host,Math.max(ms,latest.get(host)||0));
   if(visibleRoom(host)){markSeen(host);return false;}
   if(ms<=(Number(seen[host])||0))return false;
-  let entry=unread.get(host);if(!entry){entry={rt:new Set(),rest:new Set()};unread.set(host,entry);}
-  const set=entry[source],key=newKey(msg,source);
-  if(set.has(key))return false;
-  if(set.size>=100)return false;
-  set.add(key);
+  let entry=unread.get(host);if(!entry){entry=new Set();unread.set(host,entry);}
+  const key=newKey(msg);
+  if(entry.has(key))return false;
+  if(entry.size>=100)return false;
+  entry.add(key);
   if(fresh)announce(host);
   return true;
  }
@@ -78,7 +79,7 @@
   previewAudio.pause();previewAudio.currentTime=0;return previewAudio.play().catch(()=>{});
  }catch{return Promise.resolve();}}
  function announce(host){
-  const now=Date.now();if(now-lastAlert<3500)return;lastAlert=now;
+  const now=Date.now();if(now-(lastAlerts.get(host)||0)<3500)return;lastAlerts.set(host,now);
   playSound();
   if(!prefs.desktop||!('Notification' in window)||Notification.permission!=='granted')return;
   const room=rooms().find(r=>hostFor(r)===host);
@@ -93,7 +94,7 @@
   started=false;pollBusy=false;
  }
  function reset(next){
-  stop();scope=next;unread.clear();latest.clear();seen={};roomIds=[];
+  stop();scope=next;unread.clear();latest.clear();lastAlerts.clear();seen={};roomIds=[];
   if(next){
    const stored=load(PREFIX+next,{});seen=stored&&typeof stored.seen==='object'&&stored.seen?stored.seen:{};
    const saved=load(PREF+next,{});prefs={sound:saved.sound===true,desktop:saved.desktop===true};
@@ -103,41 +104,55 @@
  async function startPush(version){
   if(started||!roomIds.length||!window.FrommConversation?.loadFirebase)return;
   started=true;
-  let remove=null,model=null,base=null,lib=null;
+  let removers=[],model=null,base=null,lib=null;
   try{
-   lib=await window.FrommConversation.loadFirebase();if(version!==session||!authenticated())return;
+   lib=await window.FrommConversation.loadFirebase();
+   if(version!==session||!authenticated())return;
    const payload=await frommApiRequest('/v2/auth/signin/firebase/secure/reader');
    if(version!==session||!authenticated())return;
    const token=payload?.data?.accessToken;if(typeof token!=='string')throw Error('No reader token');
    const claims=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))));
-   const permitted=(claims.accessHostChatRoomIds||[]).map(String);
-   const allowed=roomIds.filter(id=>permitted.includes(id)).slice(0,10);
+   const permitted=(Array.isArray(claims.accessHostChatRoomIds)?claims.accessHostChatRoomIds:[]).map(String);
+   // Reuse the same per-room Firestore query as the existing live conversation.
+   // A combined IN/IN query may require a different composite index.
+   const allowed=roomIds.filter(id=>permitted.includes(id)).slice(0,30);
    if(!allowed.length)throw Error('No authorized rooms');
    base=lib.initializeApp({apiKey:'AIzaSyDtg4wP4wu7L39eWpdVWV7QQNmfR-Gbcgc',projectId:'fromm-fan-361704',appId:'1:693404733592:android:f2add53f3fd5257d71c0ed'},'fromm-unread-'+crypto.randomUUID());
    const auth=lib.initializeAuth(base,{persistence:lib.inMemoryPersistence});
-   await lib.signInWithCustomToken(auth,token);if(version!==session||!authenticated())return;
+   await lib.signInWithCustomToken(auth,token);
+   if(version!==session||!authenticated())return;
    model=lib.initializeFirestore(base,{experimentalAutoDetectLongPolling:true},'chat5');
-   const q=lib.query(lib.collection(model,'messages'),lib.where('hostChatRoomId','in',allowed),lib.where('userType','in',['star','bot']));
-   let first=true;
-   remove=lib.onSnapshot(q,{includeMetadataChanges:true},snapshot=>{
-    if(version!==session||snapshot.metadata.fromCache)return;
-    online=true;
-    let changes=false;
-    for(const diff of snapshot.docChanges()){
-     if(diff.type!=='added')continue;
-     const msg=diff.doc.data()||{},host=String(msg.hostChatRoomId||'');
-     if(!allowed.includes(host))continue;
-     if(!msg.messageId)msg.messageId=diff.doc.id;
-     if(msg.createdAt&&typeof msg.createdAt.toMillis==='function')msg.createdAt=msg.createdAt.toMillis();
-     changes=record(host,msg,'rt',{fresh:!first})||changes;
-    }
-    first=false;if(changes)paint();
-   },()=>{if(version===session){online=false;remove?.();remove=null;}});
+   const seeded=new Set();
+   for(const host of allowed){
+    const q=lib.query(lib.collection(model,'messages'),lib.where('hostChatRoomId','==',host),lib.where('userType','in',['star','bot']));
+    const off=lib.onSnapshot(q,{includeMetadataChanges:true},snapshot=>{
+     if(version!==session||snapshot.metadata.fromCache)return;
+     online=true;
+     const first=!seeded.has(host);
+     let changed=false;
+     for(const diff of snapshot.docChanges()){
+      if(diff.type!=='added')continue;
+      const msg=diff.doc.data()||{};
+      if(msg.hostChatRoomId&&String(msg.hostChatRoomId)!==host)continue;
+      if(!msg.messageId)msg.messageId=diff.doc.id;
+      if(msg.createdAt&&typeof msg.createdAt.toMillis==='function')msg.createdAt=msg.createdAt.toMillis();
+      changed=record(host,msg,'rt',{fresh:!first})||changed;
+     }
+     seeded.add(host);
+     if(changed)paint();
+    },()=>{if(version===session){online=false;void poll();}});
+    removers.push(off);
+   }
    if(version!==session)return;
-   closePush=()=>remove?.();library=lib;app=base;db=model;
+   closePush=()=>{for(const off of removers.splice(0))off();};
+   library=lib;app=base;db=model;
   }catch{online=false;}
   finally{
-   if(version!==session){remove?.();if(model&&lib)void lib.terminate(model).catch(()=>{});if(base&&lib)void lib.deleteApp(base).catch(()=>{});}
+   if(version!==session||!closePush){
+    for(const off of removers.splice(0))off();
+    if(model&&lib)void lib.terminate(model).catch(()=>{});
+    if(base&&lib)void lib.deleteApp(base).catch(()=>{});
+   }
   }
  }
  async function poll(){
@@ -156,7 +171,7 @@
      if(version!==session)break;
      const rows=extractMessages(response);
      let changed=false;
-     for(const msg of rows)if(isArtist(msg))changed=record(host,msg,'rest')||changed;
+     for(const msg of rows)if(isArtist(msg))changed=record(host,msg,'rest',{fresh:true})||changed;
      if(changed)paint();
     }catch(error){if(error?.status===401||error?.status===403)break;if(error?.status===429)break;}
    }

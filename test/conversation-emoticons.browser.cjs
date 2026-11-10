@@ -51,15 +51,29 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await emojiTab.click();assert.ok(await page.locator('#conversationEmoticonItems').evaluate(e=>e.classList.contains('conversation-standard-emoji')));
   assert.equal(await emojiTab.evaluate(e=>getComputedStyle(e).borderTopWidth),'0px','standard emoji tab has no visible border even when selected');
   await page.locator('[data-unicode-emoji="❤️"]').click();assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 ❤️','standard emoji is inserted as draft text');
+  assert.equal(await page.locator('#conversationEmoticons').isVisible(),true,'Unicode emoji picker stays open after selection');
+  assert.equal(await page.locator('#conversationEmoticonButton').getAttribute('aria-expanded'),'true','picker toggle remains expanded');
   assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false,'Unicode emoji is not a Fromm sticker');
   assert.equal(posts.length,0,'choosing Unicode emoji never sends a message');
   for(const emoji of ['🫳','🎂','🍮']){
-   await page.locator('#conversationEmoticonButton').click();
-   await page.locator('[data-emoji-tab="standard"]').click();
    await page.locator('[data-unicode-emoji="'+emoji+'"]').click();
    assert.ok((await page.locator('#conversationInput').inputValue()).endsWith(emoji),'new standard emoji inserts as plain text: '+emoji);
+   assert.equal(await page.locator('#conversationEmoticons').isVisible(),true,'picker stays open for the next emoji: '+emoji);
    assert.equal(posts.length,0,'selecting '+emoji+' must not submit a message');
   }
+  assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 ❤️🫳🎂🍮','consecutive emoji are appended in order');
+  // Click outside to edit the draft, reopen, and insert at the newly chosen caret.
+  await page.locator('#conversationInput').click();
+  assert.equal(await page.locator('#conversationEmoticons').isVisible(),false,'editing draft closes the picker');
+  await page.locator('#conversationInput').evaluate(input=>input.setSelectionRange(3,3));
+  await page.locator('#conversationEmoticonButton').click();
+  await page.locator('[data-emoji-tab="standard"]').click();
+  await page.locator('[data-unicode-emoji="💚"]').click();
+  assert.equal(await page.locator('#conversationInput').inputValue(),'사랑 💚❤️🫳🎂🍮','reopened picker respects new caret position');
+  assert.equal(await page.locator('#conversationEmoticons').isVisible(),true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#conversationEmoticons').isVisible(),false,'Escape closes the continuous picker');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'conversationEmoticonButton','Escape restores focus');
   await page.locator('#conversationInput').fill('');
   await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="p1-item"]').click();await page.waitForTimeout(150);const bounds=await page.evaluate(()=>({last:[...document.querySelectorAll('#timeline .msg')].at(-1).getBoundingClientRect().bottom,dock:document.querySelector('#conversationDock').getBoundingClientRect().top}));assert.ok(bounds.last<=bounds.dock-5,'preview keeps the latest message above the composer: '+JSON.stringify(bounds));assert.equal(posts.length,0,'choosing an emoticon never sends immediately');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true);assert.equal(await page.locator('#conversationSend').isEnabled(),true);
   await page.evaluate(()=>FrommConversation.flush());await page.reload();await page.waitForFunction(()=>FrommConversation.status.phase==='connected'&&state.chatHistoryComplete);assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),true,'unsent emoticon restored with the draft');

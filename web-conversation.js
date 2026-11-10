@@ -106,16 +106,22 @@
   itemsBox.classList.add('conversation-standard-emoji');itemsBox.replaceChildren();
   emotePanel.querySelector('#conversationEmoticonStatus').hidden=true;
   emotePanel.querySelector('#conversationEmoticonRetry').hidden=true;
+  // Picker buttons take focus away from the textarea. Remember the insertion
+  // point explicitly so repeated taps append in order, including on mobile.
+  const insertion={start:input.selectionStart,end:input.selectionEnd};
   for(const emoji of STANDARD_EMOJI){
    const button=document.createElement('button');button.type='button';button.textContent=emoji;button.title=emoji;
    button.setAttribute('aria-label',emoji);button.dataset.unicodeEmoji=emoji;
    button.onclick=()=>{
     if(!viewing(c)||c.sending||c.denied||input.disabled)return;
-    const start=input.selectionStart,end=input.selectionEnd,max=c.rules?.max||450;
+    const start=Math.min(insertion.start,input.value.length),end=Math.min(insertion.end,input.value.length),max=c.rules?.max||450;
     if(input.value.length-(end-start)+emoji.length>max){c.notice='메시지 최대 길이를 초과했습니다.';paint();return;}
     input.setRangeText(emoji,start,end,'end');
+    insertion.start=insertion.end=start+emoji.length;
     input.dispatchEvent(new Event('input',{bubbles:true}));
-    closeEmoticons();input.focus({preventScroll:true});
+    // Unicode emoji are plain text: keep this panel open for consecutive picks.
+    // Do not refocus the textarea after each tap (which opens the mobile keyboard).
+    // Fromm sticker selection still closes its picker independently.
    };
    itemsBox.append(button);
   }

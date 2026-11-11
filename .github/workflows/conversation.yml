@@ -43,6 +43,7 @@ jobs:
           node test/conversation.browser.cjs
           node test/conversation-state.browser.cjs
           node test/conversation-cache-restore.browser.cjs
+          node test/conversation-storage-recovery.browser.cjs
           node test/conversation-emoticons.browser.cjs
           node test/conversation-controls.browser.cjs
           node test/conversation-send-focus.browser.cjs

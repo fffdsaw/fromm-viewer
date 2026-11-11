@@ -30,7 +30,11 @@
    async read(account,room){
     const key=scope(account,room),db=await open();
     return transact(db,['rooms','messages'],'readonly',(tx,set)=>{
-     let meta,rows;const finish=()=>{if(meta!==undefined&&rows!==undefined)set(meta?{meta,messages:rows.map(r=>r.message)}:null);};
+     let meta,rows;const finish=()=>{if(meta!==undefined&&rows!==undefined){
+      if(meta)set({meta,messages:rows.map(r=>r.message)});
+      else if(rows.length)set({meta:{count:rows.length,complete:false,cursorEnd:null,recoveredPartial:true},messages:rows.map(r=>r.message)});
+      else set(null);
+     }};
      const a=tx.objectStore('rooms').get(key);a.onsuccess=()=>{meta=a.result||null;finish();};
      const b=tx.objectStore('messages').index('scope').getAll(key);b.onsuccess=()=>{rows=b.result;finish();};
     });
@@ -45,7 +49,15 @@
       await transact(db,['messages'],'readwrite',tx=>{const store=tx.objectStore('messages');for(const message of rows.slice(offset,offset+250))store.put({key:[...key,messageKey(message)],scope:key,message});});
      }
      if(!current())return false;
-     await transact(db,['rooms'],'readwrite',tx=>tx.objectStore('rooms').put({...metadata,scope:key,savedAt:Date.now()}));return true;
+     await transact(db,['rooms'],'readwrite',tx=>{
+      const rooms=tx.objectStore('rooms'),existing=rooms.get(key);
+      existing.onsuccess=()=>{
+       // A stale/incomplete writer in another tab cannot downgrade a committed
+       // complete snapshot. IndexedDB serializes this read-modify-write transaction.
+       if(existing.result?.complete===true&&metadata?.complete!==true)return;
+       rooms.put({...metadata,scope:key,savedAt:Date.now()});
+      };
+     });return true;
     });queue=work;return work;
    },
    clear(account){

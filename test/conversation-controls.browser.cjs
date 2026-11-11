@@ -42,9 +42,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
   const incomingText=page.locator('#timeline .msg:not(.me) .bubble:has(.text)').first(),outgoingText=page.locator('#timeline .msg.me .bubble:has(.text)').first();
-  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','incoming text has no white tile');
-  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).borderColor),'rgba(0, 0, 0, 0)','incoming text has no visible box edge');
-  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).boxShadow),'none','incoming text has no tile shadow');
+  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(245, 250, 251)','incoming artist text has an aqua card');
+  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).borderColor),'rgb(204, 230, 229)','incoming artist card has a subtle border');
+  assert.notEqual(await incomingText.evaluate(el=>getComputedStyle(el).boxShadow),'none','incoming artist card has a soft shadow');
   assert.equal(await outgoingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(219, 243, 236)','outgoing mint bubble remains intact');
 
   assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);

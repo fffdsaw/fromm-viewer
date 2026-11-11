@@ -10,7 +10,8 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
    const {page,context,errors}=await open(browser,host.url,cfg);let posts=[],historyRequests=0,ruleRequests=0,readerRequests=0,rejectSend=false;
    const base=Date.now()-2000000,rows=Array.from({length:1200},(_,i)=>({messageId:'a-'+i,userId:'artist',userType:'star',type:'text',content:'보관 대화 '+i,createdAt:base+i*1000}));
-   const data={'host-a':rows,'host-b':[{messageId:'b-1',userType:'star',type:'text',content:'다른 아티스트 대화',createdAt:base}]};
+   const otherRows=Array.from({length:650},(_,i)=>({messageId:'b-'+i,userType:'star',type:'text',content:'다른 아티스트 대화 '+i,createdAt:base+i*1000}));
+   const data={'host-a':rows,'host-b':otherRows};
    const requests=[];page.on('dialog',dialog=>dialog.accept());
    await page.route('**/*',async route=>{
     let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
@@ -90,6 +91,37 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    const bookmark=await page.evaluate(async()=>{const db=FrommConversationCore.createStore(),value=await db.read('cache-a@example.test','host-a');await db.close();return value.meta.view});
    assert.equal(bookmark.latest,false);const beforeAgain=historyRequests;await page.reload();await page.waitForFunction(()=>FrommConversation.status.phase==='connected');await page.waitForTimeout(300);
    assert.equal(historyRequests,beforeAgain);assert.ok(Math.abs(await page.locator(`[data-message-id="${bookmark.id}"]`).evaluate(el=>el.getBoundingClientRect().top)-bookmark.offset)<4,'restores the same message and viewport offset');
+   // A manual artist change must display the target's newest message, even
+   // when that artist has an older saved anchor. Session reload above still
+   // restores the previous reading position as before.
+   const changeArtist=async index=>{
+    await page.evaluate(index=>document.querySelectorAll('#rooms .room')[index].click(),index);
+    const expected=index===0?'host-a':'host-b';
+    await page.waitForFunction(expected=>state.room?.hostChatRoomId===expected&&state.chatHistoryComplete&&!state.chatAutoTopPending,expected);
+    await page.waitForFunction(expectedCount=>state.chatMessages.length>=expectedCount,data[expected].length);
+    assert.ok(await page.evaluate(()=>state.infiniteList.length>=state.chatMessages.length),'switching artists cannot truncate the full chat list during live sync');
+    await page.waitForFunction(()=>{
+     const list=filteredMessages(),tail=[...document.querySelectorAll('#timeline .msg')].at(-1);
+     return list.length>0&&tail?.dataset.messageId===messageStableKey(list.at(-1));
+    });
+    try{
+     await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<5,null,{timeout:7000});
+    }catch(error){
+     const diagnostics=await page.evaluate(()=>{
+      const el=document.scrollingElement,tl=document.querySelector('#timeline'),tail=tl?.querySelector('.msg:last-of-type'),dock=document.querySelector('#conversationDock');
+      return {room:state.room?.hostChatRoomId,filter:state.filter,complete:state.chatHistoryComplete,autoTopPending:state.chatAutoTopPending,windowStart:state.chatWindowStart,rendered:state.infiniteRendered,total:state.infiniteList.length,top:scrollY,innerHeight,documentHeight:document.documentElement.scrollHeight,bodyHeight:document.body.scrollHeight,scrollingHeight:el?.scrollHeight,scrollingTop:el?.scrollTop,scrollingClientHeight:el?.clientHeight,tail:tail?.getBoundingClientRect().toJSON(),timeline:tl?.getBoundingClientRect().toJSON(),dock:dock?.getBoundingClientRect().toJSON()};
+     });
+     throw new Error('newest chat bottom alignment did not settle: '+JSON.stringify(diagnostics),{cause:error});
+    }
+   };
+   await changeArtist(1);
+   // Save a deliberately old location in artist B, then leave for A.
+   await page.evaluate(()=>{FrommViewState.cancel();renderChatWindow(filteredMessages(),100);window.scrollTo({top:360,behavior:'instant'});});
+   await page.waitForTimeout(180);
+   await changeArtist(0);
+   await changeArtist(1);
+   assert.equal(await page.locator('#timeline .msg').last().getAttribute('data-message-id'),'b-649');
+   assert.equal(await page.evaluate(()=>FrommConversation.status.phase),'connected');
    const layout=await page.locator('#conversationDock').boundingBox();assert.ok(layout.x>=0&&layout.x+layout.width<=cfg.width+1);assert.equal(await page.locator('#conversationSend').isVisible(),true);
    if(out){fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'chat-'+cfg.width+'.png')});}
    assert.deepEqual(errors,[]);console.log(`${cfg.width}${cfg.installed?' standalone':''}: real IndexedDB restore/no history rescan, Firebase hints, text/IME/rules/send/failure, tab cleanup, reader anchor and layout PASS`);

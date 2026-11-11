@@ -221,7 +221,7 @@
   if(!c)return;if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
   c.pushClose?.();c.pushClose=null;c.pushOnline=false;clearTimeout(c.pushRetry);c.pushRetry=0;
  }
- function beforeRoom(room,{restore=true}={}){
+ function beforeRoom(room,{restore=true,restoreViewOnEntry=true}={}){
   const previous=context,carry=roomCurrent(previous)&&String(room?.hostChatRoomId)===previous.host?{draft:input?.value||'',selectedEmoticon:previous.selectedEmoticon,outbox:previous.outbox,accepted:previous.accepted}:null;
   if(context&&roomCurrent(context)){context.draft=input?.value||'';memories.delete(memoryKey(context));memories.set(memoryKey(context),{draft:context.draft,selectedEmoticon:context.selectedEmoticon,outbox:context.outbox,accepted:context.accepted.slice(),lastView:viewPosition(context),sendNotBefore:context.sendNotBefore,readNotBefore:context.readNotBefore});if(memories.size>120)memories.delete(memories.keys().next().value);void persist();}
   stop();clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();
@@ -230,7 +230,10 @@
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
    owner:new AbortController(),persisted:new Map(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
    phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
-  const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);if(input)input.value=c.draft;
+  const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
+  // Switching artists never replays a previous reading position, even from IndexedDB.
+  if(!restoreViewOnEntry)c.restoreView=null;
+  if(input)input.value=c.draft;
   context=c;
   restoreJob=(async()=>{
    try{
@@ -254,7 +257,7 @@
       for(const m of messages)c.persisted.set(core.messageKey(m),m);
       if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
       const view=remembered?.lastView||cached.meta.view;
-      if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(!view.latest)c.restoreView=view;}
+      if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(restoreViewOnEntry&&!view.latest)c.restoreView=view;}
       input.value=c.draft;buildMediaSequences();render();
      }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
@@ -402,7 +405,7 @@
    if(!cacheNamespace()){if(!resumeIdentityPending){resumeIdentityPending=true;void ensureReplyIdentity().then(ready=>{resumeIdentityPending=false;if(ready)sync();});}return;}
    try{const saved=JSON.parse(localStorage.getItem(lastRoomKey(cacheNamespace()))||'null');
     const index=saved?state.rooms.findIndex(room=>String(room.id)===saved.roomId&&String(room.hostChatRoomId)===saved.host):-1;
-    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button);return;}
+    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button,{restoreHistoryPosition:true});return;}
    }catch{}
   }
   const c=context;

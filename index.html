@@ -1103,10 +1103,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=latest-inline-20261111">
+<link rel="stylesheet" href="conversation.css?v=audio-compact-20261111">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=latest-left-20261111"></script>
-<script src="web-chat-audio.js?v=chat-audio-20261109"></script>
+<script src="web-conversation.js?v=room-latest-20261111"></script>
+<script src="web-chat-audio.js?v=voice-replay-family-20261111"></script>
 </head>
 <body>
 
@@ -7010,15 +7010,25 @@ function restoreFullChatCache(){
   const cached = state.chatCache.get(chatCacheKey());
   if(!cached?.length) return false;
 
-  state.chatMessages = cached;
+  // The hot paging cache may contain only a few recent rows while the
+  // full chat cache retains all history. Feed merges must use the same
+  // canonical full set, or they can overwrite chatMessages with a slice.
+  const byKey = new Map();
+  for(const m of cached) byKey.set(messageStableKey(m),m);
+  for(const m of state.messages) byKey.set(messageStableKey(m),m);
+  const complete = [...byKey.values()].sort((a,b)=>compareMessages(a,b,"asc"));
+  state.messages = complete;
+  state.chatMessages = complete;
+  state.chatCache.set(chatCacheKey(),complete);
+  state.seenMessageKeys = new Set(complete.map(m=>String(m.messageId || `${m.createdAt}|${m.type}|${m.content}`)));
+  state.hasMoreMessages = false;
   state.chatHistoryComplete = true;
   state.chatHistoryLoading = false;
-  state.chatHistoryProgress = cached.length;
+  state.chatHistoryProgress = complete.length;
   buildMediaSequences();
   renderDateCalendar();
   return true;
 }
-
 async function ensureFullChatHistory(){
   if(!state.room) return false;
   if(state.chatHistoryComplete) return true;
@@ -7078,8 +7088,10 @@ function syncArtistHeaderProfile(){
   img.src = url;
 }
 
-function selectRoom(i, btn){
-  globalThis.FrommConversation?.beforeRoom(state.rooms[i]);
+function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
+  // Explicit artist clicks enter latest; authenticated startup may restore
+  // the saved reader position after a reload.
+  globalThis.FrommConversation?.beforeRoom(state.rooms[i],{restoreViewOnEntry:restoreHistoryPosition});
   window.FrommViewState?.capture();
   stopHistoryWork();
   resetPreviewWork();
@@ -7094,7 +7106,7 @@ function selectRoom(i, btn){
 
   state.room = state.rooms[i];
   if(nextFilter==="all")window.FrommUnread?.markSeen(String(state.room?.hostChatRoomId||""));
-  const restorePosition = window.FrommViewState?.enter(nextFilter, {autoTop: !keepMediaTab});
+  const restorePosition=window.FrommViewState?.enter(nextFilter,{autoTop:!keepMediaTab&&restoreHistoryPosition});
 
   if(wasLive){
     state.live.requestSeq++;
@@ -7174,6 +7186,10 @@ function selectRoom(i, btn){
     !!(cached && cached.messages?.length) ||
     (!keepMediaTab && !!(state.chatHistoryComplete && state.chatMessages.length));
 
+  // A complete hot cache is already rendered here. Rendering it again in
+  // the deferred loading task would replace the newest virtual window with
+  // the oldest initial batches after chatAutoTopPending has cleared.
+  const alreadyRenderedCompleteChat=!keepMediaTab&&hasImmediateData&&state.chatHistoryComplete;
   if(hasImmediateData){
     render();
   }else{
@@ -7205,7 +7221,7 @@ function selectRoom(i, btn){
         if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
       }
 
-      render();
+      if(!alreadyRenderedCompleteChat) render();
     }catch(e){
       if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
       console.error("아티스트 화면 전환 실패:",e);
@@ -9051,8 +9067,9 @@ function renderMessage(m){
   if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
-  // The sender stays in the bubble; timestamp and filename are below it.
-  let html=`<div class="meta"><span>${esc(who)}</span></div>`;
+  // Media bubbles omit redundant sender names; only timestamps stay beneath them.
+  const chatMedia=["image","video","sound"].includes(t);
+  let html=chatMedia?"":`<div class="meta"><span>${esc(who)}</span></div>`;
 
   const quoted = getQuotedMessage(m);
   if(quoted){
@@ -9110,7 +9127,7 @@ function renderMessage(m){
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-media-download chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
+        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
         // Filename is displayed once in the common message footer.
       }
 
@@ -9206,23 +9223,7 @@ function renderMessage(m){
   frame.className="chat-message-frame";
   const foot=document.createElement("div");
   foot.className="chat-message-foot";
-  if(["image","video","sound"].includes(t) && proxyUrl(m,false)){
-    const name=document.createElement("span");
-    name.className="chat-message-filename";
-    name.textContent=baseName(m);
-    // Mobile filename selection remains available after moving it below the card.
-    if(artist && hasUsableMedia(m)){
-      name.tabIndex=0;
-      name.setAttribute("role","button");
-      name.setAttribute("aria-label",`${baseName(m)} 선택`);
-      name.addEventListener("click",event=>chooseDownloadItem("media",m,event));
-      name.addEventListener("keydown",event=>{
-        if(!["Enter"," "].includes(event.key))return;
-        event.preventDefault();chooseDownloadItem("media",m,event);
-      });
-    }
-    foot.append(name);
-  }
+  // Download/selection controls retain the original filename in accessible labels.
   const timestamp=document.createElement("time");
   timestamp.className="chat-message-time";
   timestamp.textContent=timeLabel(m);

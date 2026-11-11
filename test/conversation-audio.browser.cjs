@@ -39,8 +39,10 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width
  await page.waitForFunction(()=>{const a=document.querySelector('[data-message-id="sound-0"] audio');return !a.paused&&a.currentTime>0;});await player.getByRole('button',{name:'음성 일시정지',exact:true}).click();await seek.press('Home');assert.equal(await time.innerText(),'0:00 / 0:24');
  assert.equal(await seek.isEnabled(),true);await time.click();await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>state.selected.size),0,'audio controls never select the media card');
  if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-ready-'+cfg.width+'.png')});}
- const layout=await player.evaluate(e=>{const r=e.getBoundingClientRect(),seek=e.querySelector('.chat-audio-seek').getBoundingClientRect(),time=e.querySelector('output').getBoundingClientRect();return{r:r.toJSON(),seek:seek.toJSON(),time:time.toJSON(),scroll:e.scrollWidth,width:e.clientWidth}});
- assert.ok(Math.abs(layout.seek.width-layout.r.width)<1&&layout.seek.top>=layout.time.bottom,JSON.stringify(layout));
+ const layout=await player.evaluate(e=>{const r=e.getBoundingClientRect(),seek=e.querySelector('.chat-audio-seek').getBoundingClientRect(),time=e.querySelector('output').getBoundingClientRect(),dl=e.querySelector('.chat-sound-download')?.getBoundingClientRect();return{r:r.toJSON(),seek:seek.toJSON(),time:time.toJSON(),download:dl?.toJSON(),scroll:e.scrollWidth,width:e.clientWidth}});
+ assert.ok(layout.seek.top>=layout.time.bottom,'seek follows playback controls: '+JSON.stringify(layout));
+ assert.ok(layout.download&&layout.download.left>=layout.seek.right-1&&layout.download.right<=layout.r.right+2,'voice download sits beside seek: '+JSON.stringify(layout));
+ assert.ok(layout.seek.width>layout.r.width*.45,'seek remains usable beside its download action: '+JSON.stringify(layout));
  assert.ok(layout.time.right<=layout.r.right+1&&layout.scroll<=layout.width+1,JSON.stringify(layout));assert.match(await seek.evaluate(e=>getComputedStyle(e).backgroundImage),/linear-gradient/,'the full mint seek track is painted');
  const play=player.getByRole('button',{name:'음성 재생',exact:true});await play.click();await page.waitForFunction(()=>{const a=document.querySelector('[data-message-id="sound-0"] audio');return !a.paused&&a.currentTime>0;});
  if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-playing-'+cfg.width+'.png')});

@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=chat-audio-liquid-glass-20261111';
+import './web-glass-controls.js?v=latest-chat-glass-spring-20261111';
 import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-top-settings-20261110';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{

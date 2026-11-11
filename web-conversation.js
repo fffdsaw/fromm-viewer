@@ -14,7 +14,7 @@
  let emoteVersion=0,emoteRequest=null;
  // Standard Unicode emoji remain plain message text, never a Fromm sticker payload.
  const STANDARD_EMOJI=['❤️','🩷','🧡','💛','💚','🩵','💙','💜','🤍','🖤','💕','💞','💖','💗','💘','💝','🥹','😂','🤣','😊','😍','🥰','😘','😭','😢','😆','😁','😄','😃','🙂','😉','😎','🤔','🥺','😳','😱','😴','😮','🤩','😋','😇','🙃','😌','🤗','🫶','🫳','👍','👏','🙌','🙏','💪','👀','🔥','✨','⭐','🌟','🎉','🎊','🎂','🍮','💐','🌸','🌷','🌹','🍀','🌈','☀️'];
- let saveTimer=0,layoutFrame=0,saving=Promise.resolve(),pendingCount=0,resumeIdentityPending=false;
+ let saveTimer=0,layoutFrame=0,saving=Promise.resolve(),pendingCount=0,resumeIdentityPending=false,latestHideTimer=0,latestEnterTimer=0;
  const sdk=()=>import('./vendor/firebase/conversation-10.12.2.js');
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);
  const storageKey=account=>'fromm.conversation.storage:'+account;
@@ -52,7 +52,19 @@
   if(!newButton)return;
   const c=context,list=state.infiniteList||[],away=roomCurrent(c)&&state.filter==='all'&&list.length>0&&(state.infiniteRendered<list.length||document.documentElement.scrollHeight-scrollY-innerHeight>100);
   if(!away&&roomCurrent(c)&&state.filter==='all'&&!state.chatAutoTopPending)pendingCount=0;
-  newButton.hidden=!away||!!emotePanel&&!emotePanel.hidden;
+  const show=away&&!(emotePanel&&!emotePanel.hidden);
+  if(show){
+   clearTimeout(latestHideTimer);latestHideTimer=0;
+   const entering=newButton.hidden||newButton.classList.contains('conversation-latest-leaving');
+   if(entering){
+    newButton.hidden=false;newButton.classList.remove('conversation-latest-leaving');newButton.classList.add('conversation-latest-entering');
+    clearTimeout(latestEnterTimer);latestEnterTimer=setTimeout(()=>{latestEnterTimer=0;newButton?.classList.remove('conversation-latest-entering');},540);
+   }
+  }else if(!newButton.hidden&&!latestHideTimer){
+   newButton.classList.remove('conversation-latest-entering');newButton.classList.add('conversation-latest-leaving');
+   clearTimeout(latestEnterTimer);latestEnterTimer=0;
+   latestHideTimer=setTimeout(()=>{latestHideTimer=0;if(newButton){newButton.hidden=true;newButton.classList.remove('conversation-latest-leaving');}},180);
+  }
   const badge=newButton.querySelector('span');badge.hidden=!pendingCount;badge.textContent=pendingCount>99?'99+':String(pendingCount);
   newButton.setAttribute('aria-label',pendingCount?`새 메시지 ${pendingCount}개 · 최신 대화로 이동`:'최신 대화로 이동');
  }

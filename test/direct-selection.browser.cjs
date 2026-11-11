@@ -105,7 +105,11 @@ async function selectionSize(page) {
       // Both media grouping and individual type tabs use the same interaction.
       for (const filter of ['media', 'video', 'sound', ...(mobile ? ['all'] : [])]) {
         await page.evaluate(filter => {state.selected.clear(); state.selectionAnchor = null; state.filter = filter; syncLiveToolbarControls(); render(); scrollTo(0, 0);}, filter);
-        const selectable = page.locator('[data-download-selection-kind="media"]').first();
+        // In full chat the oldest selectable item is voice; choose an image
+        // for the tap-selection test so its play control is never activated.
+        const selectable = filter === "all"
+          ? page.locator('#timeline .media-wrap[data-download-selection-kind="media"]:has(img)').first()
+          : page.locator('[data-download-selection-kind="media"]').first();
         await selectable.waitFor();
         if(filter === 'all'){
           // Visible filenames were deliberately removed from chat media.

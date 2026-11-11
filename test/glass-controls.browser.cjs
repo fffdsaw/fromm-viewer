@@ -138,6 +138,14 @@ async function press(p,selector){
    const target=p.locator(selector).first();
    assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' initializes the LiquidGlass engine');
    assert.equal(await target.locator('.control-glass-surface').count(),1,selector+' keeps one decorative glass face');
+   assert.ok(await target.evaluate(el=>el.classList.contains('glass-on-image')),selector+' uses the dark glass tint for the existing white glyph');
+   const displacement=await target.locator('.control-glass-surface').evaluate(face=>{
+    const id=/url\(["']?#([^"')]+)/.exec(face.style.backdropFilter)?.[1];
+    return Number(document.querySelector('#'+id+' feDisplacementMap')?.getAttribute('scale')||0);
+   });
+   assert.ok(displacement>0,selector+' refracts the backdrop through the LiquidGlass engine');
+   if(selector==='.chat-sound-download')assert.equal(await target.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','download toggle leaves the live lens visible');
+
    await press(p,selector);
   }
   await p.evaluate(()=>window.chatGlassFixture.remove());

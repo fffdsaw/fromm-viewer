@@ -1332,3 +1332,30 @@ html.glowme .reply-content{color:#244c42}
 }
 /* Explicit hidden precedence: the author-level flex rule must not resurrect empty unread badges. */
 .glowme-phase3 .rail-unread[hidden]{display:none!important}
+
+/* Preview-aligned unread indicators: collapsed avatar dot, expanded numeric red pill.
+   The production unread monitor owns detection, counts, and read state. */
+.glowme-phase3 #rooms .room .rail-unread{
+ position:absolute;top:50%;right:8px;left:auto;transform:translateY(-50%);
+ display:inline-grid;place-items:center;flex:none;
+ width:auto;min-width:22px;height:22px;min-height:22px;
+ padding:0 5px;margin:0;border:0;border-radius:999px;
+ background:#f4511e;color:#fff;box-shadow:0 1px 4px #8f270c30;
+ font:700 11px/1 system-ui;font-variant-numeric:tabular-nums;
+ box-sizing:border-box;pointer-events:none;
+}
+.glowme-phase3.sidebar-open #rooms .room{padding-right:46px}
+.glowme-phase3.sidebar-open #rooms .room .rail-artist-name{min-width:0;flex:1 1 auto}
+.glowme-phase3:not(.sidebar-open) #rooms .room .rail-unread{
+ top:3px;left:32px;right:auto;transform:none;
+ width:11px;min-width:11px;height:11px;min-height:11px;
+ padding:0;border:2px solid #f3fbf7;font-size:0;line-height:0;
+ box-shadow:0 1px 3px #8f270c25;
+}
+@media(max-width:700px){
+ .glowme-phase3:not(.sidebar-open) #rooms .room .rail-unread{left:30px}
+}
+@media(forced-colors:active){
+ .glowme-phase3 #rooms .room .rail-unread{background:Canvas;color:CanvasText;border:1px solid CanvasText}
+}
+.glowme-phase3 #rooms .room .rail-unread[hidden]{display:none!important}

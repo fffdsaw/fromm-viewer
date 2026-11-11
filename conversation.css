@@ -157,6 +157,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 
 /* Fromm Viewer message footer layout: a single timestamp convention for
    text, stickers, media and voice without disturbing bubble interaction. */
+/* Remove the pale tile behind incoming text while keeping outgoing mint bubbles. */
+#timeline .msg:not(.me) .bubble:has(.text){background:transparent;border-color:transparent;box-shadow:none}
 #timeline .chat-message-frame{display:flex;flex-direction:column;align-items:stretch;width:fit-content;max-width:min(76%,680px);min-width:0}
 #timeline .chat-message-frame:has(>.chat-sound-bubble){width:min(420px,94%);max-width:min(94%,420px)}
 #timeline .chat-message-frame>.bubble{box-sizing:border-box;max-width:100%;width:100%;min-width:0}
@@ -167,8 +169,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .chat-sound-bubble>.meta{min-height:0!important;padding-inline-end:0!important}
 #timeline .chat-sound-bubble .media-actions{min-height:0}
 @media(max-width:850px){#timeline .chat-message-frame{max-width:94%}}
-/* The latest arrow is an inline composer action, not a floating chat overlay. */
-#conversationDock #conversationNew{position:relative;inset:auto;bottom:auto;left:auto;right:auto;top:auto;flex:0 0 34px;width:34px;height:34px;align-self:flex-end;margin:0;z-index:1}
+/* Float the latest arrow above the dock so it does not take space from the composer. */
+#conversationDock #conversationNew{position:absolute;left:0;right:auto;top:auto;bottom:calc(100% + 6px);flex:none;width:34px;height:34px;margin:0;z-index:66}
 #conversationDock #conversationNew[hidden]{display:none!important}
 #conversationDock .conversation-compose{min-width:0}
 @media(forced-colors:active){#timeline .chat-message-foot{color:CanvasText}}

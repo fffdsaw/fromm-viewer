@@ -41,6 +41,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
+  const incomingText=page.locator('#timeline .msg:not(.me) .bubble:has(.text)').first(),outgoingText=page.locator('#timeline .msg.me .bubble:has(.text)').first();
+  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','incoming text has no white tile');
+  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).borderColor),'rgba(0, 0, 0, 0)','incoming text has no visible box edge');
+  assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).boxShadow),'none','incoming text has no tile shadow');
+  assert.equal(await outgoingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(219, 243, 236)','outgoing mint bubble remains intact');
+
   assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);
   const footer=page.locator('[data-message-id="sound"] .chat-message-foot');
   const filename=(await download.getAttribute('aria-label')).replace(/ 다운로드$/,'');
@@ -82,12 +88,15 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
   const placement=await page.locator('#conversationNew').evaluate(el=>{
-   const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),r=el.getBoundingClientRect(),send=document.querySelector('#conversationSend').getBoundingClientRect();
-   return{parent:el.parentElement.className,left:r.left,inputLeft:input.left,right:r.right,sendLeft:send.left,top:r.top,inputTop:input.top};
+   const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),compose=document.querySelector('.conversation-compose').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),r=el.getBoundingClientRect();
+   return{parent:el.parentElement.className,position:getComputedStyle(el).position,left:r.left,right:r.right,bottom:r.bottom,inputLeft:input.left,composeLeft:compose.left,dockTop:dock.top};
   });
-  assert.equal(placement.parent,'conversation-compose','latest arrow is in the composer action row');
-  assert.ok(placement.right<=placement.inputLeft+2&&placement.left<placement.inputLeft-1,'latest arrow sits before the input: '+JSON.stringify(placement));
-  assert.ok(Math.abs(placement.top-placement.inputTop)<=4,'latest arrow aligns with the composer: '+JSON.stringify(placement));assert.equal(await page.locator('#conversationNew').innerText(),'');
+  assert.equal(placement.parent,'conversation-compose','latest arrow remains in the composer');
+  assert.equal(placement.position,'absolute','latest arrow floats outside composer layout');
+  assert.ok(Math.abs(placement.left-placement.composeLeft)<1,'latest arrow uses the empty lane beside the chat column: '+JSON.stringify(placement));
+  assert.ok(Math.abs(placement.inputLeft-placement.composeLeft)<1,'latest arrow does not push the input field: '+JSON.stringify(placement));
+  assert.ok(placement.bottom<=placement.dockTop-4,'latest arrow occupies empty space above the dock: '+JSON.stringify(placement));
+  assert.equal(await page.locator('#conversationNew').innerText(),'');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'latest-jump-'+cfg.width+'.png')});
   const beforeHeight=await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height);await page.locator('#conversationNew').click();await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<3&&document.querySelector('#conversationNew').hidden);
   assert.equal(await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height),beforeHeight,'latest shortcut does not reserve another composer row');

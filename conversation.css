@@ -56,12 +56,12 @@ body.conversation-open #scrollTopBtn{bottom:calc(var(--conversation-height,50px)
 
 /* Keep replies within the editable conversation column, before send/settings. */
 body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pending{padding-inline-end:var(--conversation-actions-width,100px)}
-.chat-sound-bubble{width:420px;max-width:min(94%,680px)}
+.chat-sound-bubble{width:840px;max-width:min(94%,840px)}
 .chat-audio-player{width:100%;min-width:0;color:var(--text,#193e34)}
 .chat-audio-player [hidden]{display:none!important}
 .chat-audio-controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
 .chat-audio-play,.chat-audio-mute{display:grid;place-items:center;flex-shrink:0;padding:6px;border:0;border-radius:50%;color:#286a59;background:transparent;cursor:pointer}
-/* The Replay play-button visual family, scoped to chat only. No Replay CSS/JS changes. */
+/* Channel-style play/pause toggle, scoped to chat only. Channel CSS/JS stays untouched. */
 .chat-audio-play{width:40px;height:40px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.24);transition:background-color .14s,border-color .14s,transform .09s}
 .chat-audio-play:hover{background:#24463d;border-color:#ffffff70;box-shadow:0 5px 16px rgba(0,0,0,.24)}
 .chat-audio-play:active{background:#102f28;transform:translateY(1px)}

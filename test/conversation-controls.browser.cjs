@@ -62,7 +62,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const play=await bubble.locator('.chat-audio-play').evaluate(el=>({size:el.getBoundingClientRect().width,background:getComputedStyle(el).backgroundColor,glyph:el.querySelector('path')?.getAttribute('d')}));
   assert.ok(play.size>=39&&play.size<=41,'Replay-family play button dimensions');
   assert.equal(play.background,'rgba(0, 0, 0, 0.72)','Replay-family play surface');
-  assert.equal(play.glyph,'M8 5v14l11-7z','Replay play icon reused without changing Replay code');
+  assert.equal(play.glyph,'m8 5 11 7-11 7z','Channel play icon reused without changing Channel code');
   const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,background:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
   assert.equal(appearance.position,'relative');
   assert.equal(appearance.borderRadius,'50%');

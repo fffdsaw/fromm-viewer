@@ -158,7 +158,7 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 /* Fromm Viewer message footer layout: a single timestamp convention for
    text, stickers, media and voice without disturbing bubble interaction. */
 #timeline .chat-message-frame{display:flex;flex-direction:column;align-items:stretch;width:fit-content;max-width:min(76%,680px);min-width:0}
-#timeline .chat-message-frame:has(>.chat-sound-bubble){max-width:min(94%,840px)}
+#timeline .chat-message-frame:has(>.chat-sound-bubble){width:min(840px,94%);max-width:min(94%,840px)}
 #timeline .chat-message-frame>.bubble{box-sizing:border-box;max-width:100%;width:100%;min-width:0}
 #timeline .msg.me .chat-message-frame{margin-inline-start:auto}
 #timeline .chat-message-foot{display:flex;align-items:baseline;justify-content:flex-end;gap:10px;min-height:18px;padding:3px 4px 0;font-size:11px;line-height:1.4;color:var(--muted,#4c6570)}

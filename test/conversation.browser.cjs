@@ -98,6 +98,8 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(index=>document.querySelectorAll('#rooms .room')[index].click(),index);
     const expected=index===0?'host-a':'host-b';
     await page.waitForFunction(expected=>state.room?.hostChatRoomId===expected&&state.chatHistoryComplete&&!state.chatAutoTopPending,expected);
+    await page.waitForFunction(expectedCount=>state.chatMessages.length>=expectedCount,data[expected].length);
+    assert.ok(await page.evaluate(()=>state.infiniteList.length>=state.chatMessages.length),'switching artists cannot truncate the full chat list during live sync');
     await page.waitForFunction(()=>{
      const list=filteredMessages(),tail=[...document.querySelectorAll('#timeline .msg')].at(-1);
      return list.length>0&&tail?.dataset.messageId===messageStableKey(list.at(-1));

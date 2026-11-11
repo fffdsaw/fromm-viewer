@@ -7010,15 +7010,25 @@ function restoreFullChatCache(){
   const cached = state.chatCache.get(chatCacheKey());
   if(!cached?.length) return false;
 
-  state.chatMessages = cached;
+  // The hot paging cache may contain only a few recent rows while the
+  // full chat cache retains all history. Feed merges must use the same
+  // canonical full set, or they can overwrite chatMessages with a slice.
+  const byKey = new Map();
+  for(const m of cached) byKey.set(messageStableKey(m),m);
+  for(const m of state.messages) byKey.set(messageStableKey(m),m);
+  const complete = [...byKey.values()].sort((a,b)=>compareMessages(a,b,"asc"));
+  state.messages = complete;
+  state.chatMessages = complete;
+  state.chatCache.set(chatCacheKey(),complete);
+  state.seenMessageKeys = new Set(complete.map(m=>String(m.messageId || `${m.createdAt}|${m.type}|${m.content}`)));
+  state.hasMoreMessages = false;
   state.chatHistoryComplete = true;
   state.chatHistoryLoading = false;
-  state.chatHistoryProgress = cached.length;
+  state.chatHistoryProgress = complete.length;
   buildMediaSequences();
   renderDateCalendar();
   return true;
 }
-
 async function ensureFullChatHistory(){
   if(!state.room) return false;
   if(state.chatHistoryComplete) return true;

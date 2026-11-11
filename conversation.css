@@ -114,6 +114,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  box-shadow:none!important;
  font-size:0;line-height:1;text-decoration:none;cursor:pointer
 }
+/* Let the Liquid Glass lens sample the mint bubble under this dark toggle. */
+.pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download.glass-control{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
  background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
 }

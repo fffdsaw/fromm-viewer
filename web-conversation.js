@@ -55,7 +55,8 @@
   const show=away&&!(emotePanel&&!emotePanel.hidden);
   if(show){
    clearTimeout(latestHideTimer);latestHideTimer=0;
-   if(newButton.hidden){
+   const entering=newButton.hidden||newButton.classList.contains('conversation-latest-leaving');
+   if(entering){
     newButton.hidden=false;newButton.classList.remove('conversation-latest-leaving');newButton.classList.add('conversation-latest-entering');
     clearTimeout(latestEnterTimer);latestEnterTimer=setTimeout(()=>{latestEnterTimer=0;newButton?.classList.remove('conversation-latest-entering');},540);
    }

@@ -89,13 +89,18 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
   const placement=await page.locator('#conversationNew').evaluate(el=>{
    const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),compose=document.querySelector('.conversation-compose').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),r=el.getBoundingClientRect();
-   return{parent:el.parentElement.className,position:getComputedStyle(el).position,left:r.left,right:r.right,bottom:r.bottom,inputLeft:input.left,composeLeft:compose.left,dockTop:dock.top};
+   return{parent:el.parentElement.className,position:getComputedStyle(el).position,left:r.left,right:r.right,top:r.top,bottom:r.bottom,inputLeft:input.left,composeLeft:compose.left,inputCenter:input.top+input.height/2,buttonCenter:r.top+r.height/2,dockLeft:dock.left,dockTop:dock.top,dockBottom:dock.bottom,dockBackground:getComputedStyle(document.querySelector('#conversationDock')).backgroundColor};
   });
-  assert.equal(placement.parent,'conversation-compose','latest arrow remains in the composer');
-  assert.equal(placement.position,'absolute','latest arrow floats outside composer layout');
-  assert.ok(Math.abs(placement.left-placement.composeLeft)<1,'latest arrow uses the empty lane beside the chat column: '+JSON.stringify(placement));
+  assert.equal(placement.parent,'conversation-compose','latest arrow remains attached to the conversation dock');
+  assert.equal(placement.position,'absolute','latest arrow does not participate in composer layout');
   assert.ok(Math.abs(placement.inputLeft-placement.composeLeft)<1,'latest arrow does not push the input field: '+JSON.stringify(placement));
-  assert.ok(placement.bottom<=placement.dockTop-4,'latest arrow occupies empty space above the dock: '+JSON.stringify(placement));
+  assert.equal(placement.dockBackground,'rgba(0, 0, 0, 0)','composer dock has no white backing panel');
+  if(cfg.width>850){
+   assert.ok(placement.right<=placement.dockLeft-4,'desktop arrow sits in the left gutter: '+JSON.stringify(placement));
+   assert.ok(Math.abs(placement.buttonCenter-placement.inputCenter)<6,'desktop arrow aligns with the composer without taking its space: '+JSON.stringify(placement));
+  }else{
+   assert.ok(placement.bottom<=placement.dockTop-4,'compact arrow floats above the dock: '+JSON.stringify(placement));
+  }
   assert.equal(await page.locator('#conversationNew').innerText(),'');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'latest-jump-'+cfg.width+'.png')});
   const beforeHeight=await page.locator('#conversationDock').evaluate(e=>e.getBoundingClientRect().height);await page.locator('#conversationNew').click();await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<3&&document.querySelector('#conversationNew').hidden);

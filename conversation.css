@@ -1,6 +1,6 @@
 /* Compact LIVE-style composer; reception and storage stay in the background. */
 #conversationDock [hidden],#conversationDock[hidden]{display:none!important}
-#conversationDock{position:fixed;left:var(--conversation-left,12px);right:var(--conversation-right,12px);bottom:var(--conversation-keyboard,0px);z-index:65;padding:8px 0 max(8px,env(safe-area-inset-bottom));border:0;border-radius:0;background:#f0faf7;color:var(--text,#172e36);box-shadow:none;font:13px system-ui,sans-serif;box-sizing:border-box}
+#conversationDock{position:fixed;left:var(--conversation-left,12px);right:var(--conversation-right,12px);bottom:var(--conversation-keyboard,0px);z-index:65;padding:8px 0 max(8px,env(safe-area-inset-bottom));border:0;border-radius:0;background:transparent;color:var(--text,#172e36);box-shadow:none;font:13px system-ui,sans-serif;box-sizing:border-box}
 .conversation-meta{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:6px}
 .conversation-meta .btn{font:inherit;font-size:12px;min-height:24px;padding:3px 7px;white-space:nowrap}
 #conversationStatus{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--muted,#4c6570)}
@@ -169,8 +169,9 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .chat-sound-bubble>.meta{min-height:0!important;padding-inline-end:0!important}
 #timeline .chat-sound-bubble .media-actions{min-height:0}
 @media(max-width:850px){#timeline .chat-message-frame{max-width:94%}}
-/* Float the latest arrow above the dock so it does not take space from the composer. */
-#conversationDock #conversationNew{position:absolute;left:0;right:auto;top:auto;bottom:calc(100% + 6px);flex:none;width:34px;height:34px;margin:0;z-index:66}
+/* Keep latest navigation outside the composer row, in the chat's left gutter. */
+#conversationDock #conversationNew{position:absolute;left:-40px;right:auto;top:auto;bottom:6px;flex:none;width:34px;height:34px;margin:0;z-index:66}
+@media(max-width:850px){#conversationDock #conversationNew{left:0;bottom:calc(100% + 6px)}}
 #conversationDock #conversationNew[hidden]{display:none!important}
 #conversationDock .conversation-compose{min-width:0}
 @media(forced-colors:active){#timeline .chat-message-foot{color:CanvasText}}

@@ -107,7 +107,14 @@ async function selectionSize(page) {
         await page.evaluate(filter => {state.selected.clear(); state.selectionAnchor = null; state.filter = filter; syncLiveToolbarControls(); render(); scrollTo(0, 0);}, filter);
         const selectable = page.locator('[data-download-selection-kind="media"]').first();
         await selectable.waitFor();
-        await (filter === 'all' ? page.locator('.chat-message-frame:has([data-download-selection-kind="media"]) .chat-message-filename').first() : selectable.locator('.card-title')).click();
+        if(filter === 'all'){
+          // Visible filenames were deliberately removed from chat media.
+          // Tap the media surface; selection is debounced to allow double-tap preview.
+          await selectable.click({position:{x:16,y:16}});
+          await page.waitForFunction(()=>state.selected.size===1);
+        }else{
+          await selectable.locator('.card-title').click();
+        }
         assert.equal(await selectionSize(page), 1, filter);
         if (filter === 'all') {
           assert.equal(await page.locator('[data-message-id="text"] [data-download-selection-key]').count(), 0);

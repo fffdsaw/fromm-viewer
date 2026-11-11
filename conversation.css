@@ -63,9 +63,9 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-play,.chat-audio-mute{display:grid;place-items:center;flex-shrink:0;padding:6px;border:0;border-radius:50%;color:#286a59;background:transparent;cursor:pointer}
 /* Channel-style play/pause toggle, scoped to chat only. Channel CSS/JS stays untouched. */
 .chat-audio-play{width:40px;height:40px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.24);transition:background-color .14s,border-color .14s,transform .09s}
-.chat-audio-play:hover{background:#24463d;border-color:#ffffff70;box-shadow:0 5px 16px rgba(0,0,0,.24)}
+.chat-audio-play:hover{background:rgba(28,34,44,.94);border-color:rgba(255,255,255,.3);box-shadow:0 5px 16px rgba(0,0,0,.24)}
 .chat-audio-play:active{background:#102f28;transform:translateY(1px)}
-.chat-audio-play[data-playing="true"]{border-color:#8bcdb6}
+
 .chat-audio-play svg{width:24px;height:24px}
 @media(prefers-reduced-motion:reduce){.chat-audio-play{transition:none}}
 .chat-audio-mute{width:28px;height:28px;color:var(--muted,#48675e)}
@@ -108,23 +108,21 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  width:var(--thumb-download-size,40px)!important;height:var(--thumb-download-size,40px)!important;
  margin:0;padding:0!important;display:grid;place-items:center;
  border-radius:50%!important;
- background:linear-gradient(150deg,#ffffff94,#e7f6ef50)!important;
- border:1px solid #ffffffc2!important;
- color:#275d51!important;
- box-shadow:inset 0 1px 0 #ffffffb8,0 2px 9px #1b594325!important;
- -webkit-backdrop-filter:blur(12px) saturate(1.2);
- backdrop-filter:blur(12px) saturate(1.2);
+ background:rgba(0,0,0,.72)!important;
+ border:1px solid rgba(255,255,255,.14)!important;
+ color:#fff!important;
+ box-shadow:none!important;
  font-size:0;line-height:1;text-decoration:none;cursor:pointer
 }
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
- background:linear-gradient(150deg,#ffffffc7,#e5f6ed77)!important
+ background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
 }
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:focus-visible{
  outline:2px solid #147e69;outline-offset:3px
 }
 #timeline .chat-sound-bubble .chat-sound-download>.download-feedback-icon{
  width:100%;height:100%;margin:0!important;
- --download-ring-color:#328a75;filter:none
+ --download-ring-color:#9df9da;filter:drop-shadow(0 1px 1px #12392eaa)
 }
 #timeline .chat-sound-bubble .chat-sound-download>.download-feedback-label{
  position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);

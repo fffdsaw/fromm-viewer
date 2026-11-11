@@ -258,19 +258,36 @@
     try{localStorage.setItem(lastRoomKey(c.storageAccount),JSON.stringify({roomId:c.roomId,host:c.host}));}catch{}
     const cached=restore?await store.read(c.storageAccount,c.host):(await store.clearRoom(c.storageAccount,c.host),null);if(!roomCurrent(c))return;
     if(cached&&Array.isArray(cached.messages)){
-     const messages=cached.messages.filter(m=>core.messageKey(m)&&core.messageTime(m)&&(!m.hostChatRoomId||String(m.hostChatRoomId)===c.host)).sort((a,b)=>compareMessages(a,b,'asc'));
-     // A hot in-memory room is already newer than a disk snapshot.
-     if((messages.length||(cached.meta.complete===true&&cached.meta.count===0))&&!state.messages.length){
-      const earliest=core.messageTime(messages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=messages.length,complete=cached.meta.complete===true&&validCount;
-      restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!complete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500});
-      state.chatMessages=state.messages;state.chatHistoryComplete=complete;state.chatHistoryProgress=messages.length;
-      if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
+     const diskMessages=cached.messages.filter(m=>core.messageKey(m)&&core.messageTime(m)&&(!m.hostChatRoomId||String(m.hostChatRoomId)===c.host)).sort((a,b)=>compareMessages(a,b,'asc'));
+     const merged=new Map(diskMessages.map(message=>[core.messageKey(message),message]));
+     // A hot room can be partial, but it can still contain newer edits/messages.
+     for(const message of state.messages){
+      if(!core.messageKey(message)||!core.messageTime(message)||(message.hostChatRoomId&&String(message.hostChatRoomId)!==c.host))continue;
+      merged.set(core.messageKey(message),message);
+     }
+     const messages=[...merged.values()].sort((a,b)=>compareMessages(a,b,'asc'));
+     // Validate completeness against the disk snapshot itself; hot rows cannot
+     // make an incomplete IndexedDB snapshot appear complete.
+     if(diskMessages.length||(cached.meta.complete===true&&cached.meta.count===0)){
+      const earliest=core.messageTime(diskMessages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=diskMessages.length,diskComplete=cached.meta.complete===true&&validCount,hotComplete=state.chatHistoryComplete===true;
+      if(hotComplete){
+       const hotKeys=new Set(state.messages.map(core.messageKey));
+       const diskOnly=diskMessages.filter(message=>!hotKeys.has(core.messageKey(message)));
+       if(diskOnly.length)await merge(c,diskOnly);
+       state.chatMessages=state.messages;state.chatHistoryProgress=state.messages.length;state.chatCache.set(chatCacheKey(),state.messages);
+      }else{
+       restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!diskComplete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500});
+       state.chatMessages=state.messages;state.chatHistoryComplete=diskComplete;state.chatHistoryProgress=messages.length;
+       if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
+      }
       c.cached=true;c.saved=true;c.syncedUntil=Number.isFinite(cached.meta.syncedUntil)&&cached.meta.syncedUntil>0&&cached.meta.syncedUntil<Date.now()+60000?cached.meta.syncedUntil:newest(messages);
-      for(const m of messages)c.persisted.set(core.messageKey(m),m);
+      for(const message of diskMessages)c.persisted.set(core.messageKey(message),message);
       if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
       const view=remembered?.lastView||cached.meta.view;
       if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(restoreViewOnEntry&&!view.latest)c.restoreView=view;}
-      input.value=c.draft;buildMediaSequences();render();
+      input.value=c.draft;
+      if(!hotComplete){buildMediaSequences();render();}
+      if(state.messages.some(message=>c.persisted.get(core.messageKey(message))!==message))saveSoon();
      }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
    }catch{if(roomCurrent(c)){c.storageError=true;if(!c.storageAccount)c.enabled=false;}}

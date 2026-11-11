@@ -24,7 +24,7 @@ function create(el,relative){
  const face=document.createElement('span');
  face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
- if(el.matches('.card-download,.replay-download,.chat-media-download,.replay-play'))el.classList.add('glass-on-image');
+ if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
 }

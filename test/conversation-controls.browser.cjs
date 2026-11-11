@@ -6,6 +6,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const wav=Buffer.alloc(1644);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(1600,40);
  try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
+  await page.evaluate(()=>window.FrommGlassSettings?.set({enabled:false},{immediate:true,persist:false}));
+  await page.waitForFunction(()=>!document.documentElement.classList.contains('pc-control-glass'));
+
   let echo=false,lastPost=null;
   const room={id:'fan-room',hostChatRoomId:'host-room',host:{nick:'테스트 아티스트'}},rows=Array.from({length:1200},(_,i)=>({messageId:'m'+i,userType:'star',type:'text',content:'이전 대화 '+i,createdAt:Date.now()-1300000+i*1000}));
   rows.push({messageId:'own-long',userType:'fan',type:'text',content:'가나다 abcdefghij '.repeat(30),createdAt:Date.now()-2000});

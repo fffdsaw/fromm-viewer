@@ -221,10 +221,10 @@
  }
  function persist({force=false,metadataOnly=false}={}){
   const c=context;if(!roomCurrent(c)||!c.storageAccount||!c.enabled||c.cacheEpoch!==epoch(c.storageAccount,c.host)||c.restoring||c.storageError&&!force)return Promise.resolve(false);
-  const rows=metadataOnly?[]:state.messages.filter(m=>core.messageKey(m)&&c.persisted.get(core.messageKey(m))!==m);
+  const rows=metadataOnly?[]:state.messages.filter(m=>core.messageKey(m)&&(c.persisted.get(core.messageKey(m))!==m||c.serverConfirmedIds.has(core.messageKey(m))));
   const meta=copyMeta(c);c.saving=true;paint();
-  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host)}).then(ok=>{
-   if(ok){for(const m of rows)c.persisted.set(core.messageKey(m),m);c.saved=true;c.storageError=false;}
+  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host),serverConfirmedIds:rows.filter(m=>c.serverConfirmedIds.has(core.messageKey(m))).map(core.messageKey)}).then(ok=>{
+   if(ok){for(const m of rows){const id=core.messageKey(m);c.persisted.set(id,m);c.serverConfirmedIds.delete(id);}c.saved=true;c.storageError=false;}
    return ok;
   }).catch(()=>{c.storageError=true;return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
  }
@@ -240,7 +240,7 @@
   const auth=currentAuth(),host=String(room?.hostChatRoomId||'');
   if(!host||!auth.token||!auth.uuid){context=null;restoreJob=null;paint();return;}
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
-   owner:new AbortController(),persisted:new Map(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
+   owner:new AbortController(),persisted:new Map(),serverConfirmedIds:new Set(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
    phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
   // Switching artists never replays a previous reading position, even from IndexedDB.
@@ -273,7 +273,7 @@
       if(hotComplete){
        const hotKeys=new Set(state.messages.map(core.messageKey));
        const diskOnly=diskMessages.filter(message=>!hotKeys.has(core.messageKey(message)));
-       if(diskOnly.length)await merge(c,diskOnly);
+       if(diskOnly.length)await merge(c,diskOnly,{source:'cache'});
        state.chatMessages=state.messages;state.chatHistoryProgress=state.messages.length;state.chatCache.set(chatCacheKey(),state.messages);
       }else{
        restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!diskComplete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500});
@@ -358,25 +358,26 @@
   else state.infiniteList=next;
   paint();
  }
- async function merge(c,rows){
+ async function merge(c,rows,{source='unverified'}={}){
   if(!roomCurrent(c))return;
-  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false;
+  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false,rechecked=false;
   for(let row of rows){
    const key=core.messageKey(row);if(!key||!core.messageTime(row)||(row.hostChatRoomId&&String(row.hostChatRoomId)!==c.host))continue;
+   if(source==='server')c.serverConfirmedIds.add(key);
    const previous=byId.get(key),emoticonId=String(row.emoticonItemId??'');
    const known=c.emoteItems.get(emoticonId)||[c.outbox,...c.accepted].map(value=>value?.emoticon).find(item=>item?.id===emoticonId);
    const image=known?.imageUrl||(String(previous?.emoticonItemId||'')===emoticonId?previous?.emoticonItem?.imageUrl:'');
    if(emoticonId&&image&&!resolveEmoticonUrl(row))row={...row,emoticonItem:{imageUrl:image}};
    if(c.outbox&&row.code===c.outbox.code){clearSentEmoticon(c,c.outbox.emoticon);if(input.value.trim()===c.outbox.content){input.value='';c.draft='';}c.outbox=null;reconciled=true;}
    const accepted=c.accepted.filter(message=>message.code!==row.code);if(accepted.length!==c.accepted.length){c.accepted=accepted;reconciled=true;}
-   if(previous&&JSON.stringify(previous)===JSON.stringify(row))continue;
+   if(previous&&JSON.stringify(previous)===JSON.stringify(row)){if(source==='server')rechecked=true;continue;}
    // Replace only confirmed canonical records, never invent a successful send.
    if(previous){const index=state.messages.indexOf(previous);state.messages[index]=row;}
    else{state.messages.push(row);state.seenMessageKeys.add(key);}
    byId.set(key,row);changes.push(row);
   }
   if(reconciled)c.notice='';
-  if(!changes.length){if(reconciled){saveSoon();paint();}return;}
+  if(!changes.length){if(reconciled||rechecked){saveSoon();paint();}return;}
   state.messages.sort((a,b)=>compareMessages(a,b,'asc'));state.chatMessages=state.messages;chatMatchCache=null;
   state.chatCache.set(chatCacheKey(),state.chatMessages);saveRoomCache();
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
@@ -424,7 +425,7 @@
   if(c.outbox&&codes.has(c.outbox.code))c.outbox=null;c.accepted=c.accepted.filter(message=>!codes.has(message.code));
   c.feed=core.createFeed({current:()=>viewing(c)&&complete(c),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
    requestPage:async({start,end,limit,signal})=>{if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));},
-   onMessages:rows=>merge(c,rows),onSynced:time=>{c.syncedUntil=time;saveSoon();},
+   onMessages:rows=>merge(c,rows,{source:'server'}),onSynced:time=>{c.syncedUntil=time;saveSoon();},
    onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&c.rules&&!c.sending&&!c.outbox)c.notice='';paint();}});
   c.feed.start();void connectPush(c);if(!c.rules)void getRules(c).catch(()=>{});
  }
@@ -475,7 +476,7 @@
    if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='';
    if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);
    const message=reply?.data?.message;
-   if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}]);
+   if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}],{source:'server'});
    c.feed?.poke();void persist({metadataOnly:true});
   }catch(error){
    if(!roomCurrent(c))return;

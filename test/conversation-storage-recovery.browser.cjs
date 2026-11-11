@@ -27,7 +27,7 @@ const makeRows=(prefix,count)=>Array.from({length:count},(_,i)=>({messageId:`${p
      }
      return nativePut.call(this,value,...args);
     };
-    const messages=Array.from({length:600},(_,i)=>({messageId:`interrupted-${i}`,userType:'star',type:'text',content:`interrupted ${i}`,createdAt:Date.now()+i}));
+    const messages=Array.from({length:600},(_,i)=>({messageId:priorComplete&&i===0?'old-complete':`interrupted-${i}`,userType:'star',type:'text',content:priorComplete&&i===0?'attempted overwrite':'interrupted '+i,createdAt:Date.now()+i}));
     window.__interruptedWrite=store.write('account-A','room-A',messages,{count:messages.length,complete:false,cursorEnd:null}).catch(error=>{window.__writeError=error.name;});
    },{name,priorComplete});
    const dialog=await dialogPromise;
@@ -56,8 +56,9 @@ const makeRows=(prefix,count)=>Array.from({length:count},(_,i)=>({messageId:`${p
   const preserved=await readFrom(page,'recovery-preserve-complete');
   assert.equal(preserved.meta.complete,true);
   assert.equal(preserved.meta.count,1);
-  assert.ok(preserved.messages.some(message=>message.messageId==='old-complete'));
-  assert.equal(preserved.messages.filter(message=>message.messageId.startsWith('interrupted-')).length,250);
+  assert.equal(preserved.messages.find(message=>message.messageId==='old-complete').content,'preserve me','an interrupted incomplete writer cannot overwrite a complete row');
+  assert.ok(preserved.conflicts.some(conflict=>conflict.messageId==='old-complete'&&conflict.candidates.some(candidate=>candidate.content==='attempted overwrite')),'the interrupted collision remains available for later review');
+  assert.equal(preserved.messages.filter(message=>message.messageId.startsWith('interrupted-')).length,249);
 
   // Separate tabs race a complete writer against a stale incomplete writer.
   const tabA=page,tabB=await ready(await context.newPage()),multi='recovery-multitab';

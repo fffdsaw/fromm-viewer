@@ -39,7 +39,25 @@
   }return c.lastView||null;
  }
  const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
+  conflictCandidateCount:c.conflictCandidateCount||0,conflictCandidateBytes:c.conflictCandidateBytes||0,
   syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
+ function rememberConflict(c,id,canonical,candidates=[],{pending=false,overflow=false}={}){
+  id=String(id||'');if(!id)return false;
+  const previous=c.conflicts.get(id),base=previous?.canonical||canonical||null,values=[...(previous?.candidates||[])];let changed=false,overflowed=!!(previous?.overflow||overflow),added=[];
+  for(const candidate of candidates){
+   if(!candidate||base&&core.sameMessage(base,candidate)||values.some(value=>core.sameMessage(value,candidate)))continue;
+   const bytes=core.conflictCandidateBytes(candidate),overLimit=values.length>=core.conflictCandidateLimits.perMessage||c.conflictCandidateBytes+c.pendingConflictCandidateBytes+c.volatileConflictCandidateBytes+bytes>core.conflictCandidateLimits.bytes;
+   if(overLimit){overflowed=true;c.conflictOverflowIds.add(id);changed=true;continue;}
+   values.push(candidate);added.push(candidate);c.pendingConflictCandidateBytes+=bytes;changed=true;
+  }
+  c.conflicts.set(id,{messageId:id,canonical:base,candidates:values,overflow:overflowed});
+  if(pending&&(added.length||overflowed&&!previous?.overflow)){
+   const pendingValue=c.pendingConflictCandidates.get(id)||{messageId:id,canonical:base,candidates:[],overflow:false};
+   for(const candidate of added)if(!pendingValue.candidates.some(value=>core.sameMessage(value,candidate)))pendingValue.candidates.push(candidate);
+   pendingValue.overflow=pendingValue.overflow||overflowed;c.pendingConflictCandidates.set(id,pendingValue);
+  }
+  return changed;
+ }
  function showLatest(c){
   if(!viewing(c))return;
   c.restoreView=null;pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
@@ -192,7 +210,9 @@
   dock.hidden=!show;document.body.classList.toggle('conversation-open',show);
   if(!show){closeEmoticons();document.querySelector('#conversationPending')?.remove();if(dialog?.open)dialog.close();return;}
   const labels={retry:'연결 재시도 중…',denied:'로그인·구독 권한을 확인해주세요.'};
-  const statusText=c.notice||labels[c.phase]||'';if(status.textContent!==statusText)status.textContent=statusText;
+  const conflictText=c.conflicts.size?`메시지 내용 충돌 ${c.conflicts.size}건 · 최신 여부 미확인`:'';
+  const overflowText=c.conflictOverflowIds.size?'일부 후보는 저장 한도에 도달해 보존되지 않았습니다.':'';
+  const statusText=[c.notice||labels[c.phase]||'',conflictText,overflowText].filter(Boolean).join(' · ');if(status.textContent!==statusText)status.textContent=statusText;
   status.hidden=!statusText;
   const max=c.rules?.max||450;count.textContent=`${input.value.length} / ${max}`;input.maxLength=max;
   resizeInput();input.disabled=c.denied;send.disabled=!!(c.sending||c.denied||!c.rules||!input.value.trim()&&!c.selectedEmoticon||input.value.length>max||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore);
@@ -221,12 +241,27 @@
  }
  function persist({force=false,metadataOnly=false}={}){
   const c=context;if(!roomCurrent(c)||!c.storageAccount||!c.enabled||c.cacheEpoch!==epoch(c.storageAccount,c.host)||c.restoring||c.storageError&&!force)return Promise.resolve(false);
-  const rows=metadataOnly?[]:state.messages.filter(m=>core.messageKey(m)&&(c.persisted.get(core.messageKey(m))!==m||c.serverConfirmedIds.has(core.messageKey(m))));
+  const rows=metadataOnly?[]:state.messages.filter(m=>core.messageKey(m)&&c.persisted.get(core.messageKey(m))!==m);
+  const conflictCandidates=metadataOnly?[]:[...c.pendingConflictCandidates.values()];
   const meta=copyMeta(c);c.saving=true;paint();
-  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host),serverConfirmedIds:rows.filter(m=>c.serverConfirmedIds.has(core.messageKey(m))).map(core.messageKey)}).then(ok=>{
-   if(ok){for(const m of rows){const id=core.messageKey(m);c.persisted.set(id,m);c.serverConfirmedIds.delete(id);}c.saved=true;c.storageError=false;}
+  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host),conflictCandidates,onConflictStatus:result=>{
+   if(!roomCurrent(c))return;c.conflictCandidateCount=result.conflictCandidateCount;c.conflictCandidateBytes=result.conflictCandidateBytes;
+   for(const id of result.conflictIds)if(!c.conflicts.has(id)){const canonical=c.persisted.get(id)||state.messages.find(message=>core.messageKey(message)===id)||null;rememberConflict(c,id,canonical,[]);}
+   for(const id of result.overflowIds){c.conflictOverflowIds.add(id);const conflict=c.conflicts.get(id);if(conflict)conflict.overflow=true;}
+   paint();
+  }}).then(ok=>{
+   if(ok){
+    for(const m of rows)c.persisted.set(core.messageKey(m),m);
+    for(const conflict of conflictCandidates){
+     const bytes=conflict.candidates.reduce((sum,message)=>sum+core.conflictCandidateBytes(message),0);
+     c.pendingConflictCandidateBytes=Math.max(0,c.pendingConflictCandidateBytes-bytes);
+     if(c.conflictOverflowIds.has(conflict.messageId))c.volatileConflictCandidateBytes+=bytes;
+     c.pendingConflictCandidates.delete(conflict.messageId);
+    }
+    c.saved=true;c.storageError=false;
+   }
    return ok;
-  }).catch(()=>{c.storageError=true;return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
+  }).catch(error=>{c.storageError=true;c.notice=error?.name==='QuotaExceededError'?'저장 공간이 부족해 대화 충돌 내용을 저장하지 못했습니다. 기존 캐시는 보존했습니다.':'대화 캐시 저장에 실패했습니다. 기존 캐시는 보존했습니다.';return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
  }
  function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),450);}
  function stop(c=context){
@@ -240,7 +275,7 @@
   const auth=currentAuth(),host=String(room?.hostChatRoomId||'');
   if(!host||!auth.token||!auth.uuid){context=null;restoreJob=null;paint();return;}
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
-   owner:new AbortController(),persisted:new Map(),serverConfirmedIds:new Set(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
+   owner:new AbortController(),persisted:new Map(),conflicts:new Map(),pendingConflictCandidates:new Map(),conflictOverflowIds:new Set(),conflictCandidateCount:0,conflictCandidateBytes:0,pendingConflictCandidateBytes:0,volatileConflictCandidateBytes:0,draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
    phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
   // Switching artists never replays a previous reading position, even from IndexedDB.
@@ -259,18 +294,38 @@
     const cached=restore?await store.read(c.storageAccount,c.host):(await store.clearRoom(c.storageAccount,c.host),null);if(!roomCurrent(c))return;
     if(cached&&Array.isArray(cached.messages)){
      const diskMessages=cached.messages.filter(m=>core.messageKey(m)&&core.messageTime(m)&&(!m.hostChatRoomId||String(m.hostChatRoomId)===c.host)).sort((a,b)=>compareMessages(a,b,'asc'));
-     const merged=new Map(diskMessages.map(message=>[core.messageKey(message),message]));
-     // A hot room can be partial, but it can still contain newer edits/messages.
+     for(const conflict of cached.conflicts||[]){
+      c.conflicts.set(String(conflict.messageId),{...conflict,candidates:Array.isArray(conflict.candidates)?conflict.candidates:[]});
+      if(conflict.overflow)c.conflictOverflowIds.add(String(conflict.messageId));
+     }
+     c.conflictCandidateCount=Number(cached.meta.conflictCandidateCount)||0;c.conflictCandidateBytes=Number(cached.meta.conflictCandidateBytes)||0;
+     const hotComplete=state.chatHistoryComplete===true,diskById=new Map(diskMessages.map(message=>[core.messageKey(message),message])),merged=new Map(diskById),hotCanonicalUpdates=[];
+     // Keep the persisted value as the storage canonical; preserve any hot
+     // variant as an unresolved candidate without replacing the rendered row.
      for(const message of state.messages){
       if(!core.messageKey(message)||!core.messageTime(message)||(message.hostChatRoomId&&String(message.hostChatRoomId)!==c.host))continue;
+      const disk=diskById.get(core.messageKey(message));
+      if(disk&&!core.sameMessage(disk,message)){
+       rememberConflict(c,core.messageKey(message),disk,[message],{pending:true});
+       if(hotComplete)hotCanonicalUpdates.push(disk);
+       continue;
+      }
       merged.set(core.messageKey(message),message);
      }
      const messages=[...merged.values()].sort((a,b)=>compareMessages(a,b,'asc'));
      // Validate completeness against the disk snapshot itself; hot rows cannot
      // make an incomplete IndexedDB snapshot appear complete.
      if(diskMessages.length||(cached.meta.complete===true&&cached.meta.count===0)){
-      const earliest=core.messageTime(diskMessages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=diskMessages.length,diskComplete=cached.meta.complete===true&&validCount,hotComplete=state.chatHistoryComplete===true;
+      const earliest=core.messageTime(diskMessages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=diskMessages.length,diskComplete=cached.meta.complete===true&&validCount;
       if(hotComplete){
+       if(hotCanonicalUpdates.length){
+        const oldList=state.infiniteList,follow=atLatest();
+        for(const message of hotCanonicalUpdates){const index=state.messages.findIndex(value=>core.messageKey(value)===core.messageKey(message));if(index>=0)state.messages[index]=message;}
+        state.chatMessages=state.messages;state.chatCache.set(chatCacheKey(),state.messages);saveRoomCache();chatMatchCache=null;
+        state.seenMessageKeys=new Set(state.messages.map(message=>String(message.messageId||`${message.createdAt}|${message.type}|${message.content}`)));
+        if(hotCanonicalUpdates.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
+        updateView(oldList,hotCanonicalUpdates,follow);renderCountsOnly();updateChatSearchCount();renderDateCalendar();
+       }
        const hotKeys=new Set(state.messages.map(core.messageKey));
        const diskOnly=diskMessages.filter(message=>!hotKeys.has(core.messageKey(message)));
        if(diskOnly.length)await merge(c,diskOnly,{source:'cache'});
@@ -287,7 +342,7 @@
       if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(restoreViewOnEntry&&!view.latest)c.restoreView=view;}
       input.value=c.draft;
       if(!hotComplete){buildMediaSequences();render();}
-      if(state.messages.some(message=>c.persisted.get(core.messageKey(message))!==message))saveSoon();
+      if(c.pendingConflictCandidates.size||state.messages.some(message=>c.persisted.get(core.messageKey(message))!==message))saveSoon();
      }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
    }catch{if(roomCurrent(c)){c.storageError=true;if(!c.storageAccount)c.enabled=false;}}
@@ -319,7 +374,7 @@
   const c=context,next=filteredMessages(),timeline=document.querySelector('#timeline');
   const nodes=new Map([...timeline.querySelectorAll('.msg')].map(el=>[el.dataset.messageId,el]));
   const oldKeys=new Set(oldList.map(messageStableKey));
-  const anchor=[...nodes.values()].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8),anchorTop=anchor?.getBoundingClientRect().top;
+  const anchor=[...nodes.values()].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8),anchorId=anchor?.dataset.messageId,anchorTop=anchor?.getBoundingClientRect().top;
   const first=timeline.querySelector('.msg'),last=[...nodes.values()].at(-1);
   const oldEnd=last?oldList.findIndex(m=>messageStableKey(m)===last.dataset.messageId):-1;
   const start=first?next.findIndex(m=>messageStableKey(m)===first.dataset.messageId):-1;
@@ -349,35 +404,40 @@
     else requestAnimationFrame(()=>{if(viewing(c))window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
    }else pendingCount+=changes.filter(m=>!oldKeys.has(messageStableKey(m))).length;
    for(const message of changes){const node=nodes.get(messageStableKey(message));
-    if(node?.isConnected&&normType(message.type)==='text'){const replacement=renderMessage(message);node.replaceChildren(...replacement.childNodes);node.className=replacement.className;}
+    if(node?.isConnected){const activeMedia=[...node.querySelectorAll('audio,video')].some(media=>!media.paused&&!media.ended);if(activeMedia)continue;const replacement=renderMessage(message);node.replaceWith(replacement);nodes.set(messageStableKey(message),replacement);}
    }
    state.chatTopRenderObserver?.disconnect();state.chatRenderObserver?.disconnect();
    timeline.querySelectorAll('.chat-prepend-sentinel,.chat-render-sentinel').forEach(n=>n.remove());armChatTopRenderObserver();armChatRenderObserver();
-   if(!follow&&anchor?.isConnected){const delta=anchor.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});}
+   const stableAnchor=anchor?.isConnected?anchor:anchorId?timeline.querySelector(`.msg[data-message-id="${CSS.escape(anchorId)}"]`):null;
+   if(!follow&&stableAnchor){const delta=stableAnchor.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});}
   }else if(!first&&next.length){state.chatAutoTopPending=true;render();}
   else state.infiniteList=next;
   paint();
  }
  async function merge(c,rows,{source='unverified'}={}){
   if(!roomCurrent(c))return;
-  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false,rechecked=false;
+  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false,conflicted=false;
   for(let row of rows){
    const key=core.messageKey(row);if(!key||!core.messageTime(row)||(row.hostChatRoomId&&String(row.hostChatRoomId)!==c.host))continue;
-   if(source==='server')c.serverConfirmedIds.add(key);
    const previous=byId.get(key),emoticonId=String(row.emoticonItemId??'');
    const known=c.emoteItems.get(emoticonId)||[c.outbox,...c.accepted].map(value=>value?.emoticon).find(item=>item?.id===emoticonId);
    const image=known?.imageUrl||(String(previous?.emoticonItemId||'')===emoticonId?previous?.emoticonItem?.imageUrl:'');
    if(emoticonId&&image&&!resolveEmoticonUrl(row))row={...row,emoticonItem:{imageUrl:image}};
    if(c.outbox&&row.code===c.outbox.code){clearSentEmoticon(c,c.outbox.emoticon);if(input.value.trim()===c.outbox.content){input.value='';c.draft='';}c.outbox=null;reconciled=true;}
    const accepted=c.accepted.filter(message=>message.code!==row.code);if(accepted.length!==c.accepted.length){c.accepted=accepted;reconciled=true;}
-   if(previous&&JSON.stringify(previous)===JSON.stringify(row)){if(source==='server')rechecked=true;continue;}
-   // Replace only confirmed canonical records, never invent a successful send.
-   if(previous){const index=state.messages.indexOf(previous);state.messages[index]=row;}
+   if(previous&&core.sameMessage(previous,row))continue;
+   if(previous){
+    // A repeated server response is not revision proof. Keep the row already
+    // displayed and store every distinct version as an unresolved candidate.
+    const canonical=c.conflicts.get(key)?.canonical||c.persisted.get(key)||previous;
+    conflicted=rememberConflict(c,key,canonical,[previous,row],{pending:true})||conflicted;
+    continue;
+   }
    else{state.messages.push(row);state.seenMessageKeys.add(key);}
    byId.set(key,row);changes.push(row);
   }
   if(reconciled)c.notice='';
-  if(!changes.length){if(reconciled||rechecked){saveSoon();paint();}return;}
+  if(!changes.length){if(reconciled||conflicted){if(conflicted)saveSoon();paint();}return;}
   state.messages.sort((a,b)=>compareMessages(a,b,'asc'));state.chatMessages=state.messages;chatMatchCache=null;
   state.chatCache.set(chatCacheKey(),state.chatMessages);saveRoomCache();
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));

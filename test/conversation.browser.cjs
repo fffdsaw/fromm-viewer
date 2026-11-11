@@ -102,7 +102,15 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
      const list=filteredMessages(),tail=[...document.querySelectorAll('#timeline .msg')].at(-1);
      return list.length>0&&tail?.dataset.messageId===messageStableKey(list.at(-1));
     });
-    await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<5);
+    try{
+     await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<5,null,{timeout:7000});
+    }catch(error){
+     const diagnostics=await page.evaluate(()=>{
+      const el=document.scrollingElement,tl=document.querySelector('#timeline'),tail=tl?.querySelector('.msg:last-of-type'),dock=document.querySelector('#conversationDock');
+      return {room:state.room?.hostChatRoomId,filter:state.filter,complete:state.chatHistoryComplete,autoTopPending:state.chatAutoTopPending,windowStart:state.chatWindowStart,rendered:state.infiniteRendered,total:state.infiniteList.length,top:scrollY,innerHeight,documentHeight:document.documentElement.scrollHeight,bodyHeight:document.body.scrollHeight,scrollingHeight:el?.scrollHeight,scrollingTop:el?.scrollTop,scrollingClientHeight:el?.clientHeight,tail:tail?.getBoundingClientRect().toJSON(),timeline:tl?.getBoundingClientRect().toJSON(),dock:dock?.getBoundingClientRect().toJSON()};
+     });
+     throw new Error('newest chat bottom alignment did not settle: '+JSON.stringify(diagnostics),{cause:error});
+    }
    };
    await changeArtist(1);
    // Save a deliberately old location in artist B, then leave for A.

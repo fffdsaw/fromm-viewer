@@ -198,8 +198,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
    other controls, with a spring lens materialize/dematerialize transition. */
 @keyframes conversationLatestMaterialize{0%{transform:scale(.58);opacity:.2;filter:blur(4px)}68%{transform:scale(1.12);opacity:1;filter:blur(0)}84%{transform:scale(.96)}100%{transform:scale(1);opacity:1;filter:none}}
 @keyframes conversationLatestDematerialize{0%{transform:scale(1);opacity:1;filter:none}100%{transform:scale(.66);opacity:0;filter:blur(3px)}}
-#conversationDock #conversationNew.conversation-latest-entering{animation:conversationLatestMaterialize 520ms cubic-bezier(.2,1.45,.38,1) both}
-#conversationDock #conversationNew.conversation-latest-leaving{animation:conversationLatestDematerialize 170ms cubic-bezier(.4,0,1,1) both}
+#conversationDock #conversationNew.conversation-latest-entering>svg{animation:conversationLatestMaterialize 520ms cubic-bezier(.2,1.45,.38,1) both}
+#conversationDock #conversationNew.conversation-latest-leaving>svg{animation:conversationLatestDematerialize 170ms cubic-bezier(.4,0,1,1) both}
 #conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface{animation:conversationLatestMaterialize 520ms cubic-bezier(.2,1.45,.38,1) both}
 #conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation:conversationLatestDematerialize 170ms cubic-bezier(.4,0,1,1) both}
-@media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.conversation-latest-entering,#conversationDock #conversationNew.conversation-latest-leaving,#conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface,#conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation-duration:1ms}}
+@media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.conversation-latest-entering>svg,#conversationDock #conversationNew.conversation-latest-leaving>svg,#conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface,#conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation-duration:1ms}}

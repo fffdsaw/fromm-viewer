@@ -1,7 +1,7 @@
 name: Conversation receive send and persistence
 on:
   pull_request:
-    paths: ['index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/rail-glyph-lens.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
+    paths: ['index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
 permissions:
   contents: read
 jobs:
@@ -49,6 +49,7 @@ jobs:
           node test/conversation-controls.browser.cjs
           node test/conversation-send-focus.browser.cjs
           node test/conversation-audio.browser.cjs
+          node test/conversation-unread-rail.browser.cjs
           node test/rail-glyph-lens.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()

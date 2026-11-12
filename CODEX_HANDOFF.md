@@ -11,12 +11,8 @@ Last reviewed: 2026-11-12 (Asia/Seoul)
 - PR: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open against `main`.
 - Latest verified `origin/main`: `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120).
 - The current branch merges that main through `d03a306`; the recovered four stabilization commits remain in ancestry: `b3b3c84`, `0e3760f`, `a61fa43`, `5f73e9a`.
-- Work commits before this handoff setup: `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
-- At the start of this task the branch was local-only at `214f500`, with no matching remote branch and no open PR.
-- The first push attempt failed because GitHub HTTPS credentials were unavailable. After the user completed GitHub CLI device authentication, `git push -u origin codex/timestamp-pagination` succeeded without force. The pushed branch contains the original recovered commits and all later commits.
-- Immediately after push, the remote branch SHA matched local `d565c349788e545dd8c8ed385b84fd5c91b061ec`. This SHA preceded the final PR-URL handoff update; verify the current SHA with `git rev-parse HEAD` and compare it to `git ls-remote origin refs/heads/codex/timestamp-pagination`.
-- PR #121 was created with the requested title; its initial head was `d565c349788e545dd8c8ed385b84fd5c91b061ec`. This document is being updated on that branch; after the update, push and verify the newer head and checks.
-- The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
+- Work commits include `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
+- The branch is pushed to `origin` and PR #121 is open with the requested title. Before this verification pass, the local and remote branch both pointed to `9e05a43be8509075e796180370db0e14846e93e4`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
 - The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - Do not merge this PR or deploy without the user's explicit approval.
 
@@ -38,19 +34,20 @@ Last reviewed: 2026-11-12 (Asia/Seoul)
 - `web-view-state.js`: view anchor and follow-latest preservation.
 - `conversation.css`: keep search/date/reply focus shadows visible on artist text cards.
 - `test/`: progressive loading, cache, recovery, conflict, pagination, search/accessibility, and synthetic scale regressions.
-- `.github/workflows/conversation.yml`: runs the new browser checks and pins Playwright/axe-core tooling.
+- `.github/workflows/conversation.yml`: runs the browser checks with Playwright/axe-core; the synthetic 50k scale test runs on Linux Chromium only, while the functional regressions remain in the Chromium, Chrome, and Edge matrix.
+- `AGENTS.md` and `CODEX_HANDOFF.md`: project workflow and cross-account continuation instructions.
 
 ## Validation and measurements
 
 ### Unit tests
 
-- Re-run on this branch after the final code fix: `node --test test/*.test.cjs` — **275 passed, 0 failed** (Node 24.22.1; CI uses Node 22).
+- Re-run on this branch after the final code fix: `node --test test/*.test.cjs` — **275 passed, 0 failed** (Node 22.23.5).
 - A full browser pass exposed a view-state regression: switching from chat to a media tab reset the saved “follow latest” intent, so completing the history scan restored a reader anchor instead of the newest item. `web-view-state.js` now saves that intent with the per-filter position. The dedicated `chat-loading-latest.browser.cjs` passed at 1440px, 900px PWA, and 390px after the fix.
 - Earlier during finalization, a Node VM fixture also lacked `window` after completion began consulting viewport state. The fixture was updated, and the full unit suite passed.
 
 ### Browser tests
 
-Re-run on synthetic Chromium fixtures: `conversation.browser.cjs` (1440/780/390), `conversation-state.browser.cjs`, complete-cache restore, ID-conflict protection and candidate bounds, interrupted/multi-tab storage recovery, background media downloads (desktop/mobile), progressive history, 10k/50k scale, latest-following after tab return (desktop/PWA/mobile), reply anchors, search/calendar with axe scan, Channel, Replay, and LIVE/PiP. All listed local tests passed after the final view-state fix, except cache/conflict/storage/background-media tests were run immediately before that isolated view-state change; they passed and do not exercise `web-view-state.js`. CI additionally runs Chromium, Chrome, and Edge; verify those actual PR checks after pushing.
+This verification pass used Playwright 1.62.1 with Chromium 151.0.7922.34 and axe-core 4.14.0. The unit suite plus these synthetic Chromium browser tests passed: `conversation.browser.cjs` (desktop/tablet/mobile), `conversation-state.browser.cjs`, cache restore, cache conflicts, interrupted storage recovery, emoticons, conversation controls, send focus, audio, unread rail, progressive history, 10k/50k scale, my replies, search/calendar accessibility, and rail glyph lens. The state test passed eight consecutive runs after changing its partial-cache fixture to use a fresh synthetic account key; it no longer races a prior full-cache writer. No live Fromm API or user account was used. GitHub Actions for the new commit must still be checked after push.
 
 ### Synthetic 50,000-message measurements
 
@@ -58,16 +55,22 @@ These are test-fixture Chromium results, not measurements from Fromm's service o
 
 | Measure | Result |
 |---|---:|
-| Select to first recent messages | 48 ms |
-| Full historical scan | 37,444 ms |
+| Select to first recent messages | 41 ms |
+| Full historical scan | 37,456 ms |
 | History requests during scan | 102 |
-| Wait for IndexedDB flush after scan | 15,872 ms |
-| Complete 50k cache restoration | 604 ms |
+| Wait for IndexedDB flush after scan | 15,835 ms |
+| Direct synthetic write of 50k cached messages | 22,107 ms |
+| Complete 50k cache restoration | 583 ms |
 | Historical requests after complete restore | 0 |
-| Incremental request after complete restore | 1 |
-| Scroll rAF sample | mean 8.3 ms; worst 8.4 ms |
+| Incremental requests after complete restore | 1 |
+| Scroll rAF sample | mean 8.6 ms; worst 16.7 ms |
+| Measured JS heap | 17.1 MB |
 
 There is no same-fixture before/after baseline, so do not state an improvement percentage. An earlier handoff's ~37 ms cache restore used a different test condition and is not directly comparable.
+
+### GitHub Actions before the latest local fix
+
+On the previously pushed head `9e05a43be8509075e796180370db0e14846e93e4`, Conversation/Chromium failed in the partial-cache re-entry fixture; diagnosis showed the test overwrote an active account/room key and could read the old complete snapshot. The test now seeds a distinct synthetic account/room key and asserts its partial metadata before restore. Conversation/Chrome and Conversation/Edge hit the 15-minute job limit while running the 50k scale test; that scale step now runs once on Linux Chromium while the functional browser regressions remain in the three-channel matrix. The Channel browser/regression jobs, media bulk-save jobs, and video download jobs passed on that prior head. Verify all checks again on the pushed fix.
 
 ## Known limitations and risks
 
@@ -78,7 +81,7 @@ There is no same-fixture before/after baseline, so do not state an improvement p
 
 ## Environment and resume steps
 
-CI expects Node.js 22, Playwright 1.62.1, Chromium, and axe-core 4.14.0. The prior local Codex runtime used Node 24.22.1 and Playwright 1.62.1; local shell `node`/`npm` may not be on `PATH`. Use the configured runtime or install the CI versions locally without committing lockfiles or dependencies.
+CI expects Node.js 22, Playwright 1.62.1, Chromium, and axe-core 4.14.0. This verification used Node 22.23.5 and Chromium 151.0.7922.34. Local shell `node`/`npm` may not be on `PATH`; install the CI versions locally without committing lockfiles or dependencies.
 
 From a new checkout:
 
@@ -117,7 +120,7 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Next account's priority list
 
-1. Confirm the latest handoff commit is pushed and that PR #121 head matches it.
+1. Confirm the latest handoff commit is pushed and that PR #121 head matches it; review the Actions attached to that exact head.
 2. Review every PR check and its logs; resolve failures only when attributable to this change, and keep unrelated existing failures documented.
 3. Investigate the timestamp pagination contract from authoritative, non-sensitive sources. Do not make live requests with guessed credentials. Keep ambiguous boundaries incomplete.
 4. Review the PR diff for cache migration/data-loss risks and verify the original four commits remain ancestors.
@@ -125,8 +128,8 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Push and PR record
 
-- Branch push: successful after GitHub CLI authentication. Push the handoff update and verify the remote SHA equals local `git rev-parse HEAD`.
-- PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`. Initial PR head was `d565c349788e545dd8c8ed385b84fd5c91b061ec`; verify after the handoff update is pushed.
+- Branch push: successful after GitHub CLI authentication. The currently recorded remote SHA is the pre-fix head `9e05a43be8509075e796180370db0e14846e93e4`; update after the fix is committed and pushed.
+- PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`.
 - PR title: `Stabilize conversation cache and optimize progressive history loading`.
 - PR description must cover the original cache commits, progressive loading, timestamp guard, regression results, synthetic performance and limits, unverified live API contract, these two project documents, and production review requirements.
-- GitHub Actions: pending verification on the updated PR head. Record Chromium, Chrome, Edge, and broader workflow URLs/states here after polling. Do not call a local test a GitHub Actions result.
+- GitHub Actions: pre-fix results and limitations are recorded above. This handoff records local verification for the follow-up; check PR #121 for runs on the commit containing this update and record their URLs/statuses at the next checkpoint. Do not call a local test a GitHub Actions result.

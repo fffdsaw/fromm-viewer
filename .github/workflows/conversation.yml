@@ -51,10 +51,14 @@ jobs:
           node test/conversation-audio.browser.cjs
           node test/conversation-unread-rail.browser.cjs
           node test/chat-history-progressive.browser.cjs
-          node test/chat-history-scale.browser.cjs
           node test/my-replies.browser.cjs
           node test/search-calendar-panel.browser.cjs
           node test/rail-glyph-lens.browser.cjs
+      - name: Synthetic 50,000-message scale and cache restore
+        if: matrix.channel == 'chromium'
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/chat-history-scale.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

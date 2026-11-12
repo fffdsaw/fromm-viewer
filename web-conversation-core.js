@@ -201,6 +201,7 @@
      await onMessages(rows);if(!valid())throw aborted();
      const oldest=rows.reduce((n,m)=>Math.min(n,messageTime(m)||Infinity),Infinity);
      const repeatedBoundary=rows.every(row=>window.boundary.has(messageKey(row)));
+     if(oldest===window.watermark&&rows.length>=limit){const error=new Error('기존 동기화 시각과 같은 시각의 대화가 요청 제한에 도달해 완전성을 확인할 수 없습니다.');error.code='CURSOR_STALLED';throw error;}
      if(!rows.length||oldest<=window.start||oldest<=window.watermark||(oldest===window.cursor&&rows.length<limit&&repeatedBoundary)){const end=window.end;window=null;await onSynced(end);break;}
      if(!Number.isFinite(oldest)||oldest>window.cursor){const error=new Error('새 대화 커서가 진행되지 않습니다.');error.code='CURSOR_STALLED';throw error;}
      // Inclusive overlap retains boundary messages; IDs remove duplicates.

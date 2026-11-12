@@ -32,13 +32,12 @@
  const authCurrent=c=>{const a=currentAuth();return!!c&&!!a.token&&c.token===a.token&&c.uuid===a.uuid&&c.account===currentAccountScope();};
  const roomCurrent=c=>authCurrent(c)&&context===c&&c.host===String(state.room?.hostChatRoomId||'')&&c.roomId===String(state.room?.id||'')&&c.generation===state.scanGeneration;
  const viewing=c=>roomCurrent(c)&&state.filter==='all'&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');
- const complete=c=>roomCurrent(c)&&state.chatHistoryComplete&&!state.historyJob;
  function viewPosition(c){
   if(state.filter==='all'&&!state.chatAutoTopPending){const row=[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8);
    if(row)c.lastView={id:row.dataset.messageId,offset:row.getBoundingClientRect().top,latest:atLatest()};
   }return c.lastView||null;
  }
- const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
+ const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,observedPageLimit:state.historyObservedPageLimit||0,
   conflictCandidateCount:c.conflictCandidateCount||0,conflictCandidateBytes:c.conflictCandidateBytes||0,
   syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
  function rememberConflict(c,id,canonical,candidates=[],{pending=false,overflow=false}={}){
@@ -331,8 +330,8 @@
        if(diskOnly.length)await merge(c,diskOnly,{source:'cache'});
        state.chatMessages=state.messages;state.chatHistoryProgress=state.messages.length;state.chatCache.set(chatCacheKey(),state.messages);
       }else{
-       restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!diskComplete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500});
-       state.chatMessages=state.messages;state.chatHistoryComplete=diskComplete;state.chatHistoryProgress=messages.length;
+       restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!diskComplete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500,observedPageLimit:Number(cached.meta.observedPageLimit)||0});
+       state.chatHistoryComplete=diskComplete;state.chatMessages=diskComplete?state.messages:state.messages.slice(-300);state.chatHistoryProgress=messages.length;
        if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
       }
       c.cached=true;c.saved=true;c.syncedUntil=Number.isFinite(cached.meta.syncedUntil)&&cached.meta.syncedUntil>0&&cached.meta.syncedUntil<Date.now()+60000?cached.meta.syncedUntil:newest(messages);
@@ -433,13 +432,15 @@
     conflicted=rememberConflict(c,key,canonical,[previous,row],{pending:true})||conflicted;
     continue;
    }
-   else{state.messages.push(row);state.seenMessageKeys.add(key);}
+   else state.seenMessageKeys.add(key);
    byId.set(key,row);changes.push(row);
   }
   if(reconciled)c.notice='';
   if(!changes.length){if(reconciled||conflicted){if(conflicted)saveSoon();paint();}return;}
-  state.messages.sort((a,b)=>compareMessages(a,b,'asc'));state.chatMessages=state.messages;chatMatchCache=null;
-  state.chatCache.set(chatCacheKey(),state.chatMessages);saveRoomCache();
+  state.messages=mergeSortedMessages(state.messages,changes);
+  if(state.chatHistoryComplete){state.chatMessages=state.messages;state.chatCache.set(chatCacheKey(),state.chatMessages);}
+  else state.chatMessages=state.messages.slice(-300);
+  chatMatchCache=null;saveRoomCache();
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
   else if(state.mediaSequenceStamp?.source===state.messages)state.mediaSequenceStamp.length=state.messages.length;
   if(!roomCurrent(c))return;
@@ -451,7 +452,7 @@
   saveSoon();
  }
  async function connectPush(c){
-  if(c.pushBusy||c.pushClose||c.denied||!viewing(c)||!complete(c))return;
+  if(c.pushBusy||c.pushClose||c.denied||!viewing(c)||!state.messages.length)return;
   const version=(c.pushVersion||0)+1;c.pushVersion=version;c.pushBusy=version;const valid=()=>viewing(c)&&c.pushVersion===version;let app=null,db=null,off=null;
   const close=()=>{off?.();off=null;if(db){void library?.terminate(db).catch(()=>{});db=null;}if(app){void library?.deleteApp(app).catch(()=>{});app=null;}};
   let library=null;
@@ -479,11 +480,11 @@
   }finally{if(c.pushBusy===version)c.pushBusy=0;if(viewing(c)&&!c.denied&&!c.pushBusy&&!c.pushClose&&!c.pushRetry)c.pushRetry=setTimeout(()=>{c.pushRetry=0;connectPush(c);},500);}
  }
  function start(c){
-  if(!viewing(c)||!complete(c)||c.denied||c.feed)return;
+  if(!viewing(c)||!state.messages.length||c.denied||c.feed)return;
   if(c.owner.signal.aborted)c.owner=new AbortController();
   const codes=new Set(state.messages.map(message=>message.code).filter(Boolean));
   if(c.outbox&&codes.has(c.outbox.code))c.outbox=null;c.accepted=c.accepted.filter(message=>!codes.has(message.code));
-  c.feed=core.createFeed({current:()=>viewing(c)&&complete(c),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
+  c.feed=core.createFeed({current:()=>viewing(c)&&state.messages.length>0,latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
    requestPage:async({start,end,limit,signal})=>{if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));},
    onMessages:rows=>merge(c,rows,{source:'server'}),onSynced:time=>{c.syncedUntil=time;saveSoon();},
    onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&c.rules&&!c.sending&&!c.outbox)c.notice='';paint();}});
@@ -552,6 +553,7 @@
  function historyChanged(){
   if(!roomCurrent(context)||context.restoring)return;
   if(state.chatHistoryComplete){state.chatMessages=state.messages;context.syncedUntil||=newest(state.messages)||Date.now();}
+  else exposeChatHistorySnapshot();
   saveSoon();sync();
  }
  function mount(){
@@ -603,7 +605,7 @@
   const originalFilter=setFilter;setFilter=async function(...args){const promise=originalFilter.apply(this,args);sync();try{return await promise;}finally{sync();}};
   paint();
  }
- const api={mount,beforeRoom,sync,historyChanged,stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
+ const api={mount,beforeRoom,sync,historyChanged,reconcileHistory(rows){if(!roomCurrent(context)||!Array.isArray(rows))return;return merge(context,rows,{source:'history'});},stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
   get restoring(){return!!context?.restoring;},get ready(){return restoreJob||Promise.resolve();},loadFirebase:sdk,
   get status(){return{phase:context?.phase||'idle',persisted:!!context?.saved,storageError:!!context?.storageError,push:!!context?.pushOnline};},flush:()=>persist({force:true})};
  window.FrommConversation=api;

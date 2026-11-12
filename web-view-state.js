@@ -1,9 +1,9 @@
 /* Ephemeral view positions only: no messages, credentials or account data persisted. */
 (() => {
  'use strict';
- const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null;
+ const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false;
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
- const chatWaiting=()=>state.filter==='all'&&(((state.chatHistoryLoading||!state.chatHistoryComplete)&&!window.FrommConversation?.canShowCached())||state.chatAutoTopPending);
+ const chatWaiting=()=>state.filter==='all'&&(((state.chatHistoryLoading||!state.chatHistoryComplete)&&!state.chatMessages.length&&!window.FrommConversation?.canShowCached())||state.chatAutoTopPending);
  const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>8);
  function capture(){
   if(state.filter==='live'||pending||restoring||chatWaiting())return false;
@@ -16,7 +16,7 @@
   return true;
  }
  function enter(filter=state.filter,options={}){
-  latestCleanup?.();active=key(filter);serial++;
+  latestCleanup?.();latestFollowing=false;active=key(filter);serial++;
   const saved=positions.get(active);
   // New conversation entry is handled by the latest-message virtual window,
   // not by an automatic restore to scrollY 0. Keep gallery's default top.
@@ -28,10 +28,10 @@
   if(motionCleanup || latestCleanup || anchorCleanup || chatWaiting())return;
   if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
  }
- function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;pending=null;serial++;}
+ function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;latestFollowing=false;pending=null;serial++;}
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;
-  if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete)&&!window.FrommConversation?.canShowCached())return;
+  if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete)&&!state.chatMessages.length&&!window.FrommConversation?.canShowCached())return;
   const job=pending,pos=job.position;restoring=true;let windowed=false;
   try{
    let el=pos.id?document.querySelector(`#timeline [data-message-id="${CSS.escape(pos.id)}"]`):pos.vote?document.querySelector(`#timeline [data-vote-id="${CSS.escape(pos.vote)}"]`):null;
@@ -109,7 +109,7 @@
   if(watchMs>0){
    if(typeof ResizeObserver==='function'){observer=new ResizeObserver(schedule);for(const node of [el,timeline,header])if(node)observer.observe(node);}
    timeline?.addEventListener('load',schedule,true);document.addEventListener('keydown',cleanup,true);document.addEventListener('visibilitychange',visibility);
-   document.fonts?.addEventListener('loadingdone',schedule);document.fonts?.addEventListener('loadingerror',schedule);timer=setTimeout(cleanup,watchMs);
+   document.fonts?.addEventListener('loadingdone',schedule);document.fonts?.addEventListener('loadingerror',schedule);timer=setTimeout(()=>{align();cleanup();},watchMs);
   }
   schedule();
  }
@@ -142,7 +142,7 @@
  }
  // Only a first chat entry follows late image/font sizing. User input cancels it.
  function settleLatest(valid=()=>true){
-  cancel();const ticket=serial,tl=document.querySelector('#timeline');
+  cancel();latestFollowing=true;const ticket=serial,tl=document.querySelector('#timeline');
   let closed=false,queued=0,observer=null,timer=0;
   const cleanup=()=>{
    if(closed)return;closed=true;cancelAnimationFrame(queued);observer?.disconnect();clearTimeout(timer);
@@ -169,5 +169,5 @@
  // User-directed movement always wins over an asynchronous restore.
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get pending(){return !!pending;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get pending(){return !!pending;},get followingLatest(){return latestFollowing;}});
 })();

@@ -10,14 +10,17 @@
   const el=row();
   // A loading/empty notice is not a message the reader chose to keep.
   if(state.filter==='all'&&!el)return false;
-  positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0});
+  const dockHeight=state.filter==='all'?(document.querySelector('#conversationDock')?.offsetHeight||0):0;
+  const latest=state.filter==='all'&&(latestFollowing||document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(220,dockHeight+60));
+  positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0,latest});
   // Navigation history is bounded; only scalar positions/IDs are retained.
   if(positions.size>120)positions.delete(positions.keys().next().value);
   return true;
  }
  function enter(filter=state.filter,options={}){
-  latestCleanup?.();latestFollowing=false;active=key(filter);serial++;
+  latestCleanup?.();active=key(filter);serial++;
   const saved=positions.get(active);
+  latestFollowing=filter==='all'&&!!saved?.latest;
   // New conversation entry is handled by the latest-message virtual window,
   // not by an automatic restore to scrollY 0. Keep gallery's default top.
   pending=options.autoTop===false?null:saved?{key:active,position:saved,serial}:filter==='all'?null:{key:active,position:{y:0},serial};

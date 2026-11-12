@@ -201,7 +201,8 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.evaluate(()=>{state.chatMessages=window.smallHistory;state.onlyMyReplies=false;state.chatMatchKey='';render();});
    await ensureToolsOpen(page);await page.locator('#myRepliesBtn').click();
    await page.locator('#rooms .room').last().evaluate(el=>el.click());
-   await page.waitForFunction(()=>state.room.hostChatRoomId==='room-b' && state.chatHistoryComplete);
+   await page.waitForFunction(()=>state.room.hostChatRoomId==='room-b'&&state.messages.length===1&&state.historyError);
+   assert.equal(await page.evaluate(()=>state.chatHistoryComplete),false,'a repeated single-row boundary without an API completeness marker remains incomplete');
    assert.equal(await page.evaluate(()=>state.onlyMyReplies),false);assert.equal(await page.locator('.reply-mine').count(),0);
    assert.equal(requests.filter(r=>r.path==='/v2/user/fan/profile').length,1,'same account reuses identity across rooms');
    // Account transition clears every personal marker immediately, then uses B's actual ID.

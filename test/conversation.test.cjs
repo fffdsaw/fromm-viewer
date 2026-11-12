@@ -45,6 +45,19 @@ test('a saturated same-timestamp boundary fails visibly instead of skipping mess
  const time=Date.now()-10;let phase='',synced=false;
  const feed=createFeed({latest:()=>time-1000,limit:3,requestPage:async()=>Array.from({length:3},(_,i)=>({messageId:'m'+i,createdAt:time})),onMessages:()=>{},onSynced:()=>synced=true,onState:value=>phase=value});feed.start();await until(()=>phase==='error');assert.equal(synced,false);assert.equal(feed.active,false);feed.stop();
 });
+test('a saturated tie exactly at the existing watermark is not silently marked synced',async()=>{
+ const time=Date.now()-1000,serverRows=Array.from({length:4},(_,i)=>({messageId:'watermark-tie-'+i,createdAt:time}));
+ let phase='',synced=false,calls=0,request;
+ const saved=new Set();
+ const feed=createFeed({latest:()=>time,limit:3,interval:100000,
+  requestPage:async options=>{calls++;request=options;return serverRows.slice(0,3);},onMessages:rows=>rows.forEach(row=>saved.add(row.messageId)),
+  onSynced:()=>synced=true,onState:value=>phase=value});feed.start();
+ await until(()=>synced||phase==='error');feed.stop();
+ assert.equal(synced,false,'a saturated page at the prior watermark cannot prove all same-time rows were fetched');
+ assert.equal(phase,'error');assert.equal(calls,1);
+ assert.equal(saved.size,3,'only rows actually returned by the server can be saved');
+ assert.equal(request.start,time-120000);assert.ok(request.end>=time);assert.equal(request.limit,3);
+});
 test('production integration uses verified send fields, fresh rules and a single explicit POST',()=>{
  const js=fs.readFileSync(require.resolve('../web-conversation.js'),'utf8');
  assert.match(js,/\/v2\/chat\/fanChatRooms\//);assert.match(js,/\/replies/);assert.match(js,/const body=\{code,chatRoomId:c\.roomId,content:text\}/);assert.match(js,/if\(emoticon\)body\.emoticonItemId=emoticon\.apiId/);assert.match(js,/getRules\(c,\{fresh:true\}\)/);assert.match(js,/isComposing/);assert.match(js,/inMemoryPersistence/);

@@ -8,14 +8,15 @@ Last reviewed: 2026-11-12 (Asia/Seoul)
 - Production site: <https://fffdsaw.github.io/fromm-viewer/>
 - Experimental repository: <https://github.com/fffdsaw/fromm-viewer-preview> (out of scope; do not modify).
 - Working branch: `codex/timestamp-pagination`.
-- PR: pending branch push and creation in this task; this document will be updated with the PR URL after creation.
+- PR: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open against `main`.
 - Latest verified `origin/main`: `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120).
 - The current branch merges that main through `d03a306`; the recovered four stabilization commits remain in ancestry: `b3b3c84`, `0e3760f`, `a61fa43`, `5f73e9a`.
 - Work commits before this handoff setup: `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
-- At the start of this task the branch was local-only at `214f500`, with no matching remote branch and no open PR found. Confirm live state before relying on this note.
-- A push was attempted after adding the project instructions and updated code, but failed because this environment has no GitHub HTTPS credentials (`could not read Username ... Device not configured`). The connected GitHub tools can inspect the repository and PRs but do not provide a Git push operation; `gh` is not installed/authenticated.
-- GitHub search found no remote `5f73e9a`, and comparing that local backup commit to `origin/main` returned 404. The four stabilization commits therefore exist only in this recovered local history. No API-generated snapshot branch was created because that would not preserve their original ancestry.
-- No remote branch, PR, or GitHub Actions run exists yet. Local code and docs are committed; the untracked backup `HANDOFF.md` is preserved.
+- At the start of this task the branch was local-only at `214f500`, with no matching remote branch and no open PR.
+- The first push attempt failed because GitHub HTTPS credentials were unavailable. After the user completed GitHub CLI device authentication, `git push -u origin codex/timestamp-pagination` succeeded without force. The pushed branch contains the original recovered commits and all later commits.
+- Immediately after push, the remote branch SHA matched local `d565c349788e545dd8c8ed385b84fd5c91b061ec`. This SHA preceded the final PR-URL handoff update; verify the current SHA with `git rev-parse HEAD` and compare it to `git ls-remote origin refs/heads/codex/timestamp-pagination`.
+- PR #121 was created with the requested title; its initial head was `d565c349788e545dd8c8ed385b84fd5c91b061ec`. This document is being updated on that branch; after the update, push and verify the newer head and checks.
+- The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - Do not merge this PR or deploy without the user's explicit approval.
 
@@ -116,7 +117,7 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Next account's priority list
 
-1. Confirm the push, PR URL, PR head SHA, and GitHub Actions results recorded below.
+1. Confirm the latest handoff commit is pushed and that PR #121 head matches it.
 2. Review every PR check and its logs; resolve failures only when attributable to this change, and keep unrelated existing failures documented.
 3. Investigate the timestamp pagination contract from authoritative, non-sensitive sources. Do not make live requests with guessed credentials. Keep ambiguous boundaries incomplete.
 4. Review the PR diff for cache migration/data-loss risks and verify the original four commits remain ancestors.
@@ -124,8 +125,8 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Push and PR record
 
-- Branch push: **failed**, not backed up remotely. Retry after GitHub HTTPS credentials are configured: `git push -u origin codex/timestamp-pagination`; then verify the remote SHA equals local `git rev-parse HEAD`.
-- PR URL/number: **not created** because the branch push failed. After successful push, search for an existing open PR for this head; create one if absent, targeting `main` with the title below.
+- Branch push: successful after GitHub CLI authentication. Push the handoff update and verify the remote SHA equals local `git rev-parse HEAD`.
+- PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`. Initial PR head was `d565c349788e545dd8c8ed385b84fd5c91b061ec`; verify after the handoff update is pushed.
 - PR title: `Stabilize conversation cache and optimize progressive history loading`.
 - PR description must cover the original cache commits, progressive loading, timestamp guard, regression results, synthetic performance and limits, unverified live API contract, these two project documents, and production review requirements.
-- GitHub Actions: no PR means no GitHub Actions run. After creating/updating the PR, record Chromium, Chrome, Edge, and any workflow result URLs/states here. Do not call a local test a GitHub Actions result.
+- GitHub Actions: pending verification on the updated PR head. Record Chromium, Chrome, Edge, and broader workflow URLs/states here after polling. Do not call a local test a GitHub Actions result.

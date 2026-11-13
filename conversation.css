@@ -114,16 +114,6 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  box-shadow:none!important;
  font-size:0;line-height:1;text-decoration:none;cursor:pointer
 }
-/* Replay controls sample a dark video/thumbnail, but voice sits on a pale mint card.
-   Place an equivalent dark surface beneath only the voice buttons while keeping
-   the existing Liquid Glass lenses, optical rims and icon layer fully functional. */
-@media(min-width:701px) and (hover:hover) and (pointer:fine){
- .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .chat-audio-play.glass-control,
- .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download.glass-control{
-  background:rgba(0,0,0,.5)!important;
-  border-color:rgba(255,255,255,.14)!important;
- }
-}
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
  background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
 }
@@ -211,3 +201,88 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface{animation:conversationLatestMaterialize 520ms cubic-bezier(.2,1.45,.38,1) both}
 #conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation:conversationLatestDematerialize 170ms cubic-bezier(.4,0,1,1) both}
 @media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.conversation-latest-entering>svg,#conversationDock #conversationNew.conversation-latest-leaving>svg,#conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface,#conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation-duration:1ms}}
+
+/* Conversation media toggles use the same Replay silhouette and dark-on-image
+   Liquid Glass material. This is visual only: native media, download hooks,
+   progress rings and accessibility semantics remain owned by their handlers. */
+#timeline .chat-media-visual{position:relative}
+#timeline .chat-replay-play,
+#timeline a.chat-replay-download{
+ box-sizing:border-box;display:grid;place-items:center;flex-shrink:0;padding:0!important;
+ border:1px solid rgba(255,255,255,.14)!important;border-radius:50%!important;
+ background:rgba(0,0,0,.72)!important;color:#fff!important;
+ font:inherit;line-height:1;cursor:pointer;isolation:isolate;
+ transition:background-color .16s ease,border-color .16s ease;
+}
+#timeline .chat-replay-play{
+ width:40px;height:40px;box-shadow:0 5px 16px rgba(0,0,0,.24);
+}
+#timeline .chat-replay-play>svg{width:24px;height:24px;display:block;pointer-events:none}
+#timeline a.chat-replay-download{
+ width:36px!important;height:36px!important;flex:0 0 36px;
+ margin:0!important;font-size:0;box-shadow:none!important;text-decoration:none;
+}
+#timeline a.chat-replay-download>.download-feedback-icon{
+ display:block;width:100%;height:100%;margin:0!important;
+ --download-ring-color:#9df9da;filter:drop-shadow(0 1px 1px #12392eaa);
+}
+/* Image and video: Replay top-right download and lower-right video play.
+   The play overlay sits above the native video control strip. */
+#timeline .chat-media-visual a.chat-replay-download{
+ position:absolute!important;top:10px!important;right:10px!important;
+ bottom:auto!important;left:auto!important;z-index:3;
+}
+#timeline .chat-media-visual>.media-actions{min-height:0}
+#timeline .chat-media-visual .chat-video-play{
+ position:absolute;top:auto;right:10px;bottom:58px;left:auto;z-index:3;
+}
+#timeline .chat-media-visual .chat-video-play[hidden]{display:none!important}
+/* Audio keeps its existing two-row player and its original seek/volume controls. */
+#timeline .chat-sound-bubble .chat-audio-controls>.chat-replay-play{
+ width:40px;height:40px;padding:0;
+}
+#timeline .chat-sound-bubble .media-actions a.chat-replay-download{
+ position:relative!important;inset:auto!important;
+}
+#timeline .chat-replay-play:focus-visible,
+#timeline a.chat-replay-download:focus-visible{
+ outline:2px solid #147e69;outline-offset:3px;
+}
+@media(hover:hover){
+ #timeline .chat-replay-play:hover:not(:disabled),
+ #timeline .chat-sound-bubble .media-actions a.chat-replay-download:hover,
+ #timeline .chat-media-visual a.chat-replay-download:hover{
+  background:rgba(28,34,44,.94)!important;
+  border-color:rgba(255,255,255,.3)!important;
+ }
+}
+/* Keep the real Meapri engine attached; use a matching dark underlay so its
+   refraction/specular rim reads as Replay glass over a light audio card. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout #timeline :is(.chat-replay-play,a.chat-replay-download).glass-control{
+  background:rgba(0,0,0,.54)!important;
+  border-color:rgba(255,255,255,.14)!important;
+  box-shadow:none!important;
+ }
+ .pc-control-glass.glowme-phase3.pc-layout #timeline :is(.chat-replay-play,a.chat-replay-download).glass-control:hover{
+  background:rgba(28,34,44,.76)!important;
+  border-color:rgba(255,255,255,.3)!important;
+ }
+}
+/* Touch hover may persist after tapping; do not latch the dark pressed color. */
+@media(hover:none){
+ #timeline .chat-replay-play:hover,
+ #timeline .chat-sound-bubble .media-actions a.chat-replay-download:hover,
+ #timeline .chat-media-visual a.chat-replay-download:hover{
+  background:rgba(0,0,0,.72)!important;
+  border-color:rgba(255,255,255,.14)!important;
+ }
+}
+@media(forced-colors:active){
+ #timeline .chat-replay-play,#timeline a.chat-replay-download{
+  background:Canvas!important;color:ButtonText!important;border:1px solid ButtonText!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #timeline .chat-replay-play,#timeline a.chat-replay-download{transition:none}
+}

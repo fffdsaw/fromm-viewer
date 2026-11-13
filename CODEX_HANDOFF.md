@@ -12,7 +12,7 @@ Last reviewed: 2026-11-13 (Asia/Seoul)
 - Latest verified `origin/main`: `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120).
 - The current branch merges that main through `d03a306`; the recovered four stabilization commits remain in ancestry: `b3b3c84`, `0e3760f`, `a61fa43`, `5f73e9a`.
 - Work commits include `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
-- The branch is pushed to `origin` and PR #121 is open with the requested title. The latest code commit verified by GitHub Actions is `0361c0c669f48aa7c113a70e08c7f363f23371f3`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
+- The branch is pushed to `origin` and PR #121 is open with the requested title. Before the room-metadata error-handling follow-up, the latest verified branch head was `864879aa50972e38ef3540050cac3415baf2dfa7`; compare local `HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
 - The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - Do not merge this PR or deploy without the user's explicit approval.
 
@@ -74,16 +74,24 @@ On pushed head `dec92eb9706ef07274d0227e7249a57c33c9e077`, run [43242129564](htt
 
 On that same run, Conversation/Chrome and Conversation/Edge passed through `chat-history-progressive.browser.cjs` but did not finish before the 15-minute job timeout. The old combined step emitted no per-script completion markers for `my-replies`, `search-calendar-panel`, or `rail-glyph-lens`, so the stalled script was not identifiable. Those three final checks are now separate named steps with a three-minute step limit. `my-replies` and `search-calendar-panel` now honor `PLAYWRIGHT_CHANNEL`; both passed locally on Chrome 157. The 50k scale test remains Linux Chromium only.
 
-### GitHub Actions on the current code commit
+### GitHub Actions on the prior code commit
 
-All PR checks passed on code commit `0361c0c669f48aa7c113a70e08c7f363f23371f3`:
+All PR checks passed on code commit `0361c0c669f48aa7c113a70e08c7f363f23371f3`; after the handoff-only commit, the same checks also passed on `864879aa50972e38ef3540050cac3415baf2dfa7`:
 
-- Conversation receive/send/persistence, run [43386732919](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732919): Chromium, Chrome, and Edge passed. Chromium included the synthetic 50k scale/cache restore check.
-- Media bulk save regression, run [43386732906](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732906): unit regression and browser jobs passed.
-- Channel videos regression, run [43386733129](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386733129): unit regression and full browser suite passed.
-- Video download engine, run [43386732935](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732935): Chromium, Chrome, and Edge passed.
+- Conversation receive/send/persistence, run [43388885791](https://github.com/fffdsaw/fromm-viewer/actions/runs/43388885791): Chromium, Chrome, and Edge passed. Chromium included the synthetic 50k scale/cache restore check.
+- Media bulk save regression, run [43388885884](https://github.com/fffdsaw/fromm-viewer/actions/runs/43388885884): unit regression and browser jobs passed.
+- Channel videos regression, run [43388885915](https://github.com/fffdsaw/fromm-viewer/actions/runs/43388885915): unit regression and full browser suite passed.
+- Video download engine, run [43388885800](https://github.com/fffdsaw/fromm-viewer/actions/runs/43388885800): Chromium, Chrome, and Edge passed.
 
 These checks exercised synthetic/local fixtures only. They do not verify the authenticated Fromm API pagination contract.
+
+### IndexedDB room-metadata write errors
+
+The final metadata transaction in `web-conversation-core.js` calls `transact(db, ['rooms'], 'readwrite', callback)`. Its callback previously accepted only `tx`, but both synchronous `rooms.put()` error handlers called `set.fail(error)`. A browser regression injected a synchronous `QuotaExceededError` and reproduced the defect: the caller received a generic `AbortError` (`Uncaught exception in event handler.`), not the original error object. The callback now accepts `(tx, set)`, allowing `transact` to abort and reject with the original error.
+
+`test/conversation-cache-conflicts.browser.cjs` covers both metadata-write branches: a normal complete snapshot and a conflicted snapshot that must remain incomplete. Both assertions verify that the exact injected error object reaches the caller and that the previously committed message, metadata, and conflict candidate remain intact. The red test reproduced the old failure; it passes with the scope fix.
+
+Local verification on Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34: `node --test test/*.test.cjs` passed all 275 tests; `conversation-cache-conflicts.browser.cjs`, `conversation-storage-recovery.browser.cjs`, and `conversation-state.browser.cjs` passed. `conversation-cache-restore.browser.cjs` failed its 1px scroll-anchor assertion when launched concurrently with other Chromium tests, then passed when rerun alone. The change does not touch view or scroll code. GitHub Actions for this room-metadata fix must be checked after it is pushed.
 
 ## Known limitations and risks
 
@@ -141,8 +149,8 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Push and PR record
 
-- Code follow-up commit `0361c0c669f48aa7c113a70e08c7f363f23371f3` contains the partial-cache request gate, CI step split, and browser-channel selection. Its required GitHub Actions checks all passed (run links above). A later documentation-only commit may update this handoff; the code tested by these runs remains the same.
+- Code follow-up commit `0361c0c669f48aa7c113a70e08c7f363f23371f3` contains the partial-cache request gate, CI step split, and browser-channel selection. Its required GitHub Actions checks passed, and the handoff-only follow-up `864879aa50972e38ef3540050cac3415baf2dfa7` also passed all PR checks. The IndexedDB room-metadata error fix described above is the current follow-up and still needs its own Actions verification.
 - PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`.
 - PR title: `Stabilize conversation cache and optimize progressive history loading`.
 - PR description must cover the original cache commits, progressive loading, timestamp guard, regression results, synthetic performance and limits, unverified live API contract, these two project documents, and production review requirements.
-- GitHub Actions on code commit `0361c0c669f48aa7c113a70e08c7f363f23371f3`: all Conversation (Chromium/Chrome/Edge), Channel, Media bulk-save, and Video download jobs passed. See the run links above. Do not call a local test a GitHub Actions result.
+- GitHub Actions on code commit `864879aa50972e38ef3540050cac3415baf2dfa7`: all Conversation (Chromium/Chrome/Edge), Channel, Media bulk-save, and Video download jobs passed. See the run links above. The current room-metadata error fix is pending remote validation. Do not call a local test a GitHub Actions result.

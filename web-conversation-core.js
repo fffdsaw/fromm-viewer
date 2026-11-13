@@ -113,7 +113,7 @@
       for(const id of result?.overflowIds||[])overflowIds.add(id);
      }
      if(!current())return false;
-     await transact(db,['rooms'],'readwrite',tx=>{
+     await transact(db,['rooms'],'readwrite',(tx,set)=>{
       const rooms=tx.objectStore('rooms'),existing=rooms.get(key);
       existing.onsuccess=()=>{
        // A stale/incomplete writer in another tab cannot downgrade a committed

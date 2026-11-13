@@ -109,6 +109,30 @@ const message=(content,id='same-id')=>({messageId:id,userType:'star',type:'text'
   });
   assert.deepEqual(retry,{errorName:'QuotaExceededError',first:{canonical:'baseline',complete:true,candidates:['candidate']},retry:{canonical:'baseline',complete:true,candidates:['candidate']}});
 
+  // A synchronous room-metadata put failure reaches the caller and leaves the
+  // previously committed cache snapshot unchanged.
+  const roomMetadataFailure=await page.evaluate(async()=>{
+   const name='cache-conflict-room-metadata-failure',store=FrommConversationCore.createStore({name}),baseline={messageId:'same-id',content:'baseline',createdAt:1791534600000};
+   const baselineMeta={count:1,complete:true,cursorEnd:new Date(0).toISOString()};
+   await store.write('synthetic-account','synthetic-room',[baseline],baselineMeta);
+   const nativePut=IDBObjectStore.prototype.put,expectedError=new DOMException('synthetic room metadata put failure','QuotaExceededError');let injected=false,receivedError=null;
+   IDBObjectStore.prototype.put=function(value,...args){if(this.name==='rooms'&&value?.count===2){injected=true;throw expectedError;}return nativePut.call(this,value,...args)};
+   try{await store.write('synthetic-account','synthetic-room',[baseline],{...baselineMeta,count:2});}catch(error){receivedError=error;}finally{IDBObjectStore.prototype.put=nativePut;}
+   const restored=await store.read('synthetic-account','synthetic-room');await store.close();
+   return{injected,errorName:receivedError?.name||'',errorMessage:receivedError?.message||'',sameError:receivedError===expectedError,metaCount:restored.meta.count,complete:restored.meta.complete,messages:restored.messages.map(row=>row.content)};
+  });
+  assert.deepEqual(roomMetadataFailure,{injected:true,errorName:'QuotaExceededError',errorMessage:'synthetic room metadata put failure',sameError:true,metaCount:1,complete:true,messages:['baseline']});
+  const conflictedMetadataFailure=await page.evaluate(async()=>{
+   const name='cache-conflict-incomplete-metadata-failure',store=FrommConversationCore.createStore({name}),canonical={messageId:'same-id',content:'canonical',createdAt:1791534600000},candidate={...canonical,content:'candidate'};
+   await store.write('synthetic-account','synthetic-room',[canonical,candidate],{count:2,complete:false,cursorEnd:null});
+   const nativePut=IDBObjectStore.prototype.put,expectedError=new DOMException('synthetic incomplete metadata put failure','QuotaExceededError');let injected=false,receivedError=null;
+   IDBObjectStore.prototype.put=function(value,...args){if(this.name==='rooms'&&value?.count===3){injected=true;throw expectedError;}return nativePut.call(this,value,...args)};
+   try{await store.write('synthetic-account','synthetic-room',[canonical],{count:3,complete:true,cursorEnd:new Date(0).toISOString()});}catch(error){receivedError=error;}finally{IDBObjectStore.prototype.put=nativePut;}
+   const restored=await store.read('synthetic-account','synthetic-room');await store.close();
+   return{injected,errorName:receivedError?.name||'',errorMessage:receivedError?.message||'',sameError:receivedError===expectedError,metaCount:restored.meta.count,complete:restored.meta.complete,canonical:restored.messages[0]?.content,candidates:restored.conflicts[0]?.candidates.map(row=>row.content)};
+  });
+  assert.deepEqual(conflictedMetadataFailure,{injected:true,errorName:'QuotaExceededError',errorMessage:'synthetic incomplete metadata put failure',sameError:true,metaCount:2,complete:false,canonical:'canonical',candidates:['candidate']});
+
   // Two separate tabs write different values for the same ID at once.
   const second=await context.newPage();await second.goto(server.url);await second.waitForFunction(()=>window.FrommConversationCore);
   const writes=await Promise.all([

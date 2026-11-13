@@ -138,10 +138,13 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await day('25').click();assert.equal(await page.locator('#dateCalendar').getAttribute('aria-hidden'),'false','date stays open until explicit move');await page.locator('#dateJumpBtn').click();await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
    assert.equal(await page.locator('.msg').count(),messages.length,'date navigation keeps full context and the personal targets');
    await page.locator('[data-message-id="my-reply"] .reply-quote').click();
-   await page.waitForFunction(()=>!state.onlyMyReplies && document.querySelector('[data-message-id="original"]')?.classList.contains('reply-target-flash'));
+   await page.waitForFunction(()=>state.onlyMyReplies && state.chatMatchKey==='my-reply' && document.querySelector('[data-message-id="original"]')?.classList.contains('reply-target-flash'));
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply arrows remain available at the original message');
    assert.equal(await page.locator('.msg').count(),messages.length);
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply navigation continues after opening the original');
    // Plain text search can also navigate matches inside the complete conversation.
-   await ensureToolsOpen(page);await page.locator('#chatSearchInput').fill('일반 대화');
+   await ensureToolsOpen(page);await page.locator('#myRepliesBtn').uncheck();await page.locator('#chatSearchInput').fill('일반 대화');
    await page.waitForFunction(()=>state.chatQuery==='일반 대화');
    const searchTotal=await page.evaluate(()=>chatMatches().length);assert.ok(searchTotal>1);
    assert.equal(await page.locator('.text mark').first().evaluate(el=>getComputedStyle(el).backgroundColor),quoteMarkColor);

@@ -9209,7 +9209,7 @@ function renderMessage(m){
   if(replyQuote){
     replyQuote.onclick = ()=>{
       const targetId = replyQuote.dataset.quotedId;
-      if(targetId) scrollToOriginalMessage(targetId);
+      if(targetId) scrollToOriginalMessage(targetId,m.messageId || m.id || "");
     };
   }
 
@@ -9738,10 +9738,15 @@ async function jumpToDate(targetDate){
     btn.textContent = originalText;
   }
 }
-async function scrollToOriginalMessage(messageId){
+async function scrollToOriginalMessage(messageId,replyMessageId=""){
   if(!messageId) return;
   const generation=state.scanGeneration;
-  state.onlyMyReplies=false;state.chatQuery="";state.chatMatchKey="";
+  const preserveReplyNavigation=state.onlyMyReplies;
+  state.chatQuery="";
+  if(preserveReplyNavigation){
+    const reply=replyMessageId ? state.chatMessages.find(m=>String(m.messageId||m.id||"")===String(replyMessageId)) : null;
+    if(reply && isReplyToMe(reply)) state.chatMatchKey=messageStableKey(reply);
+  }else state.chatMatchKey="";
   if($("#chatSearchInput")) $("#chatSearchInput").value="";
   syncMyReplyTools();
   chatMatchCache=null;renderCountsOnly();updateChatSearchCount();syncLoadingUI();

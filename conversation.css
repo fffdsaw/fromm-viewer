@@ -61,8 +61,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-player [hidden]{display:none!important}
 .chat-audio-controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
 .chat-audio-play,.chat-audio-mute{display:grid;place-items:center;flex-shrink:0;padding:6px;border:0;border-radius:50%;color:#286a59;background:transparent;cursor:pointer}
-/* Channel-style play/pause toggle, scoped to chat only. Channel CSS/JS stays untouched. */
-.chat-audio-play{width:40px;height:40px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.24);transition:background-color .14s,border-color .14s,transform .09s}
+/* Replay-style play/pause toggle: only the voice button surface changes. */
+.chat-audio-play{width:40px;height:40px;padding:0;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.24);transition:background-color .14s,border-color .14s,transform .09s}
 .chat-audio-play:hover{background:rgba(28,34,44,.94);border-color:rgba(255,255,255,.3);box-shadow:0 5px 16px rgba(0,0,0,.24)}
 .chat-audio-play:active{background:#102f28;transform:translateY(1px)}
 
@@ -114,8 +114,16 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  box-shadow:none!important;
  font-size:0;line-height:1;text-decoration:none;cursor:pointer
 }
-/* Let the Liquid Glass lens sample the mint bubble under this dark toggle. */
-.pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download.glass-control{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+/* Replay controls sample a dark video/thumbnail, but voice sits on a pale mint card.
+   Place an equivalent dark surface beneath only the voice buttons while keeping
+   the existing Liquid Glass lenses, optical rims and icon layer fully functional. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .chat-audio-play.glass-control,
+ .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download.glass-control{
+  background:rgba(0,0,0,.5)!important;
+  border-color:rgba(255,255,255,.14)!important;
+ }
+}
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
  background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
 }
@@ -133,8 +141,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .chat-sound-bubble .media-actions>.stats{min-width:0;overflow-wrap:anywhere}
 /* One cohesive voice surface: controls above; seek and secondary download below. */
 #timeline .chat-sound-bubble .chat-audio-player{
- display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:9px 10px;
- --thumb-download-size:34px
+ display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:9px 10px;
+ --thumb-download-size:36px
 }
 #timeline .chat-sound-bubble .chat-audio-controls{grid-column:1/-1;grid-row:1}
 #timeline .chat-sound-bubble .chat-audio-player>.chat-audio-seek{
@@ -142,8 +150,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  margin:0;align-self:center
 }
 #timeline .chat-sound-bubble .chat-audio-player>.media-actions{
- grid-column:2;grid-row:2;position:relative;display:flex;min-width:34px;
- width:34px;height:34px;min-height:34px;align-items:center;
+ grid-column:2;grid-row:2;position:relative;display:flex;min-width:36px;
+ width:36px;height:36px;min-height:36px;align-items:center;
  justify-content:center;margin:0;padding:0
 }
 #timeline .chat-sound-bubble .chat-audio-player>.chat-audio-error{grid-column:1/-1;grid-row:3}

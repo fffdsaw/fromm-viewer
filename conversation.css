@@ -100,12 +100,12 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .chat-sound-bubble>.meta{min-height:0;padding-inline-end:0}
 #timeline .chat-sound-bubble .media-actions{
  display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;
- gap:10px;min-height:var(--thumb-download-size,40px)
+ gap:10px;min-height:var(--thumb-download-size,36px)
 }
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download{
  position:relative!important;inset:auto!important;
- flex:0 0 var(--thumb-download-size,40px);box-sizing:border-box;
- width:var(--thumb-download-size,40px)!important;height:var(--thumb-download-size,40px)!important;
+ flex:0 0 var(--thumb-download-size,36px);box-sizing:border-box;
+ width:var(--thumb-download-size,36px)!important;height:var(--thumb-download-size,36px)!important;
  margin:0;padding:0!important;display:grid;place-items:center;
  border-radius:50%!important;
  background:rgba(0,0,0,.72)!important;

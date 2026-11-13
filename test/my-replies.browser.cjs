@@ -16,7 +16,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
  base('my-image-reply','25',{type:'image',content:'https://cdn.example/synthetic.svg',mentionedMessage:quote('fan-a')}),
  base('mine-but-not-artist','25',{userType:'fan',mentionedMessage:quote('fan-a')})];
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   for(const width of [1440,390]){
    const context=await browser.newContext({viewport:{width,height:1000},timezoneId:'Asia/Seoul'});
@@ -138,10 +138,13 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await day('25').click();assert.equal(await page.locator('#dateCalendar').getAttribute('aria-hidden'),'false','date stays open until explicit move');await page.locator('#dateJumpBtn').click();await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
    assert.equal(await page.locator('.msg').count(),messages.length,'date navigation keeps full context and the personal targets');
    await page.locator('[data-message-id="my-reply"] .reply-quote').click();
-   await page.waitForFunction(()=>!state.onlyMyReplies && document.querySelector('[data-message-id="original"]')?.classList.contains('reply-target-flash'));
+   await page.waitForFunction(()=>state.onlyMyReplies && state.chatMatchKey==='my-reply' && document.querySelector('[data-message-id="original"]')?.classList.contains('reply-target-flash'));
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply arrows remain available at the original message');
    assert.equal(await page.locator('.msg').count(),messages.length);
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='my-image-reply');
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply navigation continues after opening the original');
    // Plain text search can also navigate matches inside the complete conversation.
-   await ensureToolsOpen(page);await page.locator('#chatSearchInput').fill('일반 대화');
+   await ensureToolsOpen(page);await page.locator('#myRepliesBtn').uncheck();await page.locator('#chatSearchInput').fill('일반 대화');
    await page.waitForFunction(()=>state.chatQuery==='일반 대화');
    const searchTotal=await page.evaluate(()=>chatMatches().length);assert.ok(searchTotal>1);
    assert.equal(await page.locator('.text mark').first().evaluate(el=>getComputedStyle(el).backgroundColor),quoteMarkColor);
@@ -201,7 +204,8 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
    await page.evaluate(()=>{state.chatMessages=window.smallHistory;state.onlyMyReplies=false;state.chatMatchKey='';render();});
    await ensureToolsOpen(page);await page.locator('#myRepliesBtn').click();
    await page.locator('#rooms .room').last().evaluate(el=>el.click());
-   await page.waitForFunction(()=>state.room.hostChatRoomId==='room-b' && state.chatHistoryComplete);
+   await page.waitForFunction(()=>state.room.hostChatRoomId==='room-b'&&state.messages.length===1&&state.historyError);
+   assert.equal(await page.evaluate(()=>state.chatHistoryComplete),false,'a repeated single-row boundary without an API completeness marker remains incomplete');
    assert.equal(await page.evaluate(()=>state.onlyMyReplies),false);assert.equal(await page.locator('.reply-mine').count(),0);
    assert.equal(requests.filter(r=>r.path==='/v2/user/fan/profile').length,1,'same account reuses identity across rooms');
    // Account transition clears every personal marker immediately, then uses B's actual ID.

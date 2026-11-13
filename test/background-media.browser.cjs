@@ -111,7 +111,7 @@ async function preparation(browser,variant,trial){
     assert.equal(await f.page.evaluate(()=>document.querySelector('.media-card .card-title').textContent===state.mediaSequence.get(document.querySelector('.media-card').dataset.messageId)),true,'provisional filename label updates without replacing the card');
     assert.equal(final.count,3000);assert.equal(final.same,true);assert.equal(final.y,initial.y);assert.equal(final.selected,1);assert.equal(final.shared,true);
     assert.ok(final.previews<=256);assert.ok(final.queued<=60);assert.ok(final.previewActive<=2);
-    assert.equal(f.metrics.history,7);assert.equal(f.metrics.maxActive,1);assert.equal(f.metrics.originals,0,'no speculative originals/audio/video');
+    assert.equal(f.metrics.history,8);assert.equal(f.metrics.maxActive,1);assert.equal(f.metrics.originals,0,'no speculative originals/audio/video');
     const requests=f.metrics.history;
     await f.page.evaluate(async()=>{await ensureFullChatHistory();await setFilter('video');await setFilter('sound');await setFilter('image');});
     assert.equal(f.metrics.history,requests,'tab changes reuse metadata');

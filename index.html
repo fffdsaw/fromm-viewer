@@ -2110,6 +2110,7 @@ const state = {
   historyError: null,
   historyBlockedUntil: 0,
   historyLastRequestAt: 0,
+  historyObservedPageLimit: 0,
   mediaSequenceStamp: null,
 
   // Full conversation and media share the same completed metadata snapshot.
@@ -2478,6 +2479,20 @@ function compareMessages(a,b,direction="asc"){
   const kb = messageStableKey(b);
   const cmp = ka.localeCompare(kb);
   return direction === "asc" ? cmp : -cmp;
+}
+
+function mergeSortedMessages(existing,incoming){
+  if(!incoming.length)return existing;
+  incoming.sort((a,b)=>compareMessages(a,b,"asc"));
+  if(!existing.length)return incoming;
+  const merged=new Array(existing.length+incoming.length);let left=0,right=0,index=0;
+  while(left<existing.length&&right<incoming.length){
+    if(compareMessages(existing[left],incoming[right],"asc")<=0)merged[index++]=existing[left++];
+    else merged[index++]=incoming[right++];
+  }
+  while(left<existing.length)merged[index++]=existing[left++];
+  while(right<incoming.length)merged[index++]=incoming[right++];
+  return merged;
 }
 
 function dateKey(m){
@@ -6864,7 +6879,7 @@ function isCurrentTabLoading(){
   if(!state.room) return false;
 
   if(state.filter === "all"){
-    return !!state.chatHistoryLoading || !state.chatHistoryComplete;
+    return (!state.chatMessages.length && !!state.chatHistoryLoading) || (!state.chatMessages.length && !state.chatHistoryComplete);
   }
 
   return !!state.loadingMessages;
@@ -6947,7 +6962,8 @@ function saveRoomCache(){
     messages: state.messages,
     cursorEnd: state.cursorEnd ? new Date(state.cursorEnd).toISOString() : null,
     hasMoreMessages: state.hasMoreMessages,
-    pageRequestLimit: state.pageRequestLimit
+    pageRequestLimit: state.pageRequestLimit,
+    observedPageLimit: state.historyObservedPageLimit
   });
   while(state.roomCache.size>2){
     const oldest=state.roomCache.keys().next().value;
@@ -6957,15 +6973,18 @@ function saveRoomCache(){
 }
 
 function restoreRoomCache(entry){
-  state.messages = Array.isArray(entry?.messages) ? entry.messages : [];
+  state.messages = Array.isArray(entry?.messages) ? [...entry.messages].sort((a,b)=>compareMessages(a,b,"asc")) : [];
   state.cursorEnd = entry?.cursorEnd ? new Date(entry.cursorEnd) : new Date();
   state.hasMoreMessages = entry?.hasMoreMessages !== false;
   state.pageRequestLimit = Number(entry?.pageRequestLimit || 500);
+  state.historyObservedPageLimit=Number(entry?.observedPageLimit)||0;
 
   state.seenMessageKeys = new Set(
     state.messages.map(m=>String(m.messageId || `${m.createdAt}|${m.type}|${m.content}`))
   );
 
+  state.chatHistoryProgress=state.messages.length;
+  exposeChatHistorySnapshot();
   buildMediaSequences();
   updateHistoryStatus("캐시");
 }
@@ -6976,6 +6995,7 @@ function resetHistoryPaging(){
   state.hasMoreMessages = true;
   state.loadingMessages = false;
   state.pageRequestLimit = 500;
+  state.historyObservedPageLimit=0;
   state.seenMessageKeys = new Set();
   state.mediaSequenceStamp = null;
 
@@ -7001,6 +7021,11 @@ function resetFullChatHistory(){
   state.chatHistoryProgress = 0;
 }
 
+const INITIAL_CHAT_VIEW_LIMIT=300;
+function exposeChatHistorySnapshot(){
+  state.chatMessages=state.chatHistoryComplete?state.messages:state.messages.slice(-INITIAL_CHAT_VIEW_LIMIT);
+}
+
 function chatCacheKey(){
   const roomId=String(state.room?.hostChatRoomId || "");
   return roomId ? `${currentAccountScope()}::${roomId}` : "";
@@ -7008,7 +7033,14 @@ function chatCacheKey(){
 
 function restoreFullChatCache(){
   const cached = state.chatCache.get(chatCacheKey());
-  if(!cached?.length) return false;
+  if(!cached?.length){
+    if(!state.hasMoreMessages){
+      state.chatMessages=state.messages;state.chatHistoryComplete=true;state.chatHistoryProgress=state.messages.length;
+      if(state.messages.length)state.chatCache.set(chatCacheKey(),state.messages);
+      return state.messages.length>0;
+    }
+    return false;
+  }
 
   // The hot paging cache may contain only a few recent rows while the
   // full chat cache retains all history. Feed merges must use the same
@@ -7189,7 +7221,7 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
   // A complete hot cache is already rendered here. Rendering it again in
   // the deferred loading task would replace the newest virtual window with
   // the oldest initial batches after chatAutoTopPending has cleared.
-  const alreadyRenderedCompleteChat=!keepMediaTab&&hasImmediateData&&state.chatHistoryComplete;
+  const alreadyRenderedChat=!keepMediaTab&&hasImmediateData&&state.chatMessages.length>0;
   if(hasImmediateData){
     render();
   }else{
@@ -7217,11 +7249,12 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
       if(keepMediaTab){
         if(state.historyError && !state.messages.length) throw state.historyError;
       }else{
-        await ensureFullChatHistory();
-        if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
+        exposeChatHistorySnapshot();
+        if(state.hasMoreMessages)scheduleHistoryBackground();
       }
 
-      if(!alreadyRenderedCompleteChat) render();
+      const restoredIntoView=!keepMediaTab&&state.chatMessages.length>0&&globalThis.FrommConversation?.canShowCached();
+      if(!alreadyRenderedChat&&!restoredIntoView) render();
     }catch(e){
       if(generation !== state.scanGeneration || state.filter !== nextFilter) return;
       console.error("아티스트 화면 전환 실패:",e);
@@ -7267,6 +7300,9 @@ async function requestHistoryPage(roomId, cursorEnd, limit, signal=null){
     return await frommApiJson(
       FROMM_COMPAT.endpoints.messages(roomId),
       {
+        // Keep the exact oldest millisecond on the next request. The supplied
+        // Fromm Chat paginator overlaps this inclusive boundary and deduplicates
+        // by message ID; subtracting one millisecond can skip timestamp ties.
         findStartAt:"2000-01-01T00:00:00.000Z",
         findEndAt:safeCursor.toISOString(),
         limit:String(limit)
@@ -7326,10 +7362,17 @@ function scheduleHistoryBackground(){
 }
 
 async function publishCompleteHistory(current=()=>true){
+  const previousList=state.infiniteList||[],previousStart=state.chatWindowStart||0,previousRendered=state.infiniteRendered||0;
   // Build into local maps in small slices, then publish one complete snapshot.
   // Neither scrolling nor Save may observe partly updated filename sequences.
   await buildMediaSequences(true,current);
   if(!current()) return;
+  const hasViewport=typeof document!=="undefined"&&!!document.documentElement&&typeof document.querySelector==="function"&&typeof window!=="undefined"&&Number.isFinite(window.innerHeight);
+  const dockHeight=hasViewport?(document.querySelector("#conversationDock")?.offsetHeight||0):0;
+  const wasAtLatest=state.filter==="all"&&(state.chatAutoTopPending||!!window.FrommViewState?.followingLatest||hasViewport&&document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(220,dockHeight+60));
+  const anchor=state.filter==="all"&&typeof document!=="undefined"&&typeof document.querySelectorAll==="function"?[...document.querySelectorAll("#timeline .msg")].find(node=>node.getBoundingClientRect().bottom>chatHeaderInset()+8):null;
+  const anchorTop=anchor?.getBoundingClientRect().top;
+  const anchorGeneration=state.scanGeneration;
   // Replace only provisional filename text; keep media/player/selection nodes intact.
   if(!["all","live","vote"].includes(state.filter)){
     for(const card of document.querySelectorAll("#timeline > .media-card")){
@@ -7343,6 +7386,21 @@ async function publishCompleteHistory(current=()=>true){
   state.chatCache.set(chatCacheKey(),state.messages);
   saveRoomCache();
   renderDateCalendar();
+  if(state.filter==="all"&&previousList.length&&typeof filteredMessages==="function"){
+    const nextList=filteredMessages(),firstKey=messageStableKey(previousList[0]);
+    const offset=nextList.findIndex(message=>messageStableKey(message)===firstKey);
+    const preserved=offset>=0&&previousList.every((message,index)=>messageStableKey(nextList[offset+index])===messageStableKey(message));
+    if(preserved){
+      state.infiniteList=nextList;
+      state.chatWindowStart=offset+previousStart;
+      state.infiniteRendered=Math.min(nextList.length,offset+previousRendered);
+      armChatTopRenderObserver(state.infiniteVersion);
+      armChatRenderObserver(state.infiniteVersion);
+      const valid=()=>state.scanGeneration===anchorGeneration&&state.filter==="all";
+      if(wasAtLatest)window.FrommViewState?.settleLatest(valid);
+      else if(anchor?.isConnected&&Number.isFinite(anchorTop))window.FrommViewState?.settleAnchor(anchor,()=>anchorTop-12,valid,900);
+    }else if(typeof render==="function") render();
+  }
 }
 
 async function loadMoreHistory({initial=false,forceAll=false,background=false}={}){
@@ -7381,17 +7439,24 @@ async function loadMoreHistory({initial=false,forceAll=false,background=false}={
         if(owner.signal.aborted || generation!==state.scanGeneration) throw historyAbortError();
         const batch=extractMessages(data);
         if(!batch.length){state.hasMoreMessages=false;break;}
-        let oldest=Infinity;
+        state.historyObservedPageLimit=Math.max(state.historyObservedPageLimit||0,batch.length);
+        let oldest=Infinity;const duplicates=[],newMessages=[];
         for(const msg of batch){
           const key=String(msg.messageId || `${msg.createdAt}|${msg.type}|${msg.content}`);
-          if(!state.seenMessageKeys.has(key)){
-            state.seenMessageKeys.add(key);state.messages.push(msg);addedTotal++;
-          }
+          if(state.seenMessageKeys.has(key)) duplicates.push(msg);
+          else{state.seenMessageKeys.add(key);newMessages.push(msg);addedTotal++;}
           const time=new Date(msg.createdAt).getTime();
           if(Number.isFinite(time)) oldest=Math.min(oldest,time);
         }
-        const next=new Date(oldest-1);
-        if(!Number.isFinite(next.getTime()) || next>=state.cursorEnd){
+        if(newMessages.length)state.messages=mergeSortedMessages(state.messages,newMessages);
+        if(duplicates.length) await globalThis.FrommConversation?.reconcileHistory?.(duplicates);
+        const next=new Date(oldest);
+        if(!Number.isFinite(next.getTime())){
+          throw new Error("기록 커서가 진행되지 않아 파일명 보호를 위해 중단했습니다.");
+        }
+        if(next>=state.cursorEnd){
+          const boundaryFullyRepeated=duplicates.length===batch.length&&batch.length<(state.historyObservedPageLimit||state.pageRequestLimit);
+          if(next.getTime()===state.cursorEnd.getTime()&&boundaryFullyRepeated){state.hasMoreMessages=false;break;}
           throw new Error("기록 커서가 진행되지 않아 파일명 보호를 위해 중단했습니다.");
         }
         state.cursorEnd=next;
@@ -7408,10 +7473,9 @@ async function loadMoreHistory({initial=false,forceAll=false,background=false}={
       console.warn("Fromm history paused",cleanFailureReason(e?.message));
     }finally{
       if(generation===state.scanGeneration && state.historyOwner===owner){
-        state.messages.sort((a,b)=>compareMessages(a,b,"asc"));
         const current=()=>generation===state.scanGeneration && state.historyOwner===owner;
         if(!state.hasMoreMessages) await publishCompleteHistory(current);
-        else{saveRoomCache();if(!background) await buildMediaSequences(true,current);}
+        else{exposeChatHistorySnapshot();saveRoomCache();if(!background) await buildMediaSequences(true,current);}
         if(!current()) return addedTotal;
         state.loadingMessages=false;state.historyJob=null;state.historyOwner=null;
         renderCountsOnly();updateHistoryStatus();syncLoadingUI();
@@ -7856,7 +7920,7 @@ function updateChatSearchCount(){
     count.textContent=replyIdentity.status === "error" ? "확인 불가" : "확인 중…";return;
   }
   const n = chatMatches().length;
-  count.textContent = `${n.toLocaleString()}개`;
+  count.textContent = `${n.toLocaleString()}개${state.chatHistoryComplete?"":" · 일부 기록"}`;
 }
 
 let chatMatchCache=null;
@@ -7870,8 +7934,7 @@ function chatMatches(){
   const messages=state.chatMessages, query=state.chatQuery.trim(), own=!!state.onlyMyReplies, identity=currentReplyUserId();
   const cached=chatMatchCache;
   if(cached && cached.messages===messages && cached.length===messages.length && cached.query===query && cached.own===own && cached.identity===identity) return cached.items;
-  const items=(!own && !query) ? [] : messages.filter(m=>chatMessageVisible(m) && (!own || isReplyToMe(m)) && (!query || chatMessageMatches(m,query)))
-    .sort((a,b)=>compareMessages(a,b,"asc"));
+  const items=(!own && !query) ? [] : messages.filter(m=>chatMessageVisible(m) && (!own || isReplyToMe(m)) && (!query || chatMessageMatches(m,query)));
   chatMatchCache={messages,length:messages.length,query,own,identity,items};
   return items;
 }
@@ -7891,7 +7954,8 @@ function syncChatMatchControls(){
 async function navigateChatMatch(direction,{first=false,valid=null}={}){
   if(state.filter!=="all") return;
   const generation=state.scanGeneration;
-  await ensureFullChatHistory();
+  const historyComplete=await ensureFullChatHistory();
+  if(!historyComplete||!state.chatHistoryComplete)return;
   if(generation!==state.scanGeneration || state.filter!=="all" || (valid && !valid())) return;
   const matches=chatMatches();if(!matches.length) return;
   // Explicit result navigation owns the viewport; cancel any queued list restore
@@ -7926,7 +7990,7 @@ async function navigateChatMatch(direction,{first=false,valid=null}={}){
 function filteredMessages(){
   if(state.filter==="all"){
     // Search and personal replies are navigation targets in the full conversation.
-    return state.chatMessages.filter(chatMessageVisible).sort((a,b)=>compareMessages(a,b,"asc"));
+    return state.chatMessages.filter(chatMessageVisible);
   }
 
   let list;
@@ -8495,12 +8559,12 @@ function renderFullConversation(version){
     return;
   }
 
-  if((state.chatHistoryLoading || !state.chatHistoryComplete) && !globalThis.FrommConversation?.canShowCached()){
+  if((state.chatHistoryLoading || !state.chatHistoryComplete) && !state.chatMessages.length && !globalThis.FrommConversation?.canShowCached()){
     const progress = state.chatHistoryProgress
       ? ` ${state.chatHistoryProgress.toLocaleString()}개 확인 중`
       : "";
 
-    tl.innerHTML = `<div class="empty stable-loading-slot">전체 대화 불러오는 중…${progress}</div>`;
+    tl.innerHTML = `<div class="empty stable-loading-slot">${state.historyError?"기록 준비가 일시 중지되었습니다. 새로고침으로 다시 시도해주세요.":`전체 대화 불러오는 중…${progress}`}</div>`;
     syncLoadingUI();
     return;
   }
@@ -9145,7 +9209,7 @@ function renderMessage(m){
   if(replyQuote){
     replyQuote.onclick = ()=>{
       const targetId = replyQuote.dataset.quotedId;
-      if(targetId) scrollToOriginalMessage(targetId);
+      if(targetId) scrollToOriginalMessage(targetId,m.messageId || m.id || "");
     };
   }
 
@@ -9495,8 +9559,7 @@ function firstMessageOnDate(targetDate){
 
 function oldestLoadedDate(){
   if(!state.chatMessages.length) return "";
-  const oldest = [...state.chatMessages].sort((a,b)=>compareMessages(a,b,"asc"))[0];
-  return localDateKeyFromISO(oldest?.createdAt);
+  return localDateKeyFromISO(state.chatMessages[0]?.createdAt);
 }
 
 function renderChatWindow(list,targetIndex){
@@ -9603,7 +9666,11 @@ async function jumpToDate(targetDate){
 
   try{
     btn.textContent = "준비 중...";
-    await ensureFullChatHistory();
+    const historyComplete=await ensureFullChatHistory();
+    if(!historyComplete||!state.chatHistoryComplete){
+      alert("전체 기록을 준비하지 못해 날짜 이동을 완료할 수 없습니다. 현재 표시된 최근 기록은 불완전합니다.");
+      return;
+    }
     if(state.onlyMyReplies) await ensureReplyIdentity();
     if(generation !== state.scanGeneration) return;
     if(state.onlyMyReplies && !currentReplyUserId()){
@@ -9671,52 +9738,57 @@ async function jumpToDate(targetDate){
     btn.textContent = originalText;
   }
 }
-async function scrollToOriginalMessage(messageId){
+async function scrollToOriginalMessage(messageId,replyMessageId=""){
   if(!messageId) return;
   const generation=state.scanGeneration;
-  state.onlyMyReplies=false;state.chatQuery="";state.chatMatchKey="";
+  const preserveReplyNavigation=state.onlyMyReplies;
+  state.chatQuery="";
+  if(preserveReplyNavigation){
+    const reply=replyMessageId ? state.chatMessages.find(m=>String(m.messageId||m.id||"")===String(replyMessageId)) : null;
+    if(reply && isReplyToMe(reply)) state.chatMatchKey=messageStableKey(reply);
+  }else state.chatMatchKey="";
   if($("#chatSearchInput")) $("#chatSearchInput").value="";
   syncMyReplyTools();
+  chatMatchCache=null;renderCountsOnly();updateChatSearchCount();syncLoadingUI();
 
   if(state.filter !== "all"){
-    state.chatQuery = "";
-    if($("#chatSearchInput")) $("#chatSearchInput").value = "";
     await setFilter("all",{autoTop:false});
   }
 
-  await ensureFullChatHistory();
-
+  const historyComplete=await ensureFullChatHistory();
   if(generation !== state.scanGeneration) return;
-  const targetMsg = state.chatMessages.find(
-    m=>String(m.messageId || m.id || "") === String(messageId)
-  );
-
-  if(!targetMsg){
-    render();alert("불러온 대화에 원문이 없습니다. 서버에서 제공하지 않는 원문은 표시할 수 없습니다.");return;
+  if(!historyComplete || !state.chatHistoryComplete){
+    alert("전체 기록을 불러오지 못해 인용 원문을 확인할 수 없습니다. 현재 대화 기록은 불완전합니다. 기록 수집 완료 후 다시 시도해 주세요.");
+    return;
   }
 
-  state.chatAutoTopPending = false;
-  render();
-
-  const selector = `.msg[data-message-id="${CSS.escape(String(messageId))}"]`;
-  let target = document.querySelector(selector);
-  let guard = 0;
-
-  while(!target &&
-        state.infiniteRendered < state.infiniteList.length &&
-        guard < 1000){
-    appendChatBatch(2,state.infiniteVersion);
-    target = document.querySelector(selector);
-    guard++;
+  const list=filteredMessages();
+  const targetIndex=list.findIndex(m=>String(m.messageId||m.id||"")===String(messageId));
+  if(targetIndex<0){
+    updateChatSearchCount();renderCountsOnly();
+    alert("불러온 대화에 원문이 없습니다. 서버에서 제공하지 않는 원문은 표시할 수 없습니다.");
+    return;
   }
 
-  if(target){
-    target.scrollIntoView({behavior:"smooth",block:"center"});
+  window.FrommViewState?.cancel();
+  state.chatAutoTopPending=false;
+  // Jump directly to the source window. Appending every older row first can
+  // create tens of thousands of DOM nodes and freeze the browser.
+  const result=renderChatWindow(list,targetIndex);
+  if(!result){alert("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.");return;}
+  const selector=`.msg[data-message-id="${CSS.escape(String(messageId))}"]`;
+  const target=document.querySelector(selector);
+  if(!target){alert("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.");return;}
+  const version=result.version;
+  requestAnimationFrame(()=>{
+    if(generation!==state.scanGeneration||version!==state.infiniteVersion||!target.isConnected)return;
+    scrollElementBelowToolbar(target,"smooth");
     target.classList.add("reply-target-flash");
     setTimeout(()=>target.classList.remove("reply-target-flash"),1800);
-  }
+    window.FrommViewState?.settleAnchor(target,chatHeaderInset,
+      ()=>generation===state.scanGeneration&&version===state.infiniteVersion,1200);
+  });
 }
-
 async function setFilter(f, options={}){
   const restorePosition=window.FrommViewState?.navigate(f,options);
   invalidateVoteView();
@@ -9769,14 +9841,12 @@ async function setFilter(f, options={}){
   }
 
   if(f==="all"){
+    if(state.room&&!state.messages.length&&state.hasMoreMessages)await loadMoreHistory({initial:true});
+    if(state.filter!=="all")return;
+    exposeChatHistorySnapshot();
     render();
     syncLoadingUI();
-    await ensureFullChatHistory();
-
-    if(state.filter==="all"){
-      render();
-    }
-    syncLoadingUI();
+    if(state.hasMoreMessages)scheduleHistoryBackground();
     return;
   }
 

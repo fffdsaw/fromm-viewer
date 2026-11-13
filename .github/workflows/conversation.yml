@@ -1,7 +1,7 @@
 name: Conversation receive send and persistence
 on:
   pull_request:
-    paths: ['index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
+    paths: ['index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'test/chat-history-progressive.browser.cjs', 'test/chat-history-scale.browser.cjs', 'test/my-replies.browser.cjs', 'test/search-calendar-panel.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
 permissions:
   contents: read
 jobs:
@@ -29,7 +29,7 @@ jobs:
       - name: Incremental reads and message rules
         run: node --test test/conversation.test.cjs test/unread.test.cjs
       - name: Browser tooling
-        run: npm install --no-save --package-lock=false playwright@1.62.1
+        run: npm install --no-save --package-lock=false playwright@1.62.1 axe-core@4.14.0
       - name: Chromium
         if: runner.os == 'Linux'
         run: npx playwright install --with-deps chromium
@@ -42,12 +42,35 @@ jobs:
         run: |
           node test/conversation.browser.cjs
           node test/conversation-state.browser.cjs
+          node test/conversation-cache-restore.browser.cjs
+          node test/conversation-cache-conflicts.browser.cjs
+          node test/conversation-storage-recovery.browser.cjs
           node test/conversation-emoticons.browser.cjs
           node test/conversation-controls.browser.cjs
           node test/conversation-send-focus.browser.cjs
           node test/conversation-audio.browser.cjs
           node test/conversation-unread-rail.browser.cjs
-          node test/rail-glyph-lens.browser.cjs
+          node test/chat-history-progressive.browser.cjs
+      - name: Search, date, and reply navigation regressions
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/my-replies.browser.cjs
+      - name: Search and calendar accessibility
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/search-calendar-panel.browser.cjs
+      - name: Conversation rail glyph regression
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/rail-glyph-lens.browser.cjs
+      - name: Synthetic 50,000-message scale and cache restore
+        if: matrix.channel == 'chromium'
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/chat-history-scale.browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

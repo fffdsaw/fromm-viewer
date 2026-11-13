@@ -6,7 +6,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   const {page,context,errors}=await open(browser,server.url,{login:true});
-  let identity='fan-A',mode='ok',posts=[],history=0,holdRules=null,releaseRules=null,holdHistory=null,releaseHistory=null;
+  let identity='fan-A',mode='ok',posts=[],history=0,historyPausedRequests=0,holdRules=null,releaseRules=null,holdHistory=null,releaseHistory=null;
   const rows=Array.from({length:12},(_,i)=>({messageId:'star-'+i,userType:'star',type:'text',content:'대화 '+i,createdAt:Date.now()-60000+i*1000}));
   page.on('dialog',dialog=>dialog.accept());
   await page.route('**/*',async route=>{
@@ -20,7 +20,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    }
    if(u.pathname.endsWith('/messages')){
     const from=Date.parse(u.searchParams.get('findStartAt')),end=Date.parse(u.searchParams.get('findEndAt')),limit=Number(u.searchParams.get('limit'));
-    if(from<946684800001)history++;if(holdHistory){const wait=holdHistory;holdHistory=null;await wait;}
+    if(from<946684800001)history++;if(holdHistory){historyPausedRequests++;await holdHistory;}
     return answer({success:true,data:{messages:rows.filter(m=>m.createdAt>=from&&m.createdAt<=end).sort((a,b)=>b.createdAt-a.createdAt).slice(0,limit)}});
    }
    if(u.pathname.endsWith('/replies')){
@@ -66,23 +66,20 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   // A partial snapshot must be visible while older server pages are still pending.
   const partial=await page.evaluate(async messages=>{const store=FrommConversationCore.createStore();try{const last=messages.slice().sort((a,b)=>a.createdAt-b.createdAt).slice(-6);await store.clearRoom('user:fan-C','host-room');await store.write('user:fan-C','host-room',last,{count:6,complete:false,cursorEnd:new Date(last[0].createdAt-1).toISOString()});const saved=await store.read('user:fan-C','host-room');return{count:saved?.messages.length,complete:saved?.meta.complete}}finally{await store.close()}},rows);assert.deepEqual(partial,{count:6,complete:false});
   // A separate synthetic account avoids racing another writer for the same key.
-  identity='fan-C';holdHistory=new Promise(resolve=>releaseHistory=resolve);const reenter=enter('account-C'),reenterResult=reenter.then(()=>({error:null}),error=>({error}));
-  try{await page.waitForFunction(()=>FrommConversation.canShowCached()&&!state.chatHistoryComplete&&state.messages.length===6,null,{timeout:5000});}
+  identity='fan-C';historyPausedRequests=0;holdHistory=new Promise(resolve=>releaseHistory=resolve);const reenter=enter('account-C'),reenterResult=reenter.then(()=>({error:null}),error=>({error}));
+  try{
+   await page.waitForFunction(()=>FrommConversation.canShowCached()&&!state.chatHistoryComplete&&state.messages.length===6,null,{timeout:5000});
+   const historyGateDeadline=Date.now()+5000;while(!historyPausedRequests&&Date.now()<historyGateDeadline)await new Promise(resolve=>setTimeout(resolve,25));
+   assert.ok(historyPausedRequests>0,'at least one server history request remains blocked while partial cache rows are visible');
+  }
   catch(error){
    let current;
-   try{
-    current=await page.evaluate(async()=>{
-     const store=FrommConversationCore.createStore();
-     try{
-      const disk=await store.read('user:fan-C','host-room');
-      return{complete:state.chatHistoryComplete,messages:state.messages.length,shown:state.chatMessages.length,hasMore:state.hasMoreMessages,cache:FrommConversation.canShowCached(),phase:FrommConversation.status.phase,historyError:state.historyError?.message||'',requestCount:state.historyObservedPageLimit,replyUserId:currentReplyUserId(),diskCount:disk?.messages.length,diskComplete:disk?.meta.complete};
-     }finally{await store.close();}
-    });
-   }catch(diagnosticError){current={pageClosed:page.isClosed(),diagnosticError:diagnosticError.message};}
-   releaseHistory?.();const result=await reenterResult;
+   try{current=await page.evaluate(()=>({complete:state.chatHistoryComplete,messages:state.messages.length,shown:state.chatMessages.length,hasMore:state.hasMoreMessages,cache:FrommConversation.canShowCached(),phase:FrommConversation.status.phase,historyError:state.historyError?.message||'',requestCount:state.historyObservedPageLimit}));}
+   catch(diagnosticError){current={pageClosed:page.isClosed(),diagnosticError:diagnosticError.message};}
+   holdHistory=null;releaseHistory?.();const result=await reenterResult;
    throw new Error(`partial cache re-entry state: ${JSON.stringify(current)} (history requests: ${history}; room entry error: ${result.error?.message||'none'})`,{cause:error});
   }
-  assert.equal(await page.locator('#timeline .msg').count(),6,'cached partial history visible before older requests finish');releaseHistory();const result=await reenterResult;if(result.error)throw result.error;assert.equal(await page.evaluate(()=>state.messages.length),rows.length);
+  assert.equal(await page.locator('#timeline .msg').count(),6,'cached partial history visible before older requests finish');holdHistory=null;releaseHistory();const result=await reenterResult;if(result.error)throw result.error;assert.equal(await page.evaluate(()=>state.messages.length),rows.length);
   await page.evaluate(()=>FrommConversation.flush());await page.locator('#conversationStorage').click();await page.locator('#conversationClear').click();await page.waitForFunction(()=>document.querySelector('#conversationStorageState').textContent.includes('지우고'));
   assert.equal(await read('user:fan-A'),null);assert.ok(await read('user:fan-B'),'clearing A preserves B');await page.evaluate(()=>FrommConversation.flush());assert.equal(await read('user:fan-A'),null,'cleared account stays off');
   await page.locator('#conversationStorageClose').click();

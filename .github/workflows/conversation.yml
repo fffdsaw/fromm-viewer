@@ -51,9 +51,21 @@ jobs:
           node test/conversation-audio.browser.cjs
           node test/conversation-unread-rail.browser.cjs
           node test/chat-history-progressive.browser.cjs
-          node test/my-replies.browser.cjs
-          node test/search-calendar-panel.browser.cjs
-          node test/rail-glyph-lens.browser.cjs
+      - name: Search, date, and reply navigation regressions
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/my-replies.browser.cjs
+      - name: Search and calendar accessibility
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/search-calendar-panel.browser.cjs
+      - name: Conversation rail glyph regression
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/rail-glyph-lens.browser.cjs
       - name: Synthetic 50,000-message scale and cache restore
         if: matrix.channel == 'chromium'
         env:

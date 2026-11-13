@@ -1,6 +1,6 @@
 # Fromm Viewer — cross-account handoff
 
-Last reviewed: 2026-11-12 (Asia/Seoul)
+Last reviewed: 2026-11-13 (Asia/Seoul)
 
 ## Project and Git state
 
@@ -12,7 +12,7 @@ Last reviewed: 2026-11-12 (Asia/Seoul)
 - Latest verified `origin/main`: `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120).
 - The current branch merges that main through `d03a306`; the recovered four stabilization commits remain in ancestry: `b3b3c84`, `0e3760f`, `a61fa43`, `5f73e9a`.
 - Work commits include `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
-- The branch is pushed to `origin` and PR #121 is open with the requested title. Before this verification pass, the local and remote branch both pointed to `9e05a43be8509075e796180370db0e14846e93e4`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
+- The branch is pushed to `origin` and PR #121 is open with the requested title. At the start of the 2026-11-13 handoff, local and remote both pointed to `dec92eb9706ef07274d0227e7249a57c33c9e077`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
 - The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - Do not merge this PR or deploy without the user's explicit approval.
 
@@ -47,7 +47,7 @@ Last reviewed: 2026-11-12 (Asia/Seoul)
 
 ### Browser tests
 
-This verification pass used Playwright 1.62.1 with Chromium 151.0.7922.34 and axe-core 4.14.0. The unit suite plus these synthetic Chromium browser tests passed: `conversation.browser.cjs` (desktop/tablet/mobile), `conversation-state.browser.cjs`, cache restore, cache conflicts, interrupted storage recovery, emoticons, conversation controls, send focus, audio, unread rail, progressive history, 10k/50k scale, my replies, search/calendar accessibility, and rail glyph lens. The state test passed eight consecutive runs after changing its partial-cache fixture to use a fresh synthetic account key; it no longer races a prior full-cache writer. No live Fromm API or user account was used. GitHub Actions for the new commit must still be checked after push.
+This verification pass used Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34, and axe-core 4.14.0. The full synthetic Chromium suite passed: `conversation.browser.cjs` (desktop/tablet/mobile), `conversation-state.browser.cjs`, cache restore, cache conflicts, interrupted storage recovery, emoticons, conversation controls, send focus, audio, unread rail, progressive history, 10k/50k scale, my replies, search/calendar accessibility, and rail glyph lens. The state test passed 12 consecutive runs after changing its partial-cache fixture to use a fresh synthetic account key and keeping every server-history request blocked until explicit release; it verifies at least one request is still pending while the six cached rows are visible. The my-replies test and search/calendar accessibility test also passed locally on installed Chrome 157.0.8103.52, with desktop/mobile and desktop/PWA viewports respectively. The full 275-test unit suite passed (0 failures). No live Fromm API or user account was used. GitHub Actions for the current local fix must still be checked after push.
 
 ### Synthetic 50,000-message measurements
 
@@ -68,9 +68,11 @@ These are test-fixture Chromium results, not measurements from Fromm's service o
 
 There is no same-fixture before/after baseline, so do not state an improvement percentage. An earlier handoff's ~37 ms cache restore used a different test condition and is not directly comparable.
 
-### GitHub Actions before the latest local fix
+### GitHub Actions before the current local fix
 
-On the previously pushed head `9e05a43be8509075e796180370db0e14846e93e4`, Conversation/Chromium failed in the partial-cache re-entry fixture; diagnosis showed the test overwrote an active account/room key and could read the old complete snapshot. The test now seeds a distinct synthetic account/room key and asserts its partial metadata before restore. Conversation/Chrome and Conversation/Edge hit the 15-minute job limit while running the 50k scale test; that scale step now runs once on Linux Chromium while the functional browser regressions remain in the three-channel matrix. The Channel browser/regression jobs, media bulk-save jobs, and video download jobs passed on that prior head. Verify all checks again on the pushed fix.
+On pushed head `dec92eb9706ef07274d0227e7249a57c33c9e077`, run [43242129564](https://github.com/fffdsaw/fromm-viewer/actions/runs/43242129564) failed Conversation/Chromium in the partial-cache re-entry check. The prior fixture cleared `holdHistory` as soon as the first `/messages` request observed it; it did not guarantee that the request held was the re-entry's history request or that all later pages remained blocked. The local fix keeps the gate active for every `/messages` request until explicit release, counts requests held, and asserts a history request is still pending while the six cached rows are visible. This is a test synchronization defect; no production cache change was made.
+
+On that same run, Conversation/Chrome and Conversation/Edge passed through `chat-history-progressive.browser.cjs` but did not finish before the 15-minute job timeout. The old combined step emitted no per-script completion markers for `my-replies`, `search-calendar-panel`, or `rail-glyph-lens`, so the stalled script was not identifiable. Those three final checks are now separate named steps with a three-minute step limit. `my-replies` and `search-calendar-panel` now honor `PLAYWRIGHT_CHANNEL`; both passed locally on Chrome 157. The 50k scale test remains Linux Chromium only. Channel, media bulk-save, and video-download workflows passed on `dec92eb`. Verify Chrome and Edge via Actions on the new commit.
 
 ## Known limitations and risks
 
@@ -128,8 +130,8 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Push and PR record
 
-- Branch push: successful after GitHub CLI authentication. The currently recorded remote SHA is the pre-fix head `9e05a43be8509075e796180370db0e14846e93e4`; update after the fix is committed and pushed.
+- Last confirmed remote head before this follow-up: `dec92eb9706ef07274d0227e7249a57c33c9e077`. This follow-up covers the partial-cache request gate, CI step split, and browser-channel selection; always compare current `HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination`.
 - PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`.
 - PR title: `Stabilize conversation cache and optimize progressive history loading`.
 - PR description must cover the original cache commits, progressive loading, timestamp guard, regression results, synthetic performance and limits, unverified live API contract, these two project documents, and production review requirements.
-- GitHub Actions: pre-fix results and limitations are recorded above. This handoff records local verification for the follow-up; check PR #121 for runs on the commit containing this update and record their URLs/statuses at the next checkpoint. Do not call a local test a GitHub Actions result.
+- GitHub Actions: run `43242129564` failed Conversation/Chromium and timed out/cancelled Chrome and Edge as described above. The other workflows passed on `dec92eb`. Those checks predate this follow-up; record Actions URLs and statuses for the current branch head separately. Do not call a local test a GitHub Actions result.

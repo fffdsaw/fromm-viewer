@@ -16,7 +16,7 @@ const messages=[base('original','20',{userType:'fan',content:'내가 쓴 합성 
  base('my-image-reply','25',{type:'image',content:'https://cdn.example/synthetic.svg',mentionedMessage:quote('fan-a')}),
  base('mine-but-not-artist','25',{userType:'fan',mentionedMessage:quote('fan-a')})];
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   for(const width of [1440,390]){
    const context=await browser.newContext({viewport:{width,height:1000},timezoneId:'Asia/Seoul'});

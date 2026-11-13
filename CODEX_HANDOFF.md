@@ -12,7 +12,7 @@ Last reviewed: 2026-11-13 (Asia/Seoul)
 - Latest verified `origin/main`: `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120).
 - The current branch merges that main through `d03a306`; the recovered four stabilization commits remain in ancestry: `b3b3c84`, `0e3760f`, `a61fa43`, `5f73e9a`.
 - Work commits include `843a418` (progressive recent-first history) and `214f500` (pagination and browser regressions). Read `git log -10 --oneline` for the current HEAD; this document avoids embedding its own commit SHA.
-- The branch is pushed to `origin` and PR #121 is open with the requested title. At the start of the 2026-11-13 handoff, local and remote both pointed to `dec92eb9706ef07274d0227e7249a57c33c9e077`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
+- The branch is pushed to `origin` and PR #121 is open with the requested title. The latest code commit verified by GitHub Actions is `0361c0c669f48aa7c113a70e08c7f363f23371f3`; compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination` after each push.
 - The original untracked `HANDOFF.md` from the backup is intentionally preserved. Do not overwrite or delete it.
 - Do not merge this PR or deploy without the user's explicit approval.
 
@@ -47,7 +47,7 @@ Last reviewed: 2026-11-13 (Asia/Seoul)
 
 ### Browser tests
 
-This verification pass used Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34, and axe-core 4.14.0. The full synthetic Chromium suite passed: `conversation.browser.cjs` (desktop/tablet/mobile), `conversation-state.browser.cjs`, cache restore, cache conflicts, interrupted storage recovery, emoticons, conversation controls, send focus, audio, unread rail, progressive history, 10k/50k scale, my replies, search/calendar accessibility, and rail glyph lens. The state test passed 12 consecutive runs after changing its partial-cache fixture to use a fresh synthetic account key and keeping every server-history request blocked until explicit release; it verifies at least one request is still pending while the six cached rows are visible. The my-replies test and search/calendar accessibility test also passed locally on installed Chrome 157.0.8103.52, with desktop/mobile and desktop/PWA viewports respectively. The full 275-test unit suite passed (0 failures). No live Fromm API or user account was used. GitHub Actions for the current local fix must still be checked after push.
+This verification pass used Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34, and axe-core 4.14.0. The full synthetic Chromium suite passed: `conversation.browser.cjs` (desktop/tablet/mobile), `conversation-state.browser.cjs`, cache restore, cache conflicts, interrupted storage recovery, emoticons, conversation controls, send focus, audio, unread rail, progressive history, 10k/50k scale, my replies, search/calendar accessibility, and rail glyph lens. The state test passed 12 consecutive runs after changing its partial-cache fixture to use a fresh synthetic account key and keeping every server-history request blocked until explicit release; it verifies at least one request is still pending while the six cached rows are visible. The my-replies test and search/calendar accessibility test also passed locally on installed Chrome 157.0.8103.52, with desktop/mobile and desktop/PWA viewports respectively. The full 275-test unit suite passed (0 failures). No live Fromm API or user account was used.
 
 ### Synthetic 50,000-message measurements
 
@@ -72,7 +72,18 @@ There is no same-fixture before/after baseline, so do not state an improvement p
 
 On pushed head `dec92eb9706ef07274d0227e7249a57c33c9e077`, run [43242129564](https://github.com/fffdsaw/fromm-viewer/actions/runs/43242129564) failed Conversation/Chromium in the partial-cache re-entry check. The prior fixture cleared `holdHistory` as soon as the first `/messages` request observed it; it did not guarantee that the request held was the re-entry's history request or that all later pages remained blocked. The local fix keeps the gate active for every `/messages` request until explicit release, counts requests held, and asserts a history request is still pending while the six cached rows are visible. This is a test synchronization defect; no production cache change was made.
 
-On that same run, Conversation/Chrome and Conversation/Edge passed through `chat-history-progressive.browser.cjs` but did not finish before the 15-minute job timeout. The old combined step emitted no per-script completion markers for `my-replies`, `search-calendar-panel`, or `rail-glyph-lens`, so the stalled script was not identifiable. Those three final checks are now separate named steps with a three-minute step limit. `my-replies` and `search-calendar-panel` now honor `PLAYWRIGHT_CHANNEL`; both passed locally on Chrome 157. The 50k scale test remains Linux Chromium only. Channel, media bulk-save, and video-download workflows passed on `dec92eb`. Verify Chrome and Edge via Actions on the new commit.
+On that same run, Conversation/Chrome and Conversation/Edge passed through `chat-history-progressive.browser.cjs` but did not finish before the 15-minute job timeout. The old combined step emitted no per-script completion markers for `my-replies`, `search-calendar-panel`, or `rail-glyph-lens`, so the stalled script was not identifiable. Those three final checks are now separate named steps with a three-minute step limit. `my-replies` and `search-calendar-panel` now honor `PLAYWRIGHT_CHANNEL`; both passed locally on Chrome 157. The 50k scale test remains Linux Chromium only.
+
+### GitHub Actions on the current code commit
+
+All PR checks passed on code commit `0361c0c669f48aa7c113a70e08c7f363f23371f3`:
+
+- Conversation receive/send/persistence, run [43386732919](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732919): Chromium, Chrome, and Edge passed. Chromium included the synthetic 50k scale/cache restore check.
+- Media bulk save regression, run [43386732906](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732906): unit regression and browser jobs passed.
+- Channel videos regression, run [43386733129](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386733129): unit regression and full browser suite passed.
+- Video download engine, run [43386732935](https://github.com/fffdsaw/fromm-viewer/actions/runs/43386732935): Chromium, Chrome, and Edge passed.
+
+These checks exercised synthetic/local fixtures only. They do not verify the authenticated Fromm API pagination contract.
 
 ## Known limitations and risks
 
@@ -130,8 +141,8 @@ Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CR
 
 ## Push and PR record
 
-- Last confirmed remote head before this follow-up: `dec92eb9706ef07274d0227e7249a57c33c9e077`. This follow-up covers the partial-cache request gate, CI step split, and browser-channel selection; always compare current `HEAD` with `git ls-remote origin refs/heads/codex/timestamp-pagination`.
+- Code follow-up commit `0361c0c669f48aa7c113a70e08c7f363f23371f3` contains the partial-cache request gate, CI step split, and browser-channel selection. Its required GitHub Actions checks all passed (run links above). A later documentation-only commit may update this handoff; the code tested by these runs remains the same.
 - PR URL/number: #121 — <https://github.com/fffdsaw/fromm-viewer/pull/121>, open, base `main`.
 - PR title: `Stabilize conversation cache and optimize progressive history loading`.
 - PR description must cover the original cache commits, progressive loading, timestamp guard, regression results, synthetic performance and limits, unverified live API contract, these two project documents, and production review requirements.
-- GitHub Actions: run `43242129564` failed Conversation/Chromium and timed out/cancelled Chrome and Edge as described above. The other workflows passed on `dec92eb`. Those checks predate this follow-up; record Actions URLs and statuses for the current branch head separately. Do not call a local test a GitHub Actions result.
+- GitHub Actions on code commit `0361c0c669f48aa7c113a70e08c7f363f23371f3`: all Conversation (Chromium/Chrome/Edge), Channel, Media bulk-save, and Video download jobs passed. See the run links above. Do not call a local test a GitHub Actions result.

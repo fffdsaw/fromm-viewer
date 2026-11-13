@@ -274,6 +274,12 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
   background:rgba(28,34,44,.76)!important;
   border-color:rgba(255,255,255,.3)!important;
  }
+ /* On actual image/video thumbnails, Replay's lens must sample the original
+    pixels rather than a painted dark layer; the pale voice card alone needs it. */
+ .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-media-visual :is(.chat-replay-play,a.chat-replay-download).glass-control,
+ .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-media-visual :is(.chat-replay-play,a.chat-replay-download).glass-control:hover{
+  background:transparent!important;border-color:transparent!important;
+ }
 }
 /* Touch hover may persist after tapping; do not latch the dark pressed color. */
 @media(hover:none){

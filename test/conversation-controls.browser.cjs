@@ -65,12 +65,17 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await download.evaluate(el=>el.closest('.chat-audio-player')!==null),true,'voice download integrated into player');
   assert.equal(await download.evaluate(el=>el.classList.contains('chat-media-download')),false,'voice action avoids sticky thumbnail glass optics');
   assert.ok(Math.abs(button.width-button.height)<1,'download is circular: '+JSON.stringify(button));
+   const replayDownloadSize=await download.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--thumb-download-size'))||36);
+   assert.ok(Math.abs(button.width-replayDownloadSize)<=1,'voice download inherits responsive Replay download size: '+JSON.stringify({button,replayDownloadSize}));
+   assert.ok(await bubble.locator('.chat-audio-play').evaluate(el=>el.classList.contains('chat-replay-play')),'voice play uses Replay style');
   assert.ok(button.y>=seek.y-3&&button.y+button.height<=seek.y+seek.height+3,'download shares seek row: '+JSON.stringify({button,seek}));
   assert.ok(button.x>=seek.x+seek.width-1&&button.x+button.width<=player.x+player.width+2,'download is the right-side secondary action');
   assert.ok(Math.abs(button.x-actions.x)<3,'circle aligns with integrated action slot: '+JSON.stringify({button,actions}));
-  const play=await bubble.locator('.chat-audio-play').evaluate(el=>({size:el.getBoundingClientRect().width,background:getComputedStyle(el).backgroundColor,glyph:el.querySelector('path')?.getAttribute('d')}));
+  const play=await bubble.locator('.chat-audio-play').evaluate(el=>({size:el.getBoundingClientRect().width,background:getComputedStyle(el).backgroundColor,padding:getComputedStyle(el).padding,border:getComputedStyle(el).borderColor,glyph:el.querySelector('path')?.getAttribute('d')}));
   assert.ok(play.size>=39&&play.size<=41,'Replay-family play button dimensions');
   assert.equal(play.background,'rgba(0, 0, 0, 0.72)','Replay-family play surface');
+   assert.equal(play.padding,'0px','Replay play toggle uses edge-to-edge circular hit area');
+   assert.equal(play.border,'rgba(255, 255, 255, 0.14)','Replay play border matches');
   assert.equal(play.glyph,'m8 5 11 7-11 7z','Channel play icon reused without changing Channel code');
   const appearance=await download.evaluate(e=>{const css=getComputedStyle(e);return{position:css.position,borderRadius:css.borderRadius,backdropFilter:css.backdropFilter,backgroundColor:css.backgroundColor,backgroundImage:css.backgroundImage,svgWidth:e.querySelector('svg').getBoundingClientRect().width,clipPath:getComputedStyle(e.querySelector('.download-feedback-label')).clipPath}});
   assert.equal(appearance.position,'relative');
@@ -86,6 +91,37 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await download.evaluate(el=>el.matches(':active')),false,'hover alone does not latch pressed state');
   assert.equal(await download.evaluate(el=>getComputedStyle(el).transform),'none','hover does not visually press the voice download');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
+  // Replay style covers all conversation media, not only the voice bubble.
+  await page.evaluate(()=>{
+    const timeline=document.querySelector('#timeline');
+    for(const type of ['image','video']){
+      const m={messageId:'replay-chat-'+type,userType:'star',type,createdAt:Date.now(),content:'https://fixture.test/'+type+(type==='image'?'.png':'.mp4')};
+      timeline.append(renderMessage(m));
+    }
+  });
+  const imageDownload=page.locator('[data-message-id="replay-chat-image"] .chat-media-download');
+  const videoDownload=page.locator('[data-message-id="replay-chat-video"] .chat-media-download');
+  const videoReplayPlay=page.locator('[data-message-id="replay-chat-video"] .chat-video-play');
+  assert.equal(await imageDownload.count(),1,'image Replay download is present');
+  assert.equal(await videoDownload.count(),1,'video Replay download is present');
+  assert.equal(await videoReplayPlay.count(),1,'video Replay play is present');
+  assert.equal(await videoReplayPlay.isVisible(),true,'video Replay play is visible when paused');
+  assert.equal(await page.locator('[data-message-id="replay-chat-video"] video').getAttribute('controls'),'','native video controls remain');
+  for(const control of [imageDownload,videoDownload]){
+    assert.ok(await control.evaluate(el=>el.classList.contains('chat-replay-download')),'download shares Replay styling');
+    const size=await control.evaluate(el=>el.getBoundingClientRect().width),expected=await control.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--thumb-download-size'))||36);
+    assert.ok(Math.abs(size-expected)<=1,'image/video downloads match Replay breakpoints');
+    assert.equal(await control.locator('.download-feedback-icon').count(),1,'progress ring and check remain');
+  }
+  assert.ok(await videoReplayPlay.evaluate(el=>Math.abs(el.getBoundingClientRect().width-40)<=1),'video play matches 40px Replay');
+  await videoReplayPlay.evaluate(el=>{
+    const video=el.parentElement.querySelector('video');window.__chatVideoPlaybackAttempts=0;
+    video.play=async()=>{window.__chatVideoPlaybackAttempts++;throw new Error('Synthetic video unavailable')};
+  });
+  await videoReplayPlay.click();
+  assert.equal(await page.evaluate(()=>window.__chatVideoPlaybackAttempts),1,'Replay overlay invokes native video playback');
+  assert.equal(await videoReplayPlay.isVisible(),true,'failed playback remains retryable');
+  await page.evaluate(()=>document.querySelectorAll('[data-message-id^="replay-chat-"]').forEach(el=>el.remove()));
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
   const placement=await page.locator('#conversationNew').evaluate(el=>{
    const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),compose=document.querySelector('.conversation-compose').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),r=el.getBoundingClientRect();

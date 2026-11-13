@@ -15,7 +15,12 @@
   const current=Math.max(0,Math.min(item.position||0,known?item.duration:Infinity)),playing=!audio.paused&&!audio.ended;
   const display=`${clock(current)} / ${known?clock(item.duration):'—:—'}`;
   if(time.textContent!==display)time.textContent=display;
-  if(play.dataset.playing!==String(playing)){play.dataset.playing=String(playing);play.innerHTML=icon(playing?'pause':'play');play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}
+  if(play.dataset.playing!==String(playing)){
+   play.dataset.playing=String(playing);
+   // Preserve the existing glass lens when the play/pause icon changes.
+   const markup=icon(playing?'pause':'play'),glyph=play.querySelector('svg');
+   if(glyph)glyph.outerHTML=markup;else play.insertAdjacentHTML('beforeend',markup);
+   play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}
   seek.disabled=!known;seek.max=known?String(item.duration):'1';seek.value=String(current);
   seek.setAttribute('aria-valuetext',display);seek.style.setProperty('--audio-progress',(known?current/item.duration*100:0)+'%');
   const silent=audio.muted||audio.volume===0;
@@ -68,7 +73,7 @@
  function enhance(audio){
   if(!audio||items.has(audio))return;
   const root=document.createElement('div');root.className='chat-audio-player';root.setAttribute('role','group');root.setAttribute('aria-label','음성 플레이어');
-  root.innerHTML='<div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"></button><output class="chat-audio-time" aria-label="음성 재생 시간" aria-live="off">0:00 / —:—</output><div class="chat-audio-volume"><button class="chat-audio-mute" type="button" aria-label="음성 음소거"></button><input class="chat-audio-level" type="range" min="0" max="1" step="0.05" value="1" aria-label="음성 음량"></div></div><input class="chat-audio-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="음성 재생 위치" disabled><span class="chat-audio-error" role="status" hidden></span>';
+  root.innerHTML='<div class="chat-audio-controls"><button class="chat-audio-play chat-replay-play" type="button" aria-label="음성 재생"></button><output class="chat-audio-time" aria-label="음성 재생 시간" aria-live="off">0:00 / —:—</output><div class="chat-audio-volume"><button class="chat-audio-mute" type="button" aria-label="음성 음소거"></button><input class="chat-audio-level" type="range" min="0" max="1" step="0.05" value="1" aria-label="음성 음량"></div></div><input class="chat-audio-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="음성 재생 위치" disabled><span class="chat-audio-error" role="status" hidden></span>';
   audio.after(root);audio.controls=false;audio.hidden=true;
   // Preserve the existing download link/handler, but place it beside the seek
   // track rather than leaving a mostly empty row below the whole player.

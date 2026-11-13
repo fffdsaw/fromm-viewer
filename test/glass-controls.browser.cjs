@@ -130,10 +130,10 @@ async function press(p,selector){
   // Voice controls use the same real LiquidGlass engine as the other small controls.
   await p.evaluate(()=>{
    const host=document.createElement('div');host.className='msg';host.style.cssText='position:fixed;left:360px;top:360px;z-index:1500';
-   host.innerHTML='<div class="bubble chat-sound-bubble"><div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div><div class="media-actions"><a class="chat-sound-download" href="#" aria-label="음성 다운로드"><span class="download-feedback-icon"></span></a></div></div>';
-   document.body.append(host);window.chatGlassFixture=host;
+   host.innerHTML='<div class="bubble chat-sound-bubble"><div class="chat-audio-controls"><button class="chat-audio-play chat-replay-play" type="button" aria-label="음성 재생"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div><div class="media-actions"><a class="chat-sound-download chat-replay-download" href="#" aria-label="음성 다운로드"><span class="download-feedback-icon"></span></a></div></div><div class="chat-media-visual" style="width:240px;height:150px;position:relative"><button class="chat-video-play chat-replay-play" type="button" aria-label="영상 재생"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>';
+   document.querySelector("#timeline").append(host);window.chatGlassFixture=host;
   });
-  for(const selector of ['.chat-audio-play','.chat-sound-download']){
+  for(const selector of ['.chat-audio-play','.chat-sound-download','.chat-video-play']){
    await lens(p,selector);
    const target=p.locator(selector).first();
    assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' initializes the LiquidGlass engine');
@@ -144,12 +144,12 @@ async function press(p,selector){
     return Number(document.querySelector('#'+id+' feDisplacementMap')?.getAttribute('scale')||0);
    });
    assert.ok(displacement>0,selector+' refracts the backdrop through the LiquidGlass engine');
-   if(selector==='.chat-sound-download')assert.equal(await target.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','download toggle leaves the live lens visible');
+   if(selector==='.chat-sound-download')assert.equal(await target.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0.54)','voice uses the Replay dark underlay without disabling its lens');
 
    await press(p,selector);
   }
   await p.evaluate(()=>window.chatGlassFixture.remove());
-  await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface'));
+  await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface')&&!document.querySelector('.chat-video-play .control-glass-surface'));
   for(let i=0;i<8;i++)await p.evaluate(async i=>{await setFilter(i%2?'image':'all');FrommGlowME.setRailOpen(i%2===0);},i);
   await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.live<=count.limit);assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
   await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').evaluate(e=>getComputedStyle(e).transform),'none');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);

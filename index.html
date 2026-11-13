@@ -1103,10 +1103,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=voice-replay-buttons-20261113">
+<link rel="stylesheet" href="conversation.css?v=chat-replay-toggles-20261113">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=room-latest-20261111"></script>
-<script src="web-chat-audio.js?v=voice-channel-toggle-20261111"></script>
+<script src="web-chat-audio.js?v=chat-replay-toggles-20261113"></script>
 </head>
 <body>
 
@@ -9121,13 +9121,13 @@ function renderMessage(m){
       if(t==="video"){
         const poster=resolvePreviewUrl(m);
         const videoPreload=poster ? "none" : "metadata";
-        html+=`<video controls preload="${videoPreload}" ${poster ? `poster="${esc(poster)}"` : ""} src="${esc(mediaSrc)}"></video>`;
+        html+=`<video controls playsinline preload="${videoPreload}" ${poster ? `poster="${esc(poster)}"` : ""} src="${esc(mediaSrc)}"></video><button class="chat-video-play chat-replay-play" type="button" aria-label="영상 재생" title="영상 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button>`;
       }
       if(t==="sound") html+=`<audio controls preload="none" src="${esc(mediaSrc)}"></audio>`;
       html+=`<div class="media-actions">`;
 
       if(artist){
-        html+=`<a class="dl${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
+        html+=`<a class="dl chat-replay-download${t==="image" || t==="video" ? " chat-media-download" : t==="sound" ? " chat-sound-download" : ""}" href="${esc(proxyUrl(m,true))}" aria-label="${esc(baseName(m))} 다운로드" title="다운로드">${downloadFeedbackIcon()}<span class="download-feedback-label">다운로드</span></a>`;
         // Filename is displayed once in the common message footer.
       }
 
@@ -9185,6 +9185,33 @@ function renderMessage(m){
         if(!window.FrommChatAudio || FrommChatAudio.shouldRepair(chatAudio)) repairAudioElement(chatAudio,m);
       });
       window.FrommChatAudio?.enhance(chatAudio);
+    }
+  }
+
+  // Replay-family video play toggle is an overlay, not a replacement for native
+  // playback controls. Keep native seek, volume and fullscreen accessible.
+  if(t==="video"){
+    const chatVideo=bubble.querySelector(".chat-media-visual video");
+    const chatPlay=bubble.querySelector(".chat-video-play");
+    if(chatVideo&&chatPlay){
+      const syncPlay=()=>{
+        chatPlay.hidden=!chatVideo.paused&&!chatVideo.ended;
+        chatPlay.setAttribute("aria-label",chatVideo.ended?"영상 다시 재생":"영상 재생");
+      };
+      for(const name of ["play","playing","pause","ended","emptied","error"])chatVideo.addEventListener(name,syncPlay);
+      chatPlay.addEventListener("click",async event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        try{
+          if(chatVideo.ended)chatVideo.currentTime=0;
+          await chatVideo.play();
+        }catch(error){
+          // Native video controls remain available for retry or error recovery.
+          console.warn("대화 영상 재생 실패",error);
+        }
+        syncPlay();
+      });
+      syncPlay();
     }
   }
 
@@ -11233,6 +11260,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=latest-chat-glass-spring-20261111"></script>
+<script type="module" src="web-glass.js?v=chat-replay-toggles-20261113"></script>
 </body>
 </html>

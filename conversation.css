@@ -231,6 +231,13 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  position:absolute!important;top:var(--thumb-download-inset,10px)!important;right:var(--thumb-download-inset,10px)!important;
  bottom:auto!important;left:auto!important;z-index:3;
 }
+/* Preserve the mobile chat download's original inline placement and selection
+   affordance, while sharing Replay's circular material and glyph. */
+@media(max-width:700px), (hover:none){
+ #timeline .chat-media-visual a.chat-replay-download{
+  position:static!important;inset:auto!important;
+ }
+}
 #timeline .chat-media-visual>.media-actions{min-height:0}
 #timeline .chat-media-visual .chat-video-play{
  position:absolute;top:auto;right:10px;bottom:58px;left:auto;z-index:3;

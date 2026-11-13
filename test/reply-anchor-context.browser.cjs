@@ -42,6 +42,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    await page.evaluate(()=>scrollToOriginalMessage('missing-synthetic-original'));
    assert.match(missingOriginalAlert,/불러온 대화에 원문이 없습니다/);assert.ok(await page.locator('#timeline .msg').count()<=600,'missing original keeps the rendered list bounded');
    await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#dateCalendar').isVisible(),true,'calendar remains responsive after an unavailable original');
+   await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();});
+   await page.locator('#dateNextMonth').click();assert.equal(await page.evaluate(()=>state.calendarMonth.getMonth()),10,'next-month button works after quote navigation');
+   await page.locator('#datePrevMonth').click();assert.equal(await page.evaluate(()=>state.calendarMonth.getMonth()),9,'previous-month button works after quote navigation');
   }
   assert.deepEqual(errors,[]);await context.close();console.log(`${viewport.width}: always full conversation, first reply/search targets and delayed anchor PASS`);
  }

@@ -15,7 +15,9 @@
   const current=Math.max(0,Math.min(item.position||0,known?item.duration:Infinity)),playing=!audio.paused&&!audio.ended;
   const display=`${clock(current)} / ${known?clock(item.duration):'—:—'}`;
   if(time.textContent!==display)time.textContent=display;
-  if(play.dataset.playing!==String(playing)){play.dataset.playing=String(playing);// Preserve the existing glass lens when the play/pause icon changes.
+  if(play.dataset.playing!==String(playing)){
+   play.dataset.playing=String(playing);
+   // Preserve the existing glass lens when the play/pause icon changes.
    const markup=icon(playing?'pause':'play'),glyph=play.querySelector('svg');
    if(glyph)glyph.outerHTML=markup;else play.insertAdjacentHTML('beforeend',markup);
    play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}

@@ -161,11 +161,12 @@ async function press(p,selector){
     document.querySelector('#scanBtn').disabled=false;
     document.querySelector('#logoutMiniBtn').style.display='inline-flex';
     const nav=document.querySelector('#chatMatchNav');
-    window.chatMatchGlassFixture={parent:nav.parentElement,next:nav.nextSibling,hidden:nav.hidden,style:nav.getAttribute('style')};
-    // Keep the real controls and IDs, but detach the fixture from the toolbar
-    // whose normal search-state sync hides navigation when there are no matches.
-    document.body.append(nav);nav.hidden=false;nav.style.cssText='display:flex;position:fixed;right:24px;top:118px;z-index:1600';
-    for(const button of nav.querySelectorAll('button'))button.disabled=false;
+    const ids=[nav,...nav.querySelectorAll('[id]')].map(el=>[el,el.id]),fixture=nav.cloneNode(true);
+    window.chatMatchGlassFixture={nav,fixture,ids,parent:nav.parentElement,next:nav.nextSibling,hidden:nav.hidden,style:nav.getAttribute('style'),query:state.chatQuery,messages:state.chatMessages,matchKey:state.chatMatchKey,onlyMyReplies:state.onlyMyReplies};
+    // Exercise the production selectors on a visible clone while the app keeps
+    // its normal hidden search/reply-navigation instance in its own container.
+    for(const [el] of ids)el.removeAttribute('id');document.body.append(fixture);fixture.hidden=false;fixture.style.cssText='display:flex;position:fixed;right:24px;top:118px;z-index:1600';
+    state.onlyMyReplies=false;state.chatQuery='glass-control-fixture';state.chatMessages=[0,1,2].map(i=>({messageId:'glass-match-'+i,type:'text',content:'glass-control-fixture'}));state.chatMatchKey='glass-match-1';chatMatchCache=null;syncChatMatchControls();
    });
    for(const selector of ['#tokenLifeWrap','#scanBtn','#logoutMiniBtn','#chatMatchPrev','#chatMatchNext']){
     await lens(p,selector);
@@ -181,7 +182,7 @@ async function press(p,selector){
    const token=p.locator('#tokenLifeWrap');await token.hover();await p.mouse.down();
    assert.equal(await token.evaluate(el=>el.classList.contains('glass-pressed')),false,'the non-button token indicator never enters the pressed state');
    await p.mouse.move(opt.width-3,opt.height-3);await p.mouse.up();
-   await p.evaluate(()=>{const nav=document.querySelector('#chatMatchNav'),saved=window.chatMatchGlassFixture;if(saved?.parent?.isConnected)saved.parent.insertBefore(nav,saved.next?.parentElement===saved.parent?saved.next:null);if(saved){nav.hidden=saved.hidden;if(saved.style===null)nav.removeAttribute('style');else nav.setAttribute('style',saved.style);}delete window.chatMatchGlassFixture;});
+   await p.evaluate(()=>{const saved=window.chatMatchGlassFixture;if(saved){saved.fixture.remove();for(const [el,id]of saved.ids)el.id=id;state.chatQuery=saved.query;state.chatMessages=saved.messages;state.chatMatchKey=saved.matchKey;state.onlyMyReplies=saved.onlyMyReplies;chatMatchCache=null;if(saved.parent?.isConnected)saved.parent.insertBefore(saved.nav,saved.next?.parentElement===saved.parent?saved.next:null);saved.nav.hidden=saved.hidden;if(saved.style===null)saved.nav.removeAttribute('style');else saved.nav.setAttribute('style',saved.style);syncChatMatchControls();}delete window.chatMatchGlassFixture;});
   }
   await p.evaluate(()=>window.chatGlassFixture.remove());
   await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface'));

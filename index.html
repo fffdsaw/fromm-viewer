@@ -10999,49 +10999,18 @@ $("#scanBtn").onclick=async ()=>{
 
   if(!state.room) return;
 
-  const btn = $("#scanBtn");
+  const btn=$("#scanBtn"),hadMessages=state.messages.length>0;
   btn.classList.add("loading");
-  btn.disabled = true;
-
-  // Keep the current DOM visible while fresh data is fetched.
-  // This avoids the empty-screen -> cards-again jump from previous versions.
-  globalThis.FrommConversation?.beforeRoom(state.room,{restore:false});
-  stopHistoryWork();
-  resetPreviewWork();
-  state.scanGeneration++;
-
-  state.roomCache.delete(roomCacheKey());
-  state.chatCache.delete(chatCacheKey());
-
-  resetHistoryPaging();
-  resetFullChatHistory();
-
-  if(state.filter === "all"){
-    state.chatAutoTopPending = true;
+  btn.disabled=true;
+  try{
+    if(globalThis.FrommConversation?.refresh) await globalThis.FrommConversation.refresh();
+    else if(state.hasMoreMessages) await loadMoreHistory({initial:true});
+    if(!hadMessages&&state.messages.length) render();
+  }finally{
+    btn.classList.remove("loading");
+    btn.disabled=false;
+    syncLoadingUI();
   }
-
-  state.selected.clear();
-  state.selectionAnchor=null;
-  updateSelectedCount();
-
-  $("#scanState").textContent =
-    `${state.room?.host?.nick || "아티스트"} · 새로 불러오는 중...`;
-
-  // Force the single toolbar loading indicator on immediately.
-  document.querySelector(".toolbar")?.classList.add("is-loading");
-
-  await loadMoreHistory({initial:true});
-
-  if(state.filter==="all"){
-    await ensureFullChatHistory();
-  }
-
-  // Only now replace what the user was looking at.
-  render();
-
-  btn.classList.remove("loading");
-  btn.disabled = false;
-  syncLoadingUI();
 };
 $("#selectAllBtn").onclick=selectAllMedia;
 initDownloadMarqueeSelection();

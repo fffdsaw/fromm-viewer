@@ -263,8 +263,8 @@
   }).catch(error=>{c.storageError=true;c.notice=error?.name==='QuotaExceededError'?'저장 공간이 부족해 대화 충돌 내용을 저장하지 못했습니다. 기존 캐시는 보존했습니다.':'대화 캐시 저장에 실패했습니다. 기존 캐시는 보존했습니다.';return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
  }
  function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),450);}
- function stop(c=context){
-  if(!c)return;if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
+ function stop(c=context,{includeRefresh=true}={}){
+  if(!c)return;if(includeRefresh)c.finishRefresh?.(false);if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
   c.pushClose?.();c.pushClose=null;c.pushOnline=false;clearTimeout(c.pushRetry);c.pushRetry=0;
  }
  function beforeRoom(room,{restore=true,restoreViewOnEntry=true}={}){
@@ -275,7 +275,7 @@
   if(!host||!auth.token||!auth.uuid){context=null;restoreJob=null;paint();return;}
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
    owner:new AbortController(),persisted:new Map(),conflicts:new Map(),pendingConflictCandidates:new Map(),conflictOverflowIds:new Set(),conflictCandidateCount:0,conflictCandidateBytes:0,pendingConflictCandidateBytes:0,volatileConflictCandidateBytes:0,draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
-   phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
+   phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,refreshFeed:null,refreshPromise:null,finishRefresh:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
   // Switching artists never replays a previous reading position, even from IndexedDB.
   if(!restoreViewOnEntry)c.restoreView=null;
@@ -444,7 +444,8 @@
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
   else if(state.mediaSequenceStamp?.source===state.messages)state.mediaSequenceStamp.length=state.messages.length;
   if(!roomCurrent(c))return;
-  updateView(oldList,changes,follow||reconciled);
+  if(state.filter==='all')updateView(oldList,changes,follow||reconciled);
+  else if(typeof refreshInfiniteListAfterFetch==='function')await refreshInfiniteListAfterFetch(state.infiniteVersion);
   // A pending sticker and its composer preview can change height before the
   // first follow frame. A confirmed own send must still enter the latest window.
   if(reconciled)showLatest(c);
@@ -479,16 +480,78 @@
    close();if(valid()){c.pushClose=null;c.pushOnline=false;paint();c.pushRetry=setTimeout(()=>{c.pushRetry=0;connectPush(c);},60000);}
   }finally{if(c.pushBusy===version)c.pushBusy=0;if(viewing(c)&&!c.denied&&!c.pushBusy&&!c.pushClose&&!c.pushRetry)c.pushRetry=setTimeout(()=>{c.pushRetry=0;connectPush(c);},500);}
  }
+ async function requestFeedPage(c,{start,end,limit,signal}){
+  if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});
+  return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));
+ }
  function start(c){
-  if(!viewing(c)||!state.messages.length||c.denied||c.feed)return;
+  if(c.refreshFeed)return;
+  const canSyncEmpty=state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0;
+  if(!viewing(c)||(!state.messages.length&&!canSyncEmpty)||c.denied||c.feed)return;
   if(c.owner.signal.aborted)c.owner=new AbortController();
   const codes=new Set(state.messages.map(message=>message.code).filter(Boolean));
   if(c.outbox&&codes.has(c.outbox.code))c.outbox=null;c.accepted=c.accepted.filter(message=>!codes.has(message.code));
-  c.feed=core.createFeed({current:()=>viewing(c)&&state.messages.length>0,latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
-   requestPage:async({start,end,limit,signal})=>{if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));},
+  c.feed=core.createFeed({current:()=>viewing(c)&&(state.messages.length>0||state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
+   requestPage:options=>requestFeedPage(c,options),
    onMessages:rows=>merge(c,rows,{source:'server'}),onSynced:time=>{c.syncedUntil=time;saveSoon();},
    onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&c.rules&&!c.sending&&!c.outbox)c.notice='';paint();}});
   c.feed.start();void connectPush(c);if(!c.rules)void getRules(c).catch(()=>{});
+ }
+ function refreshLatest(c){
+  if(state.filter==='all'){
+   if(c.feed&&!c.feed.active)c.feed=null;
+   if(!c.feed)start(c);else c.feed.poke();
+   return Promise.resolve(true);
+  }
+  const gallery=['media','image','video','sound'].includes(state.filter),canSyncEmpty=state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0;
+  if(!gallery||!roomCurrent(c)||(!state.messages.length&&!canSyncEmpty))return Promise.resolve(false);
+  if(c.refreshPromise)return c.refreshPromise;
+  let feed=null,timer=0,settled=false,resolveJob;
+  const promise=new Promise(resolve=>resolveJob=resolve);
+  const finish=success=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   if(c.refreshFeed===feed){c.refreshFeed=null;c.refreshPromise=null;}
+   if(c.finishRefresh===finish)c.finishRefresh=null;
+   feed?.stop();
+   if(success){c.phase='connected';c.notice='';}
+   if(viewing(c)&&!c.feed)start(c);
+   resolveJob(success);
+  };
+  c.finishRefresh=finish;
+  feed=core.createFeed({current:()=>roomCurrent(c)&&c.refreshFeed===feed&&!document.hidden&&['all','media','image','video','sound'].includes(state.filter)&&!document.querySelector('#loginGate:not(.hidden)'),latest:()=>c.syncedUntil||newest(state.messages),interval:60000,limit:c.feedLimit||100,
+   requestPage:options=>requestFeedPage(c,options),
+   onMessages:rows=>merge(c,rows,{source:'server'}),
+   onSynced:time=>{c.syncedUntil=time;saveSoon();finish(true);paint();},
+   onState:(phase,error)=>{
+    if(!roomCurrent(c)){finish(false);return;}
+    if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);
+    if(phase==='syncing'){c.phase=phase;paint();return;}
+    if(phase==='denied'){c.denied=true;c.rules=null;}
+    if(phase==='retry'||phase==='error'||phase==='denied'){c.phase=phase;c.notice=error?.message||'동기화를 확인해주세요.';finish(false);paint();}
+   }});
+  c.refreshFeed=feed;c.refreshPromise=promise;timer=setTimeout(()=>finish(false),16000);feed.start();
+  return promise;
+ }
+ async function refresh(){
+  let c=context;if(!c)return false;
+  if(c.restoring)await restoreJob;
+  if(!roomCurrent(c)||c.denied)return false;
+  // Keep complete caches intact and fetch only the incremental latest window.
+  // A partial cache advances by one older page, then resumes background fill.
+  if(!state.messages.length&&state.chatHistoryComplete&&!c.syncedUntil){
+   state.chatHistoryComplete=false;state.chatMessages=[];state.hasMoreMessages=true;state.cursorEnd=new Date();
+  }
+  if(!state.messages.length&&state.chatHistoryComplete&&!c.syncedUntil){
+   state.chatHistoryComplete=false;state.chatMessages=[];state.hasMoreMessages=true;state.cursorEnd=new Date();
+  }
+  if(!state.chatHistoryComplete&&state.hasMoreMessages){
+   await loadMoreHistory({initial:true});
+   if(!roomCurrent(c))return false;
+   if(state.hasMoreMessages)scheduleHistoryBackground();
+  }
+  if(!roomCurrent(c)||c.denied)return false;
+  if(state.messages.length||state.chatHistoryComplete&&c.syncedUntil)await refreshLatest(c);
+  return true;
  }
  function sync(){
   if(!mounted)return;
@@ -501,7 +564,7 @@
   }
   const c=context;
   if(!roomCurrent(c)){stop(c);paint();return;}
-  if(!viewing(c)){stop(c);c.phase='paused';paint();return;}
+  if(!viewing(c)){const keepGalleryRefresh=['media','image','video','sound'].includes(state.filter)&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');stop(c,{includeRefresh:!keepGalleryRefresh});c.phase='paused';paint();return;}
   if(c.owner.signal.aborted)c.owner=new AbortController();
   if(!c.rules&&!c.ruleJob&&!c.denied)void getRules(c).catch(()=>{});
   if(c.restoreView&&!c.restoring){
@@ -605,7 +668,7 @@
   const originalFilter=setFilter;setFilter=async function(...args){const promise=originalFilter.apply(this,args);sync();try{return await promise;}finally{sync();}};
   paint();
  }
- const api={mount,beforeRoom,sync,historyChanged,reconcileHistory(rows){if(!roomCurrent(context)||!Array.isArray(rows))return;return merge(context,rows,{source:'history'});},stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
+ const api={mount,beforeRoom,sync,refresh,historyChanged,reconcileHistory(rows){if(!roomCurrent(context)||!Array.isArray(rows))return;return merge(context,rows,{source:'history'});},stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
   get restoring(){return!!context?.restoring;},get ready(){return restoreJob||Promise.resolve();},loadFirebase:sdk,
   get status(){return{phase:context?.phase||'idle',persisted:!!context?.saved,storageError:!!context?.storageError,push:!!context?.pushOnline};},flush:()=>persist({force:true})};
  window.FrommConversation=api;

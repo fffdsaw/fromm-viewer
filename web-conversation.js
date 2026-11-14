@@ -104,6 +104,13 @@
    if(anchor?.isConnected&&Number.isFinite(anchorTop)){
     const delta=anchor.getBoundingClientRect().top-anchorTop;
     if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});
+    // Some engines apply their native scroll-anchor adjustment one frame
+    // after the body's bottom inset changes. Continue the same message anchor
+    // briefly so that late adjustment cannot move a reader's viewport.
+    const view=window.FrommViewState;
+    if(view?.settleAnchor&&!view.pending&&!view.followingLatest&&Number.isFinite(previous)&&Math.abs(height-previous)>.5){
+     view.settleAnchor(anchor,()=>anchorTop-12,()=>state.filter==='all'&&anchor.isConnected,600);
+    }
    }
    // Preserve the gap to the newest message when the reader was following it.
    // An absolute target also avoids double scrolling after the browser clamps a shrink.

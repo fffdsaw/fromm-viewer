@@ -17,11 +17,11 @@ async function collection(p,mode){await p.evaluate(mode=>{
  channelVideoState.channelId='a';channelVideoState.pages=new Map(['a','b'].map(id=>[id,{loaded:true,isLast:true,posts:posts(id)}]));renderLiveView();syncLoadingUI();scrollTo(0,0);
  },mode);}
 async function press(p,selector){
- const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();const viewport=p.viewportSize();await p.mouse.move(viewport.width-3,viewport.height-3);await p.waitForTimeout(420);const baseline=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));await button.hover();await p.waitForTimeout(230);const before=await button.boundingBox();await p.mouse.down();
+ const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();await p.mouse.move(0,0);await p.waitForTimeout(420);const baseline=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));await button.hover();await p.waitForTimeout(230);const before=await button.boundingBox();await p.mouse.down();
  await p.waitForFunction(selector=>document.querySelector(selector)?.classList.contains('glass-pressed'),selector);
  assert.deepEqual(await button.boundingBox(),before,'press never moves the hit box');
  const squeezed=await button.locator('.control-glass-surface').evaluate(e=>getComputedStyle(e).transform);assert.notEqual(squeezed,'none');
- await p.mouse.move(before.x-15,before.y-15);await p.mouse.up();assert.equal(await button.evaluate(e=>e.classList.contains('glass-pressed')),false);
+ await p.mouse.move(0,0);await p.mouse.up();assert.equal(await button.evaluate(e=>e.classList.contains('glass-pressed')),false);
  await p.waitForFunction(selector=>{
   const el=document.querySelector(selector),x=parseFloat(el?.style.getPropertyValue('--lg-tilt-x')||'0'),y=parseFloat(el?.style.getPropertyValue('--lg-tilt-y')||'0');
   return el&&!el.matches(':hover')&&!el.classList.contains('glass-pressed')&&Math.abs(x)<.1&&Math.abs(y)<.1;

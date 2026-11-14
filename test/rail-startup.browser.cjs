@@ -20,6 +20,6 @@ const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
  const fallback=await open(fixtureBrowser,server.url,{login:true});
  await fallback.page.route('**/vendor/meapri/liquid-glass.js',route=>route.fulfill({contentType:'text/javascript',body:'export class LiquidGlass{constructor(face){window.failedLensAttempts=(window.failedLensAttempts||0)+1;window.failedLensTargets||=[];if(window.failedLensTargets.includes(face.parentElement))window.failedLensRepeated=true;else window.failedLensTargets.push(face.parentElement);throw Error("synthetic");}}'}));
  await seed(fallback.page);await fallback.page.waitForFunction(()=>window.failedLensAttempts>0);await fallback.page.waitForTimeout(350);
- assert.equal(await fallback.page.evaluate(()=>failedLensRepeated===true),false,'a failed lens is not initialized repeatedly for the same control');assert.equal(await fallback.page.evaluate(()=>FrommControlGlass.snapshot.live),0);
+ assert.equal(await fallback.page.evaluate(()=>window.failedLensRepeated===true),false,'a failed lens is not initialized repeatedly for the same control');assert.equal(await fallback.page.evaluate(()=>FrommControlGlass.snapshot.live),0);
  assert.deepEqual(fallback.errors,[]);await fallback.context.close();console.log('Cold rail works before optics; opaque pane while opening, control optics resume; login releases lenses PASS');
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

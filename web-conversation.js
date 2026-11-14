@@ -366,7 +366,10 @@
  function atLatest(){
   // Selection inside the composer is editing, not a selected passage in history.
   const readingSelection=!dock?.contains(document.activeElement)&&getSelection()?.isCollapsed===false;
-  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(220,(dock?.offsetHeight||0)+60);
+  // Keep the tolerance to one dock height plus a small layout margin. A 220px
+  // floor can label a reader in the middle of a short cached conversation as
+  // "latest" and make a data-only cache flush pull the viewport downward.
+  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(80,(dock?.offsetHeight||0)+16);
  }
  function updateView(oldList,changes,follow){
   if(state.filter!=='all'||!context)return;

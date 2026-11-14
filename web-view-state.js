@@ -11,7 +11,7 @@
   // A loading/empty notice is not a message the reader chose to keep.
   if(state.filter==='all'&&!el)return false;
   const dockHeight=state.filter==='all'?(document.querySelector('#conversationDock')?.offsetHeight||0):0;
-  const latest=state.filter==='all'&&(latestFollowing||document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(220,dockHeight+60));
+  const latest=state.filter==='all'&&(latestFollowing||document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(80,dockHeight+16));
   positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0,latest});
   // Navigation history is bounded; only scalar positions/IDs are retained.
   if(positions.size>120)positions.delete(positions.keys().next().value);

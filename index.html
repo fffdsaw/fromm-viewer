@@ -7369,7 +7369,7 @@ async function publishCompleteHistory(current=()=>true){
   if(!current()) return;
   const hasViewport=typeof document!=="undefined"&&!!document.documentElement&&typeof document.querySelector==="function"&&typeof window!=="undefined"&&Number.isFinite(window.innerHeight);
   const dockHeight=hasViewport?(document.querySelector("#conversationDock")?.offsetHeight||0):0;
-  const wasAtLatest=state.filter==="all"&&(state.chatAutoTopPending||!!window.FrommViewState?.followingLatest||hasViewport&&document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(220,dockHeight+60));
+  const wasAtLatest=state.filter==="all"&&(state.chatAutoTopPending||!!window.FrommViewState?.followingLatest||hasViewport&&document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(80,dockHeight+16));
   const anchor=state.filter==="all"&&typeof document!=="undefined"&&typeof document.querySelectorAll==="function"?[...document.querySelectorAll("#timeline .msg")].find(node=>node.getBoundingClientRect().bottom>chatHeaderInset()+8):null;
   const anchorTop=anchor?.getBoundingClientRect().top;
   const anchorGeneration=state.scanGeneration;

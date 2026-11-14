@@ -39,6 +39,7 @@ jobs:
         env:
           PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
           CONVERSATION_DIR: conversation-results
+        shell: bash
         run: |
           node test/conversation.browser.cjs
           node test/conversation-state.browser.cjs

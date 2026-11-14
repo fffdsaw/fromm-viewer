@@ -1,6 +1,36 @@
 # Fromm Viewer — cross-account handoff
 
-Last reviewed: 2026-11-13 (Asia/Seoul)
+Last reviewed: 2026-11-14 (Asia/Seoul)
+
+## Current integrated UI/UX stabilization track — 2026-11-14
+
+This section is the current continuation point for the 13-item Fromm Viewer integration request. The older PR #121 notes below are historical and remain useful for the cache implementation details; use this section for the active branch and priorities.
+
+### Phase 0 audit
+
+- Production `main` was `fe010e5dc263ac45ef44171c90722f185c433af5` (PR #120) when audited. It remains untouched.
+- PR #121 (`07456870fc9901c6dfad6bc2e830efc4cadfecb5`) is open, unmerged, and based on that `main`. Its recent-first cache, progressive collection, duplicate/timestamp protection, and scroll-anchor work is retained as the base of this integration branch. Its then-current Conversation, Video, Channel, and Media CI runs passed.
+- PR #122 (`25a84c64076ebfccef175683754083d4ca1bb623`) is open as a draft and unmerged. It is not used as the integration base. Its latest Channel browser run failed with `voice uses the Replay dark underlay without disabling its lens`; its Conversation, Video, and Media runs passed. Reuse only after reviewing individual changes.
+- The production preview `https://fffdsaw.github.io/fromm-viewer/` and separate experimental preview `https://fffdsaw.github.io/fromm-viewer-preview/` returned HTTP 200. The experimental preview is managed separately and must not be changed as part of this task. The latest preview workflow inspected was successful; a reachable preview is not proof that this branch has been deployed there.
+- `git merge-tree --write-tree origin/pr/121 origin/pr/122` reported no textual tree conflict, but this is not a reason to merge PR #122 wholesale; both PRs remain untouched.
+- PR #123 (`https://github.com/fffdsaw/fromm-viewer/pull/123`) is the active draft against `main`, based on PR #121. Current branch: `codex/fromm-viewer-uiux-stabilization-20261114`. Latest pushed code checkpoint at this update: `4be69e3d89f97407ab6289bc1a46b18e6bc73586`.
+
+### 13-item implementation status
+
+1. **01 — cache-aware refresh: complete and browser-verified.** Code is in `9611791`. A complete synthetic cache retains its rows and merges only the latest response; a partial cache resumes from its saved older cursor; the refresh handler no longer clears room caches or resets the reader view; media-tab refresh merges new items; a simulated 503 leaves the cache intact. The dedicated browser scenario passed on Chromium, Chrome, and Edge.
+2. **08 — conversation scroll restoration: complete against the synthetic browser cases; real Fromm data remains unverified.** PR #121's anchor/cache restoration remains intact. Existing browser cases cover saved-anchor restoration, tab return during progressive loading, media layout and viewport changes, and latest-follow behavior at desktop, narrow desktop/PWA simulation, and 390px mobile layout. The new refresh case also checks anchor position across viewport-height shrink and restore. Chromium, Chrome, and Edge passed.
+3. **02–07, 09–13:** not implemented in this branch yet. Next: Meapri controls, hover/lifecycle, reply arrows, header glass; then common player; sidebar/text cards/waveform/badges; settings panel and themes.
+
+### Current validation and next actions
+
+- Local Node suite passed: 275 passed, 0 failed. JavaScript syntax and `git diff --check` passed.
+- Local Playwright Chromium/Chrome could not start in this macOS sandbox (Mach port rendezvous permission error). Treat this as an environment limitation; use the repository browser CI and report it separately from assertion failures.
+- No Fromm login or authenticated live API was available. All new refresh/browser fixtures use synthetic messages; live service behavior remains unverified.
+- Exact-head browser Actions run `43558987337` passed all Conversation jobs: Chromium retry job `132339438643`, Chrome `132339439858`, and Edge `132339440476`. The first Chromium attempt failed once at the pre-existing `<1px` cache-anchor assertion in `conversation-cache-restore.browser.cjs`; the same test passed on the complete Chromium rerun and also passed on Chrome and Edge. Treat that first failure as not reproduced, and keep the test under observation. The cache-aware refresh test passed on all three browsers. The Chromium synthetic scale run reported 10,000 cached rows restored in 287ms and 50,000 rows in 1,138ms, with 241 virtual rows in both cases; the 50,000-message cold synthetic scan first displayed in 95ms and completed in 62,973ms. This is synthetic performance evidence, not a live service measurement.
+- Same-head Channel `43558987275`, Media `43558987179`, and Video `43558987218` runs also passed. The refresh scenario has a dedicated named CI step and checks viewport-height shrink/restore, gallery anchor, partial cursor continuation, and cache preservation after a simulated 503. Prior runs exposed stale assertions and synthetic fixture mistakes; the current head corrects those test assumptions and fixture namespace/setup issues.
+- **Phase 1 checkpoint:** items 01 and 08 are complete for the tested synthetic/browser scenarios. Current code checkpoint before this handoff update: `4be69e3d89f97407ab6289bc1a46b18e6bc73586`. Commit this handoff update as the Phase 1 documentation checkpoint; then begin Phase 2.
+- Keep PR #123 draft. Do not merge `main`, deploy, delete branches, or clear real user data without explicit user approval.
+- Keep PR #123 draft. Do not merge `main`, deploy, delete branches, or clear real user data without explicit user approval.
 
 ## Project and Git state
 

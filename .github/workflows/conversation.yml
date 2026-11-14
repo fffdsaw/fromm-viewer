@@ -45,13 +45,16 @@ jobs:
           node test/conversation-cache-restore.browser.cjs
           node test/conversation-cache-conflicts.browser.cjs
           node test/conversation-storage-recovery.browser.cjs
-          node test/conversation-refresh-cache.browser.cjs
           node test/conversation-emoticons.browser.cjs
           node test/conversation-controls.browser.cjs
           node test/conversation-send-focus.browser.cjs
           node test/conversation-audio.browser.cjs
           node test/conversation-unread-rail.browser.cjs
           node test/chat-history-progressive.browser.cjs
+      - name: Cache-aware refresh and reader anchor
+        env:
+          PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}
+        run: node test/conversation-refresh-cache.browser.cjs
       - name: Search, date, and reply navigation regressions
         timeout-minutes: 3
         env:

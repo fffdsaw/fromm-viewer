@@ -32,14 +32,31 @@
  const authCurrent=c=>{const a=currentAuth();return!!c&&!!a.token&&c.token===a.token&&c.uuid===a.uuid&&c.account===currentAccountScope();};
  const roomCurrent=c=>authCurrent(c)&&context===c&&c.host===String(state.room?.hostChatRoomId||'')&&c.roomId===String(state.room?.id||'')&&c.generation===state.scanGeneration;
  const viewing=c=>roomCurrent(c)&&state.filter==='all'&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');
- const complete=c=>roomCurrent(c)&&state.chatHistoryComplete&&!state.historyJob;
  function viewPosition(c){
   if(state.filter==='all'&&!state.chatAutoTopPending){const row=[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8);
    if(row)c.lastView={id:row.dataset.messageId,offset:row.getBoundingClientRect().top,latest:atLatest()};
   }return c.lastView||null;
  }
- const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,
+ const copyMeta=c=>({count:state.messages.length,complete:!!state.chatHistoryComplete,cursorEnd:state.cursorEnd?.toISOString?.()||null,pageRequestLimit:state.pageRequestLimit,observedPageLimit:state.historyObservedPageLimit||0,
+  conflictCandidateCount:c.conflictCandidateCount||0,conflictCandidateBytes:c.conflictCandidateBytes||0,
   syncedUntil:c.syncedUntil||0,draft:c.draft||'',emoticonDraft:c.selectedEmoticon||null,outbox:c.outbox||null,accepted:c.accepted||[],view:viewPosition(c)});
+ function rememberConflict(c,id,canonical,candidates=[],{pending=false,overflow=false}={}){
+  id=String(id||'');if(!id)return false;
+  const previous=c.conflicts.get(id),base=previous?.canonical||canonical||null,values=[...(previous?.candidates||[])];let changed=false,overflowed=!!(previous?.overflow||overflow),added=[];
+  for(const candidate of candidates){
+   if(!candidate||base&&core.sameMessage(base,candidate)||values.some(value=>core.sameMessage(value,candidate)))continue;
+   const bytes=core.conflictCandidateBytes(candidate),overLimit=values.length>=core.conflictCandidateLimits.perMessage||c.conflictCandidateBytes+c.pendingConflictCandidateBytes+c.volatileConflictCandidateBytes+bytes>core.conflictCandidateLimits.bytes;
+   if(overLimit){overflowed=true;c.conflictOverflowIds.add(id);changed=true;continue;}
+   values.push(candidate);added.push(candidate);c.pendingConflictCandidateBytes+=bytes;changed=true;
+  }
+  c.conflicts.set(id,{messageId:id,canonical:base,candidates:values,overflow:overflowed});
+  if(pending&&(added.length||overflowed&&!previous?.overflow)){
+   const pendingValue=c.pendingConflictCandidates.get(id)||{messageId:id,canonical:base,candidates:[],overflow:false};
+   for(const candidate of added)if(!pendingValue.candidates.some(value=>core.sameMessage(value,candidate)))pendingValue.candidates.push(candidate);
+   pendingValue.overflow=pendingValue.overflow||overflowed;c.pendingConflictCandidates.set(id,pendingValue);
+  }
+  return changed;
+ }
  function showLatest(c){
   if(!viewing(c))return;
   c.restoreView=null;pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
@@ -79,8 +96,23 @@
    const inputRect=input.getBoundingClientRect(),dockRect=dock.getBoundingClientRect();
    document.body.style.setProperty('--conversation-actions-width',Math.max(0,rect.right-inputRect.right)+'px');
    const height=dockRect.height,previous=parseFloat(document.body.style.getPropertyValue('--conversation-height')),position=scrollY,follow=atLatest();
+   const anchor=!follow&&state.filter==='all'?[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8):null;
+   const anchorTop=anchor?.getBoundingClientRect().top;
    document.body.style.setProperty('--conversation-height',height+'px');
-   // Preserve the gap to the newest message as the draft/preview grows or shrinks.
+   // Preserve the reading row if dock/status growth causes browser-specific
+   // scroll anchoring while the page's bottom inset changes.
+   if(anchor?.isConnected&&Number.isFinite(anchorTop)){
+    const delta=anchor.getBoundingClientRect().top-anchorTop;
+    if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});
+    // Some engines apply their native scroll-anchor adjustment one frame
+    // after the body's bottom inset changes. Continue the same message anchor
+    // briefly so that late adjustment cannot move a reader's viewport.
+    const view=window.FrommViewState;
+    if(view?.settleAnchor&&!view.pending&&!view.followingLatest&&Number.isFinite(previous)&&Math.abs(height-previous)>.5){
+     view.settleAnchor(anchor,()=>anchorTop-12,()=>state.filter==='all'&&anchor.isConnected,600);
+    }
+   }
+   // Preserve the gap to the newest message when the reader was following it.
    // An absolute target also avoids double scrolling after the browser clamps a shrink.
    if(follow&&previous>0&&Math.abs(height-previous)>.5)scrollTo({top:Math.max(0,position+height-previous),behavior:'instant'});
    updateLatestButton();
@@ -192,7 +224,9 @@
   dock.hidden=!show;document.body.classList.toggle('conversation-open',show);
   if(!show){closeEmoticons();document.querySelector('#conversationPending')?.remove();if(dialog?.open)dialog.close();return;}
   const labels={retry:'연결 재시도 중…',denied:'로그인·구독 권한을 확인해주세요.'};
-  const statusText=c.notice||labels[c.phase]||'';if(status.textContent!==statusText)status.textContent=statusText;
+  const conflictText=c.conflicts.size?`메시지 내용 충돌 ${c.conflicts.size}건 · 최신 여부 미확인`:'';
+  const overflowText=c.conflictOverflowIds.size?'일부 후보는 저장 한도에 도달해 보존되지 않았습니다.':'';
+  const statusText=[c.notice||labels[c.phase]||'',conflictText,overflowText].filter(Boolean).join(' · ');if(status.textContent!==statusText)status.textContent=statusText;
   status.hidden=!statusText;
   const max=c.rules?.max||450;count.textContent=`${input.value.length} / ${max}`;input.maxLength=max;
   resizeInput();input.disabled=c.denied;send.disabled=!!(c.sending||c.denied||!c.rules||!input.value.trim()&&!c.selectedEmoticon||input.value.length>max||c.outbox||c.accepted.length>=20||Date.now()<c.sendNotBefore);
@@ -222,15 +256,30 @@
  function persist({force=false,metadataOnly=false}={}){
   const c=context;if(!roomCurrent(c)||!c.storageAccount||!c.enabled||c.cacheEpoch!==epoch(c.storageAccount,c.host)||c.restoring||c.storageError&&!force)return Promise.resolve(false);
   const rows=metadataOnly?[]:state.messages.filter(m=>core.messageKey(m)&&c.persisted.get(core.messageKey(m))!==m);
+  const conflictCandidates=metadataOnly?[]:[...c.pendingConflictCandidates.values()];
   const meta=copyMeta(c);c.saving=true;paint();
-  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host)}).then(ok=>{
-   if(ok){for(const m of rows)c.persisted.set(core.messageKey(m),m);c.saved=true;c.storageError=false;}
+  saving=store.write(c.storageAccount,c.host,rows,meta,{current:()=>authCurrent(c)&&c.enabled&&storageEnabled(c.storageAccount)&&c.cacheEpoch===epoch(c.storageAccount,c.host),conflictCandidates,onConflictStatus:result=>{
+   if(!roomCurrent(c))return;c.conflictCandidateCount=result.conflictCandidateCount;c.conflictCandidateBytes=result.conflictCandidateBytes;
+   for(const id of result.conflictIds)if(!c.conflicts.has(id)){const canonical=c.persisted.get(id)||state.messages.find(message=>core.messageKey(message)===id)||null;rememberConflict(c,id,canonical,[]);}
+   for(const id of result.overflowIds){c.conflictOverflowIds.add(id);const conflict=c.conflicts.get(id);if(conflict)conflict.overflow=true;}
+   paint();
+  }}).then(ok=>{
+   if(ok){
+    for(const m of rows)c.persisted.set(core.messageKey(m),m);
+    for(const conflict of conflictCandidates){
+     const bytes=conflict.candidates.reduce((sum,message)=>sum+core.conflictCandidateBytes(message),0);
+     c.pendingConflictCandidateBytes=Math.max(0,c.pendingConflictCandidateBytes-bytes);
+     if(c.conflictOverflowIds.has(conflict.messageId))c.volatileConflictCandidateBytes+=bytes;
+     c.pendingConflictCandidates.delete(conflict.messageId);
+    }
+    c.saved=true;c.storageError=false;
+   }
    return ok;
-  }).catch(()=>{c.storageError=true;return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
+  }).catch(error=>{c.storageError=true;c.notice=error?.name==='QuotaExceededError'?'저장 공간이 부족해 대화 충돌 내용을 저장하지 못했습니다. 기존 캐시는 보존했습니다.':'대화 캐시 저장에 실패했습니다. 기존 캐시는 보존했습니다.';return false;}).finally(()=>{c.saving=false;if(roomCurrent(c))paint();});return saving;
  }
  function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),450);}
- function stop(c=context){
-  if(!c)return;if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
+ function stop(c=context,{includeRefresh=true}={}){
+  if(!c)return;if(includeRefresh)c.finishRefresh?.(false);if(c===context)closeEmoticons();c.pushVersion=(c.pushVersion||0)+1;c.pushBusy=0;c.feed?.stop();c.feed=null;c.owner.abort();
   c.pushClose?.();c.pushClose=null;c.pushOnline=false;clearTimeout(c.pushRetry);c.pushRetry=0;
  }
  function beforeRoom(room,{restore=true,restoreViewOnEntry=true}={}){
@@ -240,8 +289,8 @@
   const auth=currentAuth(),host=String(room?.hostChatRoomId||'');
   if(!host||!auth.token||!auth.uuid){context=null;restoreJob=null;paint();return;}
   const c={account:currentAccountScope(),accountEmail:auth.accountKey,host,roomId:String(room.id||''),generation:state.scanGeneration+1,token:auth.token,uuid:auth.uuid,
-   owner:new AbortController(),persisted:new Map(),draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
-   phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
+   owner:new AbortController(),persisted:new Map(),conflicts:new Map(),pendingConflictCandidates:new Map(),conflictOverflowIds:new Set(),conflictCandidateCount:0,conflictCandidateBytes:0,pendingConflictCandidateBytes:0,volatileConflictCandidateBytes:0,draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
+   phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,refreshFeed:null,refreshPromise:null,finishRefresh:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
   // Switching artists never replays a previous reading position, even from IndexedDB.
   if(!restoreViewOnEntry)c.restoreView=null;
@@ -258,19 +307,56 @@
     try{localStorage.setItem(lastRoomKey(c.storageAccount),JSON.stringify({roomId:c.roomId,host:c.host}));}catch{}
     const cached=restore?await store.read(c.storageAccount,c.host):(await store.clearRoom(c.storageAccount,c.host),null);if(!roomCurrent(c))return;
     if(cached&&Array.isArray(cached.messages)){
-     const messages=cached.messages.filter(m=>core.messageKey(m)&&core.messageTime(m)&&(!m.hostChatRoomId||String(m.hostChatRoomId)===c.host)).sort((a,b)=>compareMessages(a,b,'asc'));
-     // A hot in-memory room is already newer than a disk snapshot.
-     if((messages.length||(cached.meta.complete===true&&cached.meta.count===0))&&!state.messages.length){
-      const earliest=core.messageTime(messages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=messages.length,complete=cached.meta.complete===true&&validCount;
-      restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!complete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500});
-      state.chatMessages=state.messages;state.chatHistoryComplete=complete;state.chatHistoryProgress=messages.length;
-      if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
+     const diskMessages=cached.messages.filter(m=>core.messageKey(m)&&core.messageTime(m)&&(!m.hostChatRoomId||String(m.hostChatRoomId)===c.host)).sort((a,b)=>compareMessages(a,b,'asc'));
+     for(const conflict of cached.conflicts||[]){
+      c.conflicts.set(String(conflict.messageId),{...conflict,candidates:Array.isArray(conflict.candidates)?conflict.candidates:[]});
+      if(conflict.overflow)c.conflictOverflowIds.add(String(conflict.messageId));
+     }
+     c.conflictCandidateCount=Number(cached.meta.conflictCandidateCount)||0;c.conflictCandidateBytes=Number(cached.meta.conflictCandidateBytes)||0;
+     const hotComplete=state.chatHistoryComplete===true,diskById=new Map(diskMessages.map(message=>[core.messageKey(message),message])),merged=new Map(diskById),hotCanonicalUpdates=[];
+     // Keep the persisted value as the storage canonical; preserve any hot
+     // variant as an unresolved candidate without replacing the rendered row.
+     for(const message of state.messages){
+      if(!core.messageKey(message)||!core.messageTime(message)||(message.hostChatRoomId&&String(message.hostChatRoomId)!==c.host))continue;
+      const disk=diskById.get(core.messageKey(message));
+      if(disk&&!core.sameMessage(disk,message)){
+       rememberConflict(c,core.messageKey(message),disk,[message],{pending:true});
+       if(hotComplete)hotCanonicalUpdates.push(disk);
+       continue;
+      }
+      merged.set(core.messageKey(message),message);
+     }
+     const messages=[...merged.values()].sort((a,b)=>compareMessages(a,b,'asc'));
+     // Validate completeness against the disk snapshot itself; hot rows cannot
+     // make an incomplete IndexedDB snapshot appear complete.
+     if(diskMessages.length||(cached.meta.complete===true&&cached.meta.count===0)){
+      const earliest=core.messageTime(diskMessages[0])||Date.now(),cursor=Date.parse(cached.meta.cursorEnd),validCount=Number.isInteger(cached.meta.count)&&cached.meta.count>=0&&cached.meta.count<=diskMessages.length,diskComplete=cached.meta.complete===true&&validCount;
+      if(hotComplete){
+       if(hotCanonicalUpdates.length){
+        const oldList=state.infiniteList,follow=atLatest();
+        for(const message of hotCanonicalUpdates){const index=state.messages.findIndex(value=>core.messageKey(value)===core.messageKey(message));if(index>=0)state.messages[index]=message;}
+        state.chatMessages=state.messages;state.chatCache.set(chatCacheKey(),state.messages);saveRoomCache();chatMatchCache=null;
+        state.seenMessageKeys=new Set(state.messages.map(message=>String(message.messageId||`${message.createdAt}|${message.type}|${message.content}`)));
+        if(hotCanonicalUpdates.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
+        updateView(oldList,hotCanonicalUpdates,follow);renderCountsOnly();updateChatSearchCount();renderDateCalendar();
+       }
+       const hotKeys=new Set(state.messages.map(core.messageKey));
+       const diskOnly=diskMessages.filter(message=>!hotKeys.has(core.messageKey(message)));
+       if(diskOnly.length)await merge(c,diskOnly,{source:'cache'});
+       state.chatMessages=state.messages;state.chatHistoryProgress=state.messages.length;state.chatCache.set(chatCacheKey(),state.messages);
+      }else{
+       restoreRoomCache({messages,cursorEnd:validCount?(Number.isFinite(cursor)&&cursor<=earliest?new Date(cursor).toISOString():new Date(earliest-1).toISOString()):new Date().toISOString(),hasMoreMessages:!diskComplete,pageRequestLimit:[100,500].includes(cached.meta.pageRequestLimit)?cached.meta.pageRequestLimit:500,observedPageLimit:Number(cached.meta.observedPageLimit)||0});
+       state.chatHistoryComplete=diskComplete;state.chatMessages=diskComplete?state.messages:state.messages.slice(-300);state.chatHistoryProgress=messages.length;
+       if(state.chatHistoryComplete)state.chatCache.set(chatCacheKey(),state.messages);
+      }
       c.cached=true;c.saved=true;c.syncedUntil=Number.isFinite(cached.meta.syncedUntil)&&cached.meta.syncedUntil>0&&cached.meta.syncedUntil<Date.now()+60000?cached.meta.syncedUntil:newest(messages);
-      for(const m of messages)c.persisted.set(core.messageKey(m),m);
+      for(const message of diskMessages)c.persisted.set(core.messageKey(message),message);
       if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
       const view=remembered?.lastView||cached.meta.view;
       if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(restoreViewOnEntry&&!view.latest)c.restoreView=view;}
-      input.value=c.draft;buildMediaSequences();render();
+      input.value=c.draft;
+      if(!hotComplete){buildMediaSequences();render();}
+      if(c.pendingConflictCandidates.size||state.messages.some(message=>c.persisted.get(core.messageKey(message))!==message))saveSoon();
      }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
    }catch{if(roomCurrent(c)){c.storageError=true;if(!c.storageAccount)c.enabled=false;}}
@@ -295,14 +381,17 @@
  function atLatest(){
   // Selection inside the composer is editing, not a selected passage in history.
   const readingSelection=!dock?.contains(document.activeElement)&&getSelection()?.isCollapsed===false;
-  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(220,(dock?.offsetHeight||0)+60);
+  // Keep the tolerance to one dock height plus a small layout margin. A 220px
+  // floor can label a reader in the middle of a short cached conversation as
+  // "latest" and make a data-only cache flush pull the viewport downward.
+  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(80,(dock?.offsetHeight||0)+16);
  }
  function updateView(oldList,changes,follow){
   if(state.filter!=='all'||!context)return;
   const c=context,next=filteredMessages(),timeline=document.querySelector('#timeline');
   const nodes=new Map([...timeline.querySelectorAll('.msg')].map(el=>[el.dataset.messageId,el]));
   const oldKeys=new Set(oldList.map(messageStableKey));
-  const anchor=[...nodes.values()].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8),anchorTop=anchor?.getBoundingClientRect().top;
+  const anchor=[...nodes.values()].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8),anchorId=anchor?.dataset.messageId,anchorTop=anchor?.getBoundingClientRect().top;
   const first=timeline.querySelector('.msg'),last=[...nodes.values()].at(-1);
   const oldEnd=last?oldList.findIndex(m=>messageStableKey(m)===last.dataset.messageId):-1;
   const start=first?next.findIndex(m=>messageStableKey(m)===first.dataset.messageId):-1;
@@ -332,18 +421,19 @@
     else requestAnimationFrame(()=>{if(viewing(c))window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});});
    }else pendingCount+=changes.filter(m=>!oldKeys.has(messageStableKey(m))).length;
    for(const message of changes){const node=nodes.get(messageStableKey(message));
-    if(node?.isConnected&&normType(message.type)==='text'){const replacement=renderMessage(message);node.replaceChildren(...replacement.childNodes);node.className=replacement.className;}
+    if(node?.isConnected){const activeMedia=[...node.querySelectorAll('audio,video')].some(media=>!media.paused&&!media.ended);if(activeMedia)continue;const replacement=renderMessage(message);node.replaceWith(replacement);nodes.set(messageStableKey(message),replacement);}
    }
    state.chatTopRenderObserver?.disconnect();state.chatRenderObserver?.disconnect();
    timeline.querySelectorAll('.chat-prepend-sentinel,.chat-render-sentinel').forEach(n=>n.remove());armChatTopRenderObserver();armChatRenderObserver();
-   if(!follow&&anchor?.isConnected){const delta=anchor.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});}
+   const stableAnchor=anchor?.isConnected?anchor:anchorId?timeline.querySelector(`.msg[data-message-id="${CSS.escape(anchorId)}"]`):null;
+   if(!follow&&stableAnchor){const delta=stableAnchor.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});}
   }else if(!first&&next.length){state.chatAutoTopPending=true;render();}
   else state.infiniteList=next;
   paint();
  }
- async function merge(c,rows){
+ async function merge(c,rows,{source='unverified'}={}){
   if(!roomCurrent(c))return;
-  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false;
+  const oldList=state.infiniteList,follow=atLatest(),byId=new Map(state.messages.map(m=>[core.messageKey(m),m])),changes=[];let reconciled=false,conflicted=false;
   for(let row of rows){
    const key=core.messageKey(row);if(!key||!core.messageTime(row)||(row.hostChatRoomId&&String(row.hostChatRoomId)!==c.host))continue;
    const previous=byId.get(key),emoticonId=String(row.emoticonItemId??'');
@@ -352,20 +442,28 @@
    if(emoticonId&&image&&!resolveEmoticonUrl(row))row={...row,emoticonItem:{imageUrl:image}};
    if(c.outbox&&row.code===c.outbox.code){clearSentEmoticon(c,c.outbox.emoticon);if(input.value.trim()===c.outbox.content){input.value='';c.draft='';}c.outbox=null;reconciled=true;}
    const accepted=c.accepted.filter(message=>message.code!==row.code);if(accepted.length!==c.accepted.length){c.accepted=accepted;reconciled=true;}
-   if(previous&&JSON.stringify(previous)===JSON.stringify(row))continue;
-   // Replace only confirmed canonical records, never invent a successful send.
-   if(previous){const index=state.messages.indexOf(previous);state.messages[index]=row;}
-   else{state.messages.push(row);state.seenMessageKeys.add(key);}
+   if(previous&&core.sameMessage(previous,row))continue;
+   if(previous){
+    // A repeated server response is not revision proof. Keep the row already
+    // displayed and store every distinct version as an unresolved candidate.
+    const canonical=c.conflicts.get(key)?.canonical||c.persisted.get(key)||previous;
+    conflicted=rememberConflict(c,key,canonical,[previous,row],{pending:true})||conflicted;
+    continue;
+   }
+   else state.seenMessageKeys.add(key);
    byId.set(key,row);changes.push(row);
   }
   if(reconciled)c.notice='';
-  if(!changes.length){if(reconciled){saveSoon();paint();}return;}
-  state.messages.sort((a,b)=>compareMessages(a,b,'asc'));state.chatMessages=state.messages;chatMatchCache=null;
-  state.chatCache.set(chatCacheKey(),state.chatMessages);saveRoomCache();
+  if(!changes.length){if(reconciled||conflicted){if(conflicted)saveSoon();paint();}return;}
+  state.messages=mergeSortedMessages(state.messages,changes);
+  if(state.chatHistoryComplete){state.chatMessages=state.messages;state.chatCache.set(chatCacheKey(),state.chatMessages);}
+  else state.chatMessages=state.messages.slice(-300);
+  chatMatchCache=null;saveRoomCache();
   if(changes.some(message=>isArtist(message)&&isMedia(message)))await buildMediaSequences(true,()=>roomCurrent(c));
   else if(state.mediaSequenceStamp?.source===state.messages)state.mediaSequenceStamp.length=state.messages.length;
   if(!roomCurrent(c))return;
-  updateView(oldList,changes,follow||reconciled);
+  if(state.filter==='all')updateView(oldList,changes,follow||reconciled);
+  else if(typeof refreshInfiniteListAfterFetch==='function')await refreshInfiniteListAfterFetch(state.infiniteVersion);
   // A pending sticker and its composer preview can change height before the
   // first follow frame. A confirmed own send must still enter the latest window.
   if(reconciled)showLatest(c);
@@ -373,7 +471,7 @@
   saveSoon();
  }
  async function connectPush(c){
-  if(c.pushBusy||c.pushClose||c.denied||!viewing(c)||!complete(c))return;
+  if(c.pushBusy||c.pushClose||c.denied||!viewing(c)||!state.messages.length)return;
   const version=(c.pushVersion||0)+1;c.pushVersion=version;c.pushBusy=version;const valid=()=>viewing(c)&&c.pushVersion===version;let app=null,db=null,off=null;
   const close=()=>{off?.();off=null;if(db){void library?.terminate(db).catch(()=>{});db=null;}if(app){void library?.deleteApp(app).catch(()=>{});app=null;}};
   let library=null;
@@ -400,16 +498,75 @@
    close();if(valid()){c.pushClose=null;c.pushOnline=false;paint();c.pushRetry=setTimeout(()=>{c.pushRetry=0;connectPush(c);},60000);}
   }finally{if(c.pushBusy===version)c.pushBusy=0;if(viewing(c)&&!c.denied&&!c.pushBusy&&!c.pushClose&&!c.pushRetry)c.pushRetry=setTimeout(()=>{c.pushRetry=0;connectPush(c);},500);}
  }
+ async function requestFeedPage(c,{start,end,limit,signal}){
+  if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});
+  return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));
+ }
  function start(c){
-  if(!viewing(c)||!complete(c)||c.denied||c.feed)return;
+  if(c.refreshFeed)return;
+  const canSyncEmpty=state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0;
+  if(!viewing(c)||(!state.messages.length&&!canSyncEmpty)||c.denied||c.feed)return;
   if(c.owner.signal.aborted)c.owner=new AbortController();
   const codes=new Set(state.messages.map(message=>message.code).filter(Boolean));
   if(c.outbox&&codes.has(c.outbox.code))c.outbox=null;c.accepted=c.accepted.filter(message=>!codes.has(message.code));
-  c.feed=core.createFeed({current:()=>viewing(c)&&complete(c),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
-   requestPage:async({start,end,limit,signal})=>{if(c.readNotBefore>Date.now())throw Object.assign(new Error('Retry later'),{status:429,retryAfterMs:c.readNotBefore-Date.now(),localCooldown:true});return extractMessages(await frommApiJson(FROMM_COMPAT.endpoints.messages(c.host),{findStartAt:new Date(start).toISOString(),findEndAt:new Date(end).toISOString(),limit:String(limit)},{signal}));},
-   onMessages:rows=>merge(c,rows),onSynced:time=>{c.syncedUntil=time;saveSoon();},
+  c.feed=core.createFeed({current:()=>viewing(c)&&(state.messages.length>0||state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0),latest:()=>c.syncedUntil||newest(state.messages),interval:()=>c.outbox||c.accepted.length||c.pushHintUntil>Date.now()?3000:c.pushOnline?60000:3000,limit:c.feedLimit||100,
+   requestPage:options=>requestFeedPage(c,options),
+   onMessages:rows=>merge(c,rows,{source:'server'}),onSynced:time=>{c.syncedUntil=time;saveSoon();},
    onState:(phase,error)=>{if(!roomCurrent(c))return;if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);if(phase!=='syncing'||c.phase!=='connected')c.phase=phase;if(phase==='error')c.notice=error?.message||'동기화를 확인해주세요.';if(phase==='denied'){c.denied=true;c.rules=null;stop(c);}if(phase!=='error'&&c.rules&&!c.sending&&!c.outbox)c.notice='';paint();}});
   c.feed.start();void connectPush(c);if(!c.rules)void getRules(c).catch(()=>{});
+ }
+ function refreshLatest(c){
+  if(state.filter==='all'){
+   if(c.feed&&!c.feed.active)c.feed=null;
+   if(!c.feed)start(c);else c.feed.poke();
+   return Promise.resolve(true);
+  }
+  const gallery=['media','image','video','sound'].includes(state.filter),canSyncEmpty=state.chatHistoryComplete&&Number.isFinite(c.syncedUntil)&&c.syncedUntil>0;
+  if(!gallery||!roomCurrent(c)||(!state.messages.length&&!canSyncEmpty))return Promise.resolve(false);
+  if(c.refreshPromise)return c.refreshPromise;
+  let feed=null,timer=0,settled=false,resolveJob;
+  const promise=new Promise(resolve=>resolveJob=resolve);
+  const finish=success=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   if(c.refreshFeed===feed){c.refreshFeed=null;c.refreshPromise=null;}
+   if(c.finishRefresh===finish)c.finishRefresh=null;
+   feed?.stop();
+   if(success){c.phase='connected';c.notice='';}
+   if(viewing(c)&&!c.feed)start(c);
+   resolveJob(success);
+  };
+  c.finishRefresh=finish;
+  feed=core.createFeed({current:()=>roomCurrent(c)&&c.refreshFeed===feed&&!document.hidden&&['all','media','image','video','sound'].includes(state.filter)&&!document.querySelector('#loginGate:not(.hidden)'),latest:()=>c.syncedUntil||newest(state.messages),interval:60000,limit:c.feedLimit||100,
+   requestPage:options=>requestFeedPage(c,options),
+   onMessages:rows=>merge(c,rows,{source:'server'}),
+   onSynced:time=>{c.syncedUntil=time;saveSoon();finish(true);paint();},
+   onState:(phase,error)=>{
+    if(!roomCurrent(c)){finish(false);return;}
+    if(error?.status===429&&!error.localCooldown)c.readNotBefore=Date.now()+Math.max(30000,error.retryAfterMs||0);
+    if(phase==='syncing'){c.phase=phase;paint();return;}
+    if(phase==='denied'){c.denied=true;c.rules=null;}
+    if(phase==='retry'||phase==='error'||phase==='denied'){c.phase=phase;c.notice=error?.message||'동기화를 확인해주세요.';finish(false);paint();}
+   }});
+  c.refreshFeed=feed;c.refreshPromise=promise;timer=setTimeout(()=>finish(false),16000);feed.start();
+  return promise;
+ }
+ async function refresh(){
+  let c=context;if(!c)return false;
+  if(c.restoring)await restoreJob;
+  if(!roomCurrent(c)||c.denied)return false;
+  // Keep complete caches intact and fetch only the incremental latest window.
+  // A partial cache advances by one older page, then resumes background fill.
+  if(!state.messages.length&&state.chatHistoryComplete&&!c.syncedUntil){
+   state.chatHistoryComplete=false;state.chatMessages=[];state.hasMoreMessages=true;state.cursorEnd=new Date();
+  }
+  if(!state.chatHistoryComplete&&state.hasMoreMessages){
+   await loadMoreHistory({initial:true});
+   if(!roomCurrent(c))return false;
+   if(state.hasMoreMessages)scheduleHistoryBackground();
+  }
+  if(!roomCurrent(c)||c.denied)return false;
+  if(state.messages.length||state.chatHistoryComplete&&c.syncedUntil)await refreshLatest(c);
+  return true;
  }
  function sync(){
   if(!mounted)return;
@@ -422,7 +579,7 @@
   }
   const c=context;
   if(!roomCurrent(c)){stop(c);paint();return;}
-  if(!viewing(c)){stop(c);c.phase='paused';paint();return;}
+  if(!viewing(c)){const keepGalleryRefresh=['media','image','video','sound'].includes(state.filter)&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');stop(c,{includeRefresh:!keepGalleryRefresh});c.phase='paused';paint();return;}
   if(c.owner.signal.aborted)c.owner=new AbortController();
   if(!c.rules&&!c.ruleJob&&!c.denied)void getRules(c).catch(()=>{});
   if(c.restoreView&&!c.restoring){
@@ -458,7 +615,7 @@
    if(!state.messages.some(message=>message.code===code))c.accepted.push({code,content:text,...(emoticon?{emoticonItemId:emoticon.id,emoticon}:{}),createdAt:new Date().toISOString(),uncertain:false});if(c.outbox?.code===code)c.outbox=null;c.notice='';
    if(input.value===draft){input.value='';c.draft='';}clearSentEmoticon(c,choice);
    const message=reply?.data?.message;
-   if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}]);
+   if(message&&core.messageKey(message)&&core.messageTime(message)&&!state.historyJob)await merge(c,[{...message,code:message.code||code}],{source:'server'});
    c.feed?.poke();void persist({metadataOnly:true});
   }catch(error){
    if(!roomCurrent(c))return;
@@ -474,6 +631,7 @@
  function historyChanged(){
   if(!roomCurrent(context)||context.restoring)return;
   if(state.chatHistoryComplete){state.chatMessages=state.messages;context.syncedUntil||=newest(state.messages)||Date.now();}
+  else exposeChatHistorySnapshot();
   saveSoon();sync();
  }
  function mount(){
@@ -525,7 +683,7 @@
   const originalFilter=setFilter;setFilter=async function(...args){const promise=originalFilter.apply(this,args);sync();try{return await promise;}finally{sync();}};
   paint();
  }
- const api={mount,beforeRoom,sync,historyChanged,stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
+ const api={mount,beforeRoom,sync,refresh,historyChanged,reconcileHistory(rows){if(!roomCurrent(context)||!Array.isArray(rows))return;return merge(context,rows,{source:'history'});},stop(){stop();memories.clear();context=null;restoreJob=null;clearTimeout(saveTimer);pendingCount=0;if(input)input.value='';document.querySelector('#conversationPending')?.remove();paint();},canShowCached:()=>roomCurrent(context)&&context.cached&&state.chatMessages.length>0,
   get restoring(){return!!context?.restoring;},get ready(){return restoreJob||Promise.resolve();},loadFirebase:sdk,
   get status(){return{phase:context?.phase||'idle',persisted:!!context?.saved,storageError:!!context?.storageError,push:!!context?.pushOnline};},flush:()=>persist({force:true})};
  window.FrommConversation=api;

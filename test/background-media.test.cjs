@@ -11,15 +11,16 @@ function setup(response){
  const state={room:{hostChatRoomId:'fixture'},scanGeneration:1,messages:[],chatMessages:[],chatCache:new Map(),roomCache:new Map(),
   cursorEnd:new Date('2026-10-27'),pageTarget:500,pageRequestLimit:500,hasMoreMessages:true,seenMessageKeys:new Set(),
   infiniteList:[],infiniteRendered:0,filter:'all',historyBlockedUntil:0,historyLastRequestAt:0};
- const c=vm.createContext({state,Set,Map,Date,Math,Number,Promise,AbortController,DOMException,
+ const c=vm.createContext({state,Set,Map,Date,Math,Number,Promise,AbortController,DOMException,window:{},
   setTimeout,clearTimeout,navigator:{},document:{hidden:false},console:{warn:(...a)=>warnings.push(a)},
   $:()=>({textContent:''}),syncLoadingUI(){},updateHistoryStatus(){},renderCountsOnly(){},renderDateCalendar(){},
+  exposeChatHistorySnapshot(){state.chatMessages=state.chatHistoryComplete?state.messages:state.messages.slice(-300);},
   cleanFailureReason:String,chatCacheKey:()=> 'fixture',saveRoomCache(){},buildMediaSequences(){state.built=(state.built||0)+1;},
   apiErrorStatus:e=>e?.status||0,extractMessages:data=>data.messages,
   compareMessages:(a,b)=>new Date(a.createdAt)-new Date(b.createdAt),
   requestHistoryPage:async(...args)=>{calls.push(args);return response(...args);},
  });
- for(const name of ['constrainedMediaConnection','historyAbortError','historyDelay','stopHistoryWork','scheduleHistoryBackground','publishCompleteHistory','loadMoreHistory','ensureAllHistory','ensureFullChatHistory']) vm.runInContext(source(name),c);
+ for(const name of ['constrainedMediaConnection','historyAbortError','historyDelay','stopHistoryWork','scheduleHistoryBackground','mergeSortedMessages','publishCompleteHistory','loadMoreHistory','ensureAllHistory','ensureFullChatHistory']) vm.runInContext(source(name),c);
  return{c,state,calls,warnings,stop:()=>c.stopHistoryWork()};
 }
 const message=(id,time='2026-10-25T01:00:00Z')=>({messageId:id,type:'text',createdAt:time});
@@ -54,6 +55,18 @@ test('account/artist cancellation aborts the in-flight request and rejects late 
 test('nonadvancing or invalid timestamps leave history incomplete and prevent unsafe filenames',async()=>{
  const h=setup(async()=>({messages:[message('bad','invalid')]}));
  try{await assert.rejects(h.c.ensureAllHistory(),/커서/);assert.equal(h.state.hasMoreMessages,true);assert.notEqual(h.state.chatHistoryComplete,true);}finally{h.stop();}
+});
+test('inclusive history boundary keeps a saturated same-timestamp page incomplete',async()=>{
+ const time='2026-10-25T01:00:00.000Z',rows=[message('tie-1',time),message('tie-2',time),message('tie-3',time)];
+ const h=setup(async()=>({messages:rows}));h.state.pageRequestLimit=3;
+ try{
+  await assert.rejects(h.c.ensureAllHistory(),/커서/);
+  assert.equal(h.calls.length,2,'the same inclusive end is retried to detect a stalled timestamp boundary');
+  assert.equal(h.state.messages.length,3,'only the records actually returned are retained');
+  assert.equal(h.state.cursorEnd.toISOString(),time);
+  assert.equal(h.state.hasMoreMessages,true);
+  assert.notEqual(h.state.chatHistoryComplete,true);
+ }finally{h.stop();}
 });
 test('hidden pages and playback defer background metadata without issuing server requests',async()=>{
  const h=setup(async()=>({messages:[]}));

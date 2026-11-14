@@ -541,9 +541,6 @@
   if(!state.messages.length&&state.chatHistoryComplete&&!c.syncedUntil){
    state.chatHistoryComplete=false;state.chatMessages=[];state.hasMoreMessages=true;state.cursorEnd=new Date();
   }
-  if(!state.messages.length&&state.chatHistoryComplete&&!c.syncedUntil){
-   state.chatHistoryComplete=false;state.chatMessages=[];state.hasMoreMessages=true;state.cursorEnd=new Date();
-  }
   if(!state.chatHistoryComplete&&state.hasMoreMessages){
    await loadMoreHistory({initial:true});
    if(!roomCurrent(c))return false;

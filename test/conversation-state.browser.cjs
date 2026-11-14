@@ -61,8 +61,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   holdRules=new Promise(resolve=>releaseRules=resolve);await page.locator('#conversationInput').fill('화면 전환 중 전송 금지');await page.locator('#conversationSend').click();
   await page.waitForFunction(()=>document.querySelector('#conversationSend').getAttribute('aria-busy')==='true');await page.evaluate(()=>setFilter('image'));releaseRules();await page.waitForTimeout(250);assert.equal(posts.length,2);
   await page.evaluate(()=>setFilter('all'));await page.waitForFunction(()=>FrommConversation.status.phase==='connected');assert.equal(await page.locator('#conversationInput').inputValue(),'화면 전환 중 전송 금지');
-  // A deliberate server refresh must not silently rehydrate the old disk cache.
-  const before=history;await page.locator('#scanBtn').click();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected');assert.ok(history>before);assert.equal(await page.evaluate(()=>state.messages.length),rows.length);
+  // A complete-cache refresh checks only the latest window; it must not clear
+  // the hot or disk cache and restart historical collection.
+  const before=history;await page.locator('#scanBtn').click();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected');assert.equal(history,before,'complete-cache refresh must not request historical pages');assert.equal(await page.evaluate(()=>state.messages.length),rows.length,'complete cached rows remain in memory');
   // A partial snapshot must be visible while older server pages are still pending.
   const partial=await page.evaluate(async messages=>{const store=FrommConversationCore.createStore();try{const last=messages.slice().sort((a,b)=>a.createdAt-b.createdAt).slice(-6);await store.clearRoom('user:fan-C','host-room');await store.write('user:fan-C','host-room',last,{count:6,complete:false,cursorEnd:new Date(last[0].createdAt-1).toISOString()});const saved=await store.read('user:fan-C','host-room');return{count:saved?.messages.length,complete:saved?.meta.complete}}finally{await store.close()}},rows);assert.deepEqual(partial,{count:6,complete:false});
   // A separate synthetic account avoids racing another writer for the same key.

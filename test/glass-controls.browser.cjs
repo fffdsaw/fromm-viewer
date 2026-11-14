@@ -160,7 +160,11 @@ async function press(p,selector){
     const token=document.querySelector('#tokenLifeWrap');token.style.display='inline-flex';token.querySelector('#tokenLifeText').textContent='24:00';
     document.querySelector('#scanBtn').disabled=false;
     document.querySelector('#logoutMiniBtn').style.display='inline-flex';
-    const nav=document.querySelector('#chatMatchNav');nav.hidden=false;nav.style.cssText='display:flex;position:fixed;right:24px;top:118px;z-index:1600';
+    const nav=document.querySelector('#chatMatchNav');
+    window.chatMatchGlassFixture={parent:nav.parentElement,next:nav.nextSibling,hidden:nav.hidden,style:nav.getAttribute('style')};
+    // Keep the real controls and IDs, but detach the fixture from the toolbar
+    // whose normal search-state sync hides navigation when there are no matches.
+    document.body.append(nav);nav.hidden=false;nav.style.cssText='display:flex;position:fixed;right:24px;top:118px;z-index:1600';
     for(const button of nav.querySelectorAll('button'))button.disabled=false;
    });
    for(const selector of ['#tokenLifeWrap','#scanBtn','#logoutMiniBtn','#chatMatchPrev','#chatMatchNext']){
@@ -177,6 +181,7 @@ async function press(p,selector){
    const token=p.locator('#tokenLifeWrap');await token.hover();await p.mouse.down();
    assert.equal(await token.evaluate(el=>el.classList.contains('glass-pressed')),false,'the non-button token indicator never enters the pressed state');
    await p.mouse.move(opt.width-3,opt.height-3);await p.mouse.up();
+   await p.evaluate(()=>{const nav=document.querySelector('#chatMatchNav'),saved=window.chatMatchGlassFixture;if(saved?.parent?.isConnected)saved.parent.insertBefore(nav,saved.next?.parentElement===saved.parent?saved.next:null);if(saved){nav.hidden=saved.hidden;if(saved.style===null)nav.removeAttribute('style');else nav.setAttribute('style',saved.style);}delete window.chatMatchGlassFixture;});
   }
   await p.evaluate(()=>window.chatGlassFixture.remove());
   await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface'));

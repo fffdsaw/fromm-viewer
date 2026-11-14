@@ -96,8 +96,16 @@
    const inputRect=input.getBoundingClientRect(),dockRect=dock.getBoundingClientRect();
    document.body.style.setProperty('--conversation-actions-width',Math.max(0,rect.right-inputRect.right)+'px');
    const height=dockRect.height,previous=parseFloat(document.body.style.getPropertyValue('--conversation-height')),position=scrollY,follow=atLatest();
+   const anchor=!follow&&state.filter==='all'?[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8):null;
+   const anchorTop=anchor?.getBoundingClientRect().top;
    document.body.style.setProperty('--conversation-height',height+'px');
-   // Preserve the gap to the newest message as the draft/preview grows or shrinks.
+   // Preserve the reading row if dock/status growth causes browser-specific
+   // scroll anchoring while the page's bottom inset changes.
+   if(anchor?.isConnected&&Number.isFinite(anchorTop)){
+    const delta=anchor.getBoundingClientRect().top-anchorTop;
+    if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});
+   }
+   // Preserve the gap to the newest message when the reader was following it.
    // An absolute target also avoids double scrolling after the browser clamps a shrink.
    if(follow&&previous>0&&Math.abs(height-previous)>.5)scrollTo({top:Math.max(0,position+height-previous),behavior:'instant'});
    updateLatestButton();

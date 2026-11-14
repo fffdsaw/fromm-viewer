@@ -82,7 +82,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>state.room?.hostChatRoomId==='refresh-partial-host'&&state.chatHistoryComplete&&state.messages.length===25,null,{timeout:5000});
   assert.equal(historyRequests.filter(request=>request.host==='refresh-partial-host').length,2,'partial refresh requests the missing cursor range and its terminal page');
-  assert.ok(Date.parse(historyRequests.find(request=>request.host==='refresh-partial-host').end)<partialBase,'partial refresh resumes from its cached older boundary');
+  assert.ok(historyRequests.find(request=>request.host==='refresh-partial-host').end<partialBase,'partial refresh resumes from its cached older boundary');
   assert.ok(Array.from({length:20},(_,i)=>`partial-${i}`).every(id=>state.messages.some(row=>row.messageId===id)),'partial refresh retains cached messages');
   assert.deepEqual(errors,[]);
   console.log(`Complete synthetic refresh: ${completeSnapshot.count} rows retained, zero historical requests, reader anchor preserved; gallery refresh added one item; 503 retry kept the cache.`);

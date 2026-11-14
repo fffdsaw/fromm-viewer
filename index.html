@@ -1104,6 +1104,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=conversation-mask-height-20261111">
+<link rel="stylesheet" href="compact-player.css?v=compact-mvc-20261114">
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=room-latest-20261111"></script>
 <script src="web-chat-audio.js?v=voice-channel-toggle-20261111"></script>
@@ -9110,6 +9111,8 @@ function renderMediaCard(m){
       },{once:true});
       // Leave preload="none" truly lazy. Calling load() for every rendered
       // audio card starts many metadata requests and can interrupt scrolling.
+      window.FrommChatAudio?.enhance(a,{gallery:true});
+      thumb?.classList.add("audio-player-ready");
     }else{
       thumb?.classList.add("media-ready");
     }
@@ -11260,6 +11263,7 @@ autoConnectSaved();
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=live-fit-20261109"></script>
 <script src="web-live-controls.js?v=live-fit-20261109"></script>
+<script src="web-compact-player.js?v=compact-mvc-20261114"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

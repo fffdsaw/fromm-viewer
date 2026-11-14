@@ -60,6 +60,11 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-player{width:100%;min-width:0;color:var(--text,#193e34)}
 .chat-audio-player [hidden]{display:none!important}
 .chat-audio-controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.chat-audio-waveform{display:flex;align-items:center;justify-content:center;gap:3px;flex:1 1 48px;min-width:32px;height:28px;overflow:hidden;opacity:.88}
+.chat-audio-waveform i{display:block;flex:0 1 3px;min-width:2px;height:var(--wave-height,8px);max-height:22px;border-radius:4px;background:linear-gradient(180deg,#75c9ae,#428e7a);transform:scaleY(.72);transform-origin:center;transition:transform .18s ease,opacity .18s ease;opacity:.72}
+.chat-audio-player[data-playing="true"] .chat-audio-waveform i{animation:audio-wave-pulse .68s ease-in-out var(--wave-delay,0ms) infinite alternate;opacity:1}
+@keyframes audio-wave-pulse{to{transform:scaleY(.46)}}
+@media(prefers-reduced-motion:reduce){.chat-audio-player[data-playing="true"] .chat-audio-waveform i{animation:none;transform:scaleY(.72)}}
 .chat-audio-play,.chat-audio-mute{display:grid;place-items:center;flex-shrink:0;padding:6px;border:0;border-radius:50%;color:#286a59;background:transparent;cursor:pointer}
 /* Channel-style play/pause toggle, scoped to chat only. Channel CSS/JS stays untouched. */
 .chat-audio-play{width:40px;height:40px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.24);transition:background-color .14s,border-color .14s,transform .09s}
@@ -82,6 +87,15 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-player input:disabled{opacity:.55;cursor:default}
 .chat-audio-player :focus-visible{outline:2px solid #087e83;outline-offset:2px}
 .chat-audio-error{display:block;font-size:12px;color:#8c4d3a;margin-top:5px;overflow-wrap:anywhere}
+.media-card .audio-thumb.audio-player-ready .audio-icon{display:none}
+.media-card .audio-thumb.audio-player-ready .audio-player-overlay{position:relative;left:auto;right:auto;bottom:auto;width:min(94%,360px)}
+.media-card .gallery-audio-player .chat-audio-controls{flex-wrap:nowrap;gap:4px}
+.media-card .gallery-audio-player .chat-audio-waveform{flex:1 1 36px;max-width:64px;gap:2px}
+.media-card .gallery-audio-player .chat-audio-time{flex:none;font-size:10px;line-height:1.2}
+.media-card .gallery-audio-player .chat-audio-play{width:34px;height:34px}
+.media-card .gallery-audio-player .chat-audio-play svg{width:19px;height:19px}
+.media-card .gallery-audio-player .chat-audio-volume{gap:0}
+.media-card .gallery-audio-player .chat-audio-level{width:42px}
 
 .conversation-pending-bubble .emoticon-img{display:block;width:160px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain}
 

@@ -68,7 +68,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.deepEqual(gallerySnapshot,{count:42,complete:true,hasNew:true},'refresh in a media tab merges latest items without clearing complete history');
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>FrommConversation.status.phase==='retry',null,{timeout:5000});
-  const failedRefreshSnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read(currentAccountScope(),'refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='server-new')}}finally{await store.close()}});
+  const failedRefreshSnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read('user:synthetic-refresh-user','refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='server-new')}}finally{await store.close()}});
   assert.deepEqual(failedRefreshSnapshot,{count:42,complete:true,hasNew:true},'a failed latest request leaves the complete cache intact');
 
   partialBase=await page.evaluate(async()=>{

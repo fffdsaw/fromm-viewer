@@ -40,7 +40,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    FrommConversation.loadFirebase=async()=>{throw new Error('synthetic REST-only fixture')};
    await ensureReplyIdentity();
    const host='refresh-complete-host',rows=Array.from({length:40},(_,i)=>({messageId:`cached-${i}`,hostChatRoomId:host,userType:'star',type:i===4?'image':'text',content:i===4?'https://fixture.test/cached-image.svg':`synthetic cached row ${i}`,createdAt:Date.now()-120000+i*1000}));
-   const store=FrommConversationCore.createStore();try{await store.write(currentAccountScope(),host,rows,{count:rows.length,complete:true,cursorEnd:new Date(rows[0].createdAt-1).toISOString(),pageRequestLimit:500,syncedUntil:Date.now()-60000,view:{id:'cached-12',offset:80,latest:false}})}finally{await store.close()}
+   const store=FrommConversationCore.createStore();try{await store.write('user:synthetic-refresh-user',host,rows,{count:rows.length,complete:true,cursorEnd:new Date(rows[0].createdAt-1).toISOString(),pageRequestLimit:500,syncedUntil:Date.now()-60000,view:{id:'cached-12',offset:80,latest:false}})}finally{await store.close()}
    state.rooms=[{id:'refresh-complete-room',hostChatRoomId:host,host:{nick:'Synthetic complete'}}];
    const button=document.createElement('button');button.className='room';document.querySelector('#rooms').replaceChildren(button);selectRoom(0,button,{restoreHistoryPosition:true});
   });
@@ -53,7 +53,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(historyRequests.length,0,'complete-cache refresh must not restart historical collection');
   assert.ok(Math.abs(after-before)<12,`refresh preserves the reader anchor (${before} -> ${after})`);
   await page.evaluate(()=>FrommConversation.flush());
-  const completeSnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read(currentAccountScope(),'refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,ids:new Set(value.messages.map(row=>row.messageId)).size,hasNew:value.messages.some(row=>row.messageId==='server-new'),hasOld:value.messages.some(row=>row.messageId==='cached-0')}}finally{await store.close()}});
+  const completeSnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read('user:synthetic-refresh-user','refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,ids:new Set(value.messages.map(row=>row.messageId)).size,hasNew:value.messages.some(row=>row.messageId==='server-new'),hasOld:value.messages.some(row=>row.messageId==='cached-0')}}finally{await store.close()}});
   assert.deepEqual(completeSnapshot,{count:41,complete:true,ids:41,hasNew:true,hasOld:true},'latest sync merges into the retained complete cache');
   await page.evaluate(()=>setFilter('image'));
   await page.waitForFunction(()=>state.filter==='image'&&document.querySelector('[data-message-id="cached-4"]'));
@@ -64,7 +64,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const galleryAfter=await page.locator('[data-message-id="cached-4"]').evaluate(node=>node.getBoundingClientRect().top);
   assert.ok(Math.abs(galleryAfter-galleryBefore)<12,`media refresh preserves the reader anchor (${galleryBefore} -> ${galleryAfter})`);
   await page.evaluate(()=>FrommConversation.flush());
-  const gallerySnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read(currentAccountScope(),'refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='gallery-new')}}finally{await store.close()}});
+  const gallerySnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read('user:synthetic-refresh-user','refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='gallery-new')}}finally{await store.close()}});
   assert.deepEqual(gallerySnapshot,{count:42,complete:true,hasNew:true},'refresh in a media tab merges latest items without clearing complete history');
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>FrommConversation.status.phase==='retry',null,{timeout:5000});
@@ -73,7 +73,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
 
   partialBase=await page.evaluate(async()=>{
    const host='refresh-partial-host',base=Date.now()-900000,rows=Array.from({length:20},(_,i)=>({messageId:`partial-${i}`,hostChatRoomId:host,userType:'star',type:'text',content:`synthetic partial row ${i}`,createdAt:base+i*1000}));
-   const store=FrommConversationCore.createStore();try{await store.write(currentAccountScope(),host,rows,{count:rows.length,complete:false,cursorEnd:new Date(rows[0].createdAt-1).toISOString(),pageRequestLimit:500,syncedUntil:Date.now()-60000})}finally{await store.close()}
+   const store=FrommConversationCore.createStore();try{await store.write('user:synthetic-refresh-user',host,rows,{count:rows.length,complete:false,cursorEnd:new Date(rows[0].createdAt-1).toISOString(),pageRequestLimit:500,syncedUntil:Date.now()-60000})}finally{await store.close()}
    state.rooms.push({id:'refresh-partial-room',hostChatRoomId:host,host:{nick:'Synthetic partial'}});
    const button=document.createElement('button');button.className='room';button.onclick=()=>selectRoom(state.rooms.length-1,button,{restoreHistoryPosition:true});document.querySelector('#rooms').append(button);selectRoom(state.rooms.length-1,button,{restoreHistoryPosition:true});
    return base;

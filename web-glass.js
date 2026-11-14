@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=latest-chat-glass-spring-20261111';
+import './web-glass-controls.js?v=phase2-controls-hover-20261114';
 import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-top-settings-20261110';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
@@ -34,7 +34,7 @@ function sync(){
  if(scheduled)return;scheduled=true;
  requestAnimationFrame(()=>{
   scheduled=false;
-  const controls=[...document.querySelectorAll('#chatToolsBtn,.glowme-nav [aria-current="page"],#scanBtn,#logoutMiniBtn')];
+  const controls=[...document.querySelectorAll('#chatToolsBtn,.glowme-nav [aria-current="page"],#tokenLifeWrap,#scanBtn,#logoutMiniBtn')];
   for(const el of controls)if(visibility&&!watched.has(el)){watched.add(el);visibility.observe(el);}
   const targets=eligible()?controls.filter(el=>{
    const r=el.getBoundingClientRect();

@@ -2,7 +2,7 @@
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=rail-top-settings-20261110';
-const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
+const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play,.mvc-button,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
@@ -14,7 +14,14 @@ function enabled(){return !!visibility&&glassPC.matches&&settings.enabled&&!opaq
 function optics(){return enabled()&&!motion.matches&&!document.hidden&&!(navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2)&&![...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended);}
 function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
 function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
-function stopInteractive(item){item.interactive?.destroy();item.interactive=null;}
+function stopInteractive(item){
+ if(!item.interactive)return;
+ item.interactive.destroy();item.interactive=null;
+ // LiquidInteractive.destroy() cancels its settling frame. Reset its private
+ // tilt values first so a pointer leave or visibility change cannot freeze a
+ // control in its last hover pose.
+ item.el.style.setProperty('--lg-tilt-x','0deg');item.el.style.setProperty('--lg-tilt-y','0deg');
+}
 function remove(el,item){releaseEngine(item);stopInteractive(item);el.removeAttribute('data-control-optics');item.face.remove();el.classList.remove('glass-control','glass-droplet','glass-control-relative','glass-on-image','glass-pressed');faces.delete(el);}
 function create(el,relative){
  const rail=el.matches('.rail-pointer-light'),drop=rail||el.matches(selected);
@@ -46,7 +53,7 @@ function opticalSettings(item){
 function sync(){
  frame=0;
  const look=!!enabled();if(document.documentElement.classList.contains('pc-control-glass')!==look)document.documentElement.classList.toggle('pc-control-glass',look);
- if(!look){for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();return;}
+ if(!look){active=null;clearPress();for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();return;}
  const all=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];
  for(const el of all)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
  for(const el of watched)if(!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
@@ -58,8 +65,20 @@ function sync(){
   if(!pointer.style.width){const r=document.querySelector('.glowme-nav button')?.getBoundingClientRect();if(r){pointer.style.width=r.width+'px';pointer.style.height=r.height+'px';}}
   candidates.unshift(pointer);
  }
- // Selected and interacted controls win the bounded map budget.
- const priority=el=>el===active||el===document.activeElement?100:el.matches('.glass-switch-thumb')?90:el.id==='conversationNew'?85:el.matches(selected)||el===pointer?80:el.id==='scrollTopBtn'?50:0;
+ if(active&&(!active.isConnected||!inView.has(active)||!visible(active)))active=null;
+ // Selected and interacted controls win the bounded map and interaction budget.
+ const priority=el=>{
+  if(el.disabled||el.getAttribute('aria-disabled')==='true')return 0;
+  if(el===active||el===document.activeElement)return 100;
+  if(el.matches('.glass-switch-thumb'))return 90;
+  if(el.id==='conversationNew')return 85;
+  if(el.matches(selected)||el===pointer)return 80;
+  if(el.id==='tokenLifeWrap')return 79;
+  if(el.matches('#scanBtn,#logoutMiniBtn'))return 78;
+  if(el.matches('#chatMatchPrev,#chatMatchNext'))return 74;
+  if(el.id==='chatToolsBtn')return 72;
+  return el.id==='scrollTopBtn'?50:0;
+ };
  candidates.sort((a,b)=>priority(b)-priority(a));
  const targets=candidates,engineTargets=candidates.filter(el=>priority(el)>0).slice(0,LIMIT),useEngine=optics();
  // Batch reads before adding faces; reading computed position after each
@@ -72,13 +91,13 @@ function sync(){
   if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js').then(m=>{module=m;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(module)schedule();});
   return;
  }
- // Small maps only, two per frame. No maps/observers for hundreds of offscreen cards.
+ // Small maps and spatial interaction helpers only for prioritized controls;
+ // the single observer can watch a long list without one listener set per card.
  let built=0;
  for(const item of faces.values()){
-  // The demo interaction helper is cheap while resting and covers basic faces
-  // too, so the first hover responds before its optional SVG map is ready.
-  if(!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
-  if(!engineTargets.includes(item.el)){releaseEngine(item);continue;}
+  const prioritized=engineTargets.includes(item.el);
+  if(prioritized&&!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
+  if(!prioritized){releaseEngine(item);stopInteractive(item);continue;}
   if(failed.has(item.el))continue;
   if(item.glass&&item.settings===settings)continue;
   if(built++>=2){schedule();break;}
@@ -96,11 +115,17 @@ function sync(){
  }
 }
 function controlAt(target){return target instanceof Element?target.closest(controls+','+selected):null;}
+function pressable(el){return !!el?.matches('button,a,[role="button"],summary')&&!el.disabled&&el.getAttribute('aria-disabled')!=='true';}
 function clearPress(){pressed?.classList.remove('glass-pressed');pressed=null;}
 document.addEventListener('pointerover',event=>{const el=controlAt(event.target);if(el!==active){active=el;schedule();}},{passive:true});
-document.addEventListener('pointerdown',event=>{const el=controlAt(event.target);clearPress();if(enabled()&&event.button===0&&el&&!el.disabled&&el.getAttribute('aria-disabled')!=='true'){pressed=el;el.classList.add('glass-pressed');}},{passive:true});
+document.addEventListener('pointerout',event=>{
+ const from=controlAt(event.target),to=controlAt(event.relatedTarget);
+ if(from&&from!==to&&active===from){active=to;schedule();}
+},{capture:true,passive:true});
+document.addEventListener('pointerdown',event=>{const el=controlAt(event.target);clearPress();if(enabled()&&event.button===0&&pressable(el)){pressed=el;el.classList.add('glass-pressed');}},{passive:true});
 for(const type of ['pointerup','pointercancel','blur'])window.addEventListener(type,clearPress,{passive:true});
-document.addEventListener('keydown',event=>{const el=controlAt(event.target);if(enabled()&&!event.repeat&&[' ','Enter'].includes(event.key)&&el&&!el.disabled){clearPress();pressed=el;el.classList.add('glass-pressed');}});
+window.addEventListener('blur',()=>{active=null;clearPress();schedule();},{passive:true});
+document.addEventListener('keydown',event=>{const el=controlAt(event.target);if(enabled()&&!event.repeat&&[' ','Enter'].includes(event.key)&&pressable(el)){clearPress();pressed=el;el.classList.add('glass-pressed');}});
 document.addEventListener('keyup',clearPress);
 document.addEventListener('focusin',schedule);
 document.addEventListener('focusout',schedule);
@@ -125,7 +150,7 @@ glassPreferences.subscribe(()=>{settings=glassPreferences.value;schedule();});
 for(const type of ['playing','pause','ended','emptied'])document.addEventListener(type,schedule,true);
 document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});
-window.addEventListener('pagehide',()=>{leaving=true;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();});
+window.addEventListener('pagehide',()=>{leaving=true;active=null;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();});
 window.addEventListener('pageshow',()=>{leaving=false;schedule();});
-window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,builds,disposed,limit:LIMIT};}});
+window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:LIMIT};}});
 schedule();

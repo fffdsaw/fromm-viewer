@@ -17,11 +17,18 @@ async function collection(p,mode){await p.evaluate(mode=>{
  channelVideoState.channelId='a';channelVideoState.pages=new Map(['a','b'].map(id=>[id,{loaded:true,isLast:true,posts:posts(id)}]));renderLiveView();syncLoadingUI();scrollTo(0,0);
  },mode);}
 async function press(p,selector){
- const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();await button.hover();await p.waitForTimeout(230);const before=await button.boundingBox();await p.mouse.down();
+ const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();const viewport=p.viewportSize();await p.mouse.move(viewport.width-3,viewport.height-3);await p.waitForTimeout(420);const baseline=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));await button.hover();await p.waitForTimeout(230);const before=await button.boundingBox();await p.mouse.down();
  await p.waitForFunction(selector=>document.querySelector(selector)?.classList.contains('glass-pressed'),selector);
  assert.deepEqual(await button.boundingBox(),before,'press never moves the hit box');
  const squeezed=await button.locator('.control-glass-surface').evaluate(e=>getComputedStyle(e).transform);assert.notEqual(squeezed,'none');
  await p.mouse.move(before.x-15,before.y-15);await p.mouse.up();assert.equal(await button.evaluate(e=>e.classList.contains('glass-pressed')),false);
+ await p.waitForFunction(selector=>{
+  const el=document.querySelector(selector),x=parseFloat(el?.style.getPropertyValue('--lg-tilt-x')||'0'),y=parseFloat(el?.style.getPropertyValue('--lg-tilt-y')||'0');
+  return el&&!el.matches(':hover')&&!el.classList.contains('glass-pressed')&&Math.abs(x)<.1&&Math.abs(y)<.1;
+ },selector,{timeout:1500});
+ await p.waitForTimeout(420);
+ const restored=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));
+ assert.deepEqual(restored,baseline,selector+' restores its full visual state after pointer leave and release');
 }
 (async()=>{const s=await serve(),b=await chromium.launch(process.env.PUBLIC_SHA?{proxy:{server:process.env.HTTPS_PROXY||process.env.HTTP_PROXY}}:{});
  const url=process.env.PUBLIC_SHA?'https://fffdsaw.github.io/fromm-viewer/?deployment='+process.env.PUBLIC_SHA:s.url;
@@ -148,10 +155,33 @@ async function press(p,selector){
 
    await press(p,selector);
   }
+  if(opt.width===1440){
+   await p.evaluate(()=>{
+    const token=document.querySelector('#tokenLifeWrap');token.style.display='inline-flex';token.querySelector('#tokenLifeText').textContent='24:00';
+    document.querySelector('#scanBtn').disabled=false;
+    document.querySelector('#logoutMiniBtn').style.display='inline-flex';
+    const nav=document.querySelector('#chatMatchNav');nav.hidden=false;nav.style.cssText='display:flex;position:fixed;right:24px;top:118px;z-index:1600';
+    for(const button of nav.querySelectorAll('button'))button.disabled=false;
+   });
+   for(const selector of ['#tokenLifeWrap','#scanBtn','#logoutMiniBtn','#chatMatchPrev','#chatMatchNext']){
+    await lens(p,selector);
+    const target=p.locator(selector).first();
+    assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' receives the real bounded Meapri engine');
+    const displacement=await target.locator('.control-glass-surface').evaluate(face=>{
+     const id=/url\(["']?#([^"')]+)/.exec(face.style.backdropFilter)?.[1];
+     return Number(document.querySelector('#'+id+' feDisplacementMap')?.getAttribute('scale')||0);
+    });
+    assert.ok(displacement>0,selector+' refracts with its LiquidGlass face');
+    if(selector.startsWith('#chatMatch'))await press(p,selector);
+   }
+   const token=p.locator('#tokenLifeWrap');await token.hover();await p.mouse.down();
+   assert.equal(await token.evaluate(el=>el.classList.contains('glass-pressed')),false,'the non-button token indicator never enters the pressed state');
+   await p.mouse.move(opt.width-3,opt.height-3);await p.mouse.up();
+  }
   await p.evaluate(()=>window.chatGlassFixture.remove());
   await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface'));
   for(let i=0;i<8;i++)await p.evaluate(async i=>{await setFilter(i%2?'image':'all');FrommGlowME.setRailOpen(i%2===0);},i);
-  await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.live<=count.limit);assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
+  await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.live<=count.limit);assert.ok(count.interactive<=count.limit,'spatial interactions share the bounded control budget');assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
   await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').evaluate(e=>getComputedStyle(e).transform),'none');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
   await p.evaluate(()=>showLoginGate());await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0&&FrommControlGlass.snapshot.count===0);assert.equal(await p.locator('.control-glass-surface').count(),0);
   assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': opaque rail through expansion, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');

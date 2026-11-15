@@ -42,8 +42,10 @@
     const rim=1-clamp(inside/(depth*edgeWidth),0,1);
     const edge=rim*rim*(3-2*rim);
     const spread=Math.max(0,1-nz)*edge;
-    const shiftX=nx*refraction*edge,shiftY=ny*refraction*edge;
-    const colorX=nx*chromatic*8*spread,colorY=ny*chromatic*8*spread;
+    const shiftX=refraction===0?0:nx*refraction*edge;
+    const shiftY=refraction===0?0:ny*refraction*edge;
+    const colorX=chromatic===0?0:nx*chromatic*8*spread;
+    const colorY=chromatic===0?0:ny*chromatic*8*spread;
     return {shiftX,shiftY,colorX,colorY,rim:edge,fresnel:Math.pow(Math.max(0,1-nz),4)};
   }
 

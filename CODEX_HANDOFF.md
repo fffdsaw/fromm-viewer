@@ -1,6 +1,27 @@
 # Fromm Viewer — cross-account handoff
 
-Last reviewed: 2026-11-14 (Asia/Seoul)
+Last reviewed: 2026-11-15 (Asia/Seoul)
+
+## Active continuation — 2026-11-15 (supersedes the historical status below)
+
+- Active branch: `codex/fromm-viewer-uiux-stabilization-20261114`; draft PR [#123](https://github.com/fffdsaw/fromm-viewer/pull/123). Resume here, not the historical PR #121 branch below.
+- Starting remote HEAD: `ad7c01c8cd3c7ef27acc28f5e7029d328379e01e`; main `fe010e5dc263ac45ef44171c90722f185c433af5`. Main is an ancestor (0 main-only / 42 feature-only commits). Both pre-existing local checkouts were clean; work continues in a separate worktree preserving them.
+- Reviewed PRs #121–125 and their scopes. PR #121 is already in this branch ancestry; #122 remains an independent button experiment. #124 (`9e0f1e8`) and #125 (`dc561e2`) remain separate optical experiments/research based on `ad7c01c`; no changes were merged from them. No conflicting main-only commits exist at this audit. Shared player/control files make wholesale experimental merges a semantic conflict risk even without textual conflicts.
+- Exact-start CI: Conversation 43566270606 (Chromium/Chrome/Edge), Video 43566270588 (all three), and Media 43566270602 passed. Channel 43566270607 unit passed, browser failed at `chat-download-selection.browser.cjs:23` (`null !== ''`). Reproduced locally before changes. Visible videos intentionally replace native controls with compact controls; updated the assertion to require the labeled custom group, play/sound/fullscreen/seek and unchanged selection. Real individual download bytes, drag selection, preview, breakpoint and gallery restoration checks remain intact. Updated older browser fixture asset allowlist so player regressions exercise the actual compact module/CSS instead of silently omitting them.
+- Baseline local `node --test test/*.test.cjs`: **275 passed**, Node **24.19.0**. Local Playwright **1.62.1 / Chromium** now starts successfully on Linux; the macOS limitation in older notes does not apply here.
+- Updated selection test passed at 1440 / 760 / 900 PWA and 390 touch emulation. `glass-controls.browser.cjs` passed all three desktop/PWA sizes, no-IntersectionObserver fallback and 390 touch. It verifies real SVG displacement changes pixels, nonzero maps, pointer state restoration, audio/header/reply controls, map budget, repeated mount cleanup and reduced-motion teardown. The resting-size assertion now waits for the intentional hover expansion to settle (bounded 1.5s), rather than inspecting mid-transition.
+- Phase 2 (02/03/04/05): synthetic browser evidence above; no claim about real Fromm account screens. Phase 3 (09) remains **in progress**: existing compact/audio waveform implementation confirmed; additional playback/lifecycle tests exposed hover-fade and offscreen-fixture issues under investigation. Phase 4 (06/07/10/11) and Phase 5 (12/13) remain in progress. Phase 1 (01/08) code untouched and retained; rerun affected integration regressions before final completion.
+- No real login/API, personal data, Windows desktop, physical mobile or Safari was exercised in this checkpoint. **No merge or deployment (including preview) is authorized.** Keep PR draft pending final user approval.
+
+Resume:
+```sh
+git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114
+git switch codex/fromm-viewer-uiux-stabilization-20261114
+git status --short --branch
+git log -8 --oneline
+git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114
+```
+Use latest remote HEAD/Actions and the newest checkpoint above the preserved historical notes. Runtime dependencies are external to the worktree; local browser runs use `NODE_PATH=/workspace/.fromm-env/node_modules:/workspace/scratch/fromm-phase3/deps/node_modules`.
 
 ## Current integrated UI/UX stabilization track — 2026-11-14
 

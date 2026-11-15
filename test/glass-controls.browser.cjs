@@ -131,6 +131,10 @@ async function press(p,selector){
    await shot(p,label+'-'+mode);await p.evaluate(()=>scrollTo(0,650));await p.waitForTimeout(220);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);assert.ok(await p.locator('.replay-download.glass-control').count()>0);await shot(p,label+'-'+mode+'-scrolled');
   }
   await p.evaluate(()=>{state.filter='all';syncLiveToolbarControls();render();scrollTo(0,0)});const photo=p.locator('.media-wrap img').first();await photo.scrollIntoViewIfNeeded();await lens(p,'.chat-media-download');assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);await shot(p,label+'-chat');
+  // Pointer leave must settle the decorative hover expansion before checking
+  // the resting lens footprint; press() separately verifies the hover/press pose.
+  await p.mouse.move(opt.width-3,opt.height-3);
+  await p.waitForFunction(()=>[...document.querySelectorAll('.glass-control')].every(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('.control-glass-surface').getBoundingClientRect();return b.width<=a.width+1&&b.height<=a.height+1;}),null,{timeout:1500});
   const surfaces=await p.locator('.glass-control').evaluateAll(es=>es.map(e=>{const a=e.getBoundingClientRect(),b=e.querySelector('.control-glass-surface').getBoundingClientRect();return b.width<=a.width+1&&b.height<=a.height+1;}));assert.ok(surfaces.every(Boolean),'each lens fits only its own control');
   // Text/icons remain unfiltered even with a pane lens and nested button lens.
   assert.equal(await p.locator('#artistTitle').evaluate(e=>getComputedStyle(e).filter),'none');assert.equal(await p.locator('.glowme-nav button').first().evaluate(e=>getComputedStyle(e).filter),'none');

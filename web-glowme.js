@@ -179,18 +179,32 @@
       const text=document.createElement('span');text.className='rail-artist-name';text.textContent=name;button.replaceChildren(avatar,text);
     });rooms.scrollTop=scroll;fitArtistRail();
   }
-  // Reserve room for up to eight unchanged 44px artist rows. On shorter PC
-  // windows, compact the navigation first; longer lists retain native scrolling.
+  // Fit the actual artist count, including the ninth row. When the list is
+  // longer than the viewport, reserve whole rows and expose its scrollbar.
   function fitArtistRail(){
-    if(!mediaPC.matches||innerHeight<=600){sidebar.style.removeProperty('--rail-nav-height');return;}
     const rooms=$('#rooms'),rows=[...rooms.querySelectorAll('.room')],buttons=[...nav.querySelectorAll('button')];
     if(!rows.length||!buttons.length)return;
-    const roomCSS=getComputedStyle(rooms),navCSS=getComputedStyle(nav),count=Math.min(rows.length,8);
-    const needed=rows[0].getBoundingClientRect().height*count+(parseFloat(roomCSS.rowGap)||0)*(count-1)+parseFloat(roomCSS.paddingTop)+parseFloat(roomCSS.paddingBottom)+4;
-    const available=rooms.getBoundingClientRect().height+nav.getBoundingClientRect().height;
-    const height=Math.max(34,Math.min(42,(available-needed-(parseFloat(navCSS.rowGap)||0)*(buttons.length-1))/buttons.length));
-    const value=Math.floor(height)+'px';
-    if(sidebar.style.getPropertyValue('--rail-nav-height')!==value)sidebar.style.setProperty('--rail-nav-height',value);
+    const roomCSS=getComputedStyle(rooms),artistCSS=getComputedStyle(artists),navCSS=getComputedStyle(nav);
+    const desktop=mediaPC.matches&&innerHeight>600,count=rows.length,gap=desktop&&count>=9?2:3;
+    const padding=parseFloat(roomCSS.paddingTop)+parseFloat(roomCSS.paddingBottom);
+    const inset=parseFloat(artistCSS.paddingTop)+parseFloat(artistCSS.paddingBottom);
+    const scale=sidebar.getBoundingClientRect().height/sidebar.offsetHeight||1;
+    const total=(nav.getBoundingClientRect().height+artists.getBoundingClientRect().height)/scale;
+    const navGaps=(parseFloat(navCSS.rowGap)||0)*(buttons.length-1)+buttons.reduce((sum,button)=>{const css=getComputedStyle(button);return sum+(parseFloat(css.marginTop)||0)+(parseFloat(css.marginBottom)||0);},0);
+    let navHeight=nav.getBoundingClientRect().height/scale,rowHeight=44;
+    if(desktop){
+      const needed=count*44+(count-1)*gap+padding+inset+4;
+      const height=Math.max(34,Math.min(42,Math.floor((total-needed-navGaps)/buttons.length)));
+      sidebar.style.setProperty('--rail-nav-height',height+'px');navHeight=height*buttons.length+navGaps;
+      rowHeight=Math.max(40,Math.min(44,Math.floor((total-navHeight-inset-padding-(count-1)*gap-4)/count)));
+    }else sidebar.style.removeProperty('--rail-nav-height');
+    const available=Math.max(0,total-navHeight-inset-4);
+    const visible=Math.max(1,Math.min(count,Math.floor((available-padding+gap)/(rowHeight+gap))));
+    const height=visible*rowHeight+(visible-1)*gap+padding;
+    sidebar.style.setProperty('--rail-room-height',rowHeight+'px');
+    rooms.style.setProperty('--rail-room-gap',gap+'px');
+    rooms.style.setProperty('--rail-rooms-height',height+'px');
+    sidebar.classList.toggle('rail-artists-scrollable',visible<count);
   }
   new ResizeObserver(fitArtistRail).observe(artists);
   new MutationObserver(decorateRooms).observe($('#rooms'),{childList:true});decorateRooms();

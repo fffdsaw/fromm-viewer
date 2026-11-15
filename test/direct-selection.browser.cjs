@@ -127,15 +127,22 @@ async function selectionSize(page) {
         assert.equal(await page.locator('.card-footer-select,.chat-select-pill').count(), 0);
       }
       if(!mobile){await page.evaluate(()=>{state.filter='all';render();});assert.equal(await page.locator('#timeline [data-download-selection-key]').count(),0,'PC chat is individual-download only');}
-      // Inline download and native playback controls do not toggle selection.
+      // Inline download and shared playback controls do not toggle selection.
       await page.evaluate(() => {state.filter = 'media'; state.selected.clear(); render(); downloadSingleMedia = async m => {window.singleDownloaded = m.messageId;};});
       await page.locator('.card-download').first().click();
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       assert.ok(await page.evaluate(() => window.singleDownloaded));
       await page.evaluate(() => {state.filter = 'video'; render();});
       await page.locator('#timeline video').scrollIntoViewIfNeeded();
-      await page.locator('.mvc-compact-controls [data-compact="sound"]').first().click();
-      assert.equal(await page.locator('#timeline video').first().evaluate(v=>v.muted),true,'compact playback control handles the click');
+      const sound=page.locator('.mvc-compact-controls [data-compact="sound"]').first();
+      await sound.click();
+      assert.equal(await page.evaluate(() => state.selected.size),0,'volume button click never selects the card');
+      if(await sound.getAttribute('aria-expanded')!=='true')await sound.press('Enter');
+      assert.equal(await sound.getAttribute('aria-expanded'),'true','shared volume popup is accessible');
+      await page.locator('.mvc-compact-controls .small-player-level').first().fill('0.4');
+      assert.ok(Math.abs(await page.locator('#timeline video').first().evaluate(v=>v.volume)-.4)<.01,'shared volume input controls the video');
+      await sound.press('m');
+      assert.equal(await page.locator('#timeline video').first().evaluate(v=>v.muted),true,'M retains compact muting');
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       console.log(`${mobile ? 'Mobile' : 'Desktop'}: media/type selection, chat download policy and controls PASS`);
       await page.evaluate(mobile => {

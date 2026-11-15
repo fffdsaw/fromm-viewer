@@ -128,8 +128,15 @@ async function shot(page, name) {
         await video.click({position: {x: 60, y: 30}}); await settled(page);
         assert.equal((await selection(page)).includes(id), !beforeVideo.includes(id), 'video picture single click selects');
         const selectedAfterClick = await selection(page);
-        await card.locator('.mvc-compact-controls [data-compact="sound"]').click();
-        assert.equal(await video.evaluate(v=>v.muted),true,'compact mute controls video');
+        const sound=card.locator('.mvc-compact-controls [data-compact="sound"]');
+        await sound.click();
+        assert.deepEqual(await selection(page),selectedAfterClick,'volume button click keeps selection');
+        if(await sound.getAttribute('aria-expanded')!=='true')await sound.press('Enter');
+        assert.equal(await sound.getAttribute('aria-expanded'),'true','shared volume popup opens');
+        await card.locator('.small-player-level').fill('0.4');
+        assert.ok(Math.abs(await video.evaluate(v=>v.volume)-.4)<.01,'shared volume controls decoded video');
+        await sound.press('m');
+        assert.equal(await video.evaluate(v=>v.muted),true,'M retains compact muting');
         assert.deepEqual(await selection(page), selectedAfterClick, 'compact video controls do not select');
       }
       if (!mobile) {

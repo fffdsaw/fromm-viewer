@@ -2,7 +2,7 @@
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=uiux-review-switch-20261115';
-const controls='.card-download,.replay-download,.chat-media-download,.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
+const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
@@ -31,7 +31,7 @@ function create(el,relative){
  const face=document.createElement('span');
  face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
- if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
+ if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
 }
@@ -47,12 +47,12 @@ function opticalSettings(item){
  const softRGB=/^#[0-9a-f]{6}$/i.test(softHex)?[1,3,5].map(i=>parseInt(softHex.slice(i,i+2),16)).join(','):'255,255,255';
  return {
   scheme:theme==='classic'?'dark':'light',
-  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
+  thickness:menu?Math.min(12,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.6:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba('+(theme&&theme!=='glow'?rgb:'193,239,222')+','+brightness+')':el.classList.contains('glass-on-image')?'rgba('+(theme&&theme!=='glow'?'14,18,24':'14,37,30')+','+brightness+')':'rgba('+(theme&&theme!=='glow'?softRGB:'255,255,255')+','+brightness+')',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
   // the gloss preference adds to this baseline.
-  specular:menu||settings.specular>0,specularIntensity:menu?.10+settings.specular/400:settings.specular/100
+  specular:menu||settings.specular>0,specularIntensity:menu?.22+settings.specular/300:settings.specular/100
  };
 }
 function sync(){
@@ -74,7 +74,7 @@ function sync(){
  // Selected and interacted controls win the bounded map and interaction budget.
  const priority=el=>{
   if(el.disabled||el.getAttribute('aria-disabled')==='true')return 0;
-  if(el===active||el===document.activeElement&&(!el.matches('.chat-audio-play,.chat-sound-download')||el.matches(':focus-visible')))return 100;
+  if(el===active||el===document.activeElement&&(!el.matches('.chat-audio-play:not(.small-player-button),.chat-sound-download')||el.matches(':focus-visible')))return 100;
   if(el.matches('.glass-switch-thumb'))return 90;
   if(el.id==='conversationNew')return 85;
   if(el.matches(selected)||el===pointer)return 80;

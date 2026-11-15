@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=controls-live-20261116';
+import './web-glass-controls.js?v=chat-waveform-20261116';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{

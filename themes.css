@@ -34,8 +34,8 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #sidebar .rail-artists{border:0!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.viewer-header,.topbar,.live-head,.replay-page-head,.channel-page-head,.collection-header){background:var(--theme-header)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .viewer-header :is(.title,.stats,#artistTitle,.artist-name){color:var(--theme-text)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#glassSettingsBtn,.sort-btn,.replay-filter,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.sort-btn,.replay-filter,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#tokenLifeWrap,#logoutMiniBtn,#scanBtn,#selectAllBtn,#clearSelectionBtn)>.control-glass-surface{background:var(--theme-soft);border-color:var(--theme-line);box-shadow:none}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#glassSettingsBtn,.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#tokenLifeWrap,#logoutMiniBtn,#scanBtn,#selectAllBtn,#clearSelectionBtn)>.control-glass-surface{background:var(--theme-soft);border-color:var(--theme-line);box-shadow:none}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button{border-color:transparent!important;color:var(--theme-text)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button.active{background:var(--theme-selected)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.glowme-nav button,.room.active)>.control-glass-surface{background:var(--theme-selected);border-color:var(--theme-line);box-shadow:none}
@@ -83,3 +83,28 @@
 
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .login-panel input{background:var(--theme-soft);color:var(--theme-text);border-color:var(--theme-line)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .login-panel input::placeholder{color:var(--theme-muted);opacity:1}
+
+/* One palette for the header dividers, toolbar surfaces and player tracks. */
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]){--pc-surround:var(--theme-bg);--pc-tools-fill:var(--theme-soft);--pc-tools-line:var(--theme-line);--pc-tools-text:var(--theme-text)}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .pc-media-row{border-top-color:var(--theme-line)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .artist-meta-line{border-left-color:var(--theme-line)!important}
+:root[data-fromm-theme] .small-player{--small-player-fill:var(--theme-accent)}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button:not([aria-current="page"]){background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) #saveSelectedBtn{background:var(--theme-accent)!important;color:var(--theme-on-accent)!important;border-color:var(--theme-accent)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control{background:var(--theme-soft)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control.save-ready{background:var(--theme-accent)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control #saveSelectedBtn{background:transparent!important;color:var(--theme-muted)!important;border-color:transparent!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control.save-ready #saveSelectedBtn{color:var(--theme-on-accent)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-optics-backdrop{background:var(--theme-soft)!important;border-color:var(--theme-line)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control .capsule-optics-backdrop{background:var(--theme-accent)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-optics-lens{background:color-mix(in srgb,var(--theme-soft) 10%,transparent)!important;border-color:var(--theme-line)!important;box-shadow:inset 0 1px 2px color-mix(in srgb,var(--theme-line) 35%,transparent)!important}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#mediaActionDock,.pc-list-host) .batch-selection-tools{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+ :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .rail-pointer-light:not([data-control-optics="engine"]){background:color-mix(in srgb,var(--theme-accent) 18%,var(--theme-header))!important;border-color:color-mix(in srgb,var(--theme-accent) 55%,var(--theme-line))!important;box-shadow:inset 0 1px 1px #ffffff60,0 2px 6px color-mix(in srgb,var(--theme-accent) 20%,transparent)!important}
+}
+/* Keep existing hidden/overlay scrollbar behavior; recolor visible scrollbars. */
+:root[data-fromm-theme],:root[data-fromm-theme] *{scrollbar-color:var(--theme-accent) transparent}
+:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll,.glass-settings-body,.mvc-popover){scrollbar-color:var(--theme-accent) transparent}
+:root[data-fromm-theme]::-webkit-scrollbar-thumb,:root[data-fromm-theme] ::-webkit-scrollbar-thumb,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll)::-webkit-scrollbar-thumb{background:var(--theme-accent);border-color:var(--theme-bg)}
+:root[data-fromm-theme]::-webkit-scrollbar-track,:root[data-fromm-theme] ::-webkit-scrollbar-track,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll)::-webkit-scrollbar-track{background:transparent}
+@media(forced-colors:active){:root[data-fromm-theme] .small-player{--small-player-fill:Highlight;--small-player-rest:GrayText}:root[data-fromm-theme],:root[data-fromm-theme] *,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll,.glass-settings-body,.mvc-popover){scrollbar-color:auto}}

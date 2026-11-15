@@ -2,17 +2,75 @@
 
 Last reviewed: 2026-11-15 (Asia/Seoul)
 
-## Mobile-glass follow-up — 2026-11-15 (newest continuation)
-
-- Additional final inspection found mobile settings saved values but the legacy mobile Meapri renderer still used fixed options and ignored the enabled switch. This follow-up supersedes the completion gate below until its new CI passes. No deployment/merge was performed.
-- `web-glass.js` now subscribes to the same preference singleton as PC controls, tears down mobile engines when disabled, and updates existing mobile instances when settings change. Role-scaled values reproduce the original default mobile material exactly (16 refraction / 18 thickness / 2.5 blur / 110 saturation / .42 tint / .3 gloss); balanced quality, map ratio, low-power/accessibility/idle guards remain. No high-performance/experimental mode or vendor code was imported. The panel explains mobile strength scaling.
-- A new actual-renderer mobile check in `settings-themes.browser.cjs` reproduces the old enabled-switch failure, then passes with the fix: real SVG map ready, switch off removes optical resources, switch on recreates them, refraction increases the actual displacement scale, saved values/restore remain correct. It also includes existing desktop/mobile/blocked-storage/collection palette checks. Local 1440/900/390 all passed. Existing settings and PC glass regressions also passed; Node/native 326 passed, 0 failed, 1 platform-specific skip. New exact-head CI is still required.
-- The settings switch also keeps a visible focus ring on its track at narrow/touch widths; the transparent native input must not hide keyboard focus. The full settings/theme suite passed at 1440/900/390 with actual Tab navigation, mobile on/off/map updates and collection colors.
-- Entry/control/preference imports share the new `mobile-preferences-20261115` version, preventing duplicate settings objects. Preserve the existing historical completion records below as evidence for their exact SHAs, not as proof for this follow-up.
-
 ## Final integration checkpoint — 2026-11-15 (Asia/Seoul)
 
 **This section supersedes all earlier in-progress status notes below; those notes are preserved as history.**
+
+- Branch: `codex/fromm-viewer-uiux-stabilization-20261114`; [draft PR #123](https://github.com/fffdsaw/fromm-viewer/pull/123).
+- Verified implementation SHA: `3588097218b6c76ecac3d279f60e1a6530ffe08a`. The final handoff/report commit changes documentation and synthetic evidence only; its SHA and matching remote/PR HEAD are recorded in the PR completion comment. Obtain the checkout's latest SHA with `git rev-parse HEAD` and compare `git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114`.
+- Production main remains `fe010e5dc263ac45ef44171c90722f185c433af5`. Experimental #124 remains `9e0f1e841ad8f7aaabafa454c3ed98045c2d5c6d`; #125 remains `dc561e219c1a20c94fe71111b8d01d1cc022a271`. No merge, force push, branch deletion, user-data clearing or deployment was performed.
+
+### All 13 items
+
+| Item | Final implementation / verification |
+|---|---|
+| 01 Cache refresh | Retained; synthetic complete/partial/503/cache-preservation browser checks |
+| 02 Chat audio glass | Real Meapri lens; actual lens node retained through play/pause; download feedback preserved |
+| 03 Hover restoration | Pointer/press/release/leave and resting lens bounds; compact stale-hover hold fixed |
+| 04 Reply navigation glass | Real Meapri maps and original reply/quote navigation regressions |
+| 05 Header glass | Token/logout/refresh real optical faces; indicator cannot enter button pressed state |
+| 06 Sidebar avatar clipping | Existing 32px avatar/selection retained; final avatar fully inside scroller at desktop/short/mobile sizes |
+| 07 Text/reply cards | Repeated incoming artist name removed, unified mint/aqua padding/border, time and reply jumps retained |
+| 08 Scroll restoration | Existing cache/virtual anchors and latest-follow retained; refresh/resize/tab-return regressions |
+| 09 Common players | Compact/expanded/audio retained and completed; real fixture playback/seek/volume/fullscreen/PiP/selection/download/cleanup |
+| 10 Audio tab icon | Existing alignment/size with waveform SVG |
+| 11 Type badges | Removed from media/photo/video/audio markup; download/select/save unchanged |
+| 12 Settings | General/Theme/Glass/Advanced; bounded drag/location, modal focus/Escape, visible keyboard switch focus, actual mobile optical settings, preserved preferences/reset/install |
+| 13 Themes | Glow ME default + Aqua/Sky/Lavender/Neutral; preview/persist/reload/reset, AA text contrast and bounded optical resources |
+
+“Verified” means the synthetic fixtures and environments listed here, **not** authenticated production-service verification.
+
+### Final checks
+
+- Local Node 24.19.0: `node --test test/*.test.cjs native-live/test/*.test.cjs` — **326 passed, 0 failed, 1 platform-specific skipped**. Syntax and CRLF-aware whitespace checks passed.
+- Local Playwright 1.62.1 / Chromium 151.0.7922.34: scoped card/settings/theme/Meapri/compact/audio/Channel/Replay/LIVE/selection/cache/browser regressions recorded in the report. Actual MP4/WAV and fullscreen enter/exit exercised. Touch/PWA are emulations.
+- Exact implementation `3588097218b6c76ecac3d279f60e1a6530ffe08a`: **all 10 GitHub Actions checks passed**. [Conversation 43683927488](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927488), [Video 43683927496](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927496), [Media 43683927492](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927492), [Channel 43683927501](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927501). Conversation includes Windows Chrome/Edge and Chromium settings/themes/cards, actual mobile optical on/off/refraction and visible keyboard focus, plus Linux 50k. Channel includes the full browser suite and Xvfb Back/Forward. No remaining failed check on this implementation SHA.
+- Local complete Channel workflow status: **52/52 command executions passed** at the development checkpoint; final exact-head Actions are authoritative. Additional mobile renderer/focus/collection palette cases passed locally and in all three CI browsers.
+- Corrected failures are preserved in earlier checkpoints: native-control expectation; legacy outside-settings install expectation; partial-cache fixture race on Windows; stale compact hover; optical faces removed by whole-button icon replacement. No tests were deleted or relaxed to hide broken behavior.
+
+### Evidence, limitations and approval gate
+
+- [Korean integration report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
+- Real Fromm login, authenticated API contract, actual user caches/LIVE, physical Android/iOS and Safari are **unverified**. Windows Chrome/Edge coverage is from CI, not a local Windows desktop session.
+- PR #124 enhanced optics and #125 Meapri×ybouane research are separate and unchanged; no experimental optical modes were imported.
+- Keep PR #123 draft. **Main merge and all public/Preview deployments require the user's new final approval**, even if every check is green. Do not interpret historical approvals lower in this file as current authorization.
+- Next authorized work: review this exact PR/HEAD with the user; make requested revisions on this branch and rerun affected checks. Do not restart from main or redo the completed cache/scroll work.
+
+Resume in another account:
+```sh
+git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114
+git switch --track origin/codex/fromm-viewer-uiux-stabilization-20261114
+# If already checked out, inspect status first and use a fast-forward-only pull.
+git status --short --branch
+git rev-parse HEAD
+git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114
+gh pr view 123 --repo fffdsaw/fromm-viewer
+fromm_head=$(git rev-parse HEAD)
+gh api "repos/fffdsaw/fromm-viewer/commits/${fromm_head}/check-runs"
+```
+Read `AGENTS.md`, this top section, the consolidated report, latest PR completion comment, and latest-head Checks before acting. Browser workflow commands remain in `.github/workflows/`; external local dependencies are optional and not committed. No production credentials are needed for fixture tests.
+
+## Completed mobile-glass follow-up — 2026-11-15
+
+- Additional final inspection found mobile settings saved values but the legacy mobile Meapri renderer still used fixed options and ignored the enabled switch. This follow-up is included in the verified implementation above. No deployment/merge was performed.
+- `web-glass.js` now subscribes to the same preference singleton as PC controls, tears down mobile engines when disabled, and updates existing mobile instances when settings change. Role-scaled values reproduce the original default mobile material exactly (16 refraction / 18 thickness / 2.5 blur / 110 saturation / .42 tint / .3 gloss); balanced quality, map ratio, low-power/accessibility/idle guards remain. No high-performance/experimental mode or vendor code was imported. The panel explains mobile strength scaling.
+- A new actual-renderer mobile check in `settings-themes.browser.cjs` reproduces the old enabled-switch failure, then passes with the fix: real SVG map ready, switch off removes optical resources, switch on recreates them, refraction increases the actual displacement scale, saved values/restore remain correct. It also includes existing desktop/mobile/blocked-storage/collection palette checks. Local 1440/900/390 all passed. Existing settings and PC glass regressions also passed; Node/native 326 passed, 0 failed, 1 platform-specific skip. New exact-head CI passed all 10 checks, including all three browser UI matrices.
+- The settings switch also keeps a visible focus ring on its track at narrow/touch widths; the transparent native input must not hide keyboard focus. The full settings/theme suite passed at 1440/900/390 with actual Tab navigation, mobile on/off/map updates and collection colors.
+- Entry/control/preference imports share the new `mobile-preferences-20261115` version, preventing duplicate settings objects. Preserve the existing historical completion records below as evidence for their exact SHAs, not as proof for this follow-up.
+
+## Historical verified integration checkpoint — fc32bc9
+
+Historical evidence for `fc32bc9`, before the additional mobile-renderer/focus follow-up. Use the final checkpoint at the top for the current implementation.
 
 - Branch: `codex/fromm-viewer-uiux-stabilization-20261114`; [draft PR #123](https://github.com/fffdsaw/fromm-viewer/pull/123).
 - Verified implementation SHA: `fc32bc99168ca628c79e1a8899df8b24c070b033`. The final handoff/report commit changes documentation and synthetic evidence only; its SHA and matching remote/PR HEAD are recorded in the PR completion comment. Obtain the checkout's latest SHA with `git rev-parse HEAD` and compare `git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114`.

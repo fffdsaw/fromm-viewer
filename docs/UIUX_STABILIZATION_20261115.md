@@ -22,7 +22,7 @@
 | 12 | 카테고리형 플로팅 설정창 | 드래그/경계/위치 복원/모바일/키보드/즉시 적용/기존 값 유지/기본값 복원 |
 | 13 | Glow ME + 4개 선택 테마 | 모든 테마 즉시 적용·재방문 복원, AA 텍스트 대비, 저장 차단 fallback |
 
-위 표는 **구현 및 로컬 합성 브라우저 증거**다. 전체 GitHub Actions 결과와 실제 인증 서비스 검증을 동일시하지 않는다. 최종 구현 `fc32bc9`의 통합 CI 10개가 모두 통과했다. 아래 최종 CI 절의 실행 링크가 해당 결과의 기준이다.
+위 표는 **구현 및 로컬 합성 브라우저 증거**다. 전체 GitHub Actions 결과와 실제 인증 서비스 검증을 동일시하지 않는다. 최종 구현 `3588097`의 통합 CI 10개가 모두 통과했다. 아래 마지막 CI 절이 최신 기준이며 이전 측정·검증 이력도 보존한다.
 
 ## CI 실패와 추가 회귀 해결
 
@@ -79,7 +79,7 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 - PR #124 고성능/광학 제한 실험, #125 Meapri×ybouane 연구는 별도로 보존했으며 통합하지 않았다.
 - 코드·테스트·인수인계는 지정 브랜치에 푸시한다. **사용자 최종 승인 전 main 병합, 공개 배포, Preview 배포를 하지 않는다.**
 
-## 최종 통합 CI
+## 선행 통과 CI — fc32bc9
 
 구현 커밋 `fc32bc99168ca628c79e1a8899df8b24c070b033` 기준 결과는 다음과 같다. 문서 최종 커밋의 원격 SHA와 Checks는 PR 최종 완료 댓글에 기록한다.
 
@@ -97,3 +97,20 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 [기본 테마 대화·인용 카드](design-review/uiux-stabilization-20261115/chat-cards.png) · [기존 유리 설정 보존](design-review/uiux-stabilization-20261115/glass-settings.png)
 
 동일 ON/OFF fixture를 최종 플레이어 보강 이후 한 번 더 실행한 결과도 [추가 JSON](design-review/uiux-stabilization-20261115/glass-performance-repeat.json)에 보존했다. 이 반복에서 갤러리 p95 OFF/ON 모두 16.70ms, main-thread 샘플 중앙 133.3/382.8ms, 영상 drop OFF 0/89·ON 0/88, 최대 샘플 JS heap 4.29MiB였다. 앞선 1/88·3/88 drop 측정도 삭제하지 않았다. 실행 간 부하 차이가 있으므로 두 실행을 엔진 버전 개선율로 비교하지 않는다.
+
+## 모바일 설정 보완 및 최종 CI
+
+모바일 유리 설정이 저장만 되고 기존 고정 렌더러에 전달되지 않는 누락을 추가 점검에서 발견했다. 기존 모바일 기본 재질과 balanced/저전력/접근성/idle 제약을 유지하면서, 같은 설정 singleton으로 enabled 및 광학값을 실제 엔진에 전달한다. 기존 인스턴스를 갱신하며 스위치를 끄면 렌즈를 해제한다. 모바일 크기에 맞춘 상대 강도 조절을 설정창에 안내한다. 투명 체크박스 대신 보이는 스위치 트랙에 키보드 포커스 표시도 적용했다.
+
+실제 모바일 SVG 준비 → 끄기 후 리소스 0 → 켜기 후 재생성 → 굴절 증가 시 실제 displacement scale 증가를 검사했다. 저장·복원·기본값/키보드/Replay·Channel 선택 색/AA/저장 차단 검사도 유지했다. PC 유리 회귀와 Node/native 326 통과, 실패 0, 플랫폼 제한 1개 건너뜀을 다시 확인했다.
+
+최종 구현 SHA: `3588097218b6c76ecac3d279f60e1a6530ffe08a`. **최종 코드의 전체 CI 10/10 성공, 실패 0.**
+
+| 워크플로 | 결과 | 실행 |
+|---|---|---|
+| Conversation | 성공 · Chromium + Windows Chrome/Edge; 새 UI·모바일 실제 렌즈·포커스·50k 포함 | [43683927488](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927488) |
+| Video | 성공 · 세 브라우저 다운로드 회귀 | [43683927496](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927496) |
+| Media | 성공 · 단위 + 브라우저 | [43683927492](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927492) |
+| Channel | 성공 · 단위 + 전체 브라우저 + Xvfb Back/Forward | [43683927501](https://github.com/fffdsaw/fromm-viewer/actions/runs/43683927501) |
+
+최종 인수인계 문서 커밋은 실행 코드 변경이 없다. 문서 HEAD와 원격/PR 일치 및 자동 재검사 결과는 PR 완료 댓글에서 확인한다. 실서비스 인증, 물리 모바일, Safari는 계속 미검증이며, main 병합과 모든 배포는 사용자 최종 승인 대기다.

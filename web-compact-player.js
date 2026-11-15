@@ -81,6 +81,10 @@
   listen(stage,'pointermove',reveal,{passive:true});
   listen(stage,'pointerdown',()=>{item.keyboardMode=false;if(!controls.contains(doc.activeElement))reveal();},{passive:true});
   listen(stage,'pointerleave',()=>{item.hovered=false;reveal();});
+  // A layout shift can move a control away from a stationary pointer without
+  // delivering pointerleave to its pointer-events:none carrier. Reconcile on
+  // the next real pointer move so hover cannot hold the controls indefinitely.
+  listen(doc,'pointermove',()=>{if(item.hovered&&!controls.matches(':hover')){item.hovered=false;reveal();}},{passive:true});
   listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
   listen(stage,'focusin',reveal);listen(stage,'focusout',reveal);
   listen(stage,'keydown',event=>{

@@ -13,6 +13,13 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Phase 2 (02/03/04/05): synthetic browser evidence above; no claim about real Fromm account screens. Phase 3 (09) remains **in progress**: existing compact/audio waveform implementation confirmed; additional playback/lifecycle tests exposed hover-fade and offscreen-fixture issues under investigation. Phase 4 (06/07/10/11) and Phase 5 (12/13) remain in progress. Phase 1 (01/08) code untouched and retained; rerun affected integration regressions before final completion.
 - No real login/API, personal data, Windows desktop, physical mobile or Safari was exercised in this checkpoint. **No merge or deployment (including preview) is authorized.** Keep PR draft pending final user approval.
 
+### Phase 3 local checkpoint
+
+- Compact controls already existed at `ad7c01c`; retained their streaming/native fallback boundaries. Fixed a stale hover flag after layout/pointer changes which could indefinitely prevent auto-hide. Document pointer movement now reconciles the actual CSS hover state. Offscreen test scrolls to the center so composer clipping cannot leave its target outside the visible area.
+- `test/compact-video-player.browser.cjs`: **passed** real local 12s MP4 and 24s WAV playback/pause/seek/volume/mute, keyboard, idle fade, touch controls, gallery + conversation, decorative waveform (`aria-hidden`), offscreen cleanup and no overflow. The prior failures and fix were reproduced locally, not suppressed.
+- Full Node + native contract suite: **326 passed, 0 failed, 1 platform-specific skipped** (327 total), Node 24.19.0. Expanded Channel/Replay/LIVE verification and whole-branch CI remain in progress; do not mark item 09 fully verified until their completion.
+- This checkpoint is pushed separately from remaining card/settings changes. Use `git log -1` and `git ls-remote` for its exact remote SHA.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

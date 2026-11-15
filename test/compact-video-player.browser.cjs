@@ -65,7 +65,7 @@ const fixture=path.join(fixtureDir,'compact.mp4');
   await page.waitForFunction(()=>document.querySelector('.media-card[data-message-id="compact-gallery"] video').currentTime<3.5,null,{timeout:3000});
   await page.keyboard.press('m');assert.equal(await gallery.evaluate(video=>video.muted),true,'keyboard mute works');await page.keyboard.press('m');assert.equal(await gallery.evaluate(video=>video.muted),false);
   await page.locator('.media-card[data-message-id="compact-gallery"] .mvc-compact-controls [data-compact="play"]').click();
-  await chat.scrollIntoViewIfNeeded();
+  await chat.evaluate(video=>video.scrollIntoView({block:'center'}));
   await page.waitForFunction(()=>document.querySelector('#timeline .msg[data-message-id="compact-chat"] .mvc-compact-controls'));
   assert.equal(await gallery.evaluate(video=>video.paused),false,'an offscreen playing video keeps its controls');
   await gallery.evaluate(video=>video.pause());

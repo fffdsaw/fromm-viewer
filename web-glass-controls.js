@@ -47,12 +47,12 @@ function opticalSettings(item){
  const softRGB=/^#[0-9a-f]{6}$/i.test(softHex)?[1,3,5].map(i=>parseInt(softHex.slice(i,i+2),16)).join(','):'255,255,255';
  return {
   scheme:theme==='classic'?'dark':'light',
-  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
+  thickness:menu?Math.min(12,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.6:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba('+(theme&&theme!=='glow'?rgb:'193,239,222')+','+brightness+')':el.classList.contains('glass-on-image')?'rgba('+(theme&&theme!=='glow'?'14,18,24':'14,37,30')+','+brightness+')':'rgba('+(theme&&theme!=='glow'?softRGB:'255,255,255')+','+brightness+')',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
   // the gloss preference adds to this baseline.
-  specular:menu||settings.specular>0,specularIntensity:menu?.10+settings.specular/400:settings.specular/100
+  specular:menu||settings.specular>0,specularIntensity:menu?.22+settings.specular/300:settings.specular/100
  };
 }
 function sync(){

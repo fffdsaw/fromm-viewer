@@ -9,9 +9,11 @@ async function routes(p){
  const bytes=(route,body,type)=>{const range=/bytes=(\d+)-(\d*)/.exec(route.request().headers().range||''),start=range?Number(range[1]):0,end=range&&range[2]?Math.min(body.length-1,Number(range[2])):body.length-1;return route.fulfill({status:range?206:200,contentType:type,headers:{'accept-ranges':'bytes',...(range?{'content-range':`bytes ${start}-${end}/${body.length}`}:{})},body:body.subarray(start,end+1)});};
  const audio=wav(),video=fs.readFileSync(movie);await p.route('**/small.mp4',route=>bytes(route,video,'video/mp4'));await p.route('**/small.wav',route=>bytes(route,audio,'audio/wav'));
 }
-async function paintedMint(p,input){
+const trackColors={glow:[22,123,101],aqua:[8,119,125],sky:[34,107,158],lavender:[117,81,152],neutral:[70,107,112],classic:[255,91,115]};
+async function paintedThemeFill(p,input){
  if(out)fs.mkdirSync(out,{recursive:true});const png=(await input.screenshot(out?{path:path.join(out,'small-player-track.png')}:{})).toString('base64');
- return p.evaluate(async png=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);const data=context.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(Math.abs(data[i]-114)<12&&Math.abs(data[i+1]-221)<12&&Math.abs(data[i+2]-189)<12)count++;return count>8;},png);
+ const expected=trackColors[await p.evaluate(()=>FrommThemes.value)];
+ return p.evaluate(async ({png,expected})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);const data=context.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(Math.abs(data[i]-expected[0])<12&&Math.abs(data[i+1]-expected[1])<12&&Math.abs(data[i+2]-expected[2])<12)count++;return count>8;},{png,expected});
 }
 
 async function rowGeometry(root){
@@ -34,7 +36,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
  assert.deepEqual([style.border,style.background,style.shadow],['0px','rgba(0, 0, 0, 0)','none']);assert.equal(style.direction,'vertical-lr');assert.ok(style.top<=style.buttonTop+1,'volume rises above the speaker');
  const hit=await slider.boundingBox(),position={x:hit.width/2,y:hit.height*.75};if(touch)await slider.tap({position});else await slider.click({position});assert.ok((await media.evaluate(el=>el.volume))>.1&&(await media.evaluate(el=>el.volume))<.4,'the exposed vertical track accepts pointer/touch input');
  await slider.fill('0.4');assert.ok(Math.abs(await media.evaluate(el=>el.volume)-.4)<.01);assert.equal(await slider.evaluate(el=>el.style.getPropertyValue('--small-player-progress')),'40%');
- assert.ok(await paintedMint(p,slider),'actual volume track paints its mint filled segment');
+ assert.ok(await paintedThemeFill(p,slider),'actual volume track paints its theme-colored filled segment');
  await slider.press('Escape');assert.equal(await button.getAttribute('aria-expanded'),'false');
  await button.press('m');assert.equal(await media.evaluate(el=>el.muted),true);await button.press('m');assert.equal(await media.evaluate(el=>el.muted),false);
 }
@@ -64,13 +66,13 @@ async function volumeUI(p,root,media,{touch=false}={}){
     await root.locator('[data-small="play"]').click();await p.waitForFunction(id=>{const el=document.querySelector(`[data-message-id="${id}"] video,[data-message-id="${id}"] audio`);return !el.paused&&el.currentTime>0;},id);
     await root.locator('[data-small="play"]').click();assert.equal(await media.evaluate(el=>el.paused),true);
     await root.locator('.small-player-seek').fill('6');await p.waitForTimeout(80);assert.ok(Math.abs(await media.evaluate(el=>el.currentTime)-6)<.3,'seek changes decoded media position '+JSON.stringify({id,type,position:await media.evaluate(el=>({t:el.currentTime,ready:el.readyState,source:!!el.getAttribute('src'),paused:el.paused,duration:el.duration,seekable:[...Array(el.seekable.length)].map((_,i)=>[el.seekable.start(i),el.seekable.end(i)])})),range:await root.locator('.small-player-seek').inputValue()}));
-    assert.ok(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress')))>30,'seek updates its filled portion');assert.ok(await paintedMint(p,root.locator('.small-player-seek')),'actual seek track paints mint pixels '+id);
-    if(type==='audio'&&(width===1440||width===390)){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);assert.ok((await root.locator('.small-player-button,output').evaluateAll(es=>es.map(el=>getComputedStyle(el).color))).every(color=>color==='rgb(255, 255, 255)'),theme+' keeps gallery glyphs/time white against the dark cover');assert.ok(await paintedMint(p,root.locator('.small-player-seek')),theme+' keeps the gallery seek fill visible');}await p.evaluate(()=>FrommThemes.set('glow'));}
+    assert.ok(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress')))>30,'seek updates its filled portion');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),'actual seek track paints theme-colored pixels '+id);
+    if(type==='audio'&&(width===1440||width===390)){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);assert.ok((await root.locator('.small-player-button,output').evaluateAll(es=>es.map(el=>getComputedStyle(el).color))).every(color=>color==='rgb(255, 255, 255)'),theme+' keeps gallery glyphs/time white against the dark cover');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),theme+' keeps the gallery seek fill visible');await volumeUI(p,root,media,{touch:width<700});}await p.evaluate(()=>FrommThemes.set('glow'));}
     await volumeUI(p,root,media,{touch:width<700});
    }
    await p.evaluate(()=>{state.filter='all';render();FrommViewState.cancel();scrollTo(0,0);});
    const voice=p.locator('.chat-sound-bubble .small-player');await voice.scrollIntoViewIfNeeded();await rowGeometry(voice);await volumeUI(p,voice,voice.locator('..').locator('audio'),{touch:width<700});
-   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await voice.locator('.small-player-seek').fill('6');assert.ok(await paintedMint(p,voice.locator('.small-player-seek')),theme+' retains the colored seek track');assert.equal(await voice.locator('.small-player-time').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');}await p.evaluate(()=>FrommThemes.set('glow'));}
+   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await voice.locator('.small-player-seek').fill('6');assert.ok(await paintedThemeFill(p,voice.locator('.small-player-seek')),theme+' retains the colored seek track');assert.equal(await voice.locator('.small-player-time').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');}await p.evaluate(()=>FrommThemes.set('glow'));}
    assert.equal(await voice.locator('.chat-audio-waveform').count(),0,'conversation audio uses the same seek layout');
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
    if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,'unified-small-'+width+'.png')});}

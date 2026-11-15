@@ -2,14 +2,23 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
-## Expanded-player header action palette fix — 2026-11-16
+## Complete palette synchronization and clearer navigation lens — 2026-11-16
 
-This is a post-deployment completion of the previously approved theme-synchronization work. The user highlighted the Replay back/download buttons retaining mint text and a pale glass face in Classic. Continue the preserved feature branch from clean `c8798fdbe145d0badbff540f3ee6d155a17517a3`; production main was `2c380a99229e791b61045758f50089550fbca1b0`, and remote refs/open PRs were checked before editing.
+This completes the previously approved theme-synchronization deployment. The user reported missed Replay/Channel actions, selection toolbar backgrounds/save state, header dividers, seek/volume tracks, scrollbars and separate sidebar menu pills, and requested a more visible moving lens. Continue the preserved feature branch from `c8798fdbe145d0badbff540f3ee6d155a17517a3`; production main was `2c380a99229e791b61045758f50089550fbca1b0`. Remote refs/open PRs were checked; there was no open PR for this branch.
 
-- Added the shared `.replay-page-back` / `.replay-page-download` selectors to the existing alternate-palette button and decorative-face rules. Replay and Channel use these same classes. Foreground/background/border and optical face now follow the selected palette; Classic shows white text on a dark surface. Glow ME, playback, click handlers and download engines are unchanged. The stylesheet URL version is bumped.
-- Node 24.22.1 / Playwright 1.62.1 / Chromium 151.0.7922.34, synthetic data only. Unit suite: **326 pass / 0 fail / 1 platform skip**. Existing `settings-themes` passed all three sizes plus saved Classic login/blocked storage. Existing `replay-player` and `channel-player` passed real landscape/portrait decoding, controls and Back at **1440×900 and 390×844** (`PLAYER_VIEWPORTS` selection).
-- A one-off UI inspection outside the repo covered 40 actual-renderer button cases (Replay/Channel × desktop/mobile × five alternate palettes × two actions), including hover/decorative faces and real Back/download-handler clicks. Minimum measured contrast was **9.79:1**; no pale background gradients or page errors remained. Receipts/screenshots are under `/workspace/replay-actions-20261116/`; no new permanent test or private media was added.
-- `git -c core.whitespace=cr-at-eol diff --check` passed. New PR checks must be read against this fix SHA. Continue the previously authorized merge/deploy after successful validation, then verify actual public HTML/CSS. Earlier deployment notes below remain history.
+- Replay/Channel back/download actions and decorative faces now use the selected palette. Classic shows white text on a dark surface. First fix is committed/pushed at `efa590313b8db8899816e98794072a39a3953b0d`.
+- Header dividers/corner masks, selection toolbar idle/ready/save faces, small-player seek/volume fills and visible scrollbars now follow palette variables. Existing scrollbar visibility/width is preserved. Forced colors retains system colors. The independent pixel regression now expects each approved theme color instead of fixed mint, including real vertical volume input.
+- Removed alternate-palette resting backgrounds/borders from unselected navigation buttons. The active row and moving highlight remain. Increased menu-only lens thickness/refraction/specular and visible rim; the clear label center, eight-engine budget, video-playback parking, reduced-motion and touch behavior remain intact. Asset URLs are bumped.
+- Playback, download, cache, selection and LIVE/PiP handlers are unchanged; no user data or uploaded media was used.
+
+Actual local runtime: Node **24.22.1**, Playwright **1.62.1**, Chromium **151.0.7922.34**. Evidence is outside the repo at `/workspace/replay-actions-20261116/`.
+
+- Final unit suite rerun: **326 pass / 0 fail / 1 platform skip** (`unit-final.log`).
+- Existing `settings-themes` passed all three sizes, saved Classic login and blocked storage. `replay-player` / `channel-player` passed real landscape/portrait decoding and Back at **1440×900 and 390×844**.
+- `small-player-layout` passed all seven sizes, actual playback/seek/volume, rendered theme-colored tracks, shared geometry and complete profile visibility. `rail-lens-spinner` passed desktop/PWA/touch, real optics/label pixels, playback fallback, six palettes and cleanup. `capsule-materialize` passed pulse/selection/reselect/cleanup/reduced/fallback/layout scenarios. `header-glass-performance` showed zero dropped video frames and unchanged ~16.7ms median frame time.
+- One-off actual-renderer action inspection covered 40 button cases across Replay/Channel, desktop/mobile and five alternate palettes; minimum measured contrast **9.79:1**, Back/download-handler clicks pass, zero page errors. Another one-off inspection passed five palettes for transparent normal navigation, actual selection idle/ready save colors, both divider colors and scrollbar colors; screenshots inspected. No new permanent CSS-only test was added.
+
+Continue the previously authorized merge/deploy after exact-head CI succeeds, then verify actual public assets. Preserve mixed CRLF in `index.html`; use `git -c core.whitespace=cr-at-eol diff --check`. Earlier deployment notes below remain history.
 
 ## PR #127 production deployment confirmed — 2026-11-16 (Asia/Seoul)
 

@@ -1267,7 +1267,7 @@ html.glowme .reply-content{color:#244c42}
  }
  .pc-control-glass.glowme-phase3.pc-layout :is(.rail-pointer-light,.glowme-nav button)[data-control-optics="engine"]>.control-glass-surface{
   border:0!important;background:none!important;box-shadow:none!important;
-  --rail-rim-width:clamp(1px,calc((var(--rail-lens-radius,20px) - 19px) * 6),6px);
+  --rail-rim-width:clamp(2px,calc((var(--rail-lens-radius,20px) - 16px) * 1.5),6px);
   --rail-rim-mask:radial-gradient(circle var(--rail-lens-radius,20px) at 100% 50%,transparent calc(var(--rail-lens-radius,20px) - var(--rail-rim-width)),#000 var(--rail-lens-radius,20px)) left center/var(--rail-lens-radius,20px) 100% no-repeat,
    linear-gradient(to bottom,#000,transparent var(--rail-rim-width),transparent calc(100% - var(--rail-rim-width)),#000) center/calc(100% - 2 * var(--rail-lens-radius,20px)) 100% no-repeat,
    radial-gradient(circle var(--rail-lens-radius,20px) at 0 50%,transparent calc(var(--rail-lens-radius,20px) - var(--rail-rim-width)),#000 var(--rail-lens-radius,20px)) right center/var(--rail-lens-radius,20px) 100% no-repeat;

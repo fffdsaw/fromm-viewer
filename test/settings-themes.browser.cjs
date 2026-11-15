@@ -17,6 +17,7 @@ const contrast=(fg,bg)=>{const lum=rgb=>{const s=rgb.match(/[\d.]+/g).slice(0,3)
    const violations=await p.evaluate(async()=>{const r=await axe.run('#glassSettingsDialog',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});return r.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)}))});assert.deepEqual(violations,[],category+' accessible');
   }
   await p.locator('[data-settings-tab="theme"]').focus();await p.keyboard.press('ArrowRight');assert.equal(await p.locator('[data-settings-tab="glass"]').getAttribute('aria-selected'),'true','keyboard category navigation');
+  await p.keyboard.press('Tab');assert.equal(await p.evaluate(()=>document.activeElement.id),'glassEnabled','keyboard reaches glass switch');assert.ok(parseFloat(await p.locator('.glass-switch-track').evaluate(el=>getComputedStyle(el).outlineWidth))>0,'the visible track carries the keyboard focus ring on every viewport');
   const initial=await inside(p);await p.locator('[name="refraction"]').fill('52');await p.locator('[name="refraction"]').dispatchEvent('change');assert.equal(await p.evaluate(()=>FrommGlassSettings.value.refraction),52);assert.deepEqual(await inside(p),initial,'slider never drags dialog');
   if(width===390){
    await p.waitForFunction(()=>FrommGlass.count>0,null,{timeout:8000});

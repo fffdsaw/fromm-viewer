@@ -1,4 +1,5 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
+import {glassPreferences} from './web-glass-settings.js?v=rail-top-settings-20261110';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js'));
 export function createCapsuleMaterializer(element,onHidden,onResume){
@@ -8,7 +9,8 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
  const lens=document.createElement('span');lens.className='capsule-optics-lens';stage.append(backdrop,lens);element.prepend(stage);
  let glass=null,observer=null,pending=false,frame=0,last=0,x=0,velocity=0,target=0,key='',enabled=false,phase='hidden',generation=0,builds=0,disposed=0,mode='plain',fallback=false,readyTimer=0,warmFrame=0,settleTimer=0,exitTimer=0,observedShow=false;
  const lowPower=()=>navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2;
- const staticMode=()=>motion.matches||opaque.matches||contrast.matches||lowPower();
+ const enhanced=()=>!!glassPreferences.value.enhanced;
+ const staticMode=()=>motion.matches||opaque.matches||contrast.matches||(!enhanced()&&lowPower());
  function mark(){element.dataset.capsulePhase=phase;element.dataset.capsuleMode=mode;}
  function destroyLens(){cancelAnimationFrame(warmFrame);warmFrame=0;clearTimeout(readyTimer);readyTimer=0;observer?.disconnect();observer=null;if(glass){glass.destroy();glass=null;disposed++;}lens.removeAttribute('style');}
  function reset(){generation++;clearTimeout(settleTimer);clearTimeout(exitTimer);cancelAnimationFrame(frame);frame=0;pending=false;destroyLens();x=0;velocity=0;target=0;phase='hidden';fallback=false;mode='plain';stage.removeAttribute('style');element.style.removeProperty('--capsule-content-alpha');element.classList.remove('capsule-materializing');mark();}
@@ -33,7 +35,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
   if(Math.abs(target-x)<.001&&Math.abs(velocity)<.015){
    x=target;velocity=0;paint();
    if(!target){completeHidden();return;}
-   phase='shown';glass?.flexRefraction(null);mark();settleTimer=setTimeout(()=>{settleTimer=0;destroyLens();},140);return;
+   phase='shown';glass?.flexRefraction(null);mark();if(!enhanced())settleTimer=setTimeout(()=>{settleTimer=0;destroyLens();},140);return;
   }
   frame=requestAnimationFrame(tick);
  }
@@ -50,7 +52,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
    pending=false;
    // Build the map at the final layout size; only the decorative stage moves.
    stage.style.transform='none';
-   try{glass=new LiquidGlass(lens,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',refraction:12,thickness:8,blur:.5,saturation:104,chromaticAberration:0,mapPixelRatio:1,specular:true,specularIntensity:.2,edges:false,applyRadius:false,tint:'rgba(218,243,231,.04)',respectReducedMotion:true});builds++;}
+   try{const high=enhanced(),prefs=glassPreferences.value;glass=new LiquidGlass(lens,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:high?'high':'balanced',refraction:high?prefs.refraction:12,thickness:high?prefs.thickness:8,blur:high?prefs.blur:.5,saturation:high?prefs.saturation:104,chromaticAberration:high?prefs.chromatic:0,mapPixelRatio:high?prefs.mapPixelRatio:1,specular:high?prefs.specular>0:true,specularIntensity:high?prefs.specular/100:.2,edges:high,applyRadius:false,tint:'rgba(218,243,231,.04)',respectReducedMotion:true});builds++;}
    catch{usePlain();return;}
    if(glass.resolved.usesFallback){usePlain();return;}
    const ready=()=>{if(!glass)return;if(lens.style.backdropFilter.includes('url(')){clearTimeout(readyTimer);readyTimer=0;mode='svg';mark();glass.flexRefraction(phase==='shown'?null:glass.configuredRefraction*Math.max(0,x));if(phase==='entering'&&!frame&&!warmFrame){warmFrame=requestAnimationFrame(()=>{warmFrame=requestAnimationFrame(()=>{warmFrame=0;if(ticket!==generation||!target)return;paint();last=performance.now();frame=requestAnimationFrame(tick);});});}}};
@@ -85,5 +87,5 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
  const preference=()=>{const show=!!target;reset();if(enabled)sync(show,key,true);};
  for(const q of [motion,opaque,contrast])q.addEventListener('change',preference);
  const hide=()=>reset();window.addEventListener('pagehide',hide);document.addEventListener('visibilitychange',()=>{if(document.hidden){const exiting=phase==='exiting';reset();if(exiting)onHidden();}else onResume?.();});
- return {sync,reset,get snapshot(){return{phase,mode,progress:x,velocity,builds,disposed,mapWidth:glass?.resolved.width||0,reason:motion.matches?'reduced-motion':opaque.matches?'reduced-transparency':contrast.matches?'forced-colors':lowPower()?'low-power':fallback?'unsupported-or-load-error':null,live:glass?1:0};}};
+ return {sync,reset,get snapshot(){return{phase,mode,progress:x,velocity,builds,disposed,mapWidth:glass?.resolved.width||0,reason:motion.matches?'reduced-motion':opaque.matches?'reduced-transparency':contrast.matches?'forced-colors':(!enhanced()&&lowPower())?'low-power':fallback?'unsupported-or-load-error':null,live:glass?1:0};}};
 }

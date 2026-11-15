@@ -11,7 +11,7 @@ let settings=glassPreferences.value;
 let module=null,loading=null,importFailed=false,frame=0,active=null,pressed=null,builds=0,disposed=0,leaving=false;
 const visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const e of entries)e.isIntersecting?inView.add(e.target):inView.delete(e.target);schedule();}):null;
 function enabled(){return !!visibility&&glassPC.matches&&settings.enabled&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
-function optics(){return enabled()&&!motion.matches&&!document.hidden&&!(navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2)&&![...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended);}
+function optics(){return enabled()&&!motion.matches&&!document.hidden&&(settings.enhanced||(!(navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2)&&![...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended)));}
 function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
 function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
 function stopInteractive(item){
@@ -33,21 +33,24 @@ function create(el,relative){
  el.classList.add(drop?'glass-droplet':'glass-control');
  if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
+ const item={el,face,rail,drop,glass:null,interactive:null,settings:null,enhanced:null,chromatic:null};faces.set(el,item);return item;
 }
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
  const {el,drop,rail}=item;
  const strength=rail ? .85 : el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
- const brightness=menu?Math.min(.025,settings.opacity/100):settings.opacity/100;
+ const enhanced=!!settings.enhanced;
+ const brightness=menu?(enhanced?settings.opacity/100:Math.min(.025,settings.opacity/100)):settings.opacity/100;
  return {
-  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
-  blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
+  // Unrestricted trial uses the user's sliders directly, without menu-specific optical caps.
+  thickness:enhanced?settings.thickness:menu?Math.min(8,settings.thickness):settings.thickness,
+  refraction:enhanced?settings.refraction:menu?settings.refraction*.35:settings.refraction*strength,
+  blur:enhanced?settings.blur:menu?0:settings.blur,
+  saturation:enhanced?settings.saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
-  // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
-  // the gloss preference adds to this baseline.
-  specular:menu||settings.specular>0,specularIntensity:menu?.10+settings.specular/400:settings.specular/100
+  specular:enhanced?settings.specular>0:menu||settings.specular>0,
+  specularIntensity:enhanced?settings.specular/100:menu?.10+settings.specular/400:settings.specular/100
  };
 }
 function sync(){
@@ -80,7 +83,7 @@ function sync(){
   return el.id==='scrollTopBtn'?50:0;
  };
  candidates.sort((a,b)=>priority(b)-priority(a));
- const targets=candidates,engineTargets=candidates.filter(el=>priority(el)>0).slice(0,LIMIT),useEngine=optics();
+ const targets=candidates,engineTargets=settings.enhanced?candidates:candidates.filter(el=>priority(el)>0).slice(0,LIMIT),useEngine=optics();
  // Batch reads before adding faces; reading computed position after each
  // insertion otherwise forces a layout per newly visible card while scrolling.
  const relative=new Set(targets.filter(el=>(!faces.has(el)||!faces.get(el).face.isConnected)&&(el.classList.contains('glass-control-relative')||getComputedStyle(el).position==='static')));
@@ -99,17 +102,21 @@ function sync(){
   if(prioritized&&!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
   if(!prioritized){releaseEngine(item);stopInteractive(item);continue;}
   if(failed.has(item.el))continue;
+  // The SVG filter's chromatic path is fixed at construction; rebuild when the experiment mode changes.
+  if(item.glass&&(item.enhanced!==!!settings.enhanced||item.chromatic!==(settings.enhanced?settings.chromatic:0)))releaseEngine(item);
   if(item.glass&&item.settings===settings)continue;
-  if(built++>=2){schedule();break;}
+  if(!settings.enhanced&&built++>=2){schedule();break;}
   const {el,face}=item;
   try{
    const options=opticalSettings(item);
    if(item.glass)item.glass.update(options);
    else{
-    item.glass=new module.LiquidGlass(face,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,chromaticAberration:0,mapPixelRatio:1,edges:false,respectReducedMotion:true,...options});
+    item.glass=new module.LiquidGlass(face,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:settings.enhanced?'high':'balanced',radius:'auto',applyRadius:false,chromaticAberration:settings.enhanced?settings.chromatic:0,mapPixelRatio:settings.enhanced?settings.mapPixelRatio:1,edges:!!settings.enhanced,respectReducedMotion:true,...options});
     builds++;
    }
    item.settings=settings;
+   item.enhanced=!!settings.enhanced;
+   item.chromatic=settings.enhanced?settings.chromatic:0;
    el.dataset.controlOptics=item.glass.resolved.usesFallback?'basic':'engine';
   }catch{releaseEngine(item);failed.add(el);el.dataset.controlOptics='basic';}
  }
@@ -152,5 +159,5 @@ document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});
 window.addEventListener('pagehide',()=>{leaving=true;active=null;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();});
 window.addEventListener('pageshow',()=>{leaving=false;schedule();});
-window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:LIMIT};}});
+window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:settings.enhanced?null:LIMIT,enhanced:!!settings.enhanced};}});
 schedule();

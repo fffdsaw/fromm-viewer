@@ -2,6 +2,28 @@
 
 Last reviewed: 2026-11-15 (Asia/Seoul)
 
+## Approved shared small-player layout and complete artist rows — 2026-11-15
+
+This checkpoint supersedes the earlier gallery-native/waveform/eight-profile notes below. PR #123 was merged into production main at `3e8259489a06fcb9ed36d3af8507ba9ccf38780b` after explicit user approval. This follow-up starts from that commit (`git merge --ff-only origin/main`) on the preserved branch `codex/fromm-viewer-uiux-stabilization-20261114`. The approved scope explicitly includes **both video and audio**, in media cards and conversations. The replacement PR targets `main`; retrieve its current URL/head/checks with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`.
+
+- `web-small-player.js` supplies shared markup, transparent vertical volume interaction and filled-track progress. Existing video/audio controllers retain playback, metadata concurrency, source repair, downloads, selection and offscreen cleanup. Gallery audio keeps the headphone cover and existing cover ratio; conversation voice replaces its decorative waveform with the approved seek layout.
+- Every small player uses one row: play → long seek → volume, with time above the seek. There is no compact fullscreen icon; video F/double-click preview behavior remains. Expanded Replay/Channel/LIVE controls are unchanged.
+- Volume rises above the speaker, with no visible percentage, popup panel, border or shadow. Seek/volume filled segments are mint `#72ddbd`; remaining tracks are translucent white with white thumbs. Mobile legacy MVC styles are explicitly overridden for this shared layout. Touch adjustment keeps the popup open until an outside interaction/Escape; keyboard focus and desktop hover work without hiding during a drag.
+- Artist fitting now uses the actual list length and navigation margins rather than an eight-row cap. All nine avatars fit at 1536×838/1440×900. Shorter/longer lists reserve whole rows, expose scrolling, and leave the final profile fully reachable. Bottom breathing room is outside the scrollport, preventing a sliver of the next avatar. Avatar size stays 32px.
+- Asset versions include the new helper. Conversation and Channel CI cover the change; the new decoded-media/pixel regression runs in Channel CI. Pages verification hashes the new helper and compact assets. Synthetic fixtures only; no attached/private media is committed.
+
+Local environment: Node **24.22.1**, Playwright **1.62.1**, Linux Chromium **151.0.7922.34**. Verification evidence is outside the repository at `/workspace/integration-results/`.
+
+- Unit suite `node --test test/*.test.cjs native-live/test/*.test.cjs`: **326 pass / 0 fail / 1 platform skip**.
+- `small-player-layout.browser.cjs`: actual MP4/WAV playback, seek, vertical pointer/touch volume, mute, popup appearance, rendered mint pixels, themes, shared gallery/conversation geometry; initial/full-end avatar checks with 9/12/30 profiles at six sizes from 320×600 to 1536×838. The range-aware synthetic video response is necessary for real Chromium seeking.
+- Passed browser suites: `compact-video-player`, `conversation-audio`, `conversation-controls`, `uiux-review`, `uiux-cards-sidebar`, `settings-themes`, `glass-controls`, `header-glass`, `rail-focus`, `rail-startup`, `rail-lens-spinner`, `chat-download-selection`, `replay-player`, `channel-player`, `player-settings`.
+- JS syntax and `git -c core.whitespace=cr-at-eol diff --check` pass. Preserve the mixed CRLF shell when editing `index.html`.
+- An initial no-screenshot conversation-controls run hit the existing latest-shortcut disappearance timing; the CI-equivalent screenshot-enabled run and the final run passed unchanged shortcut behavior. A real touch volume test exposed premature popup closure; the shared adapter was fixed and the actual touch regression passes.
+
+This follow-up has **not** been merged or deployed; it requires explicit approval for that action. Remote CI must be read against the replacement PR SHA, not PR #123's historical green checks. Physical Windows/Mac/Safari remain unverified locally; CI covers Chromium and Windows Chrome/Edge for the relevant conversation regressions. Preview auto-deployment was disabled earlier, but unpublishing the existing preview site was blocked by GitHub integration permissions (403); production and preview are separate repositories.
+
+Resume: inspect `git status --short --branch`, `git rev-parse HEAD`, `git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114`, and the current PR/checks. For this UI change run `node test/small-player-layout.browser.cjs`, `node test/compact-video-player.browser.cjs`, `node test/conversation-audio.browser.cjs`, `CONVERSATION_DIR=/tmp/fromm-conversation node test/conversation-controls.browser.cjs`, and `node test/uiux-review.browser.cjs`. Do not clear user caches or publish to the experimental repository.
+
 ## Screenshot/video review follow-up — five display regressions
 
 This is the latest implementation checkpoint and supersedes the older gallery/audio and sidebar descriptions below. Continue the same feature branch and draft PR #123. Starting local/remote/PR HEAD was `1c7bb5019180d37549abb6b12cfc09c729de1dc5`, with a clean checkout; remote refs and the existing PR discussion were inspected before editing. Main remains `fe010e5dc263ac45ef44171c90722f185c433af5`.

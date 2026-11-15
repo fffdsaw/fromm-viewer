@@ -32,10 +32,10 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
    const cover=p.locator('[data-message-id="voice-cover"] .thumb'),photo=p.locator('[data-message-id="photo-cover"] .thumb');
    const a=await cover.boundingBox(),b=await photo.boundingBox();assert.ok(Math.abs(a.width/a.height-b.width/b.height)<.01,'voice and photo covers share the same ratio');
    assert.equal(await cover.locator('.audio-icon').isVisible(),true);
-   assert.equal(await cover.locator('audio').evaluate(el=>el.controls&&!el.hidden),true,'native gallery audio controls are visible');
-   const player=await cover.locator('audio').boundingBox();assert.ok(player.y>a.y+a.height/2&&player.y+player.height<=a.y+a.height,'gallery audio remains at the bottom of the cover');
-   assert.equal(await cover.locator('audio').evaluate(el=>getComputedStyle(el).colorScheme),'light','native controls retain the main site light palette');
-   await shot(p,'review-gallery-'+width);assert.deepEqual(errors,[]);await context.close();console.log(width+'x'+height+': gallery ratio/cover/native controls, eight-artist rail and all theme separators PASS');
+   assert.equal(await cover.locator('audio').evaluate(el=>!el.controls&&el.hidden),true,'gallery audio uses the shared controls');
+   const player=await cover.locator('.small-player').boundingBox();assert.ok(player.y>a.y+a.height/2&&player.y+player.height<=a.y+a.height,'gallery audio remains at the bottom of the cover');
+   assert.equal(await cover.locator('.small-player-row').count(),1,'gallery audio keeps a single compact control row');
+   await shot(p,'review-gallery-'+width);assert.deepEqual(errors,[]);await context.close();console.log(width+'x'+height+': gallery ratio/cover/shared controls, eight-artist rail and all theme separators PASS');
   }
   // Hold the asynchronous optics module across a real reload. Voice material
   // must already be present before an observer can insert decorative spans.

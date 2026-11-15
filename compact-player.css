@@ -1,24 +1,55 @@
-/* Compact uses the same MVC controls and Liquid Glass buttons as Replay and
-   Channel, with the small-card controls kept to playback, seek, sound and full screen. */
+/* One compact layout for gallery/conversation video and audio. Expanded MVC
+   players keep their existing controls, quality, rotation, PiP and fullscreen. */
 .mvc-compact-stage{position:relative;isolation:isolate;outline:none}
 .mvc-compact-stage:fullscreen{width:100vw;height:100dvh;background:#080b10;border:0!important;border-radius:0!important}
 .mvc-compact-stage:fullscreen video{width:100%;height:100%;max-height:none!important;object-fit:contain!important}
-.mvc-compact-controls{z-index:5}
-.mvc-compact-controls .mvc-panel{padding:30px 10px 8px;background:linear-gradient(transparent,rgba(5,8,14,.78))}
-.mvc-compact-controls .mvc-seek{height:22px!important;min-height:22px!important;margin:0 0 2px!important}
-.mvc-compact-controls .mvc-row{gap:3px}
-.mvc-compact-controls .mvc-left,.mvc-compact-controls .mvc-right{gap:3px}
-.mvc-compact-controls .mvc-button{width:32px;height:32px;flex-basis:32px;border-radius:50%}
-.mvc-compact-controls .mvc-time{font-size:11px;text-shadow:0 1px 2px #000}
-.mvc-compact-controls .mvc-volume{width:54px!important;margin:0 2px!important}
-.mvc-compact-controls [data-compact="full"]{flex-basis:32px}
-.mvc-compact-controls .mvc-button:hover{background:rgba(255,255,255,.15)}
-.mvc-compact-controls :focus-visible{outline:2px solid var(--accent2,#79c6ad);outline-offset:2px}
+.mvc-compact-controls.small-player{position:absolute;z-index:5}
+.mvc-compact-controls .mvc-panel{padding:38px 14px 12px;background:linear-gradient(transparent,rgba(5,10,14,.85))}
+.small-player{--small-player-fill:#72ddbd;--small-player-rest:rgba(255,255,255,.5);position:relative;min-width:0;color:#fff}
+.small-player [hidden]{display:none!important}
+.small-player .small-player-row{display:flex;align-items:center;flex-wrap:nowrap;gap:13px;min-width:0}
+.small-player .small-player-button{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;min-width:38px;min-height:38px;margin:0;padding:0;border:1px solid #ffffff9c;border-radius:50%;background:linear-gradient(145deg,#ffffff52,#102c223d);color:#fff;box-shadow:inset 0 1px 1px #fffd,inset 0 -1px 2px #173e3047,0 2px 6px #0002;cursor:pointer}
+.small-player .small-player-button svg{display:block;width:20px;height:20px;pointer-events:none}
+.glass-disabled .small-player .small-player-button{background:rgba(0,0,0,.72);border-color:#ffffff24;box-shadow:none}
+.small-player .small-player-seek-group{position:relative;display:flex;align-items:center;flex:1 1 0;min-width:0;height:38px}
+.small-player .small-player-time{position:absolute;left:0;bottom:31px;margin:0;font-size:11px;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums;color:#e7f0ee;text-shadow:0 1px 2px #000}
+#timeline .small-player :is(.small-player-button,.small-player-time){color:#fff!important}
+.glowme-phase3 .small-player input.small-player-seek{appearance:none;-webkit-appearance:none;display:block;box-sizing:border-box;width:100%;height:30px!important;min-height:30px!important;margin:0!important;padding:0;border:0;border-radius:0;background:transparent!important;cursor:pointer;touch-action:pan-y}
+.glowme-phase3 .small-player input.small-player-seek::-webkit-slider-runnable-track{height:4px;border:0;border-radius:4px;background:linear-gradient(to right,var(--small-player-fill) var(--small-player-progress,0%),var(--small-player-rest) var(--small-player-progress,0%))}
+#timeline .small-player input.small-player-seek::-webkit-slider-thumb,.glowme-phase3 .small-player input.small-player-seek::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:11px;height:11px;margin-top:-3.5px;border:0;border-radius:50%;background:#fff}
+.glowme-phase3 .small-player input.small-player-seek::-moz-range-track{height:4px;border:0;border-radius:4px;background:var(--small-player-rest)}
+.glowme-phase3 .small-player input.small-player-seek::-moz-range-progress{height:4px;border:0;background:var(--small-player-fill)}
+#timeline .small-player input.small-player-seek::-moz-range-thumb,.glowme-phase3 .small-player input.small-player-seek::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:#fff}
+.small-player .small-player-volume-group{position:relative;display:block;flex:0 0 38px;min-width:0;margin:0;color:#fff}
+.small-player .small-player-volume-popup{position:absolute;right:-5px;bottom:100%;z-index:8;display:flex;align-items:center;justify-content:center;width:48px;height:116px;padding:10px 7px 12px;border:0;border-radius:0;background:transparent;box-shadow:none}
+.glowme-phase3 .small-player input.small-player-level{appearance:none;-webkit-appearance:none;writing-mode:vertical-lr;direction:rtl;display:block;box-sizing:border-box;flex:none;width:28px!important;height:92px!important;min-height:0!important;margin:0!important;padding:0;border:0;border-radius:0;background:transparent!important;cursor:pointer;touch-action:none}
+.glowme-phase3 .small-player input.small-player-level::-webkit-slider-runnable-track{width:4px;height:100%;border:0;border-radius:4px;background:linear-gradient(to top,var(--small-player-fill) var(--small-player-progress,100%),var(--small-player-rest) var(--small-player-progress,100%))}
+.glowme-phase3 .small-player input.small-player-level::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:11px;height:11px;margin-left:-3.5px;margin-top:0;border:0;border-radius:50%;background:#fff}
+.glowme-phase3 .small-player input.small-player-level::-moz-range-track{width:4px;height:100%;border:0;border-radius:4px;background:var(--small-player-rest)}
+.glowme-phase3 .small-player input.small-player-level::-moz-range-progress{width:4px;border:0;background:var(--small-player-fill)}
+.glowme-phase3 .small-player input.small-player-level::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:#fff}
+.small-player :focus-visible{outline:2px solid var(--accent2,#79c6ad);outline-offset:2px}
+.small-player input:disabled{opacity:.55;cursor:default}
+.audio-player-overlay audio[hidden]{display:none!important}
+.gallery-audio-player{padding-top:14px}
+#timeline .chat-sound-bubble{background:#0e1a1b!important;border-color:#35574c!important;color:#fff}
+#timeline .chat-sound-bubble .chat-audio-player.small-player{position:relative;display:block;min-width:0;padding-top:42px;--thumb-download-size:34px}
+#timeline .chat-sound-bubble .chat-audio-player.small-player>.media-actions{position:absolute;top:0;right:0;left:auto;display:flex;width:34px;height:34px;min-height:34px;margin:0;padding:0}
+#timeline .chat-sound-bubble .small-player .chat-audio-error{color:#ffccac}
+#timeline .msg:has(.small-player-volume-open){position:relative;z-index:30}
 @media(max-width:420px){
- .mvc-compact-controls .mvc-volume{display:none!important}
- .mvc-compact-controls .mvc-volume.expanded{display:block!important;width:52px!important}
- .mvc-compact-controls .mvc-time{font-size:10px}
- .mvc-compact-controls .mvc-button{width:30px;height:30px;flex-basis:30px}
- .mvc-compact-controls .mvc-left,.mvc-compact-controls .mvc-right{gap:1px}
+ .small-player .small-player-row{gap:10px}
+ .mvc-compact-controls .mvc-panel{padding:32px 11px 10px}
+ .small-player .small-player-volume-popup{height:98px}
+ .glowme-phase3 .small-player input.small-player-level{height:70px!important}
 }
+@media(pointer:coarse){
+ .small-player .small-player-button{width:44px;height:44px;min-width:44px;min-height:44px;flex-basis:44px}
+ .small-player .small-player-volume-group{flex-basis:44px}
+ .small-player .small-player-seek-group{height:44px}
+ .glowme-phase3 .small-player input.small-player-seek{height:44px!important;min-height:44px!important}
+ .small-player .small-player-time{bottom:37px}
+ .small-player .small-player-volume-popup{right:-2px}
+}
+@media(forced-colors:active){.small-player{--small-player-fill:Highlight;--small-player-rest:GrayText}.small-player .small-player-button{background:Canvas;color:ButtonText;border:1px solid ButtonText}}
 @media(prefers-reduced-motion:reduce){.mvc-compact-controls,.mvc-compact-controls.mvc-hidden{transition:none}}

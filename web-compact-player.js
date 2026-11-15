@@ -8,11 +8,9 @@
   play:'<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>',
   pause:'<path d="M8 5v14M16 5v14"/>',
   volume:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
-  muted:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 6 6m0-6-6 6"/>',
-  full:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>'
+  muted:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 6 6m0-6-6 6"/>'
  };
  const icon=path=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
- const button=(name,label)=>`<button class="mvc-button" data-compact="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name]||icons.volume)}</button>`;
  const paintIcon=(button,markup)=>{const old=button.querySelector(':scope > svg');if(old)old.outerHTML=markup;else button.insertAdjacentHTML('beforeend',markup);};
  const protectedVideo=video=>video.id==='lightboxVideo'||!!video.closest('.modern-video-stage,.live-player-stage,.live-stage,.replay-page-stage,.channel-player-stage');
  const format=value=>{
@@ -27,20 +25,20 @@
   video.controls=item.nativeControls;players.delete(video);
  }
  function enhance(video){
-  if(!video?.isConnected||protectedVideo(video)||players.has(video))return;
+  if(!video?.isConnected||protectedVideo(video)||players.has(video)||!window.FrommSmallPlayer)return;
   const stage=video.closest('.thumb,.media-wrap')||video.parentElement;
   if(!stage)return;
   const doc=video.ownerDocument,events=new AbortController();
   const controls=doc.createElement('div');
-  controls.className='modern-video-controls mvc-compact-controls';
+  controls.className='modern-video-controls mvc-compact-controls small-player';
   controls.setAttribute('role','group');controls.setAttribute('aria-label','영상 재생 컨트롤');
-  controls.innerHTML=`<div class="mvc-panel"><input class="mvc-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="재생 위치" disabled><div class="mvc-row"><div class="mvc-left">${button('play','재생')}<span class="mvc-time" aria-live="off">0:00 / —:—</span></div><div class="mvc-right">${button('sound','음량 및 음소거')}<input class="mvc-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="음량">${button('full','전체 화면')}</div></div></div>`;
+  controls.innerHTML='<div class="mvc-panel">'+window.FrommSmallPlayer.markup()+'</div>';
   const item={stage,controls,events,nativeControls:video.controls,changedTabIndex:stage.tabIndex<0,timer:0,dragging:false,hovered:false,keyboardMode:false,visible:true};
   const $=selector=>controls.querySelector(selector),seek=$('.mvc-seek'),play=$('[data-compact="play"]'),sound=$('[data-compact="sound"]'),volume=$('.mvc-volume');
   const listen=(target,type,fn,options={})=>target.addEventListener(type,fn,{...options,signal:events.signal});
   const reveal=()=>{
    clearTimeout(item.timer);controls.classList.remove('mvc-hidden');
-   const held=item.hovered||item.dragging||item.keyboardMode&&controls.contains(doc.activeElement);
+   const held=item.hovered||item.dragging||controls.classList.contains('small-player-volume-open')||item.keyboardMode&&controls.contains(doc.activeElement);
    if(!video.paused&&!video.ended&&!held)item.timer=setTimeout(()=>controls.classList.add('mvc-hidden'),2600);
   };
   const sync=()=>{
@@ -54,8 +52,9 @@
    const playing=!video.paused&&!video.ended;
    if(play.dataset.icon!==String(playing)){play.dataset.icon=String(playing);paintIcon(play,icon(playing?icons.pause:icons.play));}play.setAttribute('aria-label',playing?'일시정지':'재생');play.title=playing?'일시정지':'재생';
    const muted=video.muted||video.volume===0;
-   if(sound.dataset.icon!==String(muted)){sound.dataset.icon=String(muted);paintIcon(sound,icon(muted?icons.muted:icons.volume));}sound.setAttribute('aria-label',muted?'음량 켜기':'음소거');sound.title=muted?'음량 켜기':'음소거';sound.setAttribute('aria-pressed',String(muted));sound.setAttribute('aria-expanded',String(volume.classList.contains('expanded')));
-   volume.value=String(video.muted?0:video.volume);
+   if(sound.dataset.icon!==String(muted)){sound.dataset.icon=String(muted);paintIcon(sound,icon(muted?icons.muted:icons.volume));}sound.setAttribute('aria-label','음량 조절');
+   volume.value=String(video.muted?0:video.volume);window.FrommSmallPlayer.progress(volume,video.muted?0:video.volume*100);
+   window.FrommSmallPlayer.progress(seek,valid?Number(seek.value)/duration*100:0);
    controls.dataset.playing=String(playing);
   };
   const toggle=()=>{if(video.paused||video.ended){if(video.ended)video.currentTime=0;video.play().catch(()=>{});}else video.pause();reveal();};
@@ -65,16 +64,12 @@
   players.set(video,item);
   listen(controls,'click',event=>event.stopPropagation());
   listen(play,'click',toggle);
-  listen(sound,'click',()=>{
-   const silent=video.muted||video.volume===0;video.muted=!silent;if(silent&&video.volume===0)video.volume=.5;
-   volume.classList.toggle('expanded');sound.setAttribute('aria-expanded',String(volume.classList.contains('expanded')));sync();
-  });
+  window.FrommSmallPlayer.bindVolume(controls,{signal:events.signal,onChange:reveal});
   listen(volume,'input',()=>{video.volume=Number(volume.value);video.muted=false;sync();});
   listen(seek,'pointerdown',()=>{item.dragging=true;reveal();});
   listen(seek,'input',()=>{if(!seek.disabled)video.currentTime=Number(seek.value);item.dragging=true;sync();reveal();});
   listen(seek,'change',()=>{item.dragging=false;sync();reveal();});
   listen(doc,'pointerup',()=>{if(item.dragging){item.dragging=false;sync();reveal();}});
-  listen(controls.querySelector('[data-compact="full"]'),'click',fullscreen);
   // Keep picture click/double-click owned by the existing selection and
   // lightbox handlers. Playback uses the explicit controls or stage keys.
   listen(controls,'pointerenter',event=>{if(event.pointerType!=='touch')item.hovered=true;reveal();});
@@ -90,14 +85,15 @@
   listen(stage,'focusin',reveal);listen(stage,'focusout',reveal);
   listen(stage,'keydown',event=>{
    item.keyboardMode=true;
-   if(event.altKey||event.ctrlKey||event.metaKey||/^(INPUT|BUTTON)$/.test(event.target.tagName))return;
+   if(event.altKey||event.ctrlKey||event.metaKey||event.target.tagName==='INPUT')return;
+   if(event.key.toLowerCase()==='m'){event.preventDefault();video.muted=!video.muted;sync();reveal();return;}
+   if(event.key.toLowerCase()==='f'){event.preventDefault();void fullscreen();return;}
+   if(event.target.tagName==='BUTTON')return;
    if(event.code==='Space'){event.preventDefault();toggle();}
    else if(event.key==='ArrowLeft'&&Number.isFinite(video.duration)){video.currentTime=Math.max(0,video.currentTime-5);reveal();}
    else if(event.key==='ArrowRight'&&Number.isFinite(video.duration)){video.currentTime=Math.min(video.duration,video.currentTime+5);reveal();}
    else if(event.key==='ArrowUp'){event.preventDefault();video.volume=Math.min(1,video.volume+.05);video.muted=false;sync();reveal();}
    else if(event.key==='ArrowDown'){event.preventDefault();video.volume=Math.max(0,video.volume-.05);video.muted=false;sync();reveal();}
-   else if(event.key.toLowerCase()==='m'){video.muted=!video.muted;sync();reveal();}
-   else if(event.key.toLowerCase()==='f'){void fullscreen();}
   });
   for(const type of ['loadedmetadata','durationchange','timeupdate','seeking','seeked','play','playing','volumechange','emptied'])listen(video,type,sync);
   for(const type of ['loadedmetadata','seeking','seeked','play','playing','pause','volumechange','emptied'])listen(video,type,reveal);

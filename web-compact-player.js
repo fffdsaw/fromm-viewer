@@ -74,8 +74,8 @@
   listen(seek,'change',()=>{item.dragging=false;sync();reveal();});
   listen(doc,'pointerup',()=>{if(item.dragging){item.dragging=false;sync();reveal();}});
   listen(controls.querySelector('[data-compact="full"]'),'click',fullscreen);
-  listen(video,'click',event=>{event.stopPropagation();toggle();});
-  listen(video,'dblclick',event=>{event.stopPropagation();void fullscreen();});
+  // Keep picture click/double-click owned by the existing selection and
+  // lightbox handlers. Playback uses the explicit controls or stage keys.
   listen(controls,'pointerenter',event=>{if(event.pointerType!=='touch')item.hovered=true;reveal();});
   listen(controls,'pointerleave',()=>{item.hovered=false;reveal();});
   listen(stage,'pointermove',reveal,{passive:true});

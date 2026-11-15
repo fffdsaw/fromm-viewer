@@ -27,6 +27,11 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Expanded Channel and Replay suites passed real fixture decode/controls across desktop, narrow, portrait and landscape viewports. `live-fit-comments.browser.cjs` passed at 1440/760/900 PWA/390, preserving portrait ratio/height, bottom composer and fast synthetic comment echo. `conversation-audio.browser.cjs` passed at 1440/780 PWA/390/320: visible metadata probe bound, 24s decode, unknown/before/play/seek/end, volume/mute and cleanup. No authenticated API was exercised.
 - Phase 5 settings/themes are separate work in progress. Whole-branch CI still gates final completion.
 
+### Phase 3 selection compatibility follow-up
+
+- Loading the real compact controls in legacy fixtures exposed an integration risk: video picture click/double-click listeners competed with existing selection/lightbox handlers. Removed the newly added picture listeners; explicit compact buttons and stage keyboard actions own playback, existing card handlers retain selection/preview semantics.
+- `direct-selection.browser.cjs` and `selection-gestures.browser.cjs` both passed desktop/mobile with actual compact assets: single selection, double-click real-MP4 preview, controls not selecting, Shift ranges, drag/autoscroll, bulk bytes/names, account/channel isolation and logout. Their bottom-native-control clicks now target the actual compact mute button and assert it mutes the media without changing selection.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

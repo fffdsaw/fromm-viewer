@@ -19,10 +19,12 @@ function normalize(input={}){
 }
 let values={...defaults},stored=true,dialog=null,trigger=null,notifyTimer=0;
 try{const saved=JSON.parse(localStorage.getItem(GLASS_KEY)||'null');if(saved)values=normalize(saved);}catch{stored=false;}
+document.documentElement.classList.toggle('glass-disabled',!values.enabled);
 const listeners=new Set();
 let lastEnabled=values.enabled;
 function emit(){
  clearTimeout(notifyTimer);notifyTimer=0;
+ document.documentElement.classList.toggle('glass-disabled',!values.enabled);
  for(const fn of listeners)fn();
  if(lastEnabled!==values.enabled){
   lastEnabled=values.enabled;

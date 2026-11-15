@@ -1,6 +1,8 @@
 /* Glow ME presentation shell: existing routes, data and media engines stay authoritative. */
 (() => {
   'use strict';
+  // Match the saved switch before the asynchronous optics module can load.
+  try{document.documentElement.classList.toggle('glass-disabled',JSON.parse(localStorage.getItem('fromm.pcGlass.v1')||'null')?.enabled===false);}catch{}
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),panel=$('#chatToolsPanel'),toggle=$('#sidebarToggleBtn'),search=$('#chatToolsBtn');
   if(!sidebar||!panel||!toggle||!search)return;
   const installed=matchMedia('(display-mode: standalone)'),wide=matchMedia('(min-width:1200px)'),hover=matchMedia('(hover:hover) and (pointer:fine)');

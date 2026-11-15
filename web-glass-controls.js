@@ -1,7 +1,7 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=mobile-preferences-20261115';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play,.mvc-compact-controls .mvc-button,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -13,7 +13,7 @@ const visibility=typeof IntersectionObserver==='function'?new IntersectionObserv
 function enabled(){return !!visibility&&glassPC.matches&&settings.enabled&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
 function optics(){return enabled()&&!motion.matches&&!document.hidden&&!(navigator.deviceMemory>0&&navigator.deviceMemory<=2||navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=2)&&![...document.querySelectorAll('video')].some(v=>v.readyState>=2&&!v.paused&&!v.ended);}
 function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
-function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
+function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;item.face.style.backgroundColor='';disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
 function stopInteractive(item){
  if(!item.interactive)return;
  item.interactive.destroy();item.interactive=null;
@@ -40,6 +40,7 @@ function opticalSettings(item){
  const {el,drop,rail}=item;
  const strength=rail ? .85 : el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
+ if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  const brightness=menu?Math.min(.025,settings.opacity/100):settings.opacity/100;
  return {
   thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
@@ -99,7 +100,8 @@ function sync(){
   if(prioritized&&!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
   if(!prioritized){releaseEngine(item);stopInteractive(item);continue;}
   if(failed.has(item.el))continue;
-  if(item.glass&&item.settings===settings)continue;
+  const height=item.el.clientHeight;
+  if(item.glass&&item.settings===settings&&item.height===height)continue;
   if(built++>=2){schedule();break;}
   const {el,face}=item;
   try{
@@ -109,7 +111,7 @@ function sync(){
     item.glass=new module.LiquidGlass(face,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,chromaticAberration:0,mapPixelRatio:1,edges:false,respectReducedMotion:true,...options});
     builds++;
    }
-   item.settings=settings;
+   item.settings=settings;item.height=height;
    el.dataset.controlOptics=item.glass.resolved.usesFallback?'basic':'engine';
   }catch{releaseEngine(item);failed.add(el);el.dataset.controlOptics='basic';}
  }

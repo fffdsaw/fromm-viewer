@@ -1,5 +1,5 @@
-import './web-glass-controls.js?v=uiux-review-20261116';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=mobile-preferences-20261115';
+import './web-glass-controls.js?v=uiux-review-switch-20261115';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));

@@ -12,15 +12,24 @@ This is the latest implementation checkpoint and supersedes the older gallery/au
 - Sidebar artist separator is removed for every palette; themes no longer apply a new border color to the sidebar. The existing borderless outer panel and disabled seam pseudo-element remain intact.
 - Conversation voice buttons paint their resting glass material before asynchronous optics initialization. Resting faces suppress nearby-pointer illumination. Mouse focus on a voice button no longer retains the interaction-only engine after pointer leave, while keyboard focus remains supported. The eight-engine budget is unchanged.
 
+### Additional CI findings resolved before the final checkpoint
+
+The first revision `3d16904` was pushed successfully, then its new CI exposed two real compatibility gaps. Conversation Chromium/Windows Chrome/Edge expected the original flat voice controls when glass was explicitly disabled; the first-paint material now reads the saved disabled setting in the synchronous shell and tracks the shared preference class. The unchanged disabled-style assertions pass locally. A new held-module reload verifies saved OFF before/after module initialization and ON restoration.
+
+Adding background-color to the actual face comparison also reproduced the reported hover tint latch: Meapri destroy leaves its inline tint behind. Engine release now clears that owned background color. The original gradient, color, border and shadow all return after pointer leave. The existing eight-engine budget remains unchanged.
+
+Channel CI also caught text touching the old fixed 6px rim mask after a short-window navigation row shrank. The mask narrows with the actual capsule radius, retaining the original 6px rim on regular rows; menu radius/options refresh when height changes. The unchanged pixel test passes at 1440, 760 and 900×700 PWA, plus touch cleanup. No old assertion was relaxed.
+
 ### Actual verification for this follow-up
 
 Environment: Node **24.22.1**, Playwright **1.62.1**, Linux Chromium **151.0.7922.34**; synthetic data/local WAV/MP4 only.
 
 - `node --test test/*.test.cjs native-live/test/*.test.cjs`: **326 pass / 0 fail / 1 platform-specific skip**.
-- Passed: `uiux-review`, `uiux-cards-sidebar`, `settings-themes`, `compact-video-player`, `conversation-audio`, `glass-controls`, `header-glass`, `chat-download-selection`, `replay-player`, `channel-player`, `player-settings`, `rail-focus`, `rail-startup` browser suites.
-- New review suite covers gallery cover ratios/native light controls at 1536×838, 1440×900, 1280×720, 900×560, 390×844; eight-artist initial display and short-viewport scrolling; every theme; a genuine reload with the optics module held back; identical resting material before/after initialization and press/leave restoration for play and download.
+- Passed: `uiux-review`, `uiux-cards-sidebar`, `settings-themes`, `compact-video-player`, `conversation-audio`, `glass-controls`, `header-glass`, `chat-download-selection`, `replay-player`, `channel-player`, `player-settings`, `rail-focus`, `rail-startup`, `rail-lens-spinner`, `glass-settings-startup`, `conversation-controls` browser suites.
+- New review suite covers gallery cover ratios/native light controls at 1536×838, 1440×900, 1280×720, 900×560, 390×844; eight-artist initial display and short-viewport scrolling; every theme; a genuine reload with the optics module held back; identical resting gradient/color/border/shadow before/after initialization and press/leave restoration for play and download, plus saved OFF/ON restoration.
 - The new suite fails on archived baseline `1c7bb50`: at 1536×838 the final avatar extends to y=865 while its scroll area ends at y=814. It passes on the revised implementation.
 - Native gallery playback/pause/seek/volume/mute are exercised against decoded WAV. The WAV fixture now supports byte ranges for native seeking. Conversation playback separately verifies that icon replacement preserves its actual decorative lens. Existing compact video, selection/download and expanded player behavior tests are retained.
+- A repeat unit run under simultaneous browser load hit the existing 25ms cancellation timing assertion (325 pass / 1 fail / 1 skip); an isolated serial rerun passed 326/0/1. No downloader code/test was changed.
 - JS syntax and `git -c core.whitespace=cr-at-eol diff --check` passed. Browser evidence is synthetic and stored locally outside the repository; user attachments were not committed.
 - Conversation CI now runs the new regression on Linux Chromium and Windows Chrome/Edge. Remote results must be checked against the newly pushed SHA; historical 10/10 results below belong to older SHAs.
 

@@ -125,7 +125,7 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
 }
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download:not(.glass-control){
+ .glowme-phase3.pc-layout:not(.glass-disabled) #timeline .chat-sound-bubble .media-actions a.chat-sound-download:not(.glass-control){
   background:var(--voice-glass-face)!important;border:1px solid var(--voice-glass-rim)!important;box-shadow:var(--voice-glass-shadow)!important;
  }
 }

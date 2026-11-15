@@ -7,7 +7,7 @@ async function shot(page,name){if(out){fs.mkdirSync(out,{recursive:true});await 
 const voiceSelectors=['.chat-audio-play','.chat-sound-download'];
 async function voiceLook(page){return page.evaluate(selectors=>selectors.map(selector=>{
  const el=document.querySelector(selector),face=el.querySelector('.control-glass-surface')||el,css=getComputedStyle(face);
- return {background:css.backgroundImage,border:css.borderColor,shadow:css.boxShadow};
+ return {background:css.backgroundImage,color:css.backgroundColor,border:css.borderColor,shadow:css.boxShadow};
 }),voiceSelectors);}
 (async()=>{
  const s=await serve(process.env.UIUX_SOURCE_ROOT),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
@@ -44,14 +44,26 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
   await p.route('**/*',route=>new URL(route.request().url()).origin===new URL(s.url).origin?route.continue():route.abort());
   let release,blocked;const resetGate=()=>{blocked=new Promise(resolve=>release=resolve);};resetGate();
   await p.route('**/web-glass-controls.js?*',async route=>{await blocked;await route.continue();});
-  for(let reload=0;reload<2;reload++){
+  for(let reload=0;reload<3;reload++){
+   if(reload===2)await p.evaluate(()=>FrommGlassSettings.set({enabled:false},{immediate:true}));
    if(reload)resetGate();
    await (reload?p.reload({waitUntil:'commit'}):p.goto(s.url,{waitUntil:'commit'}));
    await p.waitForFunction(()=>window.FrommGlowME&&window.FrommChatAudio&&typeof render==='function');await seed(p);
    await p.evaluate(()=>{state.messages=[{messageId:'voice-startup',userType:'star',type:'sound',content:new URL('assets/glowme/mellow-glass.mp3',location.href).href,createdAt:1791534600000}];state.chatMessages=state.messages;state.chatAutoTopPending=false;render();FrommViewState.cancel();scrollTo(0,0);});
    await p.mouse.move(1400,800);await p.waitForTimeout(250);
    assert.equal(await p.locator('.chat-audio-play .control-glass-surface').count(),0,'test observes the pre-initialization state');
-   const before=await voiceLook(p);assert.ok(before.every(x=>x.background.includes('linear-gradient')&&x.shadow!=='none'),'voice buttons have their final resting material on first paint');
+   const before=await voiceLook(p);
+   if(reload===2){
+    assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0.72)'),'saved disabled setting paints the original flat voice buttons before modules load');
+    release();await p.waitForFunction(()=>window.FrommControlGlass&&window.FrommGlassSettings?.value.enabled===false);await p.waitForTimeout(400);
+    assert.deepEqual(await voiceLook(p),before,'disabled voice buttons stay flat after asynchronous setup');
+    assert.equal(await p.locator('.chat-audio-play .control-glass-surface,.chat-sound-download .control-glass-surface').count(),0);
+    await p.evaluate(()=>FrommGlassSettings.set({enabled:true},{immediate:true}));
+    await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface'));
+    assert.ok((await voiceLook(p)).every(x=>x.background.includes('linear-gradient')),'switching back on restores the optical material');
+    assert.deepEqual(errors,[]);continue;
+   }
+   assert.ok(before.every(x=>x.background.includes('linear-gradient')&&x.shadow!=='none'),'voice buttons have their final resting material on first paint');
    release();await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface')&&document.querySelector('.chat-sound-download .control-glass-surface'));await p.waitForTimeout(400);
    assert.deepEqual(await voiceLook(p),before,'asynchronous setup preserves both resting colors and rims');
    for(const selector of voiceSelectors){
@@ -66,6 +78,6 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
    }
    await shot(p,'review-voice-reload-'+reload);assert.deepEqual(errors,[]);
   }
-  await context.close();console.log('Real reload with delayed optics: initial voice material and press/leave color restoration PASS');
+  await context.close();console.log('Real reload with delayed optics: enabled/disabled voice material, switch restoration and press/leave colors PASS');
  }finally{await browser.close();await s.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

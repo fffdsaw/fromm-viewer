@@ -23,5 +23,4 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.chat-audio-level,.chat-audio-seek,input[type=range]){accent-color:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-seek{background-image:linear-gradient(to right,var(--theme-accent) 0 var(--audio-progress,0%),var(--theme-line) var(--audio-progress,0%) 100%)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-waveform i{background:var(--theme-accent)}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .download-feedback-ring{stroke:var(--theme-accent)}
 @media(forced-colors:active){:root[data-fromm-theme] body,:root[data-fromm-theme] :is(#sidebar,.viewer-header,.bubble,.media-card){background:Canvas!important;color:CanvasText!important;border-color:CanvasText!important}}

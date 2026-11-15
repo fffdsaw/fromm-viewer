@@ -60,6 +60,10 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Implementation `91f4c5e` passed Conversation on Windows Chrome/Edge and Chromium (including 50k), all three Video Download jobs, both Media jobs and Channel unit; the long Channel browser job remains in progress at this checkpoint.
 - Added the new settings/theme and card/sidebar scenarios to the existing Conversation CI matrix, with `PLAYWRIGHT_CHANNEL` honored. This makes the new UI directly exercise Windows Chrome/Edge as well as Linux Chromium; it does not claim a physical phone or Safari test. Local versions of both new suites already passed; final matrix results remain pending.
 
+### Media contrast preservation
+
+- Kept the original light download-ring foreground on media controls across alternate palettes. Themes still color seek/progress tracks and accents; they do not replace the readable image-overlay progress ring with a dark text accent. No download behavior or animation changed.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

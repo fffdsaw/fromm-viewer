@@ -80,3 +80,6 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #loginStatus{background:var(--theme-soft);border-color:var(--theme-line)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #loginStatus:not(.ok):not(.error){color:var(--theme-muted)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #authAdvancedToggle{color:var(--theme-accent)!important}
+
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .login-panel input{background:var(--theme-soft);color:var(--theme-text);border-color:var(--theme-line)}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .login-panel input::placeholder{color:var(--theme-muted);opacity:1}

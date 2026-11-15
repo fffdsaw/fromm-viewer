@@ -55,6 +55,11 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Real icon changes previously rewrote button `innerHTML`, removing its optical face. Audio, compact, expanded and LIVE controls now replace only their direct SVG glyph; compact also avoids redundant SVG updates on timeupdate. Actual-engine audio and compact tests assert the *same lens node* survives play/pause and seek/time/volume changes. Local compact/fullscreen, audio (all four sizes), LIVE PiP and full Node/native suites passed; assets re-versioned.
 - Final integrated CI is still pending after these follow-ups. Do not interpret earlier local passes as a passing latest-head Actions run.
 
+### Cross-browser UI matrix checkpoint
+
+- Implementation `91f4c5e` passed Conversation on Windows Chrome/Edge and Chromium (including 50k), all three Video Download jobs, both Media jobs and Channel unit; the long Channel browser job remains in progress at this checkpoint.
+- Added the new settings/theme and card/sidebar scenarios to the existing Conversation CI matrix, with `PLAYWRIGHT_CHANNEL` honored. This makes the new UI directly exercise Windows Chrome/Edge as well as Linux Chromium; it does not claim a physical phone or Safari test. Local versions of both new suites already passed; final matrix results remain pending.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

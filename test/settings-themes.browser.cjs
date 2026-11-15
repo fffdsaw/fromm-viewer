@@ -5,7 +5,7 @@ const out=process.env.UIUX_RESULTS_DIR;
 async function show(p){await p.evaluate(()=>FrommGlowME.setRailOpen(true));await p.locator('#glassSettingsBtn').click();await p.locator('#glassSettingsDialog[open]').waitFor();}
 async function inside(p){await p.waitForFunction(()=>{const r=document.querySelector('#glassSettingsDialog').getBoundingClientRect();return r.x>=0&&r.y>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;},null,{timeout:3000});const box=await p.locator('#glassSettingsDialog').boundingBox(),view=p.viewportSize();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=view.width+1&&box.y+box.height<=view.height+1,'settings fit viewport');return box;}
 const contrast=(fg,bg)=>{const lum=rgb=>{const s=rgb.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});return s[0]*.2126+s[1]*.7152+s[2]*.0722;};const a=lum(fg),b=lum(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
-(async()=>{const s=await serve(),browser=await chromium.launch();try{
+(async()=>{const s=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
  for(const [width,height]of [[1440,900],[900,560],[390,844]]){
   const {page:p,context,errors}=await open(browser,s.url,{width,height});
   await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});await show(p);await inside(p);

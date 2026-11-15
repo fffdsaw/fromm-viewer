@@ -1,7 +1,7 @@
 'use strict';
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const {serve,open}=require('./helpers/phase3-fixture.cjs');
-(async()=>{const s=await serve(),browser=await chromium.launch();try{
+(async()=>{const s=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
  for(const [width,height] of [[1440,900],[900,560],[390,844]]){
   const {page:p,context,errors}=await open(browser,s.url,{width,height});
   await p.evaluate(()=>FrommGlowME.setRailOpen(true));

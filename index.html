@@ -8985,7 +8985,6 @@ function renderMediaCard(m){
   card.className = "media-card" + (state.selected.has(id) ? " selected" : "");
   card.dataset.messageId = id;
 
-  const label = t==="image" ? "사진" : t==="video" ? "영상" : "음성";
   const src = proxyUrl(m,false);
   const dl = proxyUrl(m,true);
 
@@ -9002,7 +9001,6 @@ function renderMediaCard(m){
         <div class="audio-icon">${unavailableIcon}</div>
         <div class="media-unavailable-note">${m.code ? "파일 URL 없음 · code 있음" : "파일 URL 없음"}</div>
       </div>
-      <div class="card-badge">${label}</div>
       <div class="card-body">
         <div class="card-title">${esc(baseName(m))}</div>
         <div class="card-date">${esc(dateKey(m))} · ${esc(timeLabel(m))}</div>
@@ -9044,7 +9042,6 @@ function renderMediaCard(m){
 
   card.innerHTML = `
     ${thumb}
-    <div class="card-badge">${label}</div>
     <a class="card-download" href="${esc(dl)}" aria-label="다운로드" title="다운로드">${downloadFeedbackIcon()}</a>
 
     <div class="card-body">
@@ -9136,7 +9133,7 @@ function renderMessage(m){
   const who=artist?(state.room?.host?.nick||"아티스트"):"나";
   // Media bubbles omit redundant sender names; only timestamps stay beneath them.
   const chatMedia=["image","video","sound"].includes(t);
-  let html=chatMedia?"":`<div class="meta"><span>${esc(who)}</span></div>`;
+  let html=chatMedia||artist?"":`<div class="meta"><span>${esc(who)}</span></div>`;
 
   const quoted = getQuotedMessage(m);
   if(quoted){

@@ -217,3 +217,8 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface{animation:conversationLatestMaterialize 520ms cubic-bezier(.2,1.45,.38,1) both}
 #conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation:conversationLatestDematerialize 170ms cubic-bezier(.4,0,1,1) both}
 @media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.conversation-latest-entering>svg,#conversationDock #conversationNew.conversation-latest-leaving>svg,#conversationDock #conversationNew.conversation-latest-entering>.control-glass-surface,#conversationDock #conversationNew.conversation-latest-leaving>.control-glass-surface{animation-duration:1ms}}
+
+/* Text and quoted replies share the media-card spacing, with time in the footer. */
+#timeline .msg .bubble:has(>.text,>.reply-quote){padding:12px 14px;border-radius:18px;line-height:1.6}
+#timeline .reply-quote{border-radius:12px;padding:10px 12px;border-inline-start:3px solid var(--accent2,#428e7a);background:var(--panel2,#edf5f5)}
+#timeline .reply-quote .reply-content{overflow-wrap:anywhere}

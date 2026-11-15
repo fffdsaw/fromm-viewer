@@ -1359,3 +1359,8 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3 #rooms .room .rail-unread{background:Canvas;color:CanvasText;border:1px solid CanvasText}
 }
 .glowme-phase3 #rooms .room .rail-unread[hidden]{display:none!important}
+
+/* Keep the last avatar and its selection rim inside the scrollable artist area. */
+.glowme-phase3 #sidebar .rail-artists{overflow:hidden;padding-bottom:4px}
+.glowme-phase3 #rooms{padding-block:5px 9px;scroll-padding-block:5px 9px;box-sizing:border-box}
+.glowme-phase3 #rooms .room{flex-shrink:0}

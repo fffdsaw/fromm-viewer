@@ -7,7 +7,7 @@
   let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false,railMotionUntil=0,keyboardFocus=false;
   document.documentElement.classList.add('glowme','glowme-phase3');
   const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
-  const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M9 18V5l11-2v13 M9 9l11-2 M9 18a3 2 0 1 1-3-2h3 M20 16a3 2 0 1 1-3-2h3',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
+  const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M3 10v4 M7 6v12 M12 3v18 M17 7v10 M21 10v4',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
   const labels={all:'전체 대화',media:'미디어',image:'사진',video:'영상',sound:'음성',vote:'투표',live:'LIVE',replay:'Replay',channel:'Channel'};
   const brand=sidebar.querySelector('.brand');
   brand.replaceChildren(Object.assign(document.createElement('img'),{src:'assets/glowme/logo.png',alt:'Fromm Viewer',width:210,height:116}));

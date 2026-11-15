@@ -20,6 +20,13 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Full Node + native contract suite: **326 passed, 0 failed, 1 platform-specific skipped** (327 total), Node 24.19.0. Expanded Channel/Replay/LIVE verification and whole-branch CI remain in progress; do not mark item 09 fully verified until their completion.
 - This checkpoint is pushed separately from remaining card/settings changes. Use `git log -1` and `git ls-remote` for its exact remote SHA.
 
+### Phase 4 local checkpoint
+
+- Items 06/07/10/11 implemented: bounded artist scroller end padding retains the 32px avatar and selection rim; incoming text/reply cards omit repetitive sender names while retaining footer times and quote navigation; audio tab uses waveform SVG; media/photo/video/audio kind badges removed from render markup (including missing-source cards), download/select handlers retained.
+- `test/uiux-cards-sidebar.browser.cjs`: **passed** 1440×900, 900×560 and 390×844. Checks the actual last avatar rectangle against its scroll container, retained avatar size, waveform, absence of text sender label/presence of timestamp, quote accent, all four badge-free galleries, selection/save and no overflow. Its initially invalid fixture video URLs produced unavailable cards without downloads; the fixture was corrected to usable synthetic media URLs, without changing unavailable-card behavior.
+- Expanded Channel and Replay suites passed real fixture decode/controls across desktop, narrow, portrait and landscape viewports. `live-fit-comments.browser.cjs` passed at 1440/760/900 PWA/390, preserving portrait ratio/height, bottom composer and fast synthetic comment echo. `conversation-audio.browser.cjs` passed at 1440/780 PWA/390/320: visible metadata probe bound, 24s decode, unknown/before/play/seek/end, volume/mute and cleanup. No authenticated API was exercised.
+- Phase 5 settings/themes are separate work in progress. Whole-branch CI still gates final completion.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

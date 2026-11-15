@@ -1,6 +1,39 @@
 # Fromm Viewer — cross-account handoff
 
-Last reviewed: 2026-11-15 (Asia/Seoul)
+Last reviewed: 2026-11-16 (Asia/Seoul)
+
+## Icon-only compact controls, LIVE composer, sidebar and palette follow-up — 2026-11-16
+
+This is the current checkpoint. Work continues on `codex/fromm-viewer-uiux-stabilization-20261114` from clean `07612090f54b814158b5b1f7dade8ebfaca7cf60` (production `93cdd01bb74777811d5469e6d6a62ceea4d5ce46` plus the prior deployment receipt). Remote refs/open PRs were checked before editing; main remained unchanged. The user first requested a summary, corrected the menu-effect scope, then authorized implementation and added the theme follow-up. The user subsequently explicitly approved merging/deploying PR #127. Pre-merge CI passed 9/10 checks; Channel found low-contrast Classic login placeholders on the hosted browser. Login fields now explicitly use palette surfaces/text/placeholders, with direct typed-text and placeholder AA assertions in addition to axe. The strengthened settings/theme suite and all seven login-startup scenarios pass locally after the fix. Read final checks against the follow-up fix SHA before merging. Find the replacement PR with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`.
+
+- Compact video/audio play and volume are icon-only: no circle, background, border, shadow or optical engine. Existing 38px/44px hit targets, layout, handlers, mint tracks, white knobs/time/glyphs, volume popup, source repair and metadata limits remain. Separate download controls keep their existing behavior/material. Expanded players are unchanged.
+- The missing cursor effect is in the navigation above the artist list (photos/video/LIVE/etc.), not artist hover. Decoded video intentionally parks expensive optics; a visible lightweight moving highlight now remains during playback. Alternate palettes also stop the active menu background from covering that carrier. Reduced-motion, touch and engine budgets remain intact.
+- Artist rows now distribute through the available height, keeping the last avatar/selection rim inside the list and reducing excess bottom padding. Avatar size remains 32px. Very short lists remain grouped; longer lists retain scrolling. Seven sizes (320×600–1920×1080), 9/12/30 profiles, initial and final rows, collapsed/expanded rails are covered.
+- LIVE send retains input focus by making a pending draft read-only instead of disabling/blurring it. The clicked/keyboard submit focuses the composer; ACK clears/unlocks it. Policy blocking, Korean IME, one POST, uncertain-send duplicate protection, ACK/real echo and cancellation stay authoritative.
+- LIVE has a 24-choice ordinary Unicode emoji picker with current-selection insertion, the existing 500-unit limit, arrow/Escape keyboard handling, outside close, fullscreen/viewport fitting and focus return. Opening/inserting never posts; explicit send uses the existing normal-comment endpoint. Tests check the actual emoji in the synthetic POST body.
+- Only `.live-head #livePipBtn` is hidden in CSS, including the offline header. The controller/DOM handler and PiP button inside the player are untouched; real PiP/browser lifecycle tests pass.
+- Added Classic gray/pink based on the original dark root palette. Alternate palettes synchronize sidebar/header/pseudo rims, controls/selected states, fields, reading surfaces, settings and PWA theme-color/color-scheme. PC/mobile optical tints refresh from palette variables without leaking engines. Sidebar outline/seam/pseudo decorations and alternate-palette shadow/menu borders are removed. Dark media controls remain white/mint. Classic reply/unavailable-media/login text is readable; system contrast colors remain respected.
+
+Actual local verification: Node **24.22.1**, Playwright **1.62.1**, Linux Chromium **151.0.7922.34**, synthetic fixtures only. Evidence/logs are outside the repository at `/workspace/review-20261116/`.
+
+- `node --test test/*.test.cjs native-live/test/*.test.cjs`: **326 pass / 0 fail / 1 platform skip** (`unit-final.log`).
+- Passed browser suites: `small-player-layout`, `settings-themes`, `uiux-review`, `rail-lens-spinner`, `live-chat-probe`, `live-fit-comments`, `live-ui-pip`, `compact-video-player`, `conversation-audio`, `conversation-controls`, `glass-controls`, `header-glass`, `rail-focus`, `rail-startup`, `glowme`, `glowme-phase3-a11y`, `chat-download-selection`, `direct-selection`, `selection-gestures`, `replay-player`, `channel-player`, `player-settings`.
+- New checks exercise cursor visibility during parked playback across all six themes; actual decoded video/audio with icon-only controls; shared palette values/borderless sidebar; Classic reload/meta-color; full conversation and fresh anonymous login AA; emoji insert/limit/Escape/actual POST; send focus; fullscreen picker; offline header shortcut hidden while full PiP controls/lifecycle keep working.
+- Initial checks caught a popup inheriting `pointer-events:none`, dark-theme hardcoded text and a sampled in-flight row background transition. The popup owns pointer events, palette text is corrected, and artist color changes apply synchronously. Final unchanged function/contrast expectations pass; no test was removed.
+- JS syntax and `git -c core.whitespace=cr-at-eol diff --check` pass. Preserve mixed CRLF in `index.html`. Current remote CI must be checked against the new PR SHA, not PR #126's historical green checks.
+
+Physical Windows/Mac/Safari and real-account LIVE service are not locally verified. No real comments, user sessions, cache changes or experimental-site changes were used. The user explicitly approved PR #127 merge/deployment; complete it after its final CI succeeds. Preserve the prior PR #126 stabilization/deployment history.
+
+Resume: inspect status/remote head/PR checks; run `node test/small-player-layout.browser.cjs`, `node test/settings-themes.browser.cjs`, `node test/rail-lens-spinner.browser.cjs`, `node test/live-chat-probe.browser.cjs`, and `node test/live-fit-comments.browser.cjs`. Keep prior stabilization history and do not clear user caches.
+
+## Production deployment confirmed — 2026-11-15 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #126](https://github.com/fffdsaw/fromm-viewer/pull/126) is merged; production main commit is `93cdd01bb74777811d5469e6d6a62ceea4d5ce46`, containing implementation/test head `409e0c8e3953a6b1c065b54c9b567f861e673410` and the earlier stabilization history.
+- All **10/10 PR checks passed**, including Linux Chromium and Windows Chrome/Edge conversation/download checks, media bulk save, and the complete Channel browser suite (17m36s).
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43726544799) and [public-file verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43726544708) both succeeded for the production merge SHA.
+- An independent public check matched **14 HTML/JS/CSS assets byte-for-byte**, including shared controls, sidebar, conversation/cache and download code. A fresh anonymous Chromium session showed the login form, loaded the shared player helper, and raised **zero page errors**. No user session or private data was used.
+- Local synthetic/evidence receipts: `/workspace/integration-results/production-126-verified.json` and `/workspace/integration-results/production-126-login.png`. Network checks in this environment use the configured proxy (`NODE_USE_ENV_PROXY=1` for Node fetch); no credentials are recorded.
+- The existing feature branch was fast-forwarded to production and then saved with this documentation-only checkpoint. Runtime changes are all in main; the checkpoint itself does not require a new UI deployment. Historical in-progress sections below are superseded.
 
 ## Approved shared small-player layout and complete artist rows — 2026-11-15
 

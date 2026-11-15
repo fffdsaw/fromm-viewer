@@ -211,6 +211,13 @@
   const style = document.createElement('style');
   style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-chat-probe-text{display:-webkit-box}.live-chat-probe-text[hidden]{display:none}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain;overflow-anchor:none}.live-comment-row{flex-shrink:0}.live-comments-unread{position:absolute;right:0;bottom:30px;white-space:nowrap;font-size:11px;background:#15171bd9;border-radius:10px;padding:2px 6px}.live-comments-unread:empty{display:none}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
+  style.textContent += '.live-emoji-toggle{flex:0 0 34px;width:34px;height:34px;padding:5px;border:1px solid #ffffff60;border-radius:9px;background:#282b32;color:#fff;cursor:pointer}.live-emoji-toggle:disabled{opacity:.5;cursor:default}.live-emoji-picker{pointer-events:auto;position:fixed;inset:auto;margin:0;box-sizing:border-box;width:260px;max-width:calc(100vw - 24px);padding:10px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;border:1px solid #ffffff60;border-radius:12px;background:#20272a;color:#fff;box-shadow:0 6px 20px #0005;z-index:20}.live-emoji-picker[hidden],.live-emoji-picker[popover]:not(:popover-open){display:none}.live-emoji-picker button{min-width:0;height:36px;padding:0;border:0;border-radius:6px;background:transparent;color:#fff;font-size:24px;cursor:pointer}.live-emoji-picker button:hover{background:#ffffff20}.live-emoji-picker :focus-visible,.live-emoji-toggle:focus-visible{outline:2px solid #72ddbd;outline-offset:-2px}';
+  // One delegated fallback listener; detached comment panels retain no listeners.
+  document.addEventListener('pointerdown',event=>{
+    const panel=document.getElementById('liveChatProbeStatus'),picker=panel?.querySelector('.live-emoji-picker');
+    if(picker&&!picker.hidden&&!picker.contains(event.target)&&!event.target.closest('.live-emoji-toggle'))panel.closeEmoji?.();
+  });
+  window.addEventListener('resize',()=>document.getElementById('liveChatProbeStatus')?.placeEmoji?.());
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
   let uncertainAttempt = null, activeAttempt = null;
@@ -279,13 +286,50 @@
     return uncertainAttempt && session && uncertainAttempt.roomId === session.roomId &&
       uncertainAttempt.token === session.token && uncertainAttempt.sequence === session.sequence && uncertainAttempt.content === content.trim();
   }
+  function addEmojiPicker(panel,input,form) {
+    const choices=[['😊','웃음'],['😂','웃겨요'],['🤣','큰 웃음'],['🥰','사랑스러워요'],['😍','반했어요'],['😘','뽀뽀'],['🥹','감동'],['😭','눈물'],['😮','놀람'],['😎','멋져요'],['🤔','생각'],['😴','졸려요'],['❤️','하트'],['💙','파란 하트'],['💜','보라 하트'],['💕','두 하트'],['👍','좋아요'],['👏','박수'],['🫶','손 하트'],['🙏','감사'],['🎉','축하'],['✨','반짝'],['🔥','불꽃'],['💪','힘내요']];
+    const toggle=document.createElement('button');toggle.type='button';toggle.className='live-emoji-toggle';
+    toggle.setAttribute('aria-label','댓글 이모지 선택');toggle.setAttribute('aria-haspopup','dialog');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','liveCommentEmojiPicker');
+    toggle.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M7 14q5 6 10 0M8 9h1m6 0h1"/></svg>';
+    const picker=document.createElement('div');picker.id='liveCommentEmojiPicker';picker.className='live-emoji-picker';picker.hidden=true;picker.setAttribute('role','dialog');picker.setAttribute('aria-label','댓글 이모지');
+    if(typeof picker.showPopover==='function')picker.setAttribute('popover','auto');
+    let selection=[0,0];
+    const open=()=>!picker.hidden&&(!picker.hasAttribute('popover')||picker.matches(':popover-open'));
+    const close=()=>{if(picker.hasAttribute('popover')&&picker.matches(':popover-open'))picker.hidePopover();picker.hidden=true;toggle.setAttribute('aria-expanded','false');};
+    panel.closeEmoji=close;
+    panel.placeEmoji=()=>{if(!open())return;const r=toggle.getBoundingClientRect();picker.style.left=Math.max(12,Math.min(innerWidth-picker.offsetWidth-12,r.left))+'px';picker.style.top=Math.max(12,Math.min(innerHeight-picker.offsetHeight-12,r.top-picker.offsetHeight-8))+'px';};
+    toggle.addEventListener('click',()=>{
+      if(open()){close();input.focus({preventScroll:true});return;}
+      selection=[input.selectionStart??input.value.length,input.selectionEnd??input.value.length];
+      picker.hidden=false;if(picker.hasAttribute('popover'))picker.showPopover();toggle.setAttribute('aria-expanded','true');panel.placeEmoji();picker.querySelector('button').focus({preventScroll:true});
+    });
+    picker.addEventListener('toggle',()=>{if(!picker.matches(':popover-open')){picker.hidden=true;toggle.setAttribute('aria-expanded','false');}});
+    for(const [glyph,label] of choices){
+      const button=document.createElement('button');button.type='button';button.textContent=glyph;button.setAttribute('aria-label',label+' '+glyph);
+      button.addEventListener('click',()=>{
+        if(input.disabled||input.readOnly)return close();
+        const [start,end]=selection;
+        if(input.value.length-(end-start)+glyph.length<=input.maxLength){input.setRangeText(glyph,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));}
+        close();input.focus({preventScroll:true});
+      });picker.append(button);
+    }
+    picker.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();input.focus({preventScroll:true});return;}
+      const step={ArrowRight:1,ArrowLeft:-1,ArrowDown:6,ArrowUp:-6}[event.key];if(!step)return;
+      event.preventDefault();const buttons=[...picker.children],index=buttons.indexOf(document.activeElement);buttons[(index+step+buttons.length)%buttons.length].focus();
+    });
+    form.insertBefore(toggle,input);panel.append(picker);
+  }
   function updateComposer(panel) {
     const input = panel.querySelector('.live-comment-input'), button = panel.querySelector('.live-comment-send');
     if (!input || !button) return;
     const block = writeBlock();
-    input.disabled = !!block || !!sendController;
+    input.disabled = !!block;
+    input.readOnly = !!sendController;
     input.placeholder = block || '댓글 입력 (최대 500자)';
-    button.disabled = input.disabled || composing || !input.value.trim() || uncertainDraft(input.value);
+    button.disabled = input.disabled || input.readOnly || composing || !input.value.trim() || uncertainDraft(input.value);
+    const emoji = panel.querySelector('.live-emoji-toggle');
+    if (emoji) { emoji.disabled = input.disabled || input.readOnly || composing; if (emoji.disabled) panel.closeEmoji?.(); }
     button.textContent = sendController ? '전송 중' : '전송';
     const status = panel.querySelector('.live-comment-send-status');
     const result = report?.send;
@@ -299,6 +343,7 @@
     if (sendController || composing || writeBlock() || uncertainDraft(input.value)) return;
     const context = session, content = input.value.trim(), startedAt = performance.now();
     if (!content) return;
+    input.focus({preventScroll:true});
     const owner = sendController = new AbortController();
     activeAttempt = {roomId: context.roomId, token: context.token, sequence: context.sequence, content};
     report.send = {status: 'sending'}; ackId = null; ackAt = 0; show();
@@ -408,6 +453,7 @@
       });
       form.addEventListener('submit', event => { event.preventDefault(); void submitComment(input); });
       form.append(input, send); panel.append(scroll, text, form, sendStatus); stage.append(panel);
+      addEmojiPicker(panel,input,form);
     }
     const list = panel.querySelector('.live-comments-list');
     const wasFollowing = followLatest;

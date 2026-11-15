@@ -33,7 +33,7 @@ function create(el,relative){
  el.classList.add(drop?'glass-droplet':'glass-control');
  if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
+ const item={el,face,rail,drop,glass:null,interactive:null,settings:null,enhanced:null};faces.set(el,item);return item;
 }
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
@@ -41,13 +41,14 @@ function opticalSettings(item){
  const strength=rail ? .85 : el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  const brightness=menu?Math.min(.025,settings.opacity/100):settings.opacity/100;
+ const enhanced=!!settings.enhanced;
  return {
-  thickness:menu?Math.min(8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.35:settings.refraction*strength,
+  thickness:menu?Math.min(enhanced?14:8,settings.thickness):settings.thickness,refraction:menu?settings.refraction*(enhanced?.52:.35):settings.refraction*(enhanced?Math.min(.9,strength+.15):strength),
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
   tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba(193,239,222,'+brightness+')':el.classList.contains('glass-on-image')?'rgba(14,37,30,'+brightness+')':'rgba(255,255,255,'+brightness+')',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
   // the gloss preference adds to this baseline.
-  specular:menu||settings.specular>0,specularIntensity:menu?.10+settings.specular/400:settings.specular/100
+  specular:enhanced||menu||settings.specular>0,specularIntensity:enhanced?(menu?.28:.25)+settings.specular/400:menu?.10+settings.specular/400:settings.specular/100
  };
 }
 function sync(){
@@ -99,6 +100,8 @@ function sync(){
   if(prioritized&&!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
   if(!prioritized){releaseEngine(item);stopInteractive(item);continue;}
   if(failed.has(item.el))continue;
+  // The SVG filter's chromatic path is fixed at construction; rebuild when the experiment mode changes.
+  if(item.glass&&item.enhanced!==!!settings.enhanced)releaseEngine(item);
   if(item.glass&&item.settings===settings)continue;
   if(built++>=2){schedule();break;}
   const {el,face}=item;
@@ -106,10 +109,11 @@ function sync(){
    const options=opticalSettings(item);
    if(item.glass)item.glass.update(options);
    else{
-    item.glass=new module.LiquidGlass(face,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,chromaticAberration:0,mapPixelRatio:1,edges:false,respectReducedMotion:true,...options});
+    item.glass=new module.LiquidGlass(face,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',radius:'auto',applyRadius:false,chromaticAberration:settings.enhanced?.18:0,mapPixelRatio:1,edges:!!settings.enhanced,respectReducedMotion:true,...options});
     builds++;
    }
    item.settings=settings;
+   item.enhanced=!!settings.enhanced;
    el.dataset.controlOptics=item.glass.resolved.usesFallback?'basic':'engine';
   }catch{releaseEngine(item);failed.add(el);el.dataset.controlOptics='basic';}
  }

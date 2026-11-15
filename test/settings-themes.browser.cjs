@@ -6,8 +6,9 @@ async function show(p){await p.evaluate(()=>FrommGlowME.setRailOpen(true));await
 async function inside(p){await p.waitForFunction(()=>{const r=document.querySelector('#glassSettingsDialog').getBoundingClientRect();return r.x>=0&&r.y>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;},null,{timeout:3000});const box=await p.locator('#glassSettingsDialog').boundingBox(),view=p.viewportSize();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=view.width+1&&box.y+box.height<=view.height+1,'settings fit viewport');return box;}
 const contrast=(fg,bg)=>{const lum=rgb=>{const s=rgb.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});return s[0]*.2126+s[1]*.7152+s[2]*.0722;};const a=lum(fg),b=lum(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
 (async()=>{const s=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
+ const device={newContext:async options=>{const c=await browser.newContext(options);await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return c;}};
  for(const [width,height]of [[1440,900],[900,560],[390,844]]){
-  const {page:p,context,errors}=await open(browser,s.url,{width,height});
+  const {page:p,context,errors}=await open(device,s.url,{width,height});
   await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});await show(p);await inside(p);
   assert.equal(await p.locator('[role="tab"]').count(),4);
   for(const category of ['general','theme','glass','advanced']){
@@ -17,6 +18,18 @@ const contrast=(fg,bg)=>{const lum=rgb=>{const s=rgb.match(/[\d.]+/g).slice(0,3)
   }
   await p.locator('[data-settings-tab="theme"]').focus();await p.keyboard.press('ArrowRight');assert.equal(await p.locator('[data-settings-tab="glass"]').getAttribute('aria-selected'),'true','keyboard category navigation');
   const initial=await inside(p);await p.locator('[name="refraction"]').fill('52');await p.locator('[name="refraction"]').dispatchEvent('change');assert.equal(await p.evaluate(()=>FrommGlassSettings.value.refraction),52);assert.deepEqual(await inside(p),initial,'slider never drags dialog');
+  if(width===390){
+   await p.waitForFunction(()=>FrommGlass.count>0,null,{timeout:8000});
+   const scale=()=>p.evaluate(()=>{const face=document.querySelector('.meapri-control'),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'));});
+   await p.waitForFunction(()=>{const face=document.querySelector('.meapri-control'),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'))>0;},null,{timeout:8000});
+   const beforeScale=await scale();assert.ok(beforeScale>0,'mobile uses a real optical map');
+   await p.locator('#glassEnabled').uncheck();await p.waitForFunction(()=>FrommGlass.count===0,null,{timeout:3000});
+   assert.equal(await p.locator('.meapri-control').count(),0,'mobile switch releases optical resources');
+   await p.locator('#glassEnabled').check();await p.waitForFunction(()=>FrommGlass.count>0,null,{timeout:8000});
+   await p.locator('[name="refraction"]').fill('60');await p.locator('[name="refraction"]').dispatchEvent('change');
+   await p.waitForFunction(before=>{const face=document.querySelector('.meapri-control'),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'))>before;},beforeScale,{timeout:5000});
+   await p.locator('[name="refraction"]').fill('52');await p.locator('[name="refraction"]').dispatchEvent('change');
+  }
   if(width>700){
    const head=await p.locator('.glass-settings-head').boundingBox();await p.mouse.move(head.x+60,head.y+25);await p.mouse.down();await p.mouse.move(20,20,{steps:8});await p.mouse.up();const moved=await inside(p);assert.ok(Math.abs(moved.x-initial.x)>10,'titlebar moves panel');
    const again=await p.locator('.glass-settings-head').boundingBox();await p.mouse.move(again.x+60,again.y+25);await p.mouse.down();await p.mouse.move(width+300,height+300,{steps:8});await p.mouse.up();await inside(p);

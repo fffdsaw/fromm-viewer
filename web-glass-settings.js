@@ -45,9 +45,9 @@ export const glassPreferences=Object.freeze({
 window.FrommGlassSettings=glassPreferences;
 function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
- if(!values.enabled)return '기본 민트 화면을 사용합니다. 설정은 자동으로 저장됩니다.';
+ if(!values.enabled)return '유리 효과를 끕니다. 설정은 자동으로 저장됩니다.';
  if(['prefers-reduced-motion: reduce','prefers-reduced-transparency: reduce','forced-colors: active'].some(query=>matchMedia('('+query+')').matches))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
- return '선택 표시와 작은 조작부에 적용되며 자동으로 저장됩니다.';
+ return glassPC.matches?'선택 표시와 작은 조작부에 적용되며 자동으로 저장됩니다.':'모바일 기본 효과를 기준으로 강도를 조절하며 자동으로 저장됩니다.';
 }
 function renderControls(){
  if(!dialog)return;

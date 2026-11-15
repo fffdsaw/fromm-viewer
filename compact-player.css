@@ -32,7 +32,7 @@
 .small-player input:disabled{opacity:.55;cursor:default}
 .audio-player-overlay audio[hidden]{display:none!important}
 .gallery-audio-player{padding-top:14px}
-#timeline .chat-sound-bubble{background:#0e1a1b!important;border-color:#35574c!important;color:#fff}
+#timeline .chat-sound-bubble:has(.small-player){background:#0e1a1b!important;border-color:#35574c!important;color:#fff}
 #timeline .chat-sound-bubble .chat-audio-player.small-player{position:relative;display:block;min-width:0;padding-top:42px;--thumb-download-size:34px}
 #timeline .chat-sound-bubble .chat-audio-player.small-player>.media-actions{position:absolute;top:0;right:0;left:auto;display:flex;width:34px;height:34px;min-height:34px;margin:0;padding:0}
 #timeline .chat-sound-bubble .small-player .chat-audio-error{color:#ffccac}

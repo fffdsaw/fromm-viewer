@@ -7,7 +7,9 @@ const controls=[
  ['blur','흐림',0,6,.2,0,''],
  ['saturation','채도',80,150,1,108,'%'],
  ['opacity','유리 밝기',0,60,1,28,'%'],
- ['specular','광택',0,60,2,0,'%']
+ ['specular','광택',0,60,2,0,'%'],
+ ['chromatic','색수차 (고성능)',0,0.6,0.02,0.18,''],
+ ['mapPixelRatio','광학 맵 해상도 (고성능)',1,4,0.5,2,'×']
 ];
 const defaults=Object.freeze(Object.fromEntries([['enabled',true],['enhanced',false],...controls.map(([key,,,,,value])=>[key,value])]));
 function normalize(input={}){
@@ -47,7 +49,7 @@ function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
  if(!values.enabled)return '기본 민트 화면을 사용합니다. 설정은 자동으로 저장됩니다.';
  if(['prefers-reduced-motion: reduce','prefers-reduced-transparency: reduce','forced-colors: active'].some(query=>matchMedia('('+query+')').matches))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
- if(values.enhanced)return '강화 시험: 작은 버튼의 굴절·색수차·반사광을 높입니다. 동영상·저사양 보호는 유지됩니다.';
+ if(values.enhanced)return '고성능 실험: High 품질·색수차·모든 가시 컨트롤. 동영상 재생/저사양/8개 제한을 해제합니다. 끊김이 생기면 꺼 주세요.';
  return '선택 표시와 작은 조작부에 적용되며 자동으로 저장됩니다.';
 }
 function renderControls(){
@@ -55,6 +57,7 @@ function renderControls(){
  dialog.querySelector('#glassEnabled').checked=values.enabled;
  dialog.querySelector('#glassEnhanced').checked=values.enhanced;
  dialog.querySelector('fieldset').disabled=!values.enabled;
+ for(const input of dialog.querySelectorAll('[data-enhanced-only] input'))input.disabled=!values.enhanced||!values.enabled;
  for(const[key,,,,,,unit]of controls){
   const input=dialog.querySelector(`[name="${key}"]`);if(input.value!==String(values[key]))input.value=values[key];
   dialog.querySelector(`[data-value="${key}"]`).textContent=values[key]+unit;
@@ -79,8 +82,8 @@ export function mountGlassSettings(){
  dialog=document.createElement('dialog');dialog.id='glassSettingsDialog';dialog.setAttribute('aria-labelledby','glassSettingsTitle');dialog.setAttribute('aria-describedby','glassSettingsDescription');
  dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">설정</h2><p id="glassSettingsDescription">앱 설치와 화면 효과</p></div><button type="button" class="glass-settings-close" aria-label="설정 닫기">×</button></div>
  <div class="glass-settings-body"><section class="settings-install" aria-label="앱 설치"><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
- <label class="glass-settings-switch"><span>유리 질감 강화 (시험)</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnhanced" type="checkbox" role="switch"></span></label>
- <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset>
+ <label class="glass-settings-switch"><span>고성능 제한 해제 (시험)</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnhanced" type="checkbox" role="switch"></span></label>
+ <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"${['chromatic','mapPixelRatio'].includes(key)?' data-enhanced-only':''}><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset>
  <p class="glass-settings-note" role="status"></p></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
  document.body.append(dialog);placeInstall();
  trigger.onclick=()=>{if(!glassPC.matches||!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();if(!dialog.open)dialog.showModal();};

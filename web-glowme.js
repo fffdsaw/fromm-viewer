@@ -175,8 +175,22 @@
       const url=normalizeMediaUrl(host.profileUrlThumbnail||host.profileUrl||host.defaultProfileUrl||'');
       if(url){const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';img.onerror=()=>img.remove();img.src=url;avatar.append(img);}
       const text=document.createElement('span');text.className='rail-artist-name';text.textContent=name;button.replaceChildren(avatar,text);
-    });rooms.scrollTop=scroll;
+    });rooms.scrollTop=scroll;fitArtistRail();
   }
+  // Reserve room for up to eight unchanged 44px artist rows. On shorter PC
+  // windows, compact the navigation first; longer lists retain native scrolling.
+  function fitArtistRail(){
+    if(!mediaPC.matches||innerHeight<=600){sidebar.style.removeProperty('--rail-nav-height');return;}
+    const rooms=$('#rooms'),rows=[...rooms.querySelectorAll('.room')],buttons=[...nav.querySelectorAll('button')];
+    if(!rows.length||!buttons.length)return;
+    const roomCSS=getComputedStyle(rooms),navCSS=getComputedStyle(nav),count=Math.min(rows.length,8);
+    const needed=rows[0].getBoundingClientRect().height*count+(parseFloat(roomCSS.rowGap)||0)*(count-1)+parseFloat(roomCSS.paddingTop)+parseFloat(roomCSS.paddingBottom)+4;
+    const available=rooms.getBoundingClientRect().height+nav.getBoundingClientRect().height;
+    const height=Math.max(34,Math.min(42,(available-needed-(parseFloat(navCSS.rowGap)||0)*(buttons.length-1))/buttons.length));
+    const value=Math.floor(height)+'px';
+    if(sidebar.style.getPropertyValue('--rail-nav-height')!==value)sidebar.style.setProperty('--rail-nav-height',value);
+  }
+  new ResizeObserver(fitArtistRail).observe(artists);
   new MutationObserver(decorateRooms).observe($('#rooms'),{childList:true});decorateRooms();
   const installButton=document.createElement('button');installButton.type='button';installButton.id='installAppBtn';installButton.className='btn glowme-install';installButton.textContent='앱으로 설치';installButton.hidden=true;sidebar.append(installButton);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();promptEvent=event;installButton.hidden=appWindow;});

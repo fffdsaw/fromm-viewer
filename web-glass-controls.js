@@ -2,7 +2,7 @@
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=mobile-preferences-20261115';
-const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play,.mvc-button,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
+const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play,.chat-sound-download,.replay-play,.mvc-compact-controls .mvc-button,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
 const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
@@ -69,7 +69,7 @@ function sync(){
  // Selected and interacted controls win the bounded map and interaction budget.
  const priority=el=>{
   if(el.disabled||el.getAttribute('aria-disabled')==='true')return 0;
-  if(el===active||el===document.activeElement)return 100;
+  if(el===active||el===document.activeElement&&(!el.matches('.chat-audio-play,.chat-sound-download')||el.matches(':focus-visible')))return 100;
   if(el.matches('.glass-switch-thumb'))return 90;
   if(el.id==='conversationNew')return 85;
   if(el.matches(selected)||el===pointer)return 80;

@@ -1,7 +1,7 @@
 name: Conversation receive send and persistence
 on:
   pull_request:
-    paths: ['test/settings-themes.browser.cjs', 'test/uiux-cards-sidebar.browser.cjs', 'web-themes.js', 'themes.css', 'settings-panel.css', 'web-glass-settings.js', 'index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'test/chat-history-progressive.browser.cjs', 'test/chat-history-scale.browser.cjs', 'test/my-replies.browser.cjs', 'test/search-calendar-panel.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
+    paths: ['test/uiux-review.browser.cjs', 'test/settings-themes.browser.cjs', 'test/uiux-cards-sidebar.browser.cjs', 'web-themes.js', 'themes.css', 'settings-panel.css', 'web-glass-settings.js', 'index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'test/chat-history-progressive.browser.cjs', 'test/chat-history-scale.browser.cjs', 'test/my-replies.browser.cjs', 'test/search-calendar-panel.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
 permissions:
   contents: read
 jobs:
@@ -60,6 +60,7 @@ jobs:
         run: |
           node test/settings-themes.browser.cjs
           node test/uiux-cards-sidebar.browser.cjs
+          node test/uiux-review.browser.cjs
       - name: Cache-aware refresh and reader anchor
         env:
           PLAYWRIGHT_CHANNEL: ${{ matrix.channel }}

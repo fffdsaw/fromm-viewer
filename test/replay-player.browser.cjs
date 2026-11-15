@@ -52,6 +52,8 @@ async function measure(page, label) {
     assert.equal(geometry.objectFit, 'contain');
     assert.equal(geometry.controls, false);
     assert.equal(await page.locator(".modern-video-controls").count(),1);
+    assert.equal(await page.locator('.modern-video-controls .control-glass-surface').count(),0,'expanded Replay controls keep plain icons');
+    assert.equal(await page.locator('.modern-video-controls .mvc-button.glass-control').count(),0);
     assert.ok(geometry.currentTime > 0, `${label}: decoded video advances`);
     assert.equal(geometry.paused, false);
   }

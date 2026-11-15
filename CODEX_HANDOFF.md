@@ -2,6 +2,32 @@
 
 Last reviewed: 2026-11-15 (Asia/Seoul)
 
+## Screenshot/video review follow-up — five display regressions
+
+This is the latest implementation checkpoint and supersedes the older gallery/audio and sidebar descriptions below. Continue the same feature branch and draft PR #123. Starting local/remote/PR HEAD was `1c7bb5019180d37549abb6b12cfc09c729de1dc5`, with a clean checkout; remote refs and the existing PR discussion were inspected before editing. Main remains `fe010e5dc263ac45ef44171c90722f185c433af5`.
+
+- Gallery voice cards restore the production headphone cover and native bottom audio controls. The original image/video cover ratio, lazy loading, repair, selection and download behavior remain. Conversation voice bubbles retain their custom waveform and Meapri controls; gallery-only custom styling/enhancement was removed at the gallery call site.
+- Expanded Replay/Channel MVC buttons are excluded from the optics selector. Compact video controls and other existing small controls retain their effects. Both actual expanded-player suites assert that no glass faces/buttons are mounted.
+- Desktop navigation fits up to eight unchanged 44px artist rows by adapting navigation row height within 34–42px, keeping avatars at 32px. Shorter/mobile viewports and longer lists remain scrollable. The old test only checked the last avatar after scrolling; the new regression checks the initial eight-row layout at 1536×838 and 1440×900, collapsed and expanded. Fractional feedback from clientHeight rounding caused an intermediate unstable layout; rect measurements and integer row heights fixed it before final verification.
+- Sidebar artist separator is removed for every palette; themes no longer apply a new border color to the sidebar. The existing borderless outer panel and disabled seam pseudo-element remain intact.
+- Conversation voice buttons paint their resting glass material before asynchronous optics initialization. Resting faces suppress nearby-pointer illumination. Mouse focus on a voice button no longer retains the interaction-only engine after pointer leave, while keyboard focus remains supported. The eight-engine budget is unchanged.
+
+### Actual verification for this follow-up
+
+Environment: Node **24.22.1**, Playwright **1.62.1**, Linux Chromium **151.0.7922.34**; synthetic data/local WAV/MP4 only.
+
+- `node --test test/*.test.cjs native-live/test/*.test.cjs`: **326 pass / 0 fail / 1 platform-specific skip**.
+- Passed: `uiux-review`, `uiux-cards-sidebar`, `settings-themes`, `compact-video-player`, `conversation-audio`, `glass-controls`, `header-glass`, `chat-download-selection`, `replay-player`, `channel-player`, `player-settings`, `rail-focus`, `rail-startup` browser suites.
+- New review suite covers gallery cover ratios/native light controls at 1536×838, 1440×900, 1280×720, 900×560, 390×844; eight-artist initial display and short-viewport scrolling; every theme; a genuine reload with the optics module held back; identical resting material before/after initialization and press/leave restoration for play and download.
+- The new suite fails on archived baseline `1c7bb50`: at 1536×838 the final avatar extends to y=865 while its scroll area ends at y=814. It passes on the revised implementation.
+- Native gallery playback/pause/seek/volume/mute are exercised against decoded WAV. The WAV fixture now supports byte ranges for native seeking. Conversation playback separately verifies that icon replacement preserves its actual decorative lens. Existing compact video, selection/download and expanded player behavior tests are retained.
+- JS syntax and `git -c core.whitespace=cr-at-eol diff --check` passed. Browser evidence is synthetic and stored locally outside the repository; user attachments were not committed.
+- Conversation CI now runs the new regression on Linux Chromium and Windows Chrome/Edge. Remote results must be checked against the newly pushed SHA; historical 10/10 results below belong to older SHAs.
+
+Physical Mac/Windows devices and Safari remain unverified locally. The existing Mac layout is covered through viewport checks only. No production/Preview deployment, main merge, cache clearing or experimental-repository change is authorized or performed. Keep PR #123 draft.
+
+Resume: inspect `git status --short --branch`, `git rev-parse HEAD`, and `git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114`; compare with PR #123 HEAD and its current checks. Install the CI browser dependencies if needed and run `node test/uiux-review.browser.cjs` plus the affected suites listed above.
+
 ## Final integration checkpoint — 2026-11-15 (Asia/Seoul)
 
 **This section supersedes all earlier in-progress status notes below; those notes are preserved as history.**

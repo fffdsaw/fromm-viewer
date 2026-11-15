@@ -1191,6 +1191,10 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet).glass-pressed:not(:disabled)>.control-glass-surface{transform:perspective(700px) rotateX(calc(var(--lg-tilt-x,0deg)*.5)) rotateY(calc(var(--lg-tilt-y,0deg)*.5)) scale(1.04,.88);transition-duration:90ms;box-shadow:inset 0 2px 3px #1c543b30,inset 0 -1px 0 #fff9}
  .pc-control-glass.glowme-phase3.pc-layout .control-glass-surface::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:var(--lg-illum,0);background:radial-gradient(circle at calc(var(--lg-illum-x,.5)*100%) calc(var(--lg-illum-y,.5)*100%),#ffffff8a,transparent 72%)}
  .pc-control-glass.glowme-phase3.pc-layout :is(.control-glass-surface,.rail-pointer-light)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:var(--lg-glow,0);border:1px solid transparent;background:radial-gradient(100px circle at calc(var(--lg-pointer-x,.5)*100%) calc(var(--lg-pointer-y,.5)*100%),#fff,transparent 70%) border-box;mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0) border-box;mask-composite:exclude;transition:opacity 180ms ease}
+ /* PointerField samples nearby pointers too. A resting voice button must not
+    retain that illumination, including after a mouse click leaves it focused. */
+ .pc-control-glass.glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download):not(:hover):not(:focus-visible)>.control-glass-surface::before,
+ .pc-control-glass.glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download):not(:hover):not(:focus-visible)>.control-glass-surface::after{opacity:0}
  .pc-control-glass.glowme-phase3.pc-layout :is(.glowme-nav button.active,.room.active).glass-droplet{background:transparent!important}
  .pc-control-glass.glowme-phase3.pc-layout .glass-droplet>.control-glass-surface{border-radius:999px;background:linear-gradient(140deg,#e9fffba1,#9bdcc74d);border-color:#ffffffd1;box-shadow:inset 0 2px 2px #fff9,inset 0 -2px 3px #36745c29,0 2px 5px #194b3821}
  .pc-control-glass.glowme-phase3.pc-layout .room.glass-droplet{border-radius:999px}
@@ -1361,6 +1365,23 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #rooms .room .rail-unread[hidden]{display:none!important}
 
 /* Keep the last avatar and its selection rim inside the scrollable artist area. */
-.glowme-phase3 #sidebar .rail-artists{overflow:hidden;padding-bottom:4px}
+.glowme-phase3 #sidebar .rail-artists{overflow:hidden;padding-bottom:4px;border-top:0}
 .glowme-phase3 #rooms{padding-block:5px 9px;scroll-padding-block:5px 9px;box-sizing:border-box}
 .glowme-phase3 #rooms .room{flex-shrink:0}
+@media(min-width:701px) and (min-height:601px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout .glowme-nav button{height:var(--rail-nav-height,42px);min-height:var(--rail-nav-height,42px);padding-block:4px}
+}
+/* Match the resting optical face before observers/imports initialize. Moving
+   the material to its decorative span then leaves the button's color intact. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download){
+  --voice-glass-face:linear-gradient(145deg,#ffffff52,#102c223d);
+  --voice-glass-rim:#ffffff9c;
+  --voice-glass-shadow:inset 0 1px 1px #fffd,inset 0 -1px 2px #173e3047,0 2px 6px #0002;
+ }
+ .glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download):not(.glass-control),
+ .pc-control-glass.glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download)>.control-glass-surface{
+  background:var(--voice-glass-face);border:1px solid var(--voice-glass-rim);box-shadow:var(--voice-glass-shadow);
+ }
+ .glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download):not(.glass-control){text-shadow:0 1px 3px #000b}
+}

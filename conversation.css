@@ -87,15 +87,6 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .chat-audio-player input:disabled{opacity:.55;cursor:default}
 .chat-audio-player :focus-visible{outline:2px solid #087e83;outline-offset:2px}
 .chat-audio-error{display:block;font-size:12px;color:#8c4d3a;margin-top:5px;overflow-wrap:anywhere}
-.media-card .audio-thumb.audio-player-ready .audio-icon{display:none}
-.media-card .audio-thumb.audio-player-ready .audio-player-overlay{position:relative;left:auto;right:auto;bottom:auto;width:min(94%,360px)}
-.media-card .gallery-audio-player .chat-audio-controls{flex-wrap:nowrap;gap:4px}
-.media-card .gallery-audio-player .chat-audio-waveform{flex:1 1 36px;max-width:64px;gap:2px}
-.media-card .gallery-audio-player .chat-audio-time{flex:none;font-size:10px;line-height:1.2}
-.media-card .gallery-audio-player .chat-audio-play{width:34px;height:34px}
-.media-card .gallery-audio-player .chat-audio-play svg{width:19px;height:19px}
-.media-card .gallery-audio-player .chat-audio-volume{gap:0}
-.media-card .gallery-audio-player .chat-audio-level{width:42px}
 
 .conversation-pending-bubble .emoticon-img{display:block;width:160px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain}
 
@@ -132,6 +123,11 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 .pc-control-glass.glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download.glass-control{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:hover{
  background:rgba(28,34,44,.94)!important;border-color:rgba(255,255,255,.3)!important
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme-phase3.pc-layout #timeline .chat-sound-bubble .media-actions a.chat-sound-download:not(.glass-control){
+  background:var(--voice-glass-face)!important;border:1px solid var(--voice-glass-rim)!important;box-shadow:var(--voice-glass-shadow)!important;
+ }
 }
 #timeline .chat-sound-bubble .media-actions a.chat-sound-download:focus-visible{
  outline:2px solid #147e69;outline-offset:3px

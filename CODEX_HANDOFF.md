@@ -2,6 +2,15 @@
 
 Last reviewed: 2026-11-15 (Asia/Seoul)
 
+## Production deployment confirmed — 2026-11-15 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #126](https://github.com/fffdsaw/fromm-viewer/pull/126) is merged; production main commit is `93cdd01bb74777811d5469e6d6a62ceea4d5ce46`, containing implementation/test head `409e0c8e3953a6b1c065b54c9b567f861e673410` and the earlier stabilization history.
+- All **10/10 PR checks passed**, including Linux Chromium and Windows Chrome/Edge conversation/download checks, media bulk save, and the complete Channel browser suite (17m36s).
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43726544799) and [public-file verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43726544708) both succeeded for the production merge SHA.
+- An independent public check matched **14 HTML/JS/CSS assets byte-for-byte**, including shared controls, sidebar, conversation/cache and download code. A fresh anonymous Chromium session showed the login form, loaded the shared player helper, and raised **zero page errors**. No user session or private data was used.
+- Local synthetic/evidence receipts: `/workspace/integration-results/production-126-verified.json` and `/workspace/integration-results/production-126-login.png`. Network checks in this environment use the configured proxy (`NODE_USE_ENV_PROXY=1` for Node fetch); no credentials are recorded.
+- The existing feature branch was fast-forwarded to production and then saved with this documentation-only checkpoint. Runtime changes are all in main; the checkpoint itself does not require a new UI deployment. Historical in-progress sections below are superseded.
+
 ## Approved shared small-player layout and complete artist rows — 2026-11-15
 
 This checkpoint supersedes the earlier gallery-native/waveform/eight-profile notes below. PR #123 was merged into production main at `3e8259489a06fcb9ed36d3af8507ba9ccf38780b` after explicit user approval. This follow-up starts from that commit (`git merge --ff-only origin/main`) on the preserved branch `codex/fromm-viewer-uiux-stabilization-20261114`. The approved scope explicitly includes **both video and audio**, in media cards and conversations. The replacement PR targets `main`; retrieve its current URL/head/checks with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`.

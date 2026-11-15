@@ -133,8 +133,9 @@ async function selectionSize(page) {
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       assert.ok(await page.evaluate(() => window.singleDownloaded));
       await page.evaluate(() => {state.filter = 'video'; render();});
-      const videoBox=await page.locator('#timeline video').boundingBox();
-      await page.locator('#timeline video').click({position: {x: 100, y: videoBox.height-20}});
+      await page.locator('#timeline video').scrollIntoViewIfNeeded();
+      await page.locator('.mvc-compact-controls [data-compact="sound"]').first().click();
+      assert.equal(await page.locator('#timeline video').first().evaluate(v=>v.muted),true,'compact playback control handles the click');
       assert.equal(await page.evaluate(() => state.selected.size), 0);
       console.log(`${mobile ? 'Mobile' : 'Desktop'}: media/type selection, chat download policy and controls PASS`);
       await page.evaluate(mobile => {

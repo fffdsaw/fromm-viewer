@@ -127,9 +127,10 @@ async function shot(page, name) {
         assert.equal(await page.locator('#lightboxVideo').getAttribute('src'), null);
         await video.click({position: {x: 60, y: 30}}); await settled(page);
         assert.equal((await selection(page)).includes(id), !beforeVideo.includes(id), 'video picture single click selects');
-        const selectedAfterClick = await selection(page), rect = await video.boundingBox();
-        await video.click({position: {x: 25, y: rect.height - 20}});
-        assert.deepEqual(await selection(page), selectedAfterClick, 'native video controls do not select');
+        const selectedAfterClick = await selection(page);
+        await card.locator('.mvc-compact-controls [data-compact="sound"]').click();
+        assert.equal(await video.evaluate(v=>v.muted),true,'compact mute controls video');
+        assert.deepEqual(await selection(page), selectedAfterClick, 'compact video controls do not select');
       }
       if (!mobile) {
         await page.evaluate(() => {state.filter = 'image'; state.selected.clear(); state.selectionAnchor = null; syncLiveToolbarControls(); render(); scrollTo(0, 0);});

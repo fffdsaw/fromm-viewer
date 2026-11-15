@@ -1,13 +1,15 @@
 /* Glow ME presentation shell: existing routes, data and media engines stay authoritative. */
 (() => {
   'use strict';
+  // Match the saved switch before the asynchronous optics module can load.
+  try{document.documentElement.classList.toggle('glass-disabled',JSON.parse(localStorage.getItem('fromm.pcGlass.v1')||'null')?.enabled===false);}catch{}
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),panel=$('#chatToolsPanel'),toggle=$('#sidebarToggleBtn'),search=$('#chatToolsBtn');
   if(!sidebar||!panel||!toggle||!search)return;
   const installed=matchMedia('(display-mode: standalone)'),wide=matchMedia('(min-width:1200px)'),hover=matchMedia('(hover:hover) and (pointer:fine)');
   let appWindow=installed.matches,expanded=false,closeTimer=0,promptEvent=null,headerKey='',headerMessages=null,profileKey='',searchWasOpen=false,railMotionUntil=0,keyboardFocus=false;
   document.documentElement.classList.add('glowme','glowme-phase3');
   const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
-  const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M9 18V5l11-2v13 M9 9l11-2 M9 18a3 2 0 1 1-3-2h3 M20 16a3 2 0 1 1-3-2h3',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
+  const paths={all:'M5 5h14v10H9l-4 4V5Z',media:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',image:'M4 4h16v16H4z M4 16l5-6 4 4 3-3 4 5 M15 8h.01',video:'M3 4h18v16H3z M10 8l6 4-6 4V8Z',sound:'M3 10v4 M7 6v12 M12 3v18 M17 7v10 M21 10v4',vote:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',live:'M3 6h12v12H3z M15 10l6-3v10l-6-3',replay:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M10 8l6 4-6 4V8Z',channel:'M3 10l9-7 9 7v11h-7v-7h-4v7H3V10Z'};
   const labels={all:'전체 대화',media:'미디어',image:'사진',video:'영상',sound:'음성',vote:'투표',live:'LIVE',replay:'Replay',channel:'Channel'};
   const brand=sidebar.querySelector('.brand');
   brand.replaceChildren(Object.assign(document.createElement('img'),{src:'assets/glowme/logo.png',alt:'Fromm Viewer',width:210,height:116}));
@@ -175,8 +177,22 @@
       const url=normalizeMediaUrl(host.profileUrlThumbnail||host.profileUrl||host.defaultProfileUrl||'');
       if(url){const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';img.onerror=()=>img.remove();img.src=url;avatar.append(img);}
       const text=document.createElement('span');text.className='rail-artist-name';text.textContent=name;button.replaceChildren(avatar,text);
-    });rooms.scrollTop=scroll;
+    });rooms.scrollTop=scroll;fitArtistRail();
   }
+  // Reserve room for up to eight unchanged 44px artist rows. On shorter PC
+  // windows, compact the navigation first; longer lists retain native scrolling.
+  function fitArtistRail(){
+    if(!mediaPC.matches||innerHeight<=600){sidebar.style.removeProperty('--rail-nav-height');return;}
+    const rooms=$('#rooms'),rows=[...rooms.querySelectorAll('.room')],buttons=[...nav.querySelectorAll('button')];
+    if(!rows.length||!buttons.length)return;
+    const roomCSS=getComputedStyle(rooms),navCSS=getComputedStyle(nav),count=Math.min(rows.length,8);
+    const needed=rows[0].getBoundingClientRect().height*count+(parseFloat(roomCSS.rowGap)||0)*(count-1)+parseFloat(roomCSS.paddingTop)+parseFloat(roomCSS.paddingBottom)+4;
+    const available=rooms.getBoundingClientRect().height+nav.getBoundingClientRect().height;
+    const height=Math.max(34,Math.min(42,(available-needed-(parseFloat(navCSS.rowGap)||0)*(buttons.length-1))/buttons.length));
+    const value=Math.floor(height)+'px';
+    if(sidebar.style.getPropertyValue('--rail-nav-height')!==value)sidebar.style.setProperty('--rail-nav-height',value);
+  }
+  new ResizeObserver(fitArtistRail).observe(artists);
   new MutationObserver(decorateRooms).observe($('#rooms'),{childList:true});decorateRooms();
   const installButton=document.createElement('button');installButton.type='button';installButton.id='installAppBtn';installButton.className='btn glowme-install';installButton.textContent='앱으로 설치';installButton.hidden=true;sidebar.append(installButton);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();promptEvent=event;installButton.hidden=appWindow;});

@@ -22,6 +22,34 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#chatToolsBtn').click();await page.locator('#myRepliesBtn').uncheck();
   await page.locator('#chatSearchInput').fill('합성 대화 1800');await page.waitForFunction(()=>state.chatMatchKey==='m1800');assert.equal(await page.evaluate(()=>chatMatches().length),1);assert.ok(await page.locator('.msg').count()>1,'search also keeps full context');
   await page.locator('#chatSearchInput').fill('검색 결과 없는 문장');await page.waitForFunction(()=>state.chatQuery==='검색 결과 없는 문장');assert.equal(await page.evaluate(()=>chatMatches().length),0);assert.ok(await page.locator('.msg').count()>1,'zero matches do not hide the conversation');
+  if(viewport.width===1440){
+   await page.evaluate(()=>{
+    const count=50000,base=Date.now()-count*1000;
+    const messages=Array.from({length:count},(_,i)=>({messageId:'large-'+i,type:'text',userType:'star',userId:'synthetic-artist',content:'대량 합성 대화 '+i,createdAt:base+i*1000}));
+    const quote={messageId:'large-25000',userId:'mine',content:'인용 원문'};
+    messages[count-2].mentionedMessage=quote;messages[count-1].mentionedMessage=quote;
+    Object.assign(replyIdentity,{context:replyAuthContext(),status:'ready',id:'mine'});
+    state.messages=messages;state.chatMessages=messages;state.chatQuery='';state.onlyMyReplies=false;state.chatMatchKey='';state.chatHistoryComplete=true;state.chatHistoryLoading=false;state.chatAutoTopPending=false;state.filter='all';
+    renderChatWindow(filteredMessages(),count-1);
+   });
+   await page.evaluate(()=>setOnlyMyReplies(true));await page.waitForFunction(()=>state.chatMatchKey==='large-49998');
+   await page.locator('#chatMatchNext').click();await page.waitForFunction(()=>state.chatMatchKey==='large-49999');
+   await page.locator('.msg[data-message-id="large-49999"] .reply-quote').click();
+   await page.waitForFunction(()=>document.querySelector('.msg[data-message-id="large-25000"]')?.classList.contains('reply-target-flash'));
+   const largeJump=await page.evaluate(()=>({start:state.chatWindowStart,rendered:state.infiniteRendered,dom:document.querySelectorAll('#timeline .msg').length,target:!!document.querySelector('.msg[data-message-id="large-25000"]')}));
+   assert.equal(largeJump.target,true);assert.ok(largeJump.rendered-largeJump.start<=600,JSON.stringify(largeJump));assert.ok(largeJump.dom<=600,JSON.stringify(largeJump));
+   assert.equal(await page.evaluate(()=>state.onlyMyReplies),true,'quote jump preserves the reply-navigation mode');
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply arrows stay visible at the quoted original');
+   await page.locator('#chatMatchPrev').click();await page.waitForFunction(()=>state.chatMatchKey==='large-49998');
+   assert.equal(await page.locator('#chatMatchNav').isVisible(),true,'reply arrows still navigate after the quote jump');
+   let missingOriginalAlert='';page.once('dialog',dialog=>{missingOriginalAlert=dialog.message();void dialog.accept();});
+   await page.evaluate(()=>scrollToOriginalMessage('missing-synthetic-original'));
+   assert.match(missingOriginalAlert,/불러온 대화에 원문이 없습니다/);assert.ok(await page.locator('#timeline .msg').count()<=600,'missing original keeps the rendered list bounded');
+   await page.locator('#chatToolsBtn').click();assert.equal(await page.locator('#dateCalendar').isVisible(),true,'calendar remains responsive after an unavailable original');
+   await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();});
+   await page.locator('#dateNextMonth').click();assert.equal(await page.evaluate(()=>state.calendarMonth.getMonth()),10,'next-month button works after quote navigation');
+   await page.locator('#datePrevMonth').click();assert.equal(await page.evaluate(()=>state.calendarMonth.getMonth()),9,'previous-month button works after quote navigation');
+  }
   assert.deepEqual(errors,[]);await context.close();console.log(`${viewport.width}: always full conversation, first reply/search targets and delayed anchor PASS`);
  }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

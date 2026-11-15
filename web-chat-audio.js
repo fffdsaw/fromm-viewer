@@ -10,16 +10,17 @@
   return minutes>=60?`${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`:`${minutes}:${String(seconds%60).padStart(2,'0')}`;
  };
  const icon=(kind)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({play:'<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>',pause:'<path d="M8 5v14M16 5v14" />',volume:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',muted:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 6 6m0-6-6 6"/>'}[kind])+'</svg>';
+ function paintIcon(button,markup){const old=button.querySelector(':scope > svg');if(old)old.outerHTML=markup;else button.insertAdjacentHTML('beforeend',markup);}
  function paint(item){
   const {audio,play,time,seek,mute,volume,root}=item,known=Number.isFinite(item.duration)&&item.duration>0;
   const current=Math.max(0,Math.min(item.position||0,known?item.duration:Infinity)),playing=!audio.paused&&!audio.ended;
   const display=`${clock(current)} / ${known?clock(item.duration):'—:—'}`;
   if(time.textContent!==display)time.textContent=display;
-  if(play.dataset.playing!==String(playing)){play.dataset.playing=String(playing);play.innerHTML=icon(playing?'pause':'play');play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}
+  if(play.dataset.playing!==String(playing)){play.dataset.playing=String(playing);paintIcon(play,icon(playing?'pause':'play'));play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}
   seek.disabled=!known;seek.max=known?String(item.duration):'1';seek.value=String(current);
   seek.setAttribute('aria-valuetext',display);seek.style.setProperty('--audio-progress',(known?current/item.duration*100:0)+'%');
   const silent=audio.muted||audio.volume===0;
-  if(mute.dataset.silent!==String(silent)){mute.dataset.silent=String(silent);mute.innerHTML=icon(silent?'muted':'volume');mute.setAttribute('aria-label',silent?'음성 음소거 해제':'음성 음소거');}
+  if(mute.dataset.silent!==String(silent)){mute.dataset.silent=String(silent);paintIcon(mute,icon(silent?'muted':'volume'));mute.setAttribute('aria-label',silent?'음성 음소거 해제':'음성 음소거');}
   mute.setAttribute('aria-pressed',String(silent));volume.value=String(audio.volume);
   root.dataset.playing=String(playing);
  }
@@ -59,16 +60,17 @@
  }
  function watchRemoval(){
   if(removalObserver)return;
-  const timeline=document.querySelector('#timeline');if(!timeline)return;
+  const timeline=document.body;if(!timeline)return;
   removalObserver=new MutationObserver(records=>{
-   if(cleanupQueued||!records.some(record=>[...record.removedNodes].some(node=>node.nodeType===1&&(node.matches('.chat-audio-player')||node.querySelector('.chat-audio-player')))))return;
+   if(cleanupQueued||!records.some(record=>[...record.removedNodes].some(node=>node.nodeType===1&&(node.matches('audio,.chat-audio-player')||node.querySelector('audio,.chat-audio-player')))))return;
    cleanupQueued=true;queueMicrotask(()=>{cleanupQueued=false;for(const item of items.values())if(!item.root.isConnected)dispose(item);pump();});
   });removalObserver.observe(timeline,{childList:true,subtree:true});
  }
- function enhance(audio){
+ function enhance(audio,{gallery=false}={}){
   if(!audio||items.has(audio))return;
-  const root=document.createElement('div');root.className='chat-audio-player';root.setAttribute('role','group');root.setAttribute('aria-label','음성 플레이어');
-  root.innerHTML='<div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"></button><output class="chat-audio-time" aria-label="음성 재생 시간" aria-live="off">0:00 / —:—</output><div class="chat-audio-volume"><button class="chat-audio-mute" type="button" aria-label="음성 음소거"></button><input class="chat-audio-level" type="range" min="0" max="1" step="0.05" value="1" aria-label="음성 음량"></div></div><input class="chat-audio-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="음성 재생 위치" disabled><span class="chat-audio-error" role="status" hidden></span>';
+  const root=document.createElement('div');root.className='chat-audio-player'+(gallery?' gallery-audio-player':'');root.setAttribute('role','group');root.setAttribute('aria-label','음성 플레이어');
+  const bars=[5,9,13,7,16,11,6,14,8,17,10,6,13,8,15,5,11,16,7,12,5];
+  root.innerHTML='<div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"></button><div class="chat-audio-waveform" aria-hidden="true">'+bars.map((height,index)=>'<i style="--wave-height:'+height+'px;--wave-delay:'+index*24+'ms"></i>').join('')+'</div><output class="chat-audio-time" aria-label="음성 재생 시간" aria-live="off">0:00 / —:—</output><div class="chat-audio-volume"><button class="chat-audio-mute" type="button" aria-label="음성 음소거"></button><input class="chat-audio-level" type="range" min="0" max="1" step="0.05" value="1" aria-label="음성 음량"></div></div><input class="chat-audio-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="음성 재생 위치" disabled><span class="chat-audio-error" role="status" hidden></span>';
   audio.after(root);audio.controls=false;audio.hidden=true;
   // Preserve the existing download link/handler, but place it beside the seek
   // track rather than leaving a mostly empty row below the whole player.

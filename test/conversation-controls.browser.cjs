@@ -48,6 +48,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await outgoingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(219, 243, 236)','outgoing mint bubble remains intact');
 
   assert.equal(await bubble.locator('.chat-audio-player').isVisible(),true);assert.equal(await bubble.locator('audio').getAttribute('controls'),null);
+  assert.equal(await bubble.locator('.chat-audio-waveform').getAttribute('aria-hidden'),'true');assert.equal(await bubble.locator('.chat-audio-waveform i').count(),21,'voice waveform is a fixed decorative pattern, with no audio analysis');
   const footer=page.locator('[data-message-id="sound"] .chat-message-foot');
   const filename=(await download.getAttribute('aria-label')).replace(/ 다운로드$/,'');
   assert.ok(filename.length>0);assert.equal(await bubble.locator('.meta').count(),0,'voice sender label removed');

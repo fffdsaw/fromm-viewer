@@ -1,7 +1,7 @@
 'use strict';
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 const {serve,open}=require('./helpers/phase3-fixture.cjs');
-(async()=>{const server=await serve(),browser=await chromium.launch(),shots=process.env.CALENDAR_PANEL_SCREENSHOT_DIR;try{
+(async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})}),shots=process.env.CALENDAR_PANEL_SCREENSHOT_DIR;try{
  for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:980,height:2200},{width:844,height:390},{width:1440,height:900,installed:true}]){
   const {page,context,errors}=await open(browser,server.url,viewport);
   if(!viewport.installed)await page.locator('#chatToolsBtn').click();

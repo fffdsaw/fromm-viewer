@@ -4,6 +4,7 @@
   if (!timeline) return;
   let mounted = null, suspended = false, shuttingDown = false;
   const icon = path => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
+  const paintIcon=(button,markup)=>{const old=button.querySelector(':scope > svg');if(old)old.outerHTML=markup;else button.insertAdjacentHTML('beforeend',markup);};
   const paths = {left:'M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7',right:'M21 11a9 9 0 1 0-2.7 6.4M21 4v7h-7',full:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',sound:'M11 4 6 8H3v8h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',muted:'M11 4 6 8H3v8h3l5 4zM16 9l5 6m0-6-5 6',settings:'M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1zM9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0'};
   const button = (name,label) => `<button type="button" class="mvc-button" data-live-control="${name}" aria-label="${label}" title="${label}">${icon(paths[name])}</button>`;
   function live() { return state.filter === 'live' && state.live.centerMode === 'live'; }
@@ -56,7 +57,7 @@
       const showError=error()&&(!presentation()?.ready||state.live.status==='error'||state.live.client?.connectionState==='DISCONNECTED');if(errorLabel.hidden===showError)errorLabel.hidden=!showError;
       const status=String(loading);if(stage.getAttribute('aria-busy')!==status)stage.setAttribute('aria-busy',status);
       const web=!!grid.querySelector('video')&&!document.getElementById('nativeLiveVideo');$('.live-web-volume').hidden=!web;$('.mvc-volume').hidden=!web;
-      if(web){const sound=$('[data-live-control="sound"]'),mode=state.live.audioBlocked?'blocked':muted?'muted':'sound';if(sound.dataset.mode!==mode){sound.dataset.mode=mode;sound.innerHTML=icon(muted?paths.muted:paths.sound);sound.setAttribute('aria-label',mode==='blocked'?'LIVE 소리 재생':muted?'음소거 해제':'음소거');sound.title=sound.getAttribute('aria-label');sound.setAttribute('aria-pressed',String(muted));}if(volume!==1||muted)applyVolume();}
+      if(web){const sound=$('[data-live-control="sound"]'),mode=state.live.audioBlocked?'blocked':muted?'muted':'sound';if(sound.dataset.mode!==mode){sound.dataset.mode=mode;paintIcon(sound,icon(muted?paths.muted:paths.sound));sound.setAttribute('aria-label',mode==='blocked'?'LIVE 소리 재생':muted?'음소거 해제':'음소거');sound.title=sound.getAttribute('aria-label');sound.setAttribute('aria-pressed',String(muted));}if(volume!==1||muted)applyVolume();}
       if(loading || previouslyLoading!==loading)reveal();previouslyLoading=loading;
     };
     const full = async () => {try{if(document.fullscreenElement===stage)await document.exitFullscreen();else await stage.requestFullscreen();}catch{liveStatusText('전체 화면을 열지 못했습니다. 브라우저의 전체 화면 지원과 허용 설정을 확인해주세요.',true);}reveal();};

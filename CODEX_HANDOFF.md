@@ -1,5 +1,18 @@
 # Fromm Viewer — cross-account handoff
 
+## Isolated Liquid Glass optical-source research (2026-11-15)
+
+- **Branch**: `experiment/liquid-glass-optics-research-20261115`; based on unchanged PR #123 head `ad7c01c8cd3c7ef27acc28f5e7029d328379e01e`. Separate from experimental PR #124.
+- User decision: do not spend effort reverse-engineering closed Apple native binaries. Analyze open Meapri and ybouane math, improve Fromm Viewer's existing native backdrop engine, and use Mac-native Apple Glass only as a visual reference.
+- New standalone synthetic study: `experiments/liquid-glass-optics/optical-profile.js` (no DOM/privacy access), `experiments/liquid-glass-optics/index.html` (Canvas 2D visual lab), `test/optical-profile.test.cjs` (7 deterministic geometry tests).
+- **Key verified source detail**: Meapri already computes rounded SDF + lens normals + SVG displacement maps; ybouane uses WebGL beveled surface normals/dual-surface optics. Meapri's bundled `effectiveChromatic()` requires `quality:'high'`, and SVG chromatic splitting requires effective color value >0.12. The new code is exploratory *optical geometry*, not an integrated engine replacement, not a performance benchmark.
+- Research and next steps: `docs/LIQUID_GLASS_OPTICS_RESEARCH.md`. Prototype new edge/normal falloff in a rebuilt Meapri fork with proper license attribution, opt-in on 3 synthetic Fromm controls, then compare p95 frame times and visuals before proposing any production change.
+- Verified at edit time: connector readback and JavaScript parse; 7 geometry tests executed in an isolated JS harness (7 passed). The actual repository Node test run and browser screenshot/performance tests **remain to be run**. Preserve exact verification distinctions.
+- Nothing merged to `main` or PR #123/#124; no deployed website or real private chat data touched.
+
+---
+
+
 Last reviewed: 2026-11-14 (Asia/Seoul)
 
 ## Current integrated UI/UX stabilization track — 2026-11-14

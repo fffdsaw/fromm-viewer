@@ -54,17 +54,16 @@ async function clickRailSettings(p){
    await p.locator('[name="mapPixelRatio"]').fill('2.5');
    await p.locator('[name="mapPixelRatio"]').dispatchEvent('change');
    await p.waitForFunction(selector=>{
-    const face=document.querySelector(selector),id=/url\\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
+    const face=document.querySelector(selector),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
     return !!filter && filter.querySelectorAll('feDisplacementMap').length>=3 && FrommControlGlass.snapshot.enhanced && FrommControlGlass.snapshot.limit===null;
    },navFace,{timeout:10000});
    const experimental=await p.evaluate(()=>FrommGlassSettings.value);
    assert.equal(experimental.enhanced,true);assert.equal(experimental.chromatic,0.26);assert.equal(experimental.mapPixelRatio,2.5);
    await p.locator('#glassEnhanced').uncheck();
    await p.waitForFunction(selector=>{
-    const face=document.querySelector(selector),id=/url\\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
+    const face=document.querySelector(selector),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
     return !!filter&&filter.querySelectorAll('feDisplacementMap').length===1&&!FrommControlGlass.snapshot.enhanced&&FrommControlGlass.snapshot.limit===8;
    },navFace,{timeout:10000});
-   await p.locator('[name="chromatic"]').fill('0.18').catch(()=>{});
    await p.evaluate(()=>FrommGlassSettings.set({chromatic:0.18,mapPixelRatio:2},{immediate:true}));
   }
   const strongerScale=await scale(p);

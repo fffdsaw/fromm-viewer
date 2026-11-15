@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## PR #128 production deployment confirmed — 2026-11-16 (Asia/Seoul)
+
+- [PR #128](https://github.com/fffdsaw/fromm-viewer/pull/128) merged into main at `0a7cac67ba75599ef7e56dbe007fe94799c55390`, including final implementation head `be9e40bf47ee2d838bf7c188c8d512f5f979b27f` and preserved stabilization history. All **10/10 final-head PR checks passed**, including Linux Chromium and Windows Chrome/Edge.
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43740458224) and [public-file verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43740458824) both succeeded. Independent public verification matched **21 HTML/JS/CSS files byte-for-byte**, fresh anonymous login/shared player loaded, Classic persisted after reload with correct meta theme-color, **zero page errors**.
+- This includes palette-matched actions/selection/dividers/seek/volume/scrollbars; transparent normal navigation and clearer moving lens; and the user-requested restoration of the original conversation waveform voice card. Gallery compact video/audio stay icon-only. No real session/comment, user cache mutation or preview publication was used.
+- Receipts: `/workspace/replay-actions-20261116/production-128-verified.json`, `production-128-login.png`; restored card screenshot `restored/audio-ready-1440.png`. Local checks and remaining physical Mac/Safari limitation are recorded below.
+- Feature branch fast-forwarded to production; this documentation-only checkpoint records completion and needs no further UI deployment. Runtime code is fully in main. The pending-check/deployment instructions below are historical and superseded.
+
 ## Complete palette synchronization and clearer navigation lens — 2026-11-16
 
 This completes the previously approved theme-synchronization deployment. The user reported missed Replay/Channel actions, selection toolbar backgrounds/save state, header dividers, seek/volume tracks, scrollbars and separate sidebar menu pills, and requested a more visible moving lens. Continue the preserved feature branch from `c8798fdbe145d0badbff540f3ee6d155a17517a3`; production main was `2c380a99229e791b61045758f50089550fbca1b0`. Remote refs/open PRs were checked; there was no open PR for this branch.

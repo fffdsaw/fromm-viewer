@@ -2,6 +2,15 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## PR #127 production deployment confirmed — 2026-11-16 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #127](https://github.com/fffdsaw/fromm-viewer/pull/127) is merged into main at `2c380a99229e791b61045758f50089550fbca1b0`, containing final implementation/test head `e1c163a6cab20cf366192273a4427f93c7022d0b` and all earlier stabilization history.
+- All **10/10 final PR checks passed**, including Linux Chromium, Windows Chrome/Edge and the full Channel browser suite (16m30s). Classic login text/placeholder colors fixed the initial hosted-browser contrast failure; no assertion was relaxed.
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43734855406) and [public-file verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43734855717) both succeeded for this merge SHA.
+- An independent public check matched **21 HTML/JS/CSS assets byte-for-byte**, including new themes/composer/optics and existing conversation/cache/download/PiP modules. A fresh anonymous Chromium session loaded the login/shared helper; Classic persisted after reload and matched meta theme-color `#171a21`; **zero page errors**. No real user session or comment was used.
+- Local receipts are `/workspace/review-20261116/production-127-verified.json` and `/workspace/review-20261116/production-127-login.png`. Network checks use `NODE_USE_ENV_PROXY=1`; no credentials are recorded.
+- Feature branch was fast-forwarded to production, then saved with this documentation-only checkpoint. All runtime changes are already in main; this receipt does not require another UI deployment. The in-progress notes below are historical and superseded.
+
 ## Icon-only compact controls, LIVE composer, sidebar and palette follow-up — 2026-11-16
 
 This is the current checkpoint. Work continues on `codex/fromm-viewer-uiux-stabilization-20261114` from clean `07612090f54b814158b5b1f7dade8ebfaca7cf60` (production `93cdd01bb74777811d5469e6d6a62ceea4d5ce46` plus the prior deployment receipt). Remote refs/open PRs were checked before editing; main remained unchanged. The user first requested a summary, corrected the menu-effect scope, then authorized implementation and added the theme follow-up. The user subsequently explicitly approved merging/deploying PR #127. Pre-merge CI passed 9/10 checks; Channel found low-contrast Classic login placeholders on the hosted browser. Login fields now explicitly use palette surfaces/text/placeholders, with direct typed-text and placeholder AA assertions in addition to axe. The strengthened settings/theme suite and all seven login-startup scenarios pass locally after the fix. Read final checks against the follow-up fix SHA before merging. Find the replacement PR with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`.

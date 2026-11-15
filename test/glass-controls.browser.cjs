@@ -138,14 +138,13 @@ async function press(p,selector){
   const surfaces=await p.locator('.glass-control').evaluateAll(es=>es.map(e=>{const a=e.getBoundingClientRect(),b=e.querySelector('.control-glass-surface').getBoundingClientRect();return b.width<=a.width+1&&b.height<=a.height+1;}));assert.ok(surfaces.every(Boolean),'each lens fits only its own control');
   // Text/icons remain unfiltered even with a pane lens and nested button lens.
   assert.equal(await p.locator('#artistTitle').evaluate(e=>getComputedStyle(e).filter),'none');assert.equal(await p.locator('.glowme-nav button').first().evaluate(e=>getComputedStyle(e).filter),'none');
-  // Voice play is icon-only; the separate download retains its existing engine.
+  // Voice controls use the same real LiquidGlass engine as the other small controls.
   await p.evaluate(()=>{
    const host=document.createElement('div');host.className='msg';host.style.cssText='position:fixed;left:360px;top:360px;z-index:1500';
-   host.innerHTML='<div class="bubble chat-sound-bubble"><div class="chat-audio-controls small-player"><button class="chat-audio-play small-player-button" type="button" aria-label="음성 재생"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div><div class="media-actions"><a class="chat-sound-download" href="#" aria-label="음성 다운로드"><span class="download-feedback-icon"></span></a></div></div>';
+   host.innerHTML='<div class="bubble chat-sound-bubble"><div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div><div class="media-actions"><a class="chat-sound-download" href="#" aria-label="음성 다운로드"><span class="download-feedback-icon"></span></a></div></div>';
    document.body.append(host);window.chatGlassFixture=host;
   });
-  await p.locator('.chat-audio-play').hover();await p.waitForTimeout(200);assert.equal(await p.locator('.chat-audio-play .control-glass-surface').count(),0,'voice play has no optical face');
-  for(const selector of ['.chat-sound-download']){
+  for(const selector of ['.chat-audio-play','.chat-sound-download']){
    await lens(p,selector);
    const target=p.locator(selector).first();
    assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' initializes the LiquidGlass engine');

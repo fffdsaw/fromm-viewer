@@ -4,7 +4,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
 const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
 const out=process.env.UIUX_RESULTS_DIR;
 async function shot(page,name){if(out){fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,name+'.png')});}}
-const voiceSelectors=['.chat-sound-download'];
+const voiceSelectors=['.chat-audio-play','.chat-sound-download'];
 async function voiceLook(page){return page.evaluate(selectors=>selectors.map(selector=>{
  const el=document.querySelector(selector),face=el.querySelector('.control-glass-surface')||el,css=getComputedStyle(face);
  return {background:css.backgroundImage,color:css.backgroundColor,border:css.borderColor,shadow:css.boxShadow};
@@ -59,12 +59,12 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
     assert.deepEqual(await voiceLook(p),before,'disabled voice buttons stay flat after asynchronous setup');
     assert.equal(await p.locator('.chat-audio-play .control-glass-surface,.chat-sound-download .control-glass-surface').count(),0);
     await p.evaluate(()=>FrommGlassSettings.set({enabled:true},{immediate:true}));
-    await p.waitForFunction(()=>document.querySelector('.chat-sound-download .control-glass-surface'));assert.equal(await p.locator('.chat-audio-play .control-glass-surface').count(),0,'switching glass on keeps playback icon-only');
+    await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface'));
     assert.ok((await voiceLook(p)).every(x=>x.background.includes('linear-gradient')),'switching back on restores the optical material');
     assert.deepEqual(errors,[]);continue;
    }
    assert.ok(before.every(x=>x.background.includes('linear-gradient')&&x.shadow!=='none'),'voice buttons have their final resting material on first paint');
-   release();await p.waitForFunction(()=>document.querySelector('.chat-sound-download .control-glass-surface'));assert.equal(await p.locator('.chat-audio-play .control-glass-surface').count(),0,'delayed optics never attach to voice playback');await p.waitForTimeout(400);
+   release();await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface')&&document.querySelector('.chat-sound-download .control-glass-surface'));await p.waitForTimeout(400);
    assert.deepEqual(await voiceLook(p),before,'asynchronous setup preserves both resting colors and rims');
    for(const selector of voiceSelectors){
     const target=p.locator(selector),rest=await voiceLook(p),box=await target.boundingBox();

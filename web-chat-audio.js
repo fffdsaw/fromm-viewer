@@ -1,4 +1,4 @@
-/* Compact audio controls over the existing HTMLAudioElement and signed media URL.
+/* Chat-only controls over the existing HTMLAudioElement and signed media URL.
  * Visible metadata probes are bounded; detached/offscreen paused media release buffers. */
 (() => {
  'use strict';
@@ -12,17 +12,19 @@
  const icon=(kind)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({play:'<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>',pause:'<path d="M8 5v14M16 5v14" />',volume:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',muted:'<path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 6 6m0-6-6 6"/>'}[kind])+'</svg>';
  function paintIcon(button,markup){const old=button.querySelector(':scope > svg');if(old)old.outerHTML=markup;else button.insertAdjacentHTML('beforeend',markup);}
  function paint(item){
-  const {audio,play,time,seek,mute,volume,root}=item,known=Number.isFinite(item.duration)&&item.duration>0;
+  const {audio,play,time,seek,mute,volume,root}=item,known=Number.isFinite(item.duration)&&item.duration>0,compact=root.classList.contains('small-player');
   const current=Math.max(0,Math.min(item.position||0,known?item.duration:Infinity)),playing=!audio.paused&&!audio.ended;
   const display=`${clock(current)} / ${known?clock(item.duration):'—:—'}`;
   if(time.textContent!==display)time.textContent=display;
   if(play.dataset.playing!==String(playing)){play.dataset.playing=String(playing);paintIcon(play,icon(playing?'pause':'play'));play.setAttribute('aria-label',playing?'음성 일시정지':'음성 재생');}
   seek.disabled=!known;seek.max=known?String(item.duration):'1';seek.value=String(current);
   seek.setAttribute('aria-valuetext',display);seek.style.setProperty('--audio-progress',(known?current/item.duration*100:0)+'%');
-  window.FrommSmallPlayer.progress(seek,known?current/item.duration*100:0);
+  if(compact)window.FrommSmallPlayer.progress(seek,known?current/item.duration*100:0);
   const silent=audio.muted||audio.volume===0;
-  if(mute.dataset.silent!==String(silent)){mute.dataset.silent=String(silent);paintIcon(mute,icon(silent?'muted':'volume'));}
-  volume.value=String(silent?0:audio.volume);window.FrommSmallPlayer.progress(volume,silent?0:audio.volume*100);
+  if(mute.dataset.silent!==String(silent)){mute.dataset.silent=String(silent);paintIcon(mute,icon(silent?'muted':'volume'));if(!compact)mute.setAttribute('aria-label',silent?'음성 음소거 해제':'음성 음소거');}
+  if(!compact)mute.setAttribute('aria-pressed',String(silent));
+  volume.value=String(compact&&silent?0:audio.volume);
+  if(compact)window.FrommSmallPlayer.progress(volume,silent?0:audio.volume*100);
   root.dataset.playing=String(playing);
  }
  function finish(item){
@@ -68,11 +70,13 @@
   });removalObserver.observe(timeline,{childList:true,subtree:true});
  }
  function enhance(audio,{gallery=false}={}){
-  if(!audio||items.has(audio)||!window.FrommSmallPlayer)return;
-  const root=document.createElement('div');root.className='chat-audio-player small-player'+(gallery?' gallery-audio-player':'');root.setAttribute('role','group');root.setAttribute('aria-label','음성 플레이어');
-  root.innerHTML=window.FrommSmallPlayer.markup({audio:true})+'<span class="chat-audio-error" role="status" hidden></span>';
+  if(!audio||items.has(audio)||gallery&&!window.FrommSmallPlayer)return;
+  const root=document.createElement('div');root.className='chat-audio-player'+(gallery?' small-player gallery-audio-player':'');root.setAttribute('role','group');root.setAttribute('aria-label','음성 플레이어');
+  const bars=[5,9,13,7,16,11,6,14,8,17,10,6,13,8,15,5,11,16,7,12,5];
+  root.innerHTML=gallery?window.FrommSmallPlayer.markup({audio:true})+'<span class="chat-audio-error" role="status" hidden></span>':'<div class="chat-audio-controls"><button class="chat-audio-play" type="button" aria-label="음성 재생"></button><div class="chat-audio-waveform" aria-hidden="true">'+bars.map((height,index)=>'<i style="--wave-height:'+height+'px;--wave-delay:'+index*24+'ms"></i>').join('')+'</div><output class="chat-audio-time" aria-label="음성 재생 시간" aria-live="off">0:00 / —:—</output><div class="chat-audio-volume"><button class="chat-audio-mute" type="button" aria-label="음성 음소거"></button><input class="chat-audio-level" type="range" min="0" max="1" step="0.05" value="1" aria-label="음성 음량"></div></div><input class="chat-audio-seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="음성 재생 위치" disabled><span class="chat-audio-error" role="status" hidden></span>';
   audio.after(root);audio.controls=false;audio.hidden=true;
-  // Keep the existing download link, byte progress and handler in this card.
+  // Preserve the existing download link/handler, but place it beside the seek
+  // track rather than leaving a mostly empty row below the whole player.
   const actions=audio.closest('.media-wrap')?.querySelector('.media-actions');
   if(actions?.querySelector('.chat-sound-download'))root.append(actions);
   audio.closest('.bubble')?.classList.add('chat-sound-bubble');
@@ -80,7 +84,7 @@
   items.set(audio,item);roots.set(root,item);watchRemoval();
   const on=(el,name,handler)=>el.addEventListener(name,handler,{signal:item.events.signal});
   const notice=text=>{item.error.textContent=text;item.error.hidden=!text;};
-  window.FrommSmallPlayer.bindVolume(root,{signal:item.events.signal});
+  if(gallery)window.FrommSmallPlayer.bindVolume(root,{signal:item.events.signal});
   on(root,'click',event=>event.stopPropagation());
   on(root,'keydown',event=>{if(event.key.toLowerCase()==='m'&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&event.target.tagName!=='INPUT'){event.preventDefault();audio.muted=!audio.muted;paint(item);}});
   on(audio,'loadedmetadata',()=>{
@@ -110,6 +114,7 @@
    const next={ArrowLeft:item.position-5,ArrowDown:item.position-5,ArrowRight:item.position+5,ArrowUp:item.position+5,PageDown:item.position-10,PageUp:item.position+10,Home:0,End:item.duration}[event.key];
    if(next===undefined)return;event.preventDefault();seekTo(next);
   });
+  if(!gallery)on(item.mute,'click',()=>{audio.muted=!audio.muted;paint(item);});
   on(item.volume,'input',()=>{audio.volume=Number(item.volume.value);audio.muted=false;paint(item);});
   paint(item);visibility?.observe(root);
  }

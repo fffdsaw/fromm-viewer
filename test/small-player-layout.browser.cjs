@@ -71,12 +71,17 @@ async function volumeUI(p,root,media,{touch=false}={}){
     await volumeUI(p,root,media,{touch:width<700});
    }
    await p.evaluate(()=>{state.filter='all';render();FrommViewState.cancel();scrollTo(0,0);});
-   const voice=p.locator('.chat-sound-bubble .small-player');await voice.scrollIntoViewIfNeeded();await rowGeometry(voice);await volumeUI(p,voice,voice.locator('..').locator('audio'),{touch:width<700});
-   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await voice.locator('.small-player-seek').fill('6');assert.ok(await paintedThemeFill(p,voice.locator('.small-player-seek')),theme+' retains the colored seek track');assert.equal(await voice.locator('.small-player-time').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');}await p.evaluate(()=>FrommThemes.set('glow'));}
-   assert.equal(await voice.locator('.chat-audio-waveform').count(),0,'conversation audio uses the same seek layout');
+   const voice=p.locator('.chat-sound-bubble .chat-audio-player');await voice.scrollIntoViewIfNeeded();
+   assert.equal(await voice.locator('.chat-audio-waveform i').count(),21,'conversation keeps its original decorative waveform');
+   assert.equal(await voice.locator('.small-player-row').count(),0,'gallery compact row does not replace the conversation player');
+   const vg=await voice.evaluate(el=>{const r=selector=>el.querySelector(selector).getBoundingClientRect().toJSON();return{time:r('output'),seek:r('.chat-audio-seek'),download:r('.chat-sound-download'),level:r('.chat-audio-level'),width:el.clientWidth,scroll:el.scrollWidth};});
+   assert.ok(vg.seek.top>=vg.time.bottom&&vg.download.left>=vg.seek.right-1,'conversation seek and download share the lower row');
+   assert.ok(vg.level.width>vg.level.height&&vg.scroll<=vg.width+1,'original horizontal volume fits the conversation card');
+   await voice.locator('.chat-audio-level').fill('0.4');assert.ok(Math.abs(await voice.locator('..').locator('audio').evaluate(el=>el.volume)-.4)<.01);
+   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);const colors=await voice.evaluate(el=>({time:getComputedStyle(el.querySelector('output')).color,fill:getComputedStyle(el.querySelector('.chat-audio-seek')).backgroundImage,background:getComputedStyle(el.closest('.bubble')).backgroundColor}));assert.ok(colors.fill.includes('linear-gradient'),theme+' retains the conversation seek track');assert.notEqual(colors.time,colors.background,theme+' keeps conversation time visible');}await p.evaluate(()=>FrommThemes.set('glow'));}
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
    if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,'unified-small-'+width+'.png')});}
-   await context.close();console.log(`${width}x${height}: ${count} profiles/complete rows, gallery video/audio and conversation audio share layout, real play/seek/volume/mute and popup PASS`);
+   await context.close();console.log(`${width}x${height}: ${count} profiles/complete rows, gallery video/audio layout and restored conversation waveform, real play/seek/volume/mute and popup PASS`);
   }
  }finally{await b.close();await s.close();fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fromm Viewer | Liquid Glass optical study</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,sans-serif;color:#193c34;background:#f4faf7}
+*{box-sizing:border-box}body{margin:0;padding:clamp(16px,4vw,48px)}main{max-width:1060px;margin:auto}
+h1{font-size:clamp(22px,3vw,32px);letter-spacing:-.025em;margin:0 0 8px}
+p{line-height:1.55;color:#506d63;margin:0 0 18px}.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.panel{min-width:0;background:white;border:1px solid #cee6dc;border-radius:18px;padding:12px}
+.panel h2{font-size:15px;margin:0 0 10px}
+canvas{width:100%;height:auto;display:block;border-radius:12px;background:#dfefe8}
+.controls{display:flex;flex-wrap:wrap;gap:18px;margin:18px 0;padding:18px;border:1px solid #cee6dc;background:white;border-radius:18px}
+label{min-width:155px;flex:1;display:grid;gap:7px;font-size:14px;font-weight:600}
+label output{font-weight:400;color:#356b5a}input{width:100%;accent-color:#16a683}
+small{display:block;margin-top:16px;line-height:1.55;color:#637d74}
+@media(max-width:740px){.panels{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Liquid Glass 광학 실험 01</h1>
+<p>유리 가장자리의 곡면·굴절·색수차를 분리해 확인하는 <strong>합성 배경 전용 CPU 미리보기</strong>입니다. 오른쪽은 새 광학 계산식의 시각화이며, Meapri 실물 렌더러나 애플 엔진이 아닙니다.</p>
+<div class="panels">
+ <section class="panel"><h2>굴절 없는 동일 배경</h2><canvas id="original" width="560" height="320" aria-label="합성 배경 이미지"></canvas></section>
+ <section class="panel"><h2>곡면 법선 기반 실험 효과</h2><canvas id="modified" width="560" height="320" aria-label="굴절과 색수차를 적용한 합성 배경"></canvas></section>
+</div>
+<div class="controls">
+ <label>굴절 <output id="refractionOut">24</output><input id="refraction" type="range" min="0" max="80" value="24" step="1"></label>
+ <label>색수차 <output id="chromaticOut">0.18</output><input id="chromatic" type="range" min="0" max="0.6" value="0.18" step="0.02"></label>
+ <label>볼록한 두께 <output id="depthOut">20</output><input id="depth" type="range" min="4" max="32" value="20" step="1"></label>
+ <label>효과가 나타나는 가장자리 폭 <output id="edgeWidthOut">1.0</output><input id="edgeWidth" type="range" min="0.3" max="2.4" value="1" step="0.1"></label>
+</div>
+<small>실제 사용자 채팅·사진·영상은 사용하지 않습니다. Canvas 2D로 픽셀을 계산하므로 이 화면의 FPS는 Fromm Viewer에 적용했을 때의 GPU 성능을 의미하지 않습니다. 시험 중인 다른 PR #124와도 독립되어 있습니다.</small>
+</main>
+<script src="./optical-profile.js"></script>
+<script>
+'use strict';
+const W=560,H=320;
+const canvasA=document.querySelector('#original'),canvasB=document.querySelector('#modified');
+const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d',{willReadFrequently:true});
+function background(){
+ const gradient=ctxA.createLinearGradient(0,0,W,H);
+ gradient.addColorStop(0,'#ddfff0');gradient.addColorStop(.46,'#b3edeb');gradient.addColorStop(1,'#abdefd');
+ ctxA.fillStyle=gradient;ctxA.fillRect(0,0,W,H);
+ for(let x=0;x<W;x+=26){
+  ctxA.fillStyle=x%52===0?'#46a9aa44':'#fbfffe6e';
+  ctxA.fillRect(x,0,12,H);
+ }
+ for(let y=0;y<H;y+=32){
+  ctxA.fillStyle='#16685822';ctxA.fillRect(0,y,W,2);
+ }
+ ctxA.fillStyle='#1c645a';ctxA.font='bold 42px system-ui';
+ ctxA.fillText('GLOW ME',54,160);ctxA.fillText('Liquid Glass',235,238);
+ ctxA.font='17px system-ui';ctxA.fillText('Synthetic optics / test scene',58,66);
+}
+background();
+const base=ctxA.getImageData(0,0,W,H);
+const sampleColor=(x,y,channel)=>{
+ const xx=Math.min(W-1,Math.max(0,Math.round(x))),yy=Math.min(H-1,Math.max(0,Math.round(y)));
+ return base.data[(yy*W+xx)*4+channel];
+};
+const lx=116,ly=113,lw=328,lh=94;
+function paint(){
+ const refraction=Number(document.querySelector('#refraction').value);
+ const chromatic=Number(document.querySelector('#chromatic').value);
+ const depth=Number(document.querySelector('#depth').value);
+ const edgeWidth=Number(document.querySelector('#edgeWidth').value);
+ for(const [id,v]of Object.entries({refraction,chromatic,depth,edgeWidth}))
+  document.querySelector('#'+id+'Out').textContent=String(v);
+ const img=ctxB.createImageData(W,H);img.data.set(base.data);
+ const config={width:lw,height:lh,radius:46,depth,edgeWidth,refraction,chromatic};
+ for(let y=ly;y<ly+lh;y++)for(let x=lx;x<lx+lw;x++){
+  const p=GlassOptics.sample(x-lx+.5,y-ly+.5,config);
+  if(!p)continue;
+  const i=(y*W+x)*4;
+  const sx=x+p.shiftX,sy=y+p.shiftY;
+  const rim=p.rim;
+  const highlight=Math.min(0.25,rim*0.11+p.fresnel*.12);
+  img.data[i]=Math.min(255,sampleColor(sx+p.colorX,sy+p.colorY,0)*(1-highlight)+255*highlight);
+  img.data[i+1]=Math.min(255,sampleColor(sx,sy,1)*(1-highlight)+255*highlight);
+  img.data[i+2]=Math.min(255,sampleColor(sx-p.colorX,sy-p.colorY,2)*(1-highlight)+255*highlight);
+ }
+ ctxB.putImageData(img,0,0);
+ ctxB.strokeStyle='#ffffffb8';ctxB.lineWidth=1.8;
+ ctxB.beginPath();ctxB.roundRect(lx+.5,ly+.5,lw-1,lh-1,46);ctxB.stroke();
+}
+for(const e of document.querySelectorAll('input'))e.addEventListener('input',paint);
+paint();
+</script>
+</body>
+</html>

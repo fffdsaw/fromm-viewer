@@ -9,6 +9,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  try{
   const {page,context,errors}=await open(browser,server.url,{login:true});
   let feedCalls=0,historyRequests=[],serverNew=null,galleryNew=null,partialBase=0;
+ let releasePartial;const partialHistoryGate=new Promise(resolve=>releasePartial=resolve);
   const answer=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)}).catch(()=>{});
   await page.route('**/*',async route=>{
    let url=new URL(route.request().url());if(url.pathname==='/__fromm_proxy')url=new URL(url.searchParams.get('url'));
@@ -27,6 +28,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
     }
     return answer(route,{success:true,data:{messages:[]}});
    }
+   // Partial-cache visibility is asserted before releasing older history.
+   // Fast background fill must not erase that observable intermediate state.
+   if(host==='refresh-partial-host')await partialHistoryGate;
    historyRequests.push({host,end,limit});
    if(host==='refresh-partial-host'){
     if(end<=partialBase-5000)return answer(route,{success:true,data:{messages:[]}});
@@ -86,6 +90,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   });
   await page.waitForFunction(()=>state.room?.hostChatRoomId==='refresh-partial-host'&&state.messages.length===20&&!state.chatHistoryComplete,null,{timeout:5000});
   await page.locator('#scanBtn').click();
+  releasePartial();
   await page.waitForFunction(()=>state.room?.hostChatRoomId==='refresh-partial-host'&&state.chatHistoryComplete&&state.messages.length===25,null,{timeout:5000});
   assert.equal(historyRequests.filter(request=>request.host==='refresh-partial-host').length,2,'partial refresh requests the missing cursor range and its terminal page');
   assert.ok(historyRequests.find(request=>request.host==='refresh-partial-host').end<partialBase,'partial refresh resumes from its cached older boundary');

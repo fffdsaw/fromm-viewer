@@ -12,7 +12,8 @@
   full:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>'
  };
  const icon=path=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
- const button=(name,label)=>`<button class="mvc-button" data-compact="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name])}</button>`;
+ const button=(name,label)=>`<button class="mvc-button" data-compact="${name}" type="button" aria-label="${label}" title="${label}">${icon(icons[name]||icons.volume)}</button>`;
+ const paintIcon=(button,markup)=>{const old=button.querySelector(':scope > svg');if(old)old.outerHTML=markup;else button.insertAdjacentHTML('beforeend',markup);};
  const protectedVideo=video=>video.id==='lightboxVideo'||!!video.closest('.modern-video-stage,.live-player-stage,.live-stage,.replay-page-stage,.channel-player-stage');
  const format=value=>{
   if(!Number.isFinite(value)||value<0)return '—:—';
@@ -51,9 +52,9 @@
    seek.setAttribute('aria-valuetext',label);seek.style.setProperty('--played',`${valid?Math.min(100,Number(seek.value)/duration*100):0}%`);
    $('.mvc-time').textContent=label;
    const playing=!video.paused&&!video.ended;
-   play.innerHTML=icon(playing?icons.pause:icons.play);play.setAttribute('aria-label',playing?'일시정지':'재생');play.title=playing?'일시정지':'재생';
+   if(play.dataset.icon!==String(playing)){play.dataset.icon=String(playing);paintIcon(play,icon(playing?icons.pause:icons.play));}play.setAttribute('aria-label',playing?'일시정지':'재생');play.title=playing?'일시정지':'재생';
    const muted=video.muted||video.volume===0;
-   sound.innerHTML=icon(muted?icons.muted:icons.volume);sound.setAttribute('aria-label',muted?'음량 켜기':'음소거');sound.title=muted?'음량 켜기':'음소거';sound.setAttribute('aria-pressed',String(muted));sound.setAttribute('aria-expanded',String(volume.classList.contains('expanded')));
+   if(sound.dataset.icon!==String(muted)){sound.dataset.icon=String(muted);paintIcon(sound,icon(muted?icons.muted:icons.volume));}sound.setAttribute('aria-label',muted?'음량 켜기':'음소거');sound.title=muted?'음량 켜기':'음소거';sound.setAttribute('aria-pressed',String(muted));sound.setAttribute('aria-expanded',String(volume.classList.contains('expanded')));
    volume.value=String(video.muted?0:video.volume);
    controls.dataset.playing=String(playing);
   };

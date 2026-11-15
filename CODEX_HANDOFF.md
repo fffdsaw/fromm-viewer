@@ -48,6 +48,13 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Paired OFF/ON synthetic glass samples: gallery p95 16.70/16.73ms, expanded rail 16.70/16.80ms, video 16.70/16.80ms. Gallery main-thread sample median 182.8/541.1ms: glass costs additional CPU and is not free. Video samples had 1/88 vs 3/88 dropped frames; short emulated samples do not establish device performance. Max sampled JS heap 4.28MiB, not total process/GPU memory. Eight-map budget and zero optical maps while video plays remained enforced. See report for exact limits.
 - Settings/theme and card suites passed again; screenshots visually reviewed. Current all-13 implementation is complete against the scoped local fixtures. **Exact-head whole-branch Actions remain the final acceptance gate**. On pushed code `e54ee9be1da067200f5cfd0e794c36a65429278d`, runs: Channel 43679020720, Conversation 43679020715, Video 43679020707, Media 43679020705 (in progress at this checkpoint). A later final record will identify completed CI rather than claiming these have passed prematurely.
 
+### Integration follow-up — CI synchronization and persistent lenses
+
+- Exact-code `e54ee9b`/`4362cc8` Channel CI reached an old mobile install test that clicked the now-hidden former sidebar button directly. Updated `glowme.browser.cjs` to open General settings and still assert the real install prompt invocation; its PWA/cache/axe checks passed locally.
+- Windows Chrome/Edge on `e54ee9b` timed out at refresh test line 87 while waiting for the transient 20-row partial state. Added a fixture-only gate on older history until the 20 cached rows are visible and the refresh button is clicked. This also ensures the fixture's `partialBase` has been assigned before producing server rows. All original exact message/count/cursor/cache-preservation assertions remain. Local gated refresh passed; Windows reruns pending. No cache production code was changed to mask a test timing issue.
+- Real icon changes previously rewrote button `innerHTML`, removing its optical face. Audio, compact, expanded and LIVE controls now replace only their direct SVG glyph; compact also avoids redundant SVG updates on timeupdate. Actual-engine audio and compact tests assert the *same lens node* survives play/pause and seek/time/volume changes. Local compact/fullscreen, audio (all four sizes), LIVE PiP and full Node/native suites passed; assets re-versioned.
+- Final integrated CI is still pending after these follow-ups. Do not interpret earlier local passes as a passing latest-head Actions run.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

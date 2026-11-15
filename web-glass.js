@@ -1,5 +1,5 @@
-import './web-glass-controls.js?v=phase2-controls-hover-20261114';
-import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=rail-top-settings-20261110';
+import './web-glass-controls.js?v=uiux-settings-20261115';
+import {glassPC,mountGlassSettings} from './web-glass-settings.js?v=uiux-settings-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));

@@ -41,6 +41,13 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 - Phase 1 regression reruns passed: complete/partial refresh, simulated 503/cache preservation, cache restore/merge/dedup (zero historical requests), reader anchor **0.00px** delta on conflict-flush dock resize, latest-follow after tab return at 1440/900 PWA/390.
 - All 13 items are now implemented with the scoped synthetic/browser checks above; **final integrated CI and broad regressions are pending**, so this is not a release approval. Real API, physical mobile and Safari remain unverified.
 
+### Integration validation checkpoint
+
+- Added [the consolidated Korean report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile synthetic screenshots, and raw paired glass-performance JSON. Node 24.19.0 / Playwright 1.62.1 / Chromium 151.0.7922.34.
+- Final local unit/native repeat: **326 passed, 0 failed, 1 platform-specific skipped**. Actual compact fullscreen enter/exit (not merely button presence) passed. Repeated full glass-controls suite passed all sizes/fallbacks after the settings singleton/version change.
+- Paired OFF/ON synthetic glass samples: gallery p95 16.70/16.73ms, expanded rail 16.70/16.80ms, video 16.70/16.80ms. Gallery main-thread sample median 182.8/541.1ms: glass costs additional CPU and is not free. Video samples had 1/88 vs 3/88 dropped frames; short emulated samples do not establish device performance. Max sampled JS heap 4.28MiB, not total process/GPU memory. Eight-map budget and zero optical maps while video plays remained enforced. See report for exact limits.
+- Settings/theme and card suites passed again; screenshots visually reviewed. Current all-13 implementation is complete against the scoped local fixtures. **Exact-head whole-branch Actions remain the final acceptance gate**. On pushed code `e54ee9be1da067200f5cfd0e794c36a65429278d`, runs: Channel 43679020720, Conversation 43679020715, Video 43679020707, Media 43679020705 (in progress at this checkpoint). A later final record will identify completed CI rather than claiming these have passed prematurely.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

@@ -1,15 +1,14 @@
 # Fromm Viewer — cross-account handoff
 
-## Independent Meapri optics A/B trial (2026-11-15)
+## Independent Meapri unrestricted optics A/B trial (2026-11-15)
 
-- **This is an isolated, opt-in trial** on `experiment/meapri-optics-ab-20261115`, Draft PR #124: https://github.com/fffdsaw/fromm-viewer/pull/124
-- Base checkpoint is the unchanged PR #123 head `ad7c01c8cd3c7ef27acc28f5e7029d328379e01e`, not `main`. Original PR #123 and production are untouched.
-- `web-glass-settings.js` adds a PC "유리 질감 강화 (시험)" toggle, default OFF, stored in `fromm.pcGlass.v1`; `web-glass-controls.js` enhances only small optical controls if enabled.
-- Enhanced values: chromaticAberration 0.18, edges enabled, menu refraction multiplier 0.52 (previously 0.35), menu thickness cap 14 (was 8), stronger specular. Turning ON/OFF rebuilds color path. No vendor, authentication, media pipeline, browser extension or LIVE modifications.
-- Original 8-lens budget and low power, video playback, offscreen, idle, accessiblity fallbacks remain. `balanced` quality and mapPixelRatio 1 remain.
-- Verification: source-level assertions/branch comparison passed at creation; CI may still be running. Physical visual comparisons, live account tests, GPU measurements and full browser regressions **not yet confirmed**. Do not claim them complete.
-- Full trial and verification checklist: `docs/MEAPRI_OPTICS_AB_EXPERIMENT.md`.
-- **Do not merge either PR, change main, or deploy without explicit user approval.**
+- Isolated experiment `experiment/meapri-optics-ab-20261115`, Draft PR #124. Base PR #123 at `ad7c01c8`; `main`, PR #123 and live deployment remain unchanged.
+- User clarified that existing settings sliders should directly control material. The first A/B attempt hard-coded some strengthened values but also failed to enable chromatic effects because pinned Meapri only renders chromatic channels in `quality:'high'`. This has been corrected.
+- OFF remains existing default (balanced quality, capped controls and conservative optical settings).
+- ON `고성능 제한 해제 (시험)`: high quality, chromatic and map resolution adjustment, no 8-control/2-build-per-frame budget, no low-power/video gate for small controls, no menu thickness/refraction multiplier cap. Save capsule uses high optics and retains its lens after first-selection settling; offscreen/hidden/accessible fallback and cleanups remain.
+- Existing six optical sliders remain and directly control ON optical settings; two ON-only sliders for chromatic and map resolution are exposed. Baseline defaults and existing auth/media/native/extension functionality unchanged.
+- Browser and GPU performance still require real measurements; syntax/static assertions and GitHub file diffs only are confirmed at this stage. Browser CI check must be inspected after commits.
+- Full scope/known constraints: `docs/MEAPRI_OPTICS_AB_EXPERIMENT.md`. Do not merge/deploy without user approval.
 
 ---
 

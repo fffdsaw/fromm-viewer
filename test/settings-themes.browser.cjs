@@ -36,7 +36,25 @@ const contrast=(fg,bg)=>{const lum=rgb=>{const s=rgb.match(/[\d.]+/g).slice(0,3)
   await p.setViewportSize({width:390,height:500});await inside(p);await p.setViewportSize({width,height});await inside(p);
   await p.locator('.glass-settings-reset').click();assert.equal(await p.evaluate(()=>FrommThemes.value),'glow');assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),await p.evaluate(()=>FrommGlassSettings.defaults));assert.equal(await p.evaluate(()=>state.messages.length),180,'presentation reset preserves conversation');
   for(let i=0;i<18;i++){await p.keyboard.press('Tab');assert.equal(await p.locator('#glassSettingsDialog').evaluate(el=>el.contains(document.activeElement)),true,'focus remains in modal');}
-  await p.locator('.glass-settings-done').click();assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();console.log(width+'x'+height+': settings categories/AA/keyboard, slider, drag bounds, themes, reload, resize, reset and preserved data PASS');
+  await p.locator('.glass-settings-done').click();assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
+  // Real collection and gallery renderers must share the chosen palette,
+  // including selected bodies; the original Glow ME cascade stays untouched.
+  for(const mode of ['replay','channel']){
+   await p.evaluate(mode=>{
+    const post={id:'theme-post',type:mode==='replay'?'live_record':'video',title:'Synthetic theme collection',_channelId:'fixture-channel',_channelName:'Synthetic channel',displayStartAt:1791534600000};
+    state.filter='live';state.live.centerMode=mode;state.live.replaySelected=null;state.live.replayFilter='fixture-channel';state.live.replayPosts=[post];state.live.replayPaging=new Map([['fixture-channel',{loaded:true,isLast:true}]]);
+    channelVideoState.selected=null;channelVideoState.channelId='fixture-channel';channelVideoState.pages=new Map([['fixture-channel',{loaded:true,isLast:true,posts:[post]}]]);renderLiveView();
+    document.querySelector('.replay-card .selection-toggle').click();
+    state.selected.add('theme-photo');document.querySelector('.replay-grid').append(renderMediaCard({messageId:'theme-photo',type:'image',content:'https://fixture.test/photo.svg',createdAt:1791534600000}));
+   },mode);
+   assert.equal(await p.locator('.replay-card').evaluate(el=>el.classList.contains('selected')),true);
+   for(const theme of ['aqua','sky','lavender','neutral']){
+    await p.evaluate(theme=>FrommThemes.set(theme),theme);
+    const collection=await p.locator('.replay-card .replay-body').evaluate(el=>getComputedStyle(el).backgroundColor),gallery=await p.locator('.media-card.selected .card-body').evaluate(el=>getComputedStyle(el).backgroundColor);
+    assert.equal(collection,gallery,mode+' and media selected bodies share '+theme+' palette');
+   }
+  }
+  await p.evaluate(()=>FrommThemes.reset());await context.close();console.log(width+'x'+height+': settings categories/AA/keyboard, slider, drag bounds, themes, reload, resize, reset and preserved data PASS');
  }
  const context=await browser.newContext();await context.addInitScript(()=>{Storage.prototype.getItem=()=>{throw new DOMException('blocked','SecurityError')};Storage.prototype.setItem=()=>{throw new DOMException('blocked','SecurityError')}});const p=await context.newPage();await p.route('**/*',route=>new URL(route.request().url()).origin===new URL(s.url).origin?route.continue():route.abort());await p.goto(s.url);await seed(p);await show(p);await p.locator('[data-settings-tab="theme"]').click();await p.locator('[data-theme-choice="aqua"]').click();assert.equal(await p.evaluate(()=>FrommThemes.value),'aqua','theme usable without storage');assert.equal(await p.evaluate(()=>FrommThemes.persistent),false);await context.close();console.log('Blocked storage: current-window preferences remain usable PASS');
 }finally{await browser.close();await s.close()}})().catch(error=>{console.error(error);process.exitCode=1});

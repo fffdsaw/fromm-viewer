@@ -64,6 +64,13 @@ Last reviewed: 2026-11-15 (Asia/Seoul)
 
 - Kept the original light download-ring foreground on media controls across alternate palettes. Themes still color seek/progress tracks and accents; they do not replace the readable image-overlay progress ring with a dark text accent. No download behavior or animation changed.
 
+### Collection palette follow-up
+
+- Final palette comparison found Replay/Channel selected card bodies retained the old mint fill while media cards used the chosen theme. Added a real-renderer regression: selects Replay and Channel cards, renders a selected media card alongside, and compares their actual background colors in Aqua/Sky/Lavender/Neutral. It reproduced the mismatch (`rgb(239,249,243)` vs Aqua `rgb(196,232,229)`) before the CSS fix.
+- Added collection bodies/selected bodies to the existing alternate-palette variables and matched audio seek thumbs to their track accent. Glow ME's original cascade and artist selection markers are unchanged. Expanded settings/theme suite passed at 1440×900, 900×560, 390×844 plus blocked storage. This new scenario is in the Windows/Chromium Conversation matrix.
+- Local complete Channel workflow finished: **52 command executions passed**, including real media, LIVE/PiP, downloads, cache/navigation/accessibility, votes, reply rules and the loopback-only extension TLS send contract. Generated test artifacts were retained in `/tmp` and removed from the worktree, not committed wholesale.
+- Prior product head `91f4c5e` passed **all 10** Actions checks. Latest-before-this-follow-up `75a806d` passed 9/10 with Channel browser still running. Final acceptance uses the new exact-head CI; no merge/deployment is authorized.
+
 Resume:
 ```sh
 git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114

@@ -10,17 +10,19 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#sidebar,.viewer-header){background:var(--theme-header)!important;border-color:var(--theme-line)!important;color:var(--theme-text)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .viewer-header::before{background:var(--theme-bg)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .viewer-header::after{background:var(--theme-header)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.bubble,.media-card,.card-body,.replay-card){background:var(--theme-card)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.bubble,.media-card,.card-body,.replay-card,.replay-body){background:var(--theme-card)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .me .bubble{background:var(--theme-me)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.reply-quote,.reply-preview,.reply-box){background:var(--theme-soft)!important;border-color:var(--theme-accent)!important;color:var(--theme-text)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.btn,.pill,.sort-btn,.chat-tools-btn,.replay-filter,.glass-settings-trigger){color:var(--theme-text);border-color:var(--theme-line);background:var(--theme-soft)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.room,.glowme-nav button){color:var(--theme-text)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.media-card.selected .card-body,.glowme-nav button.active,.replay-filter.active){background:var(--theme-selected)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.media-card.selected .card-body,.replay-card.selected .replay-body,.glowme-nav button.active,.replay-filter.active){background:var(--theme-selected)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.media-card.selected,.replay-card.selected){outline-color:var(--theme-accent)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.meta,.stats,.card-date,.replay-meta,.chat-message-foot,.chat-audio-time,.chat-audio-mute){color:var(--theme-muted)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.conversation-input-shell,#conversationInput,input[type=search],textarea){background:var(--theme-card);color:var(--theme-text);border-color:var(--theme-line)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#conversationSend,.btn.good,.btn.primary){background:var(--theme-accent);color:#fff;border-color:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.chat-audio-level,.chat-audio-seek,input[type=range]){accent-color:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-seek{background-image:linear-gradient(to right,var(--theme-accent) 0 var(--audio-progress,0%),var(--theme-line) var(--audio-progress,0%) 100%)}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-seek::-webkit-slider-thumb{background:var(--theme-accent)}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-seek::-moz-range-thumb{background:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .chat-audio-waveform i{background:var(--theme-accent)}
 @media(forced-colors:active){:root[data-fromm-theme] body,:root[data-fromm-theme] :is(#sidebar,.viewer-header,.bubble,.media-card){background:Canvas!important;color:CanvasText!important;border-color:CanvasText!important}}

@@ -1,5 +1,19 @@
 # Fromm Viewer — cross-account handoff
 
+## Independent Meapri optics A/B trial (2026-11-15)
+
+- **This is an isolated, opt-in trial** on `experiment/meapri-optics-ab-20261115`, Draft PR #124: https://github.com/fffdsaw/fromm-viewer/pull/124
+- Base checkpoint is the unchanged PR #123 head `ad7c01c8cd3c7ef27acc28f5e7029d328379e01e`, not `main`. Original PR #123 and production are untouched.
+- `web-glass-settings.js` adds a PC "유리 질감 강화 (시험)" toggle, default OFF, stored in `fromm.pcGlass.v1`; `web-glass-controls.js` enhances only small optical controls if enabled.
+- Enhanced values: chromaticAberration 0.18, edges enabled, menu refraction multiplier 0.52 (previously 0.35), menu thickness cap 14 (was 8), stronger specular. Turning ON/OFF rebuilds color path. No vendor, authentication, media pipeline, browser extension or LIVE modifications.
+- Original 8-lens budget and low power, video playback, offscreen, idle, accessiblity fallbacks remain. `balanced` quality and mapPixelRatio 1 remain.
+- Verification: source-level assertions/branch comparison passed at creation; CI may still be running. Physical visual comparisons, live account tests, GPU measurements and full browser regressions **not yet confirmed**. Do not claim them complete.
+- Full trial and verification checklist: `docs/MEAPRI_OPTICS_AB_EXPERIMENT.md`.
+- **Do not merge either PR, change main, or deploy without explicit user approval.**
+
+---
+
+
 Last reviewed: 2026-11-14 (Asia/Seoul)
 
 ## Current integrated UI/UX stabilization track — 2026-11-14

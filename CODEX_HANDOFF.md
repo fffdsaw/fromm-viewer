@@ -2,7 +2,65 @@
 
 Last reviewed: 2026-11-15 (Asia/Seoul)
 
-## Active continuation — 2026-11-15 (supersedes the historical status below)
+## Final integration checkpoint — 2026-11-15 (Asia/Seoul)
+
+**This section supersedes all earlier in-progress status notes below; those notes are preserved as history.**
+
+- Branch: `codex/fromm-viewer-uiux-stabilization-20261114`; [draft PR #123](https://github.com/fffdsaw/fromm-viewer/pull/123).
+- Verified implementation SHA: `fc32bc99168ca628c79e1a8899df8b24c070b033`. The final handoff/report commit changes documentation and synthetic evidence only; its SHA and matching remote/PR HEAD are recorded in the PR completion comment. Obtain the checkout's latest SHA with `git rev-parse HEAD` and compare `git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114`.
+- Production main remains `fe010e5dc263ac45ef44171c90722f185c433af5`. Experimental #124 remains `9e0f1e841ad8f7aaabafa454c3ed98045c2d5c6d`; #125 remains `dc561e219c1a20c94fe71111b8d01d1cc022a271`. No merge, force push, branch deletion, user-data clearing or deployment was performed.
+
+### All 13 items
+
+| Item | Final implementation / verification |
+|---|---|
+| 01 Cache refresh | Retained; synthetic complete/partial/503/cache-preservation browser checks |
+| 02 Chat audio glass | Real Meapri lens; actual lens node retained through play/pause; download feedback preserved |
+| 03 Hover restoration | Pointer/press/release/leave and resting lens bounds; compact stale-hover hold fixed |
+| 04 Reply navigation glass | Real Meapri maps and original reply/quote navigation regressions |
+| 05 Header glass | Token/logout/refresh real optical faces; indicator cannot enter button pressed state |
+| 06 Sidebar avatar clipping | Existing 32px avatar/selection retained; final avatar fully inside scroller at desktop/short/mobile sizes |
+| 07 Text/reply cards | Repeated incoming artist name removed, unified mint/aqua padding/border, time and reply jumps retained |
+| 08 Scroll restoration | Existing cache/virtual anchors and latest-follow retained; refresh/resize/tab-return regressions |
+| 09 Common players | Compact/expanded/audio retained and completed; real fixture playback/seek/volume/fullscreen/PiP/selection/download/cleanup |
+| 10 Audio tab icon | Existing alignment/size with waveform SVG |
+| 11 Type badges | Removed from media/photo/video/audio markup; download/select/save unchanged |
+| 12 Settings | General/Theme/Glass/Advanced; bounded drag, saved location, native modal focus/Escape, mobile, existing preferences/reset/install |
+| 13 Themes | Glow ME default + Aqua/Sky/Lavender/Neutral; preview/persist/reload/reset, AA text contrast and bounded optical resources |
+
+“Verified” means the synthetic fixtures and environments listed here, **not** authenticated production-service verification.
+
+### Final checks
+
+- Local Node 24.19.0: `node --test test/*.test.cjs native-live/test/*.test.cjs` — **326 passed, 0 failed, 1 platform-specific skipped**. Syntax and CRLF-aware whitespace checks passed.
+- Local Playwright 1.62.1 / Chromium 151.0.7922.34: scoped card/settings/theme/Meapri/compact/audio/Channel/Replay/LIVE/selection/cache/browser regressions recorded in the report. Actual MP4/WAV and fullscreen enter/exit exercised. Touch/PWA are emulations.
+- Exact implementation `fc32bc99168ca628c79e1a8899df8b24c070b033`: **all 10 GitHub Actions checks passed**. Conversation [43681382970](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382970): Chromium/Windows Chrome/Windows Edge, including new settings/themes/cards and Linux 50k. Video [43681382886](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382886): all three browsers. Media [43681382776](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382776): unit/browser. Channel [43681382814](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382814): unit/full browser/actual Xvfb Back and Forward. No remaining failed check on this implementation SHA.
+- Local complete Channel workflow status: **52/52 command executions passed**. Local complete run started at the development checkpoint; the final exact-head Actions above are authoritative. New collection palette regression also passed locally before push and in the Windows/Chromium matrix.
+- Corrected failures are preserved in earlier checkpoints: native-control expectation; legacy outside-settings install expectation; partial-cache fixture race on Windows; stale compact hover; optical faces removed by whole-button icon replacement. No tests were deleted or relaxed to hide broken behavior.
+
+### Evidence, limitations and approval gate
+
+- [Korean integration report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
+- Real Fromm login, authenticated API contract, actual user caches/LIVE, physical Android/iOS and Safari are **unverified**. Windows Chrome/Edge coverage is from CI, not a local Windows desktop session.
+- PR #124 enhanced optics and #125 Meapri×ybouane research are separate and unchanged; no experimental optical modes were imported.
+- Keep PR #123 draft. **Main merge and all public/Preview deployments require the user's new final approval**, even if every check is green. Do not interpret historical approvals lower in this file as current authorization.
+- Next authorized work: review this exact PR/HEAD with the user; make requested revisions on this branch and rerun affected checks. Do not restart from main or redo the completed cache/scroll work.
+
+Resume in another account:
+```sh
+git fetch origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114:refs/remotes/origin/codex/fromm-viewer-uiux-stabilization-20261114
+git switch --track origin/codex/fromm-viewer-uiux-stabilization-20261114
+# If already checked out, inspect status first and use a fast-forward-only pull.
+git status --short --branch
+git rev-parse HEAD
+git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114
+gh pr view 123 --repo fffdsaw/fromm-viewer
+fromm_head=$(git rev-parse HEAD)
+gh api "repos/fffdsaw/fromm-viewer/commits/${fromm_head}/check-runs"
+```
+Read `AGENTS.md`, this top section, the consolidated report, latest PR completion comment, and latest-head Checks before acting. Browser workflow commands remain in `.github/workflows/`; external local dependencies are optional and not committed. No production credentials are needed for fixture tests.
+
+## Earlier continuation — 2026-11-15 (historical checkpoints)
 
 - Active branch: `codex/fromm-viewer-uiux-stabilization-20261114`; draft PR [#123](https://github.com/fffdsaw/fromm-viewer/pull/123). Resume here, not the historical PR #121 branch below.
 - Starting remote HEAD: `ad7c01c8cd3c7ef27acc28f5e7029d328379e01e`; main `fe010e5dc263ac45ef44171c90722f185c433af5`. Main is an ancestor (0 main-only / 42 feature-only commits). Both pre-existing local checkouts were clean; work continues in a separate worktree preserving them.
@@ -81,7 +139,7 @@ git ls-remote origin refs/heads/codex/fromm-viewer-uiux-stabilization-20261114
 ```
 Use latest remote HEAD/Actions and the newest checkpoint above the preserved historical notes. Runtime dependencies are external to the worktree; local browser runs use `NODE_PATH=/workspace/.fromm-env/node_modules:/workspace/scratch/fromm-phase3/deps/node_modules`.
 
-## Current integrated UI/UX stabilization track — 2026-11-14
+## Historical integrated UI/UX stabilization track — 2026-11-14
 
 This section is the current continuation point for the 13-item Fromm Viewer integration request. The older PR #121 notes below are historical and remain useful for the cache implementation details; use this section for the active branch and priorities.
 
@@ -111,7 +169,7 @@ This section is the current continuation point for the 13-item Fromm Viewer inte
 - Keep PR #123 draft. Do not merge `main`, deploy, delete branches, or clear real user data without explicit user approval.
 - Keep PR #123 draft. Do not merge `main`, deploy, delete branches, or clear real user data without explicit user approval.
 
-## Project and Git state
+## Historical PR #121 project and Git state
 
 - Production repository: <https://github.com/fffdsaw/fromm-viewer>
 - Production site: <https://fffdsaw.github.io/fromm-viewer/>
@@ -223,7 +281,7 @@ GitHub Actions on code commit `85b58e606ce12de3405545739511acdd79240d1f` passed 
 - The ~36.6 s 50k synthetic full scan is background work; do not present it as a real-service latency measurement.
 - No cache deletion/reset was performed. Tests use synthetic messages; no personal chat content or authentication material should enter commits or logs.
 
-## Environment and resume steps
+## Historical PR #121 environment and resume steps
 
 CI expects Node.js 22, Playwright 1.62.1, Chromium, and axe-core 4.14.0. This verification used Node 22.23.5 and Chromium 151.0.7922.34. Local shell `node`/`npm` may not be on `PATH`; install the CI versions locally without committing lockfiles or dependencies.
 
@@ -262,7 +320,7 @@ node test/search-calendar-panel.browser.cjs
 
 Use `git -c core.whitespace=cr-at-eol diff --check` because `index.html` uses CRLF. The full browser workflow is in `.github/workflows/conversation.yml`; broader Channel/Replay/LIVE checks are in `.github/workflows/channel-videos.yml`.
 
-## Next account's priority list
+## Historical PR #121 priority list
 
 1. Confirm the latest handoff commit is pushed and that PR #121 head matches it; review the Actions attached to that exact head.
 2. Review every PR check and its logs; resolve failures only when attributable to this change, and keep unrelated existing failures documented.

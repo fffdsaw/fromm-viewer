@@ -22,7 +22,7 @@
 | 12 | 카테고리형 플로팅 설정창 | 드래그/경계/위치 복원/모바일/키보드/즉시 적용/기존 값 유지/기본값 복원 |
 | 13 | Glow ME + 4개 선택 테마 | 모든 테마 즉시 적용·재방문 복원, AA 텍스트 대비, 저장 차단 fallback |
 
-위 표는 **구현 및 로컬 합성 브라우저 증거**다. 전체 GitHub Actions 결과와 실제 인증 서비스 검증을 동일시하지 않는다. 최신 통합 CI가 끝나기 전에는 전체 검증 완료로 표시하지 않는다.
+위 표는 **구현 및 로컬 합성 브라우저 증거**다. 전체 GitHub Actions 결과와 실제 인증 서비스 검증을 동일시하지 않는다. 최종 구현 `fc32bc9`의 통합 CI 10개가 모두 통과했다. 아래 최종 CI 절의 실행 링크가 해당 결과의 기준이다.
 
 ## CI 실패와 추가 회귀 해결
 
@@ -78,3 +78,22 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 - 모바일은 터치·viewport 에뮬레이션이며 물리 iOS/Android가 아니다. Safari는 미검증.
 - PR #124 고성능/광학 제한 실험, #125 Meapri×ybouane 연구는 별도로 보존했으며 통합하지 않았다.
 - 코드·테스트·인수인계는 지정 브랜치에 푸시한다. **사용자 최종 승인 전 main 병합, 공개 배포, Preview 배포를 하지 않는다.**
+
+## 최종 통합 CI
+
+구현 커밋 `fc32bc99168ca628c79e1a8899df8b24c070b033` 기준 결과는 다음과 같다. 문서 최종 커밋의 원격 SHA와 Checks는 PR 최종 완료 댓글에 기록한다.
+
+| 워크플로 | 결과 | 실행 |
+|---|---|---|
+| Conversation | Chromium + Windows Chrome + Windows Edge, 새 설정/테마/카드 검사 포함 | [43681382970](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382970) |
+| Video download | Chromium + Windows Chrome + Windows Edge | [43681382886](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382886) |
+| Media bulk save | 단위 + 브라우저 | [43681382776](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382776) |
+| Channel videos | 단위 + 전체 브라우저 + Xvfb Back/Forward | [43681382814](https://github.com/fffdsaw/fromm-viewer/actions/runs/43681382814) |
+
+**전체 10개 검사 성공, 실패 0.** 새 설정/테마/카드 및 Replay·Channel 선택 색 일치 검사도 세 브라우저 행렬에서 통과했다. 모든 13개 항목은 이 합성 검증 범위에서 완료됐으며, 실제 인증 서비스와 실기기 검증은 아래 한계대로 별도다.
+
+추가 로컬 전체 Channel 브라우저 실행은 52개 명령을 모두 통과했다. 실행 명령·환경은 [검증 manifest](design-review/uiux-stabilization-20261115/local-browser-manifest.json)에 남겼다. 개발 체크포인트에서 진행한 로컬 회귀 결과와 최종 원격 커밋의 CI 결과를 구분한다. Windows 설정/테마 직접 검증도 최종 Conversation 행렬에 포함했다.
+
+[기본 테마 대화·인용 카드](design-review/uiux-stabilization-20261115/chat-cards.png) · [기존 유리 설정 보존](design-review/uiux-stabilization-20261115/glass-settings.png)
+
+동일 ON/OFF fixture를 최종 플레이어 보강 이후 한 번 더 실행한 결과도 [추가 JSON](design-review/uiux-stabilization-20261115/glass-performance-repeat.json)에 보존했다. 이 반복에서 갤러리 p95 OFF/ON 모두 16.70ms, main-thread 샘플 중앙 133.3/382.8ms, 영상 drop OFF 0/89·ON 0/88, 최대 샘플 JS heap 4.29MiB였다. 앞선 1/88·3/88 drop 측정도 삭제하지 않았다. 실행 간 부하 차이가 있으므로 두 실행을 엔진 버전 개선율로 비교하지 않는다.

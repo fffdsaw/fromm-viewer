@@ -44,7 +44,29 @@ async function clickRailSettings(p){
    const map=document.getElementById(id),value=Number(map?.querySelector('feDisplacementMap')?.getAttribute('scale'));
    return value>original&&!!map.querySelector('feImage[result="specMap"]');
   },{selector:navFace,original:originalScale});
-  assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,...chosen});
+  assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,enhanced:false,...chosen,chromatic:0.18,mapPixelRatio:2});
+  if(opt.width===1440){
+   assert.equal(await p.locator('#glass-chromatic').isDisabled(),true,'experimental-only chromatic control is disabled in normal mode');
+   await p.locator('#glassEnhanced').check();
+   assert.equal(await p.locator('#glass-chromatic').isEnabled(),true);
+   await p.locator('[name="chromatic"]').fill('0.26');
+   await p.locator('[name="chromatic"]').dispatchEvent('change');
+   await p.locator('[name="mapPixelRatio"]').fill('2.5');
+   await p.locator('[name="mapPixelRatio"]').dispatchEvent('change');
+   await p.waitForFunction(selector=>{
+    const face=document.querySelector(selector),id=/url\\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
+    return !!filter && filter.querySelectorAll('feDisplacementMap').length>=3 && FrommControlGlass.snapshot.enhanced && FrommControlGlass.snapshot.limit===null;
+   },navFace,{timeout:10000});
+   const experimental=await p.evaluate(()=>FrommGlassSettings.value);
+   assert.equal(experimental.enhanced,true);assert.equal(experimental.chromatic,0.26);assert.equal(experimental.mapPixelRatio,2.5);
+   await p.locator('#glassEnhanced').uncheck();
+   await p.waitForFunction(selector=>{
+    const face=document.querySelector(selector),id=/url\\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1],filter=document.getElementById(id);
+    return !!filter&&filter.querySelectorAll('feDisplacementMap').length===1&&!FrommControlGlass.snapshot.enhanced&&FrommControlGlass.snapshot.limit===8;
+   },navFace,{timeout:10000});
+   await p.locator('[name="chromatic"]').fill('0.18').catch(()=>{});
+   await p.evaluate(()=>FrommGlassSettings.set({chromatic:0.18,mapPixelRatio:2},{immediate:true}));
+  }
   const strongerScale=await scale(p);
   await p.locator('[name="refraction"]').fill('10');
   await p.waitForFunction(({selector,previous})=>{
@@ -57,7 +79,7 @@ async function clickRailSettings(p){
   assert.deepEqual(await geometry(p),before,'material changes do not move cards or tools');
   for(let i=0;i<13;i++){await p.keyboard.press('Tab');assert.equal(await p.locator('#glassSettingsDialog').evaluate(e=>e.contains(document.activeElement)),true,'native dialog contains keyboard focus');}
   await p.keyboard.press('Escape');assert.equal(await p.locator('dialog[open]').count(),0);await p.waitForFunction(()=>document.activeElement.id==='glassSettingsBtn');assert.equal(await p.evaluate(()=>state.selected.size),1);
-  await p.reload();await seed(p);await p.evaluate(()=>setFilter('image'));await ready(p);assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,...chosen},'sliders restore after reload');
+  await p.reload();await seed(p);await p.evaluate(()=>setFilter('image'));await ready(p);assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,enhanced:false,...chosen,chromatic:0.18,mapPixelRatio:2},'sliders restore after reload');
   await clickRailSettings(p);await p.locator('#glassEnabled').uncheck();await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);assert.equal(await p.locator('#glass-refraction').isDisabled(),true);assert.equal(await p.locator('.control-glass-surface').count(),0);
   await p.locator('.glass-settings-reset').click();await ready(p);assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),await p.evaluate(()=>FrommGlassSettings.defaults));
   await p.locator('.glass-settings-done').click();
@@ -71,7 +93,7 @@ async function clickRailSettings(p){
   assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': opaque panes, actual control sliders, reload/reset/off, focus and bounded cleanup PASS');
  }
  const invalid={newContext:async options=>{const c=await high.newContext(options);await c.addInitScript(()=>localStorage.setItem('fromm.pcGlass.v1',JSON.stringify({enabled:true,refraction:-99,thickness:900,blur:'bad',saturation:null,opacity:900,specular:-1})));return c;}};
- const malformed=await open(invalid,url);assert.deepEqual(await malformed.page.evaluate(()=>FrommGlassSettings.value),{enabled:true,refraction:0,thickness:60,blur:0,saturation:108,opacity:60,specular:0});assert.deepEqual(malformed.errors,[]);await malformed.context.close();console.log('Invalid saved values are clamped or restored without exposing unknown options PASS');
+ const malformed=await open(invalid,url);assert.deepEqual(await malformed.page.evaluate(()=>FrommGlassSettings.value),{enabled:true,enhanced:false,refraction:0,thickness:60,blur:0,saturation:108,opacity:60,specular:0,chromatic:0.18,mapPixelRatio:2});assert.deepEqual(malformed.errors,[]);await malformed.context.close();console.log('Invalid saved values are clamped or restored without exposing unknown options PASS');
  const unavailable={newContext:async options=>{const c=await high.newContext(options);await c.addInitScript(()=>{for(const name of ['getItem','setItem']){const original=Storage.prototype[name];Storage.prototype[name]=function(k,...args){if(k==='fromm.pcGlass.v1')throw new DOMException('fixture blocked','SecurityError');return original.call(this,k,...args)}}});return c;}};
  const ephemeral=await open(unavailable,url);await ready(ephemeral.page);await clickRailSettings(ephemeral.page);await ephemeral.page.locator('[name="refraction"]').fill('50');await ephemeral.page.locator('[name="refraction"]').dispatchEvent('change');await ephemeral.page.waitForFunction(()=>FrommGlassSettings.value.refraction===50);assert.match(await ephemeral.page.locator('.glass-settings-note').textContent(),/현재 창/);assert.deepEqual(ephemeral.errors,[]);await ephemeral.context.close();console.log('Unavailable preference storage keeps usable live controls and current-window settings PASS');
  const mobile=await open(high,url,{width:390,height:844});assert.equal(await mobile.page.locator('#glassSettingsBtn').count(),0);assert.equal(await mobile.page.locator('.glass-pane-on').count(),0);await mobile.page.evaluate(()=>setFilter('image'));await mobile.page.locator('.media-card').first().click({position:{x:30,y:30}});await mobile.page.waitForFunction(()=>state.selected.size===1);assert.equal(await mobile.page.locator('#saveSelectedBtn').isEnabled(),true);assert.equal(await mobile.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(mobile.errors,[]);await mobile.context.close();console.log('Mobile representative: no PC settings/material changes, selection/save and viewport intact PASS');

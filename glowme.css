@@ -1366,7 +1366,7 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #rooms .room .rail-unread[hidden]{display:none!important}
 
 /* Keep the last avatar and its selection rim inside the scrollable artist area. */
-.glowme-phase3 #sidebar .rail-artists{overflow:hidden;padding-bottom:13px;border-top:0}
+.glowme-phase3 #sidebar .rail-artists{overflow:hidden;padding-bottom:6px;border-top:0}
 .glowme-phase3 #rooms{padding-block:5px 0;scroll-padding-block:5px 0;box-sizing:border-box}
 .glowme-phase3 #rooms{flex:0 0 auto;height:var(--rail-rooms-height,auto);max-height:100%;gap:var(--rail-room-gap,3px)}
 .glowme-phase3 #rooms .room{flex:0 0 var(--rail-room-height,44px);min-height:var(--rail-room-height,44px)}
@@ -1378,14 +1378,24 @@ html.glowme .reply-content{color:#244c42}
 /* Match the resting optical face before observers/imports initialize. Moving
    the material to its decorative span then leaves the button's color intact. */
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download){
+ .glowme-phase3.pc-layout .chat-sound-download{
   --voice-glass-face:linear-gradient(145deg,#ffffff52,#102c223d);
   --voice-glass-rim:#ffffff9c;
   --voice-glass-shadow:inset 0 1px 1px #fffd,inset 0 -1px 2px #173e3047,0 2px 6px #0002;
  }
- .glowme-phase3.pc-layout:not(.glass-disabled) :is(.chat-audio-play,.chat-sound-download):not(.glass-control),
- .pc-control-glass.glowme-phase3.pc-layout :is(.chat-audio-play,.chat-sound-download)>.control-glass-surface{
+ .glowme-phase3.pc-layout:not(.glass-disabled) .chat-sound-download:not(.glass-control),
+ .pc-control-glass.glowme-phase3.pc-layout .chat-sound-download>.control-glass-surface{
   background:var(--voice-glass-face);border:1px solid var(--voice-glass-rim);box-shadow:var(--voice-glass-shadow);
  }
- .glowme-phase3.pc-layout:not(.glass-disabled) :is(.chat-audio-play,.chat-sound-download):not(.glass-control){text-shadow:0 1px 3px #000b}
+ .glowme-phase3.pc-layout:not(.glass-disabled) .chat-sound-download:not(.glass-control){text-shadow:0 1px 3px #000b}
 }
+
+/* Keep the menu cursor visible while video playback parks the optical engine. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light:not([data-control-optics="engine"]){
+  background:radial-gradient(90px circle at var(--rail-light-x,50%) var(--rail-light-y,50%),#ffffffb3,transparent 75%),linear-gradient(135deg,#d9fff470,#81d2b633);
+  border-color:#ffffffb3;box-shadow:inset 0 1px 1px #ffffffb3,0 2px 5px #173e301a;
+ }
+}
+/* The header PiP shortcut is hidden; the player's existing PiP control remains. */
+.live-head #livePipBtn{display:none!important}

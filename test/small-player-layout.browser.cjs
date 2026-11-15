@@ -15,6 +15,8 @@ async function paintedMint(p,input){
 }
 
 async function rowGeometry(root){
+ const look=await root.locator('.small-player-button').evaluateAll(es=>es.map(el=>{const s=getComputedStyle(el);return{background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth,shadow:s.boxShadow,faces:el.querySelectorAll('.control-glass-surface').length};}));
+ assert.ok(look.every(s=>s.background==='none'&&s.color==='rgba(0, 0, 0, 0)'&&s.border==='0px'&&s.shadow==='none'&&s.faces===0),'icon-only buttons retain no circle or engine '+JSON.stringify(look));
  const g=await root.evaluate(el=>{const rect=selector=>el.querySelector(selector).getBoundingClientRect().toJSON();return{play:rect('[data-small="play"]'),seek:rect('.small-player-seek'),sound:rect('[data-small="sound"]'),time:rect('output'),width:el.clientWidth,scroll:el.scrollWidth};});
  assert.ok(g.play.right<g.seek.left&&g.seek.right<g.sound.left,'play → seek → volume');
  assert.ok(Math.abs(g.play.y+g.play.height/2-g.sound.y-g.sound.height/2)<1,'play and volume share one baseline');
@@ -40,7 +42,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=320x180:rate=10','-t','18','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',movie]);
  const s=await serve(),b=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
-  for(const [width,height,count] of [[1536,838,9],[1440,900,9],[1280,720,12],[900,560,30],[390,844,9],[320,600,9]]){
+  for(const [width,height,count] of [[1920,1080,9],[1536,838,9],[1440,900,9],[1280,720,12],[900,560,30],[390,844,9],[320,600,9]]){
    const {page:p,context,errors}=await open(b,s.url,{width,height});await routes(p);
    await p.evaluate(count=>{state.rooms=state.rooms.slice(0,count);document.querySelectorAll('#rooms .room').forEach((row,i)=>{if(i>=count)row.remove()});},count);
    for(const expanded of [false,true]){
@@ -49,7 +51,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
     assert.ok(geometry.visible.length>0);
     assert.ok(geometry.visible.every(r=>r.avatarTop>=geometry.area.top&&r.avatarBottom<=geometry.area.bottom),'initial visible avatars are complete '+JSON.stringify({width,height,count,expanded,...geometry}));
     assert.ok(geometry.rows.every(r=>r.size===32),'existing avatar dimensions retained');
-    if(count===9&&width>=1440){assert.equal(geometry.scroll,0,'all nine profiles fit at the reported desktop size');assert.equal(geometry.visible.length,9);}
+    if(count===9&&width>=1440){assert.equal(geometry.scroll,0,'all nine profiles fit at the reported desktop size');assert.equal(geometry.visible.length,9);const parent=await p.locator('.rail-artists').boundingBox();assert.ok(parent.y+parent.height-geometry.rows.at(-1).avatarBottom<=18,'profiles fill the artist area down to its breathing rim');}
     await p.locator('#rooms').evaluate(el=>el.scrollTop=el.scrollHeight);await p.waitForTimeout(80);
     const last=await p.locator('#rooms .rail-avatar').last().boundingBox(),area=await p.locator('#rooms').boundingBox();assert.ok(last.y>=area.y&&last.y+last.height<=area.y+area.height,'final avatar is fully reachable');
    }
@@ -63,11 +65,12 @@ async function volumeUI(p,root,media,{touch=false}={}){
     await root.locator('[data-small="play"]').click();assert.equal(await media.evaluate(el=>el.paused),true);
     await root.locator('.small-player-seek').fill('6');await p.waitForTimeout(80);assert.ok(Math.abs(await media.evaluate(el=>el.currentTime)-6)<.3,'seek changes decoded media position '+JSON.stringify({id,type,position:await media.evaluate(el=>({t:el.currentTime,ready:el.readyState,source:!!el.getAttribute('src'),paused:el.paused,duration:el.duration,seekable:[...Array(el.seekable.length)].map((_,i)=>[el.seekable.start(i),el.seekable.end(i)])})),range:await root.locator('.small-player-seek').inputValue()}));
     assert.ok(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress')))>30,'seek updates its filled portion');assert.ok(await paintedMint(p,root.locator('.small-player-seek')),'actual seek track paints mint pixels '+id);
+    if(type==='audio'&&(width===1440||width===390)){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);assert.ok((await root.locator('.small-player-button,output').evaluateAll(es=>es.map(el=>getComputedStyle(el).color))).every(color=>color==='rgb(255, 255, 255)'),theme+' keeps gallery glyphs/time white against the dark cover');assert.ok(await paintedMint(p,root.locator('.small-player-seek')),theme+' keeps the gallery seek fill visible');}await p.evaluate(()=>FrommThemes.set('glow'));}
     await volumeUI(p,root,media,{touch:width<700});
    }
    await p.evaluate(()=>{state.filter='all';render();FrommViewState.cancel();scrollTo(0,0);});
    const voice=p.locator('.chat-sound-bubble .small-player');await voice.scrollIntoViewIfNeeded();await rowGeometry(voice);await volumeUI(p,voice,voice.locator('..').locator('audio'),{touch:width<700});
-   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await voice.locator('.small-player-seek').fill('6');assert.ok(await paintedMint(p,voice.locator('.small-player-seek')),theme+' retains the colored seek track');assert.equal(await voice.locator('.small-player-time').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');}await p.evaluate(()=>FrommThemes.set('glow'));}
+   if(width===1440||width===390){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await voice.locator('.small-player-seek').fill('6');assert.ok(await paintedMint(p,voice.locator('.small-player-seek')),theme+' retains the colored seek track');assert.equal(await voice.locator('.small-player-time').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');}await p.evaluate(()=>FrommThemes.set('glow'));}
    assert.equal(await voice.locator('.chat-audio-waveform').count(),0,'conversation audio uses the same seek layout');
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
    if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,'unified-small-'+width+'.png')});}

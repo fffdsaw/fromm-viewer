@@ -185,7 +185,8 @@
     const rooms=$('#rooms'),rows=[...rooms.querySelectorAll('.room')],buttons=[...nav.querySelectorAll('button')];
     if(!rows.length||!buttons.length)return;
     const roomCSS=getComputedStyle(rooms),artistCSS=getComputedStyle(artists),navCSS=getComputedStyle(nav);
-    const desktop=mediaPC.matches&&innerHeight>600,count=rows.length,gap=desktop&&count>=9?2:3;
+    const desktop=mediaPC.matches&&innerHeight>600,count=rows.length,baseGap=desktop&&count>=9?2:3;
+    let gap=baseGap;
     const padding=parseFloat(roomCSS.paddingTop)+parseFloat(roomCSS.paddingBottom);
     const inset=parseFloat(artistCSS.paddingTop)+parseFloat(artistCSS.paddingBottom);
     const scale=sidebar.getBoundingClientRect().height/sidebar.offsetHeight||1;
@@ -200,6 +201,12 @@
     }else sidebar.style.removeProperty('--rail-nav-height');
     const available=Math.max(0,total-navHeight-inset-4);
     const visible=Math.max(1,Math.min(count,Math.floor((available-padding+gap)/(rowHeight+gap))));
+    // Spread complete rows through the available artist area. Keep only very
+    // short lists grouped; ordinary artist lists reach the bottom breathing rim.
+    if(visible>1){
+      gap=Math.max(baseGap,Math.floor((available-padding-visible*rowHeight)/(visible-1)*100)/100);
+      if(count<4)gap=Math.min(12,gap);
+    }
     const height=visible*rowHeight+(visible-1)*gap+padding;
     sidebar.style.setProperty('--rail-room-height',rowHeight+'px');
     rooms.style.setProperty('--rail-room-gap',gap+'px');

@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=uiux-review-switch-20261115';
+import './web-glass-controls.js?v=controls-live-20261116';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
@@ -18,10 +18,14 @@ function eligible(){
 // Scale the same preferences to the existing small mobile profile. Default
 // values reproduce its original 16/18/2.5/110/.42/.3 material; retain balanced
 // quality, one-pixel maps and all accessibility/low-power/idle guards.
-function mobileMaterial(){return {
+function mobileMaterial(){
+ const theme=document.documentElement.dataset.frommTheme,hex=getComputedStyle(document.documentElement).getPropertyValue('--theme-header').trim();
+ const rgb=theme&&theme!=='glow'&&/^#[0-9a-f]{6}$/i.test(hex)?[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(','):'222,245,232';
+ return {
+ scheme:theme==='classic'?'dark':'light',
  refraction:16*preferences.refraction/34,thickness:Math.max(4,18*preferences.thickness/28),
  blur:Math.min(6,2.5+preferences.blur),saturation:Math.min(150,110+preferences.saturation-108),
- tint:'rgba(222,245,232,'+Math.min(.9,.42*preferences.opacity/28)+')',
+ tint:'rgba('+rgb+','+Math.min(.9,.42*preferences.opacity/28)+')',
  specularIntensity:.3+preferences.specular/100
  };}
 function queueBuild(){
@@ -70,6 +74,7 @@ function sync(){
 }
 window.FrommGlass=Object.freeze({sync,get count(){return instances.size;}});
 glassPreferences.subscribe(()=>{preferences=glassPreferences.value;sync();});
+window.addEventListener('fromm-theme-change',()=>{for(const glass of instances.values())versions.delete(glass);sync();});
 for(const query of [glassPC,reduce,opaque,contrast])query.addEventListener('change',sync);
 document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);
 window.addEventListener('pagehide',()=>{

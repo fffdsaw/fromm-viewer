@@ -2,6 +2,15 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## Expanded-player header action palette fix — 2026-11-16
+
+This is a post-deployment completion of the previously approved theme-synchronization work. The user highlighted the Replay back/download buttons retaining mint text and a pale glass face in Classic. Continue the preserved feature branch from clean `c8798fdbe145d0badbff540f3ee6d155a17517a3`; production main was `2c380a99229e791b61045758f50089550fbca1b0`, and remote refs/open PRs were checked before editing.
+
+- Added the shared `.replay-page-back` / `.replay-page-download` selectors to the existing alternate-palette button and decorative-face rules. Replay and Channel use these same classes. Foreground/background/border and optical face now follow the selected palette; Classic shows white text on a dark surface. Glow ME, playback, click handlers and download engines are unchanged. The stylesheet URL version is bumped.
+- Node 24.22.1 / Playwright 1.62.1 / Chromium 151.0.7922.34, synthetic data only. Unit suite: **326 pass / 0 fail / 1 platform skip**. Existing `settings-themes` passed all three sizes plus saved Classic login/blocked storage. Existing `replay-player` and `channel-player` passed real landscape/portrait decoding, controls and Back at **1440×900 and 390×844** (`PLAYER_VIEWPORTS` selection).
+- A one-off UI inspection outside the repo covered 40 actual-renderer button cases (Replay/Channel × desktop/mobile × five alternate palettes × two actions), including hover/decorative faces and real Back/download-handler clicks. Minimum measured contrast was **9.79:1**; no pale background gradients or page errors remained. Receipts/screenshots are under `/workspace/replay-actions-20261116/`; no new permanent test or private media was added.
+- `git -c core.whitespace=cr-at-eol diff --check` passed. New PR checks must be read against this fix SHA. Continue the previously authorized merge/deploy after successful validation, then verify actual public HTML/CSS. Earlier deployment notes below remain history.
+
 ## PR #127 production deployment confirmed — 2026-11-16 (Asia/Seoul)
 
 - User explicitly approved merge/deploy. [PR #127](https://github.com/fffdsaw/fromm-viewer/pull/127) is merged into main at `2c380a99229e791b61045758f50089550fbca1b0`, containing final implementation/test head `e1c163a6cab20cf366192273a4427f93c7022d0b` and all earlier stabilization history.

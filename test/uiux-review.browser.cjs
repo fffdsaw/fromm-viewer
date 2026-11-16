@@ -60,10 +60,10 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
     assert.equal(await p.locator('.chat-audio-play .control-glass-surface,.chat-sound-download .control-glass-surface').count(),0);
     await p.evaluate(()=>FrommGlassSettings.set({enabled:true},{immediate:true}));
     await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface'));
-    assert.ok((await voiceLook(p)).every(x=>x.background.includes('linear-gradient')),'switching back on restores the optical material');
+    assert.ok((await voiceLook(p)).every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'),'switching back on restores the optical material');
     assert.deepEqual(errors,[]);continue;
    }
-   assert.ok(before.every(x=>x.background.includes('linear-gradient')&&x.shadow!=='none'),'voice buttons have their final resting material on first paint');
+   assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'&&x.shadow!=='none'),'voice buttons have their final clear resting material on first paint');
    release();await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface')&&document.querySelector('.chat-sound-download .control-glass-surface'));await p.waitForTimeout(400);
    assert.deepEqual(await voiceLook(p),before,'asynchronous setup preserves both resting colors and rims');
    for(const selector of voiceSelectors){

@@ -3,7 +3,7 @@
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb';
-const selected='.glowme-nav button[aria-current="page"],#rooms .room.active,.replay-filter.active';
+const selected='#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
 const LIMIT=8; // Rail drops + interacted control first; others keep the same basic face.
@@ -41,18 +41,15 @@ function opticalSettings(item){
  const strength=rail ? .85 : el.id==='scrollTopBtn' ? .35 : drop ? .65 : .55;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- const brightness=menu?Math.min(.025,settings.opacity/100):settings.opacity/100;
- const theme=document.documentElement.dataset.frommTheme,root=getComputedStyle(document.documentElement),hex=root.getPropertyValue('--theme-selected').trim(),softHex=root.getPropertyValue('--theme-soft').trim();
- const rgb=/^#[0-9a-f]{6}$/i.test(hex)?[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(','):'193,239,222';
- const softRGB=/^#[0-9a-f]{6}$/i.test(softHex)?[1,3,5].map(i=>parseInt(softHex.slice(i,i+2),16)).join(','):'255,255,255';
+ const theme=document.documentElement.dataset.frommTheme;
  return {
   scheme:theme==='classic'?'dark':'light',
   thickness:menu?Math.min(12,settings.thickness):settings.thickness,refraction:menu?settings.refraction*.6:settings.refraction*strength,
   blur:menu?0:settings.blur,saturation:menu?100:settings.saturation,
-  tint:menu?'rgba(255,255,255,'+brightness+')':drop?'rgba('+(theme&&theme!=='glow'?rgb:'193,239,222')+','+brightness+')':el.classList.contains('glass-on-image')?'rgba('+(theme&&theme!=='glow'?'14,18,24':'14,37,30')+','+brightness+')':'rgba('+(theme&&theme!=='glow'?softRGB:'255,255,255')+','+brightness+')',
+  tint:'rgba(255,255,255,0)',
   // A clear moving lens bends the menu glyphs and retains a quiet optical rim;
   // the gloss preference adds to this baseline.
-  specular:menu||settings.specular>0,specularIntensity:menu?.22+settings.specular/300:settings.specular/100
+  specular:menu||settings.specular>0,specularIntensity:(menu?.22+settings.specular/300:settings.specular/100)*settings.opacity/28
  };
 }
 function sync(){

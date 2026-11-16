@@ -3,7 +3,7 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=re
 const{serve,open,seed}=require('./helpers/phase3-fixture.cjs');
 const key='fromm.pcGlass.v1',out=process.env.GLASS_SETTINGS_DIR;
 const ready=p=>p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2,null,{timeout:7000});
-const navFace='.glowme-nav [aria-current="page"] .control-glass-surface';
+const navFace='.rail-pointer-light .control-glass-surface';
 function scale(p){return p.locator(navFace).evaluate(e=>{
  const id=/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)?.[1];
  return Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'));

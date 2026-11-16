@@ -35,7 +35,7 @@ async function playingFallback(p){
  await p.evaluate(()=>{const v=document.createElement('video');v.id='playing-optics-fixture';Object.defineProperties(v,{readyState:{get:()=>2},paused:{get:()=>false},ended:{get:()=>false}});document.body.append(v);v.dispatchEvent(new Event('playing',{bubbles:true}));});
  await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='basic');
  const look=await p.locator('.rail-pointer-light').evaluate(el=>{const s=getComputedStyle(el);return{opacity:s.opacity,background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth}});
- assert.equal(look.opacity,'1');assert.ok(look.background!=='none'||look.color!=='rgba(0, 0, 0, 0)','cursor highlight stays visible while decoded video parks the engine');
+ assert.equal(look.opacity,'1');assert.equal(look.background,'none');assert.equal(look.color,'rgba(0, 0, 0, 0)','parked engine keeps a clear centre');assert.notEqual(await p.locator('.rail-pointer-light').evaluate(el=>getComputedStyle(el).borderColor),'rgba(0, 0, 0, 0)','neutral rim keeps the cursor visible during playback');
  const x=await target.evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width-12,y:r.y+r.height/2}});await p.mouse.move(x.x,x.y);await p.waitForTimeout(100);
  const position=await p.locator('.rail-pointer-light').evaluate(el=>el.style.getPropertyValue('--rail-light-x'));assert.ok(parseFloat(position)>before.width/2,'fallback still tracks the cursor');
  assert.deepEqual(await target.boundingBox(),before,'menu hit boxes remain fixed during fallback');

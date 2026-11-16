@@ -32,8 +32,23 @@
   railHead.after(nav);
   // A single decoration follows the pointer independently of the optional lens.
   const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
+  const railDropLayer=document.createElement('span');railDropLayer.className='rail-drop-layer';railDropLayer.setAttribute('aria-hidden','true');railDropLayer.inert=true;sidebar.append(railDropLayer);
+  const railDrops=Array.from({length:2},()=>{const drop=document.createElement('span');drop.className='rail-lens-drop';drop.setAttribute('aria-hidden','true');drop.inert=true;railDropLayer.append(drop);return drop;});
+  let dripRow=null;
+  function clearRailDrops(){for(const drop of railDrops){drop.getAnimations().forEach(animation=>animation.cancel());drop.style.opacity='0';}}
+  function releaseRailDrops(left,top,width){
+    if(!document.documentElement.classList.contains('pc-control-glass')||document.documentElement.classList.contains('glass-disabled'))return;
+    const navBox=nav.getBoundingClientRect(),railBox=sidebar.getBoundingClientRect();
+    left+=navBox.left-railBox.left-nav.scrollLeft;top+=navBox.top-railBox.top-nav.scrollTop;
+    railDrops.forEach((drop,index)=>{
+      drop.getAnimations().forEach(animation=>animation.cancel());
+      const x=left+width/2+(index?8:-6)-drop.offsetWidth/2,y=top-7;
+      const at=(dy,sx,sy)=>`translate3d(${x}px,${y+dy}px,0) scale(${sx},${sy})`;
+      drop.animate([{transform:at(0,.5,1.35),opacity:0},{transform:at(4,.8,1.5),opacity:.9,offset:.18},{transform:at(19,1,.95),opacity:.75,offset:.55},{transform:at(42,.65,.8),opacity:0}],{duration:660+index*100,delay:120+index*90,easing:'cubic-bezier(.32,.03,.65,1)',fill:'none'});
+    });
+  }
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null;
-  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
+  function clearRailLight(){clearRailDrops();dripRow=null;cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
   function paintRailLight(now=performance.now()){
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
@@ -42,6 +57,8 @@
     const target=box.top-parent.top+nav.scrollTop+box.height/2+Math.max(-3,Math.min(3,(y-box.top-box.height/2)*.14));
     const tracking=nav.classList.contains('rail-pointer-tracking');
     if(!lightState||!tracking)lightState={y:target,velocity:0,time:now};
+    if(tracking&&dripRow&&dripRow!==button)releaseRailDrops(left,target+box.height/2,box.width);
+    dripRow=button;
     const dt=Math.max(.001,Math.min(.032,(now-lightState.time)/1000));lightState.time=now;
     // A damped, bounded spring carries the existing SVG lens between
     // rows. Only its decoration stretches; the buttons and glyph hit areas stay put.
@@ -67,6 +84,7 @@
     lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
   },{passive:true});
   nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
+  reducedMotion.addEventListener('change',clearRailLight);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});window.addEventListener('pagehide',clearRailLight);
   nav.addEventListener('scroll',clearRailLight,{passive:true});
   new ResizeObserver(()=>{if(lightPoint)scheduleRailLight();}).observe(nav);
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});

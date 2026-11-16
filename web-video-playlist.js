@@ -138,7 +138,13 @@
    else if(direction>0&&current()){error=adapter.more?.()?'다음 영상이 아직 없습니다. 더 불러오기를 눌러주세요.':'마지막 영상입니다.';paint();}
   }
   function close(focus=true){pref.open=false;paint();if(focus)toggle.focus({preventScroll:true});}
-  on(doc,'pointerdown',event=>{if(pref.open&&!event.composedPath().includes(drawer)&&!event.composedPath().includes(toggle))close(false);},{capture:true});
+  on(doc,'click',event=>{
+   if(!pref.open||event.composedPath().includes(drawer)||event.composedPath().includes(toggle))return;
+   close(false);
+   // The first surface click dismisses the overlay only. Explicit transport
+   // buttons outside the drawer still perform their own action normally.
+   if(event.target===video){event.preventDefault();event.stopPropagation();}
+  },{capture:true});
   on(toggle,'click',event=>{event.stopPropagation();pref.open=!pref.open;paint();if(pref.open){alignCurrent();void loadAll();}});
   on(drawer,'click',event=>{
    event.stopPropagation();const button=event.target.closest('button');if(!button||button.disabled)return;
@@ -173,7 +179,7 @@
   const items=filteredMessages().filter(m=>normType(m.type)==='video'&&resolveMediaUrl(m));
   const selected=items.find(m=>resolveMediaUrl(m)===src||proxyUrl(m,false)===src);if(!selected)return()=>{};
   const room=state.room,account=currentAccountScope(),filter=state.filter;
-  return attach({stage:document.querySelector('#imageLightbox'),video,adapter:{kind:'lightbox',key:messageStableKey(selected),keyOf:messageStableKey,items:()=>items,valid:()=>state.room===room&&currentAccountScope()===account&&state.filter===filter&&document.querySelector('#imageLightbox').classList.contains('video-preview'),title:baseName,meta:m=>`${dateKey(m)} · ${timeLabel(m)}`,thumb:m=>normalizeMediaUrl(m.thumbnailUrl||m.thumbnail?.url||''),choose:m=>openVideoLightbox(proxyUrl(m,false),`${baseName(m)} · ${dateKey(m)} ${timeLabel(m)}`)}});
+  return attach({stage:document.querySelector('#imageLightbox'),video,adapter:{kind:'lightbox',key:messageStableKey(selected),keyOf:messageStableKey,items:()=>items,valid:()=>state.room===room&&currentAccountScope()===account&&state.filter===filter&&document.querySelector('#imageLightbox').classList.contains('video-preview'),title:baseName,meta:m=>`${dateKey(m)} · ${timeLabel(m)}`,thumb:m=>normalizeMediaUrl(m.thumbnailUrl||m.thumbnail?.url||''),choose:m=>openDownloadPreview("media",m)}});
  }
  window.FrommVideoPlaylist=Object.freeze({attachPlayer,attachLightbox});
  // Authenticated startup/hash restoration can finish while this presentation

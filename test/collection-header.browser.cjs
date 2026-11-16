@@ -25,6 +25,12 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
     assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.equal(await p.locator('#selectAllBtn').isEnabled(),true);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);
     if(n)assert.equal(await p.locator(selector+'.active').getAttribute('aria-pressed'),'true');
    }
+   if(width===1440)for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){
+    await p.evaluate(theme=>FrommThemes.set(theme),theme);
+    const palette=await p.evaluate(()=>{const probe=document.createElement('span');document.body.append(probe);const rgb=token=>{probe.style.color=`var(--theme-${token})`;return getComputedStyle(probe).color;};const result={count:getComputedStyle(document.querySelector('.pc-mode-count')).color,expectedCount:rgb('muted'),left:getComputedStyle(document.querySelector('.pc-mode-heading'),'::after').backgroundColor,right:getComputedStyle(document.querySelector('.header-icon-cluster'),'::before').backgroundColor,expectedLine:rgb('line')};probe.remove();return result;});
+    assert.equal(palette.count,palette.expectedCount,theme+' count text follows the palette');assert.equal(palette.left,palette.expectedLine,theme+' filter divider follows the palette');assert.equal(palette.right,palette.expectedLine,theme+' action divider follows the palette');
+   }
+   await p.evaluate(()=>FrommThemes.set('glow'));
    const g=await geometry(p);if(mode==='replay')replayGeometry=g;else for(const key of ['.viewer-header','.batch-selection-tools','#logoutMiniBtn']){
     for(const dim of ['x','y','width','height'])assert.ok(Math.abs(g[key][dim]-replayGeometry[key][dim])<1,`${width} same ${key} ${dim}`);
    }

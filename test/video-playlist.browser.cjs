@@ -1,0 +1,116 @@
+'use strict';
+// Real MP4 endings and the existing authenticated detail/history paths, all synthetic.
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{execFileSync}=require('node:child_process');
+const {serve,open}=require('./helpers/phase3-fixture.cjs');
+(async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fromm-queue-')),file=path.join(temp,'video.mp4');
+ execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=320x180:rate=12','-t','8','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',file]);
+ const host=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
+ try{for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:568,height:320}]){
+  const {page,context,errors}=await open(browser,host.url,viewport),detailCalls=[];
+  await page.route('**/queue-*.mp4',route=>route.fulfill({contentType:'video/mp4',body:fs.readFileSync(file)}));
+  let deny=false,listFailure=false,listed=[];
+  await page.route('**/*',route=>{
+   let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
+   if(!u.hostname.endsWith('frommyarti.com'))return route.fallback();
+   const json=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify({success:status===200,data})});
+   if(u.pathname==='/media/posts')return json({posts:listed,isLast:true},listFailure?503:200);
+   if(u.pathname.startsWith('/media/posts/')){
+    const id=u.pathname.split('/').at(-1);detailCalls.push(id);
+    return json({post:{id,type:id.startsWith('r')?'live_record':'video',isVisible:true,title:'합성 영상 '+id,url:host.url+'queue-'+id+'.mp4'}},deny?403:200);
+   }
+   return route.fallback();
+  });
+  for(const kind of ['replay','channel']){
+   await page.evaluate(kind=>{
+    stopReplayPlayback();stopChannelVideoPlayback();state.filter='live';state.live.centerMode=kind;state.live.channelsLoaded=true;state.live.channels=[{id:'fixture-channel',channelName:'합성 채널',isSubscribed:true}];state.live.replayFilter='fixture-channel';
+    const posts=Array.from({length:3},(_,i)=>({id:(kind==='replay'?'r':'c')+i,type:kind==='replay'?'live_record':'video',title:'합성 영상 '+i,displayStartAt:1791534600000-i*1000,isVisible:true,_channelId:'fixture-channel',_channelName:'합성 채널'}));
+    if(kind==='replay'){state.live.replayPosts=posts;replayPagingFor('fixture-channel').isLast=true;renderLiveView();}
+    else{channelVideoState.channelId='fixture-channel';channelVideoState.pages.set('fixture-channel',{posts,isLast:true,loaded:true});renderLiveView();}
+   },kind);
+   const prefix=kind==='replay'?'r':'c';
+   await page.evaluate(({kind,prefix})=>kind==='replay'?playReplay(prefix+'0','fixture-channel'):playChannelVideo(prefix+'0'),{kind,prefix});
+   const video=page.locator(kind==='replay'?'#replayVideo':'#channelVideo'),toggle=page.getByRole('button',{name:'재생목록',exact:true});
+   await video.evaluate(async el=>{if(el.readyState<2)await new Promise(r=>el.addEventListener('loadeddata',r,{once:true}));el.pause();});
+   const before=await video.boundingBox();await toggle.click();await page.waitForTimeout(280);
+   assert.deepEqual(await video.boundingBox(),before,'drawer never resizes the video');assert.equal(await toggle.textContent(),'','icon only');
+   const drawer=page.locator('.video-playlist-drawer');assert.equal(await drawer.locator('[aria-current="true"]').count(),1);
+   for(const theme of ['glow','sky','lavender','classic']){await page.evaluate(theme=>FrommThemes.set(theme),theme);const colors=await drawer.evaluate(el=>{const probe=document.createElement('span');probe.style.color='var(--theme-text)';probe.style.backgroundColor='var(--theme-card)';document.body.append(probe);const expected={text:getComputedStyle(probe).color,bg:getComputedStyle(probe).backgroundColor},actual={text:getComputedStyle(el).color,bg:getComputedStyle(el).backgroundColor};probe.remove();return{expected,actual};});assert.deepEqual(colors.actual,colors.expected,theme+' updates the visible drawer palette');}
+   const rect=await drawer.boundingBox();assert.ok(rect.height>200&&rect.x>=0&&rect.x+rect.width<=viewport.width+1&&rect.y>=0&&rect.y+rect.height<=viewport.height+1,JSON.stringify({viewport,rect}));
+   assert.ok(await drawer.locator('.video-playlist-items').evaluate(el=>el.clientHeight>=50),'at least one scrollable queue row remains reachable');
+   await drawer.locator('[data-queue-index="1"]').click();await page.waitForFunction(({kind,prefix})=>(kind==='replay'?state.live.replaySelected:channelVideoState.selected)?.id===prefix+'1',{kind,prefix});
+   await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo')?.readyState>=2,kind);assert.ok(detailCalls.includes(prefix+'1'),'queue choice fetches fresh authenticated detail');
+   await page.getByRole('button',{name:'재생목록 닫기'}).click();await page.waitForTimeout(280);assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+   await video.evaluate(el=>{el.dataset.completed='';el.addEventListener('ended',()=>el.dataset.completed='yes',{once:true});el.currentTime=el.duration-.2;el.playbackRate=8;void el.play();});
+   await page.waitForFunction(({kind,prefix})=>(kind==='replay'?state.live.replaySelected:channelVideoState.selected)?.id===prefix+'2',{kind,prefix});
+   await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo')?.readyState>=2,kind);
+   assert.ok(detailCalls.includes(prefix+'2'),'closed drawer still advances through fresh detail');
+   await toggle.click();await page.locator('.video-playlist-auto input').uncheck();
+   await page.locator('[data-queue="prev"]').click();await page.waitForFunction(({kind,prefix})=>(kind==='replay'?state.live.replaySelected:channelVideoState.selected)?.id===prefix+'1',{kind,prefix});
+   await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo')?.readyState>=2,kind);
+   await video.evaluate(el=>{el.currentTime=el.duration-.2;el.playbackRate=8;void el.play();});
+   await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo')?.ended,kind);
+   assert.equal(await video.evaluate(el=>el.currentTime===el.duration),true,'large video retains its end position when automatic next is off');
+   assert.equal(await page.evaluate(kind=>(kind==='replay'?state.live.replaySelected:channelVideoState.selected).id,kind),prefix+'1');
+   await page.locator('[data-queue="next"]').click();await page.waitForFunction(({kind,prefix})=>(kind==='replay'?state.live.replaySelected:channelVideoState.selected)?.id===prefix+'2',{kind,prefix});
+   await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo')?.readyState>=2,kind);assert.equal(await page.locator('[data-queue="next"]').isDisabled(),true,'last item does not wrap');
+   await page.getByRole('button',{name:'재생목록 닫기'}).press('Escape');assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+   await toggle.click();await page.locator('.video-playlist-auto input').check();
+   if(process.env.PLAYLIST_DIR){fs.mkdirSync(process.env.PLAYLIST_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PLAYLIST_DIR,kind+'-'+viewport.width+'.png')});}
+   if(kind==='channel'){deny=true;await page.locator('[data-queue="prev"]').click();await page.waitForFunction(()=>!!channelVideoState.playerError);assert.equal(await page.locator('#channelVideo').count(),0,'permission denial stops playback');assert.equal(await page.locator('.video-playlist-toggle').count(),0,'old queue owners are disposed after denial');deny=false;await page.goBack();await page.waitForFunction(()=>!channelVideoState.selected);assert.ok(!page.url().includes('#channel='),'one Back reaches Channel list after queue navigation');}
+   else{await page.goBack();await page.waitForFunction(()=>!state.live.replaySelected);}
+  }
+  if(viewport.width===1440){
+   // A long queue mounts only one page. More-loading failures preserve the
+   // playing video/cursor, then retry extends the same queue without a restart.
+   await page.evaluate(()=>{
+    state.filter='live';state.live.centerMode='channel';channelVideoState.channelId='fixture-channel';
+    const posts=Array.from({length:51},(_,i)=>({id:'c'+i,num:100-i,type:'video',isVisible:true,title:'목록 영상 '+i,displayStartAt:1791534600000-i*1000,_channelId:'fixture-channel'}));
+    channelVideoState.pages.set('fixture-channel',{posts,lastPost:posts.at(-1),isLast:false,loaded:true});
+   });
+   await page.evaluate(()=>playChannelVideo('c50'));await page.waitForFunction(()=>document.querySelector('#channelVideo')?.readyState>=2);
+   const toggle=page.locator('.video-playlist-toggle');if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+   const drawer=page.locator('.video-playlist-drawer');assert.equal(await drawer.locator('[data-queue-index]').count(),1);
+   await drawer.locator('[data-queue="page-prev"]').click();assert.equal(await drawer.locator('[data-queue-index]').count(),50);await drawer.locator('[data-queue="page-next"]').click();
+   listFailure=true;await drawer.locator('[data-queue="more"]').click();await page.waitForFunction(()=>document.querySelector('.video-playlist-notice')?.textContent.includes('다시 시도'));
+   assert.equal(await page.evaluate(()=>channelVideoPage().posts.length),51);assert.equal(await page.evaluate(()=>channelVideoState.selected.id),'c50');
+   listFailure=false;listed=[{id:'c51',num:49,type:'video',isVisible:true,title:'다음 페이지 영상',displayStartAt:1791534600000-51000}];
+   await drawer.locator('[data-queue="more"]').click();await page.waitForFunction(()=>channelVideoPage().posts.length===52);
+   await drawer.locator('[data-queue="close"]').click();
+   await page.locator('#channelVideo').evaluate(el=>{el.currentTime=el.duration-.2;el.playbackRate=8;void el.play();});
+   await page.waitForFunction(()=>channelVideoState.selected?.id==='c51');await page.waitForFunction(()=>document.querySelector('#channelVideo')?.readyState>=2);
+   assert.ok(detailCalls.includes('c51'),'auto next crosses a fetched page through the permission detail API');
+   await page.locator('#channelVideo').evaluate(el=>{el.currentTime=el.duration-.2;el.playbackRate=8;void el.play();});await page.waitForFunction(()=>document.querySelector('#channelVideo')?.ended);
+   assert.equal(await page.evaluate(()=>channelVideoState.selected.id),'c51','automatic next stops at the actual queue end');
+   // A late permission response cannot reopen a player after leaving its tab.
+   let releaseDetail;const hold=new Promise(resolve=>releaseDetail=resolve);
+   await page.route('**/*',async route=>{
+    let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
+    if(u.pathname!=='/media/posts/c0')return route.fallback();await hold;
+    await route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{post:{id:'c0',type:'video',isVisible:true,url:host.url+'queue-c0.mp4'}}})}).catch(()=>{});
+   });
+   if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+   await drawer.locator('[data-queue="page-prev"]').click();const pendingDetail=page.waitForRequest(request=>{let u=new URL(request.url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));return u.pathname==='/media/posts/c0';});await drawer.locator('[data-queue-index="0"]').click();await pendingDetail;
+   await page.evaluate(()=>setFilter('image'));releaseDetail();await page.waitForTimeout(300);
+   assert.equal(await page.locator('.video-playlist-toggle,#channelVideo').count(),0);assert.equal(await page.evaluate(()=>state.filter),'image');
+  }
+  if(viewport.width===1440){
+   // Hash/login restoration can create the existing player before this asset
+   // arrives. Loading the real module late must attach to that engine too.
+   await page.evaluate(()=>{window.FrommVideoPlaylist=undefined;state.filter='live';state.live.centerMode='channel';});
+   await page.evaluate(()=>playChannelVideo('c1'));await page.waitForFunction(()=>document.querySelector('#channelVideo')?.readyState>=2);
+   assert.equal(await page.locator('.video-playlist-toggle').count(),0);
+   await page.addScriptTag({url:host.url+'web-video-playlist.js?late-asset-fixture=1'});
+   assert.equal(await page.getByRole('button',{name:'재생목록',exact:true}).count(),1,'late asset attaches to the restored player');
+   await page.getByRole('button',{name:'재생목록',exact:true}).click();await page.getByRole('button',{name:'재생목록 닫기'}).click();
+   await page.evaluate(()=>stopChannelVideoPlayback());
+  }
+  // Enlarged conversation/gallery videos use the same drawer, not the compact reset.
+  await page.evaluate(()=>{state.filter='video';state.messages=Array.from({length:2},(_,i)=>({messageId:'big-'+i,type:'video',userType:'star',content:new URL('queue-big'+i+'.mp4',location.href).href,createdAt:1791534600000+i*1000}));state.chatMessages=state.messages;state.chatHistoryComplete=true;buildMediaSequences();render();openVideoLightbox(proxyUrl(filteredMessages()[0],false));});
+  await page.waitForFunction(()=>document.querySelector('#lightboxVideo').readyState>=2);
+  await page.locator('#imageLightbox .video-playlist-toggle').click();await page.locator('#imageLightbox [data-queue="next"]').click();
+  await page.waitForFunction(()=>document.querySelector('#lightboxVideo').getAttribute('src').includes('queue-big0.mp4'));
+  await page.evaluate(()=>closeImageLightbox());assert.equal(await page.locator('#imageLightbox .video-playlist-drawer').count(),0);
+  assert.deepEqual(errors,[]);await context.close();console.log(`${viewport.width}x${viewport.height}: Replay/Channel drawer, real end→next, manual/off/last, fresh detail, history, enlarged media and cleanup PASS`);
+ }}finally{await browser.close();await host.close();fs.rmSync(temp,{recursive:true,force:true});}
+})().catch(error=>{console.error(error);process.exitCode=1;});

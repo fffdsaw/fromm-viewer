@@ -1109,9 +1109,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=reader-palette-20261116"></script>
+<script src="web-conversation.js?v=fresh-entry-20261116"></script>
 <script src="web-small-player.js?v=unified-small-20261115"></script>
-<script src="web-chat-audio.js?v=chat-waveform-20261116"></script>
+<script src="web-chat-audio.js?v=ended-reset-20261116"></script>
 </head>
 <body>
 
@@ -5072,6 +5072,8 @@ async function attachVideoQualityPlayer(kind,url,video,owner,{current,onHls,onFa
   const player={kind,url,video,owner,current,onHls,onFatal,refreshUrl,variants:[],catalog:null,selectedIndex:0,pendingIndex:null,requestSeq:0,engineSeq:0,disposed:false,urls:[],hls:null,abort:null,listeners:[],transitioning:false,resume:null};
   videoQualityPlayers[kind]=player;
   try{player.controlsCleanup=installModernVideoControls(player);}catch{video.controls=true;}
+  const controlsCleanup=player.controlsCleanup,queueCleanup=window.FrommVideoPlaylist?.attachPlayer(player);
+  player.controlsCleanup=()=>{queueCleanup?.();controlsCleanup?.();};
   const direct=kind==="channel"?!/\.m3u8(?:\?|$)/i.test(url):/\.(mp4|webm|mov|m4v)(?:\?|$)/i.test(url);
   if(direct) {
     player.variants=[{width:0,height:0,bandwidth:0,attrs:{},url}];updateVideoQualityUi(player);
@@ -8812,6 +8814,7 @@ function openImageLightbox(src, caption=""){
   document.documentElement.classList.add("image-lightbox-open");
 }
 
+let lightboxPlaylistCleanup=null;
 function openVideoLightbox(src,caption=""){
   closeImageLightbox();
   for(const video of document.querySelectorAll('#timeline video')) video.pause();
@@ -8820,10 +8823,12 @@ function openVideoLightbox(src,caption=""){
   $("#lightboxCaption").textContent=caption;
   box.classList.add("open","video-preview");box.setAttribute("aria-hidden","false");
   document.documentElement.classList.add("image-lightbox-open");
+  lightboxPlaylistCleanup=window.FrommVideoPlaylist?.attachLightbox(video,src);
   video.play().catch(()=>{});
 }
 
 function closeImageLightbox(){
+  lightboxPlaylistCleanup?.();lightboxPlaylistCleanup=null;
   const box = $("#imageLightbox");
   box.classList.remove("open","video-preview");
   box.setAttribute("aria-hidden","true");
@@ -11268,7 +11273,9 @@ autoConnectSaved();
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=controls-live-20261116"></script>
 <script src="web-live-controls.js?v=stable-glass-glyph-20261115"></script>
-<script src="web-compact-player.js?v=unified-small-20261115"></script>
+<link rel="stylesheet" href="video-playlist.css?v=slide-queue-20261116">
+<script src="web-video-playlist.js?v=slide-queue-20261116"></script>
+<script src="web-compact-player.js?v=ended-reset-20261116"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

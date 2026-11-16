@@ -89,6 +89,17 @@ const post = (id,type='live_record') => ({id,type,title:`${id} · 긴 제목과 
         await page.waitForFunction(({kind,size})=>{const v=document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo');return v&&v.readyState>=2&&v.videoWidth===size[0]&&v.videoHeight===size[1];},{kind,size},{timeout:25000});
         await video(kind).evaluate(async v=>{v.muted=true;await v.play();});
         await page.waitForFunction(kind=>document.querySelector(kind==='replay'?'#replayVideo':'#channelVideo').currentTime>.05,kind);
+        // This suite deliberately ends/replays the same HLS element while
+        // checking buffering and rendition state. Use the real queue toggle
+        // to keep that video selected; automatic-next ON is covered separately.
+        const auto=page.locator('.video-playlist-auto input');
+        if(await auto.isChecked()){
+          const toggle=page.getByRole('button',{name:'재생목록',exact:true});
+          const wasOpen=await toggle.getAttribute('aria-expanded')==='true';
+          if(!wasOpen)await toggle.click();
+          await auto.uncheck();
+          if(!wasOpen)await page.getByRole('button',{name:'재생목록 닫기'}).click();
+        }
       };
       const choose=async(kind,label,options={})=>{
         await video(kind).hover({force:true});

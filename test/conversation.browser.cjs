@@ -96,6 +96,17 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    // A reload immediately after reading movement cannot wait for a 500ms IDB debounce.
    const immediate=await page.evaluate(async()=>{FrommViewState.cancel();renderChatWindow(filteredMessages(),700);scrollTo(0,940);/* Let the new virtual viewport paint; still below the 500ms persistence debounce. */for(let i=0;i<6;i++)await new Promise(requestAnimationFrame);const e=[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8);return{id:e.dataset.messageId,offset:e.getBoundingClientRect().top};});
    await page.reload();await page.waitForFunction(()=>FrommConversation.status.phase==='connected');await page.waitForFunction(({id,offset})=>{const e=document.querySelector(`[data-message-id="${id}"]`);return e&&Math.abs(e.getBoundingClientRect().top-offset)<4},immediate).catch(async error=>{throw new Error('immediate reload anchor '+JSON.stringify({expected:immediate,actual:await page.evaluate(id=>({y:scrollY,top:document.querySelector(`[data-message-id="${id}"]`)?.getBoundingClientRect().top,session:Object.keys(sessionStorage).filter(k=>k.startsWith('fromm.conversation.view:')).map(k=>sessionStorage.getItem(k)),pending:FrommViewState.position,start:state.chatWindowStart}),immediate.id)}),{cause:error})});assert.equal(historyRequests,beforeAgain,'reload restores its anchor without a historical rescan');
+   // A fresh navigation retains cache/draft but ignores old disk AND session
+   // reading bookmarks; unlike the two reloads above it must start latest.
+   const revisit=page.url(),beforeFresh=historyRequests;
+   await page.goto('about:blank');
+   await page.addInitScript(()=>{window.entryTails=[];new MutationObserver(()=>{const tail=document.querySelector('#timeline .msg:last-of-type');if(tail&&window.entryTails.length<30)window.entryTails.push(tail.dataset.messageId);}).observe(document,{childList:true,subtree:true});});
+   await page.goto(revisit);await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected'&&!state.chatAutoTopPending);
+   await page.waitForFunction(()=>document.documentElement.scrollHeight-scrollY-innerHeight<5);
+   assert.equal(await page.evaluate(()=>performance.getEntriesByType('navigation')[0].type),'navigate');
+   assert.equal(await page.locator('#timeline .msg').last().getAttribute('data-message-id'),'reader-new');
+   assert.equal(historyRequests,beforeFresh,'fresh visit keeps the complete history cache');
+   assert.ok((await page.evaluate(()=>entryTails)).every(id=>id==='reader-new'),'no old reading window flashes during fresh entry');
    // A manual artist change must display the target's newest message, even
    // when that artist has an older saved anchor. Session reload above still
    // restores the previous reading position as before.

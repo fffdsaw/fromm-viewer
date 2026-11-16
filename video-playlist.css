@@ -1,5 +1,6 @@
 .video-playlist-host{isolation:isolate}
-.video-playlist-toggle{position:absolute;top:12px;right:12px;z-index:8;display:grid;place-items:center;width:40px;height:40px;padding:8px;border:0;border-radius:8px;background:transparent;color:#fff;filter:drop-shadow(0 1px 2px #0009);cursor:pointer}
+.video-playlist-toggle{position:absolute;top:12px;right:12px;z-index:8;display:grid;place-items:center;width:40px;height:40px;padding:8px;border:0;border-radius:8px;background:transparent;color:#fff;filter:drop-shadow(0 1px 2px #0009);cursor:pointer;pointer-events:auto;opacity:1;visibility:inherit;transition:opacity .15s ease,visibility 0s}
+.video-playlist-toggle.is-idle{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility 0s .35s}
 .video-playlist-toggle:hover,.video-playlist-toggle[aria-expanded=true]{background:#ffffff20}
 .video-playlist-drawer{position:absolute;top:60px;right:12px;bottom:84px;z-index:8;width:min(330px,calc(100% - 24px));display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-card);color:var(--theme-text);box-shadow:-8px 8px 24px #0003;transform:translateX(calc(100% + 24px));visibility:hidden;opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease,visibility 0s .24s;font-size:14px;line-height:1.4;font-family:inherit}
 .video-playlist-drawer.is-open{transform:translateX(0);visibility:visible;opacity:1;pointer-events:auto;transition:transform .24s ease,opacity .2s ease,visibility 0s}
@@ -18,8 +19,7 @@
 .video-playlist-item img{width:68px;height:48px;object-fit:cover;border-radius:5px;flex:none}
 .video-playlist-item>span:last-child{min-width:0;display:grid;gap:4px}
 .video-playlist-item strong{font-size:13px;overflow-wrap:anywhere}.video-playlist-item small{font-size:11px;color:var(--theme-muted)}
-.video-playlist-pages{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;font-size:11px}
-.video-playlist-pages button,.video-playlist-more{padding:6px;border:0;background:transparent;color:var(--theme-accent)!important;font-size:12px}
+.video-playlist-more{padding:6px;border:0;background:transparent;color:var(--theme-accent)!important;font-size:12px}
 .video-playlist-notice{margin:0;padding:0 12px;font-size:12px;color:var(--theme-muted);flex:none}.video-playlist-notice:not(:empty){padding-top:8px;padding-bottom:8px}
 .video-playlist-drawer footer{border-top:1px solid var(--theme-line)}
 .video-playlist-drawer footer button{display:flex;align-items:center;gap:6px;min-height:34px;padding:6px 10px;border:1px solid var(--theme-line);border-radius:8px;background:var(--theme-soft)}
@@ -29,5 +29,5 @@
 /* Landscape videos can be shorter than the drawer's controls. Keep the sheet
  * inside the viewport so its rows and close/next actions remain reachable. */
 @media(max-height:600px){.video-playlist-drawer,#imageLightbox .video-playlist-drawer{position:fixed;inset:8px 8px 8px auto;margin:0;height:auto;max-height:calc(100dvh - 16px);z-index:10000}}
-@media(pointer:coarse){.video-playlist-toggle{width:44px;height:44px}.video-playlist-drawer header button,.video-playlist-drawer footer button,.video-playlist-pages button,.video-playlist-more{min-width:44px;min-height:44px}.video-playlist-auto{min-height:44px}}
-@media(prefers-reduced-motion:reduce){.video-playlist-drawer,.video-playlist-drawer.is-open{transition:none}}
+@media(pointer:coarse){.video-playlist-toggle{width:44px;height:44px}.video-playlist-drawer header button,.video-playlist-drawer footer button,.video-playlist-more{min-width:44px;min-height:44px}.video-playlist-auto{min-height:44px}}
+@media(prefers-reduced-motion:reduce){.video-playlist-drawer,.video-playlist-drawer.is-open,.video-playlist-toggle{transition:none}}

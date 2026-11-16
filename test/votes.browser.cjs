@@ -109,6 +109,12 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    assert.equal(await opener.evaluate(el=>document.activeElement===el),true,'Escape restores opener focus');
    await page.locator('[data-filter="vote"]').click();
    await page.locator('.vote-list-item').first().waitFor();
+   for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){
+    await page.evaluate(theme=>FrommThemes.set(theme),theme);await page.locator('.vote-list-item').first().hover();
+    const colors=await page.locator('.vote-list-item').first().evaluate(el=>{const probe=document.createElement('span');probe.style.backgroundColor='var(--theme-soft)';probe.style.borderColor='var(--theme-line)';document.body.append(probe);const result={background:getComputedStyle(el).backgroundColor,expected:getComputedStyle(probe).backgroundColor,line:getComputedStyle(el).borderBottomColor,expectedLine:getComputedStyle(probe).borderColor};probe.remove();return result;});
+    assert.equal(colors.background,colors.expected,theme+' vote hover follows the palette');assert.equal(colors.line,colors.expectedLine,theme+' vote separator follows the palette');
+   }
+   await page.evaluate(()=>FrommThemes.set('glow'));
    assert.equal(await page.locator('.vote-list-item').count(),2);
    assert.equal(await page.evaluate(()=>window.voteXss||0),0);
    assert.equal(await page.locator('.vote-list-item img').count(),0,'list titles stay escaped');

@@ -16,6 +16,8 @@
    valid:()=>player.current()&&state.filter==='live'&&state.live.centerMode===kind&&postKey((kind==='channel'?channelVideoState.selected:state.live.replaySelected)||{})===key,
    title:p=>p.title||'영상',meta:p=>replayDateLabel(p.displayStartAt),thumb:replayThumb,
    more:()=>kind==='channel'?!channelVideoPage()?.isLast:!replayPagingFor(channel).isLast,
+   loading:()=>kind==='channel'?channelVideoState.loading:state.live.replayLoading,
+   progress:()=>JSON.stringify(kind==='channel'?channelVideoPage()?.lastPost:replayPagingFor(channel).lastPost),
    async load(){
     if(kind==='channel')await loadChannelVideos({loadMore:true});else await loadReplayCenter({loadMore:true});
     if(kind==='channel'?channelVideoState.error:state.live.replayError)throw new Error('목록을 불러오지 못했습니다. 다시 시도해주세요.');
@@ -33,15 +35,26 @@
   if(!stage||!video||!adapter)return()=>{};
   mounted.get(stage)?.();
   const doc=stage.ownerDocument,events=new AbortController(),pref=preferences.get(adapter.kind)||{open:false,auto:true};preferences.set(adapter.kind,pref);
-  let dead=false,busy=false,pageStart=0,error='',closeTimer=0;
+  let dead=false,busy=false,loading=false,error='',closeTimer=0,alignFrame=0,loadJob=null,allJob=null;
+  const rowsByKey=new Map();
   const current=()=>!dead&&stage.isConnected&&adapter.valid();
   const toggle=doc.createElement('button');toggle.type='button';toggle.className='video-playlist-toggle';toggle.setAttribute('aria-label','재생목록');toggle.innerHTML=icon('list');
   const drawer=doc.createElement('section');drawer.className='video-playlist-drawer';drawer.setAttribute('aria-label','영상 재생목록');
-  drawer.innerHTML=`<header><strong>재생목록 <span class="video-playlist-count"></span></strong><button type="button" data-queue="close" aria-label="재생목록 닫기">${icon('close')}</button></header><label class="video-playlist-auto"><span>자동으로 다음 영상</span><input type="checkbox" aria-label="자동으로 다음 영상"></label><ol class="video-playlist-items"></ol><div class="video-playlist-pages"><button type="button" data-queue="page-prev">이전 목록</button><span></span><button type="button" data-queue="page-next">다음 목록</button></div><p class="video-playlist-notice" role="status"></p><button class="video-playlist-more" type="button" data-queue="more">더 불러오기</button><footer><button type="button" data-queue="prev">${icon('prev')}이전</button><button type="button" data-queue="next">다음${icon('next')}</button></footer>`;
-  const $=s=>drawer.querySelector(s),on=(el,event,fn)=>el.addEventListener(event,fn,{signal:events.signal});
+  drawer.innerHTML=`<header><strong>재생목록 <span class="video-playlist-count"></span></strong><button type="button" data-queue="close" aria-label="재생목록 닫기">${icon('close')}</button></header><label class="video-playlist-auto"><span>자동으로 다음 영상</span><input type="checkbox" aria-label="자동으로 다음 영상"></label><ol class="video-playlist-items"></ol><p class="video-playlist-notice" role="status"></p><button class="video-playlist-more" type="button" data-queue="more">전체 목록 불러오기</button><footer><button type="button" data-queue="prev">${icon('prev')}이전</button><button type="button" data-queue="next">다음${icon('next')}</button></footer>`;
+  const $=s=>drawer.querySelector(s),on=(el,event,fn,options={})=>el.addEventListener(event,fn,{...options,signal:events.signal});
   const key=p=>adapter.keyOf?adapter.keyOf(p):postKey(p),index=items=>items.findIndex(p=>key(p)===adapter.key);
-  stage.classList.add('video-playlist-host');stage.append(toggle,drawer);
-  let first=true;
+  // The shared controls own their existing idle timer, focus and fade states.
+  // Put the icon in that carrier so it disappears/reappears with the seek bar.
+  const carrier=stage.querySelector(':scope > .modern-video-controls');
+  stage.classList.add('video-playlist-host');(carrier||stage).append(toggle);stage.append(drawer);
+  function alignCurrent(){
+   cancelAnimationFrame(alignFrame);alignFrame=requestAnimationFrame(()=>{
+    if(!current()||!pref.open)return;
+    const list=$('.video-playlist-items'),row=rowsByKey.get(adapter.key);if(!row)return;
+    const r=row.getBoundingClientRect(),box=list.getBoundingClientRect();
+    list.scrollTop+=r.top-box.top-(list.clientHeight-r.height)/2;
+   });
+  }
   function paint(){
    if(!current())return;
    clearTimeout(closeTimer);
@@ -57,69 +70,103 @@
     const parent=short?(doc.fullscreenElement||doc.body):stage;if(drawer.parentNode!==parent)parent.append(drawer);
    }
    const items=adapter.items(),at=index(items),more=!!adapter.more?.();
-   if(first){pageStart=Math.max(0,Math.floor(at/50)*50);first=false;}
-   pageStart=Math.min(pageStart,Math.max(0,Math.floor((items.length-1)/50)*50));
    toggle.setAttribute('aria-expanded',String(pref.open));drawer.classList.toggle('is-open',pref.open);drawer.inert=!pref.open;drawer.setAttribute('aria-hidden',String(!pref.open));
-   $('.video-playlist-count').textContent=`${Math.max(0,at+1)} / ${items.length}`;
+   $('.video-playlist-count').textContent=`${Math.max(0,at+1)} / ${items.length}${more?'+':''}`;
    $('.video-playlist-auto input').checked=pref.auto;
-   const rows=doc.createDocumentFragment();
-   items.slice(pageStart,pageStart+50).forEach((post,offset)=>{
+   const list=$('.video-playlist-items'),top=list.scrollTop;
+   if(pref.open)items.forEach((post,offset)=>{
+    const id=key(post),existing=rowsByKey.get(id);
+    if(existing){
+     const button=existing.firstElementChild;button.dataset.queueIndex=String(offset);button.querySelector('.video-playlist-number').textContent=String(offset+1);
+     button.querySelector('strong').textContent=adapter.title(post);button.querySelector('small').textContent=adapter.meta?.(post)||'';
+     if(list.children[offset]!==existing)list.insertBefore(existing,list.children[offset]||null);return;
+    }
     const li=doc.createElement('li'),button=doc.createElement('button'),thumb=adapter.thumb?.(post),copy=doc.createElement('span'),title=doc.createElement('strong'),meta=doc.createElement('small');
-    button.type='button';button.className='video-playlist-item';button.dataset.queueIndex=String(pageStart+offset);
+    button.type='button';button.className='video-playlist-item';button.dataset.queueIndex=String(offset);
     if(key(post)===adapter.key)button.setAttribute('aria-current','true');
-    const number=doc.createElement('span');number.className='video-playlist-number';number.textContent=String(pageStart+offset+1);button.append(number);
+    const number=doc.createElement('span');number.className='video-playlist-number';number.textContent=String(offset+1);button.append(number);
     if(thumb){const image=doc.createElement('img');image.src=thumb;image.alt='';image.loading='lazy';image.decoding='async';button.append(image);}
-    title.textContent=adapter.title(post);meta.textContent=adapter.meta?.(post)||'';copy.append(title,meta);button.append(copy);li.append(button);rows.append(li);
+    title.textContent=adapter.title(post);meta.textContent=adapter.meta?.(post)||'';copy.append(title,meta);button.append(copy);li.append(button);rowsByKey.set(id,li);list.insertBefore(li,list.children[offset]||null);
    });
-   $('.video-playlist-items').replaceChildren(rows);
-   const paging=$('.video-playlist-pages');paging.hidden=items.length<=50;
-   paging.querySelector('span').textContent=`${pageStart+1}–${Math.min(items.length,pageStart+50)}`;
-   $('[data-queue="page-prev"]').disabled=pageStart===0||busy;$('[data-queue="page-next"]').disabled=pageStart+50>=items.length||busy;
+   list.scrollTop=top;
    $('[data-queue="prev"]').disabled=busy||at<=0;$('[data-queue="next"]').disabled=busy||at<0||at+1>=items.length&&!more;
-   $('[data-queue="more"]').hidden=!more;$('[data-queue="more"]').disabled=busy;
-   $('.video-playlist-notice').textContent=busy?'불러오는 중…':error;
-   drawer.setAttribute('aria-busy',String(busy));
+   $('[data-queue="more"]').hidden=!more;$('[data-queue="more"]').disabled=busy||loading;
+   $('[data-queue="more"]').textContent=error?'다시 불러오기':'전체 목록 불러오기';
+   $('.video-playlist-notice').textContent=loading?`전체 목록 불러오는 중 · ${items.length}개`:busy?'불러오는 중…':error;
+   drawer.setAttribute('aria-busy',String(busy||loading));
    for(const button of drawer.querySelectorAll('[data-queue-index]'))button.disabled=busy;
   }
   async function choose(post){
    if(!current()||busy||!post)return;
-   busy=true;error='';paint();
+   pref.open=false;busy=true;error='';paint();
    try{await adapter.choose(post);}catch{if(current())error='영상을 열지 못했습니다. 다시 선택해주세요.';}
    finally{busy=false;paint();}
   }
   async function more(){
-   if(!current()||busy)return;
-   busy=true;error='';paint();
-   try{await adapter.load();}catch{error='목록을 불러오지 못했습니다. 다시 시도해주세요.';}
-   finally{busy=false;paint();}
+   if(!current()||busy)return false;if(loadJob)return loadJob;
+   loading=true;error='';paint();
+   loadJob=(async()=>{
+    await Promise.resolve();
+    const before=adapter.progress?.(),count=adapter.items().length,deadline=Date.now()+60000;
+    try{
+     // Another owner may still be completing a page started before this
+     // video was selected. Wait for it rather than issuing duplicate requests.
+     while(current()&&adapter.loading?.()){
+      if(Date.now()>deadline)throw new Error('List busy');
+      await new Promise(resolve=>{const done=()=>{clearTimeout(timer);events.signal.removeEventListener('abort',done);resolve();},timer=setTimeout(done,100);events.signal.addEventListener('abort',done,{once:true});});
+     }
+     if(!current())return false;
+     if(adapter.more?.())await adapter.load();
+     if(!current())return false;
+     if(adapter.more?.()&&count===adapter.items().length&&before===adapter.progress?.())throw new Error('No cursor progress');
+     return true;
+    }catch{if(current())error='목록을 불러오지 못했습니다. 다시 시도해주세요.';return false;}
+    finally{loading=false;loadJob=null;paint();}
+   })();return loadJob;
+  }
+  async function loadAll(){
+   if(allJob)return allJob;
+   allJob=(async()=>{await Promise.resolve();while(current()&&pref.open&&adapter.more?.()){if(!await more())break;}})().finally(()=>{allJob=null;});return allJob;
   }
   async function advance(direction){
    if(!current()||busy)return;
    let items=adapter.items(),at=index(items);
-   if(direction>0&&at+1>=items.length&&adapter.more?.()){
-    await more();if(!current()||error)return;items=adapter.items();at=index(items);
+   while(direction>0&&at+1>=items.length&&adapter.more?.()){
+    if(!await more()||!current())return;items=adapter.items();at=index(items);
    }
    if(at>=0&&items[at+direction])await choose(items[at+direction]);
    else if(direction>0&&current()){error=adapter.more?.()?'다음 영상이 아직 없습니다. 더 불러오기를 눌러주세요.':'마지막 영상입니다.';paint();}
   }
-  function close(){pref.open=false;paint();toggle.focus({preventScroll:true});}
-  on(toggle,'click',event=>{event.stopPropagation();pref.open=!pref.open;paint();});
+  function close(focus=true){pref.open=false;paint();if(focus)toggle.focus({preventScroll:true});}
+  on(doc,'pointerdown',event=>{if(pref.open&&!event.composedPath().includes(drawer)&&!event.composedPath().includes(toggle))close(false);},{capture:true});
+  on(toggle,'click',event=>{event.stopPropagation();pref.open=!pref.open;paint();if(pref.open){alignCurrent();void loadAll();}});
   on(drawer,'click',event=>{
    event.stopPropagation();const button=event.target.closest('button');if(!button||button.disabled)return;
    if(button.hasAttribute('data-queue-index')){void choose(adapter.items()[Number(button.dataset.queueIndex)]);return;}
    const action=button.dataset.queue;
    if(action==='close')close();
    if(action==='prev'||action==='next')void advance(action==='prev'?-1:1);
-   if(action==='more')void more();
-   if(action==='page-prev'||action==='page-next'){pageStart+=action==='page-prev'?-50:50;paint();$('.video-playlist-items').scrollTop=0;}
+   if(action==='more')void loadAll();
   });
   on(drawer,'keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();close();}});
   on(toggle,'keydown',event=>{if(event.key==='Escape'&&pref.open){event.preventDefault();event.stopPropagation();close();}});
   on($('.video-playlist-auto input'),'change',event=>{pref.auto=event.target.checked;});
   on(video,'ended',()=>{if(current()&&pref.auto&&!video.error)void advance(1);});
   on(doc.defaultView,'resize',paint);on(doc,'fullscreenchange',paint);
-  const dispose=()=>{if(dead)return;dead=true;clearTimeout(closeTimer);events.abort();toggle.remove();drawer.remove();stage.classList.remove('video-playlist-host');if(mounted.get(stage)===dispose)mounted.delete(stage);};
-  mounted.set(stage,dispose);paint();return dispose;
+  // Enlarged native-control media has no shared carrier. Match its normal
+  // three-second idle behavior without changing its native controls/engine.
+  let idleTimer=0;
+  const revealNative=()=>{
+   clearTimeout(idleTimer);toggle.classList.remove('is-idle');
+   if(!video.paused&&!video.ended&&!toggle.matches(':focus-visible'))idleTimer=setTimeout(()=>{if(!dead&&!video.paused&&!video.ended)toggle.classList.add('is-idle');},3000);
+  };
+  if(!carrier){
+   for(const event of ['pointermove','pointerdown','focusin','focusout'])on(stage,event,revealNative);
+   for(const event of ['play','playing','pause','ended','seeking','waiting'])on(video,event,revealNative);
+   revealNative();
+  }
+  const dispose=()=>{if(dead)return;dead=true;clearTimeout(closeTimer);clearTimeout(idleTimer);cancelAnimationFrame(alignFrame);events.abort();rowsByKey.clear();toggle.remove();drawer.remove();stage.classList.remove('video-playlist-host');if(mounted.get(stage)===dispose)mounted.delete(stage);};
+  mounted.set(stage,dispose);paint();if(pref.open){alignCurrent();void loadAll();}return dispose;
  }
  function attachPlayer(player){const adapter=collection(player);return adapter?attach({stage:player.video.closest('.replay-page-stage,.channel-player-stage'),video:player.video,adapter}):()=>{};}
  function attachLightbox(video,src){

@@ -11,6 +11,22 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await page.locator('.chat-tools-title').innerText(),'대화 검색 / 날짜 찾기');
   for(const id of ['myRepliesBtn']){assert.equal(await page.locator('#'+id).getAttribute('type'),'checkbox');assert.equal(await page.locator('#'+id).isChecked(),false);}
   await page.evaluate(()=>{state.calendarMonth=new Date(2026,9,1);renderDateCalendar();});
+  if(viewport.width===1440&&!viewport.installed||viewport.width===390){
+   for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){
+    await page.evaluate(theme=>FrommThemes.set(theme),theme);
+    const palette=await page.evaluate(()=>{
+     const probe=document.createElement('span');document.body.append(probe);const rgb=token=>{probe.style.color=`var(--theme-${token})`;return getComputedStyle(probe).color;};
+     const expected={card:rgb('card'),soft:rgb('soft'),accent:rgb('accent'),selected:rgb('selected')};probe.remove();
+     const input=document.querySelector('#myRepliesBtn');input.checked=true;
+     const day=document.querySelector('.date-day.has-chat');day.classList.add('today','selected');
+     const actual={calendar:getComputedStyle(document.querySelector('#dateCalendar')).backgroundColor,restDay:getComputedStyle(document.querySelector('.date-day:not(.selected):not(.today)')).backgroundColor,close:getComputedStyle(document.querySelector('.glowme-search-close')).backgroundColor,clear:getComputedStyle(document.querySelector('.chat-search-clear')).backgroundColor,footer:getComputedStyle(document.querySelector('.search-panel-footer')).backgroundColor,nav:getComputedStyle(document.querySelector('#chatMatchNav')).backgroundColor,check:getComputedStyle(input).backgroundColor,radius:getComputedStyle(input).borderRadius,tick:getComputedStyle(input,'::after').opacity,dot:getComputedStyle(day,'::after').backgroundColor,ring:getComputedStyle(day).boxShadow,selection:getComputedStyle(input.closest('label'),'::selection').backgroundColor};
+     input.checked=false;day.classList.remove('today','selected');return{expected,actual};
+    });
+    for(const target of ['calendar','restDay','close','clear'])assert.equal(palette.actual[target],'rgba(0, 0, 0, 0)',theme+' '+target+' has no colored region');assert.equal(palette.actual.footer,palette.expected.card,theme+' calendar footer');assert.equal(palette.actual.nav,palette.expected.soft,theme+' search navigation');assert.equal(palette.actual.check,palette.expected.accent,theme+' checked control');assert.equal(palette.actual.radius,'50%','reply checkbox remains circular');assert.equal(palette.actual.tick,'1');assert.equal(palette.actual.dot,palette.expected.accent,theme+' calendar marker');assert.ok(palette.actual.ring.includes(palette.expected.accent),theme+' today ring');assert.equal(palette.actual.selection,palette.expected.selected,theme+' text selection');
+    if(shots&&viewport.width===1440&&['sky','classic'].includes(theme)){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:shots+'/palette-'+theme+'.png'});}
+   }
+   await page.evaluate(()=>FrommThemes.set('glow'));
+  }
   const calendar=await page.locator('#dateCalendar').boundingBox(),move=await page.locator('#dateJumpBtn').boundingBox();const fields=await page.locator('.search-panel-scroll').boundingBox();assert.ok(move.y>=fields.y+fields.height-1,'move footer is below scrollable calendar area');
   const panel=await page.locator('#chatToolsPanel').boundingBox();assert.ok(move.width>=panel.width-50);assert.ok(move.y+move.height<=panel.y+panel.height,'Move remains visible on short screens');
   // Six-week calendars must not overflow sideways, and the bottom row must
@@ -40,6 +56,6 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#chatSearchInput').fill('합성 대화');await page.waitForFunction(()=>state.chatQuery==='합성 대화');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
   if(viewport.width===1440&&!viewport.installed){await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});const violations=await page.evaluate(async()=>{const r=await axe.run('#chatToolsPanel',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});return r.violations.map(v=>v.id);});assert.deepEqual(violations,[]);}
-  await context.close();console.log(`${viewport.width}${viewport.installed?'-PWA':''}: inline calendar, native checkboxes, select/Move, panel layout PASS`);
+  await context.close();console.log(`${viewport.width}${viewport.installed?'-PWA':''}: inline calendar, rounded native checkbox semantics, select/Move, panel layout PASS`);
  }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

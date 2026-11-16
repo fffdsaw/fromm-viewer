@@ -100,6 +100,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .media-card.selected .card-select-text::after { content: "선택됨"; }
 .audio-thumb { position: relative; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgb(23, 27, 34), rgb(37, 45, 57)); }
 .audio-icon { font-size: 54px; opacity: 0.8; transform: translateY(-18px); }
+.audio-waveform { display:block; width:72px; height:56px; color:color-mix(in srgb,var(--theme-accent,var(--accent)) 65%,#fff); }
 .audio-player-overlay { position: absolute; left: 12px; right: 12px; bottom: 12px; }
 .audio-player-overlay audio { display: block; width: 100%; height: 40px; }
 .title-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -1098,7 +1099,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=live-optics-20261116">
+<link rel="stylesheet" href="glowme.css?v=clean-controls-20261117">
 <link rel="preload" as="script" href="web-glowme.js?v=controls-live-20261116">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
@@ -1771,9 +1772,9 @@ function renderChannelVideosView() {
   if (selected) {
     body = `<div class="channel-player">
       <div class="replay-page-head">
-        <button class="replay-page-back" id="channelBackToList" type="button">← Channel</button>
+        <button class="replay-page-back player-header-icon" id="channelBackToList" type="button" aria-label="Channel 목록으로 돌아가기">${playerBackIcon()}</button>
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(replayDateLabel(selected.displayStartAt))}</span></div>
-        <div class="video-player-actions"><button class="replay-page-download" id="channelDownloadCurrent" type="button">${downloadFeedbackIcon()}다운로드</button></div>
+        <div class="video-player-actions"><button class="replay-page-download player-header-icon" id="channelDownloadCurrent" type="button" aria-label="다운로드">${downloadFeedbackIcon()}</button></div>
       </div>
       <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : videoLoadingIndicator()}</div>
     </div>`;
@@ -4376,13 +4377,13 @@ function renderReplayPlayerView(){
       : videoLoadingIndicator();
   tl.innerHTML=`<div class="replay-player-page">
     <div class="replay-page-head">
-      <button class="replay-page-back" id="replayBackToList" type="button" aria-label="Replay 목록으로 돌아가기">← Replay</button>
+      <button class="replay-page-back player-header-icon" id="replayBackToList" type="button" aria-label="Replay 목록으로 돌아가기">${playerBackIcon()}</button>
       <div class="replay-page-copy">
         <span class="replay-page-title">${esc(selected.title || "LIVE Replay")}</span>
         <span class="replay-page-divider" aria-hidden="true">|</span>
         <span class="replay-page-meta">${esc(meta)}</span>
       </div>
-      <div class="replay-page-actions video-player-actions"><button class="replay-page-download" id="replayDownloadCurrent" type="button">${downloadFeedbackIcon()}다운로드</button></div>
+      <div class="replay-page-actions video-player-actions"><button class="replay-page-download player-header-icon" id="replayDownloadCurrent" type="button" aria-label="다운로드">${downloadFeedbackIcon()}</button></div>
     </div>
     <div class="replay-page-stage">${stage}</div>
   </div>`;
@@ -8993,6 +8994,10 @@ function armResilientImage(img,m,{gallery=false,previewFirst=false}={}){
 }
 
 
+function audioWaveformIcon(){
+  return '<svg class="audio-waveform" viewBox="0 0 72 56" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" aria-hidden="true" focusable="false">'+[8,16,28,40,50,40,28,16,8].map((height,index)=>`<path d="M${4+index*8} ${28-height/2}v${height}"/>`).join('')+'</svg>';
+}
+
 function renderMediaCard(m){
   const t = normType(m.type);
   const card = document.createElement("div");
@@ -9009,7 +9014,7 @@ function renderMediaCard(m){
     const unavailableIcon =
       t==="image" ? "🖼️" :
       t==="video" ? "🎬" :
-      "🎧";
+      audioWaveformIcon();
 
     card.innerHTML = `
       <div class="thumb audio-thumb media-ready">
@@ -9047,7 +9052,7 @@ function renderMediaCard(m){
   }else{
     thumb = `
       <div class="thumb audio-thumb">
-        <div class="audio-icon">🎧</div>
+        <div class="audio-icon">${audioWaveformIcon()}</div>
         <div class="audio-error-note">브라우저 재생 불가 · 다운로드는 가능</div>
         <div class="audio-player-overlay">
           <audio controls preload="none" src="${esc(src)}"></audio>
@@ -9123,7 +9128,7 @@ function renderMediaCard(m){
       },{once:true});
       // Leave preload="none" truly lazy. Calling load() for every rendered
       // audio card starts many metadata requests and can interrupt scrolling.
-      // Keep the headphone cover; use the same compact controls as video/chat.
+      // Keep the waveform cover; use the same compact controls as video/chat.
       window.FrommChatAudio?.enhance(a,{gallery:true});
     }else{
       thumb?.classList.add("media-ready");
@@ -10180,6 +10185,9 @@ function mediaCardForMessage(m){
   return null;
 }
 
+function playerBackIcon(){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5m7-7-7 7 7 7"/></svg>';
+}
 function downloadFeedbackIcon(){
   return `<svg class="download-feedback-icon" viewBox="0 0 36 36" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle
@@ -11273,8 +11281,8 @@ autoConnectSaved();
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=controls-live-20261116"></script>
 <script src="web-live-controls.js?v=stable-glass-glyph-20261115"></script>
-<link rel="stylesheet" href="video-playlist.css?v=slide-queue-20261116">
-<script src="web-video-playlist.js?v=slide-queue-20261116"></script>
+<link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
+<script src="web-video-playlist.js?v=full-queue-20261117"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
 <script>
 (function () {

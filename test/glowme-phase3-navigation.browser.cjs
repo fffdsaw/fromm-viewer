@@ -88,11 +88,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
     const selected=p.locator('#dateCalendarGrid [data-date="2026-11-01"]');
     await selected.hover();
     const selection=await selected.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color}));
-    assert.equal(selection.background,'rgb(169, 217, 196)','selected day stays mint even on hover');
-    assert.equal(selection.color,'rgb(23, 63, 50)','selected day has readable dark-green text');
+    assert.equal(selection.background,'rgb(201, 233, 218)','selected day keeps the active Glow palette on hover');
+    assert.equal(selection.color,'rgb(25, 62, 52)','selected day keeps the Glow text color');
     const unselected=p.locator('#dateCalendarGrid [data-date="2026-11-02"]');
     await unselected.hover();
-    assert.equal(await unselected.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(224, 244, 233)','unselected hovered day does not inherit black dark-theme highlight');
+    assert.equal(await unselected.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(230, 242, 239)','unselected hovered day uses the Glow soft color');
     const today=await p.locator('#dateCalendarGrid [data-date="2026-11-07"]').evaluate(e=>{
       const s=getComputedStyle(e),box=e.getBoundingClientRect(),grid=e.parentElement.getBoundingClientRect();
       return {outline:s.outlineStyle,shadow:s.boxShadow,offset:s.outlineOffset,right:box.right,gridRight:grid.right};

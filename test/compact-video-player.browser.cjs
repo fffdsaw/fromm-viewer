@@ -37,7 +37,7 @@ const fixture=path.join(fixtureDir,'compact.mp4');
   await page.waitForFunction(()=>document.querySelector('.media-card[data-message-id="compact-gallery"] .mvc-compact-controls'));
   const audioElement=audio.locator('audio'),audioUI=audio.locator('.small-player');
   assert.equal(await audioElement.evaluate(el=>!el.controls&&el.hidden),true,'gallery uses the approved shared compact controls');
-  assert.equal(await audio.locator('.audio-icon').isVisible(),true,'gallery retains the headphone cover');
+  assert.equal(await audio.locator('.audio-icon').isVisible(),true,'gallery retains the waveform cover');
   assert.equal(await audio.locator('.card-download').count(),1,'gallery download remains available');
   await audioUI.locator('[data-small="play"]').click();
   await page.waitForFunction(()=>{const player=document.querySelector('.media-card[data-message-id="compact-audio"] audio');return !player.paused&&player.currentTime>0;});

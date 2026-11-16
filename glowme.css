@@ -128,7 +128,7 @@
 .glowme .login-input {background:#f8fcfc;color:var(--text);border-color:#b9d9d5;}
 .glowme .auth-advanced {background:#edf7f4;}
 .glowme #authAdvancedToggle {color:#216c77;}
-.glowme .scroll-top {background:#e3f9f3f0;color:#24616a;border-color:#a9d9d4;}
+.glowme .scroll-top,.glowme .scroll-top:hover {background:transparent;color:var(--theme-text,#24616a);border-color:#ffffffa0;box-shadow:inset 0 1px 1px #ffffff80,0 3px 12px #142b2520;}
 /* Native player chrome remains readable on video/black, not mint on black. */
 .glowme :is(.modern-video-stage,.lightbox,.live-player-stage,.live-stage,.replay-page-stage,.channel-player-stage) {
   --text:#f5f6f8;--muted:#b4bdcb;--line:#3f4b5b;--accent:#ff5b73;--accent2:#ff8798;

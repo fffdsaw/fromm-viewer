@@ -34,8 +34,8 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #sidebar .rail-artists{border:0!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.viewer-header,.topbar,.live-head,.replay-page-head,.channel-page-head,.collection-header){background:var(--theme-header)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .viewer-header :is(.title,.stats,#artistTitle,.artist-name){color:var(--theme-text)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#glassSettingsBtn,.sort-btn,.replay-page-back,.replay-page-download,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#tokenLifeWrap,#logoutMiniBtn,#scanBtn,#selectAllBtn,#clearSelectionBtn)>.control-glass-surface{background:var(--theme-soft);border-color:var(--theme-line);box-shadow:none}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#glassSettingsBtn,.sort-btn,.replay-page-back,.replay-page-download,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,.rail-toggle,#chatToolsBtn,#tokenLifeWrap,#logoutMiniBtn,#scanBtn,#selectAllBtn,#clearSelectionBtn)>.control-glass-surface{background:var(--theme-soft);border-color:var(--theme-line);box-shadow:none}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button{border-color:transparent!important;color:var(--theme-text)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button.active{background:var(--theme-selected)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.glowme-nav button,.room.active)>.control-glass-surface{background:var(--theme-selected);border-color:var(--theme-line);box-shadow:none}
@@ -50,6 +50,7 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.card-date,.replay-meta,.chat-message-time,.date-sep,.meta,.stats){color:var(--theme-muted)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #conversationSend{background:var(--theme-accent)!important;color:var(--theme-on-accent)!important;border-color:var(--theme-accent)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #glassSettingsDialog .glass-settings-done{color:var(--theme-on-accent)}
+:root[data-fromm-theme] #scrollTopBtn,:root[data-fromm-theme] #scrollTopBtn:hover{background:transparent!important;color:var(--theme-text)!important;border-color:#ffffffa0!important;box-shadow:inset 0 1px 1px #ffffff80,0 3px 12px #142b2520!important}
 @media(forced-colors:active){:root[data-fromm-theme] body,:root[data-fromm-theme] :is(#sidebar,.viewer-header,.bubble,.media-card){background:Canvas!important;color:CanvasText!important;border-color:CanvasText!important}}
 
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #timeline .chat-sound-bubble:has(.small-player){background:#0e1a1b!important;color:#fff!important;border-color:#35574c!important}

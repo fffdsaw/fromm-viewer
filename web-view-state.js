@@ -122,30 +122,45 @@
  }
  function toStart(){
   cancel();state.chatAutoTopPending=false;
-  const view=key();
-  if(state.filter==='all'&&state.chatHistoryComplete){
-   const list=filteredMessages();if(list.length)renderChatWindow(list,0);
+  const view=key(),chat=state.filter==='all',list=chat&&state.chatHistoryComplete?filteredMessages():null;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+   if(list?.length)renderChatWindow(list,0);
+   positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});return;
   }
-  cancel();const ticket=serial;positions.set(view,{y:0});
-  if(['media','image','video','sound'].includes(state.filter)){
-   if(matchMedia('(prefers-reduced-motion: reduce)').matches){scrollTo({top:0,behavior:'instant'});return;}
-   const origin=scrollY,started=performance.now(),duration=Math.min(650,Math.max(260,origin/12)),button=document.querySelector('#scrollTopBtn');let animation=0;
-   const cleanup=()=>{cancelAnimationFrame(animation);button?.classList.remove('is-returning');button?.style.removeProperty('--top-return-duration');if(motionCleanup===cleanup)motionCleanup=null;};
-   motionCleanup=cleanup;button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add('is-returning');
-   const animate=now=>{
-    if(ticket!==serial||view!==key()||document.hidden){cleanup();return;}
-    const t=Math.min(1,(now-started)/duration);scrollTo({top:Math.max(0,origin*Math.pow(1-t,3)),behavior:'instant'});
-    if(t<1)animation=requestAnimationFrame(animate);else{scrollTo({top:0,behavior:'instant'});cleanup();}
-   };animation=requestAnimationFrame(animate);return;
+  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector('#scrollTopBtn');
+  let animation=0,finished=false,version=null,prefix=[];
+  const cleanup=()=>{
+   cancelAnimationFrame(animation);button?.classList.remove('is-returning');button?.style.removeProperty('--top-return-duration');
+   // During the trip only the first two chunks are added, never the entire
+   // history. Reconcile the virtual window on arrival OR manual interruption.
+   if(prefix.some(el=>el.parentNode===tl)&&view===key()&&version===state.infiniteVersion){
+    const anchor=finished?null:row(),offset=anchor?.getBoundingClientRect().top,current=filteredMessages();
+    const index=finished?0:current.findIndex(message=>String(message.messageId)===anchor?.dataset.messageId);
+    if(current.length)renderChatWindow(current,Math.max(0,index));
+    if(finished)scrollTo({top:0,behavior:'instant'});
+    else if(anchor&&index>=0){const next=tl.querySelector(`[data-message-id="${CSS.escape(anchor.dataset.messageId)}"]`);if(next)scrollBy({top:next.getBoundingClientRect().top-offset,behavior:'instant'});}
+   }
+   if(motionCleanup===cleanup)motionCleanup=null;
+  };
+  motionCleanup=cleanup;
+  if(list?.length&&state.chatWindowStart>0){
+   // Keep the exact current message in place while adding the destination
+   // above it. Rebuilding first would clamp scrollY and flash another message.
+   const anchor=row(),offset=anchor?.getBoundingClientRect().top;
+   const end=Math.min(state.chatWindowStart,state.chunkSize*2);
+   disconnectInfiniteObserver();version=state.infiniteVersion;
+   const fragment=buildChatRangeFragment(0,end,true);prefix=[...fragment.childNodes];tl.prepend(fragment);
+   if(anchor)scrollBy({top:anchor.getBoundingClientRect().top-offset,behavior:'instant'});
   }
-  // Virtual prepend compensation and smooth scrolling fight over the viewport.
-  // Reset the window to the true start and stabilize it for bounded frames.
-  scrollTo({top:0,behavior:state.filter==='all'?'instant':'smooth'});
-  if(state.filter!=='all')return;
-  let count=0;const settle=()=>{if(ticket!==serial||view!==key())return;
-   scrollTo({top:0,behavior:'instant'});
-   if(++count<12)requestAnimationFrame(settle);
-  };requestAnimationFrame(settle);
+  const origin=scrollY,started=performance.now(),duration=Math.min(650,Math.max(260,origin/12));
+  button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add('is-returning');
+  const animate=now=>{
+   if(ticket!==serial||view!==key()||document.hidden||version!==null&&version!==state.infiniteVersion){cleanup();return;}
+   const t=Math.min(1,(now-started)/duration);scrollTo({top:Math.max(0,origin*Math.pow(1-t,3)),behavior:'instant'});
+   if(t<1)animation=requestAnimationFrame(animate);
+   else{finished=true;cleanup();positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}
+  };
+  animation=requestAnimationFrame(animate);
  }
  // Only a first chat entry follows late image/font sizing. User input cancels it.
  function settleLatest(valid=()=>true){
@@ -177,5 +192,5 @@
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
  function resume(position){cancel();active=key();positions.set(active,position);pending={key:active,position,serial};}
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
 })();

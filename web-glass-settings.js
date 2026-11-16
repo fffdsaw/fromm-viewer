@@ -6,6 +6,7 @@ const controls=[
  ['thickness','유리 두께',4,60,1,28,''],
  ['blur','흐림',0,6,.2,0,''],
  ['saturation','채도',80,150,1,108,'%'],
+ ['chromatic','색수차',0,100,1,0,'%'],
  ['opacity','유리 밝기',0,60,1,28,'%'],
  ['specular','광택',0,60,2,0,'%']
 ];
@@ -23,7 +24,7 @@ document.documentElement.classList.toggle('glass-disabled',!values.enabled);
 const listeners=new Set();
 let lastEnabled=values.enabled;
 function emit(){
- clearTimeout(notifyTimer);notifyTimer=0;
+ cancelAnimationFrame(notifyTimer);notifyTimer=0;
  document.documentElement.classList.toggle('glass-disabled',!values.enabled);
  for(const fn of listeners)fn();
  if(lastEnabled!==values.enabled){
@@ -35,8 +36,8 @@ function save(){try{localStorage.setItem(GLASS_KEY,JSON.stringify(values));store
 function set(patch,{immediate=false,persist=true}={}){
  const next=normalize({...values,...patch});if(JSON.stringify(next)===JSON.stringify(values))return;
  values=next;if(persist)save();renderControls();
- // Read the latest values at most every160ms, including during a long drag.
- if(immediate)emit();else if(!notifyTimer)notifyTimer=setTimeout(emit,160);
+ // Coalesce only within a paint; a held slider remains live throughout a drag.
+ if(immediate)emit();else if(!notifyTimer)notifyTimer=requestAnimationFrame(emit);
 }
 export const glassPreferences=Object.freeze({
  get value(){return {...values};},defaults,
@@ -49,35 +50,38 @@ function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
  if(!values.enabled)return '유리 효과를 끕니다. 설정은 자동으로 저장됩니다.';
  if(['prefers-reduced-motion: reduce','prefers-reduced-transparency: reduce','forced-colors: active'].some(query=>matchMedia('('+query+')').matches))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
- return glassPC.matches?'선택 표시와 작은 조작부에 적용되며 자동으로 저장됩니다.':'모바일 기본 효과를 기준으로 강도를 조절하며 자동으로 저장됩니다.';
+ return '실제 화면과 미리보기에 바로 적용하고 자동으로 저장합니다.';
 }
 function renderControls(){
  if(!dialog)return;
  dialog.querySelector('#glassEnabled').checked=values.enabled;
  dialog.querySelector('fieldset').disabled=!values.enabled;
- for(const[key,,,,,,unit]of controls){
+ for(const[key,,min,max,,,unit]of controls){
   const input=dialog.querySelector(`[name="${key}"]`);if(input.value!==String(values[key]))input.value=values[key];
+  input.style.setProperty('--glass-range-fill',`${(values[key]-min)/(max-min)*100}%`);
   dialog.querySelector(`[data-value="${key}"]`).textContent=values[key]+unit;
  }
  const note=dialog.querySelector('.glass-settings-note'),text=statusText();if(note.textContent!==text)note.textContent=text;
 }
 const POSITION_KEY='fromm.settingsPosition.v1';
 let footer=null,position=null,category='general';
-try{const saved=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isFinite(saved?.x)&&Number.isFinite(saved?.y))position=saved;}catch{}
+try{const saved=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isFinite(saved?.x)&&Number.isFinite(saved?.y)){position={x:saved.x,y:saved.y};if(['general','theme','glass','advanced'].includes(saved.category))category=saved.category;}}catch{}
 function bounds(){const v=window.visualViewport;return{x:v?.offsetLeft||0,y:v?.offsetTop||0,w:v?.width||innerWidth,h:v?.height||innerHeight};}
 function placePanel(){
  if(!dialog?.open)return;
  const area=bounds(),r=dialog.getBoundingClientRect(),margin=12;
- const desired=position||{x:area.x+(area.w-r.width)/2,y:area.y+Math.min(76,Math.max(margin,(area.h-r.height)/2))};
+ const desired=position||{x:area.x+area.w-r.width-margin,y:area.y+Math.min(76,Math.max(margin,area.h-r.height-margin))};
  const x=Math.max(area.x+margin,Math.min(desired.x,area.x+area.w-r.width-margin));
  const y=Math.max(area.y+margin,Math.min(desired.y,area.y+area.h-r.height-margin));
  dialog.style.left=x+'px';dialog.style.top=y+'px';
 }
-function persistPosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(position));}catch{}}
+function persistPosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(position?{...position,category}:null));}catch{}}
 function selectCategory(value,{focus=false}={}){
  category=value;
+ dialog.dataset.category=value;
  for(const tab of dialog.querySelectorAll('[data-settings-tab]')){const active=tab.dataset.settingsTab===value;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;if(active&&focus)tab.focus();}
  for(const panel of dialog.querySelectorAll('[data-settings-panel]'))panel.hidden=panel.dataset.settingsPanel!==value;
+ if(position)persistPosition();
  placePanel();
 }
 function renderThemes(){
@@ -89,7 +93,7 @@ function renderThemes(){
 }
 function placeInstall(){
  const button=document.querySelector('#installAppBtn');
- if(button&&dialog)dialog.querySelector('.settings-install').prepend(button);
+ if(button&&dialog)dialog.querySelector('.settings-install').append(button);
  // Keep the existing desktop header placement; touch layouts get a footer
  // action so settings remain reachable with the narrow rail collapsed.
  if(footer){if(glassPC.matches)document.querySelector('#sidebar .rail-head')?.append(footer);else document.querySelector('#sidebar')?.append(footer);}
@@ -103,17 +107,18 @@ export function mountGlassSettings(){
  footer.append(trigger);sidebar.querySelector('.rail-head')?.append(footer);
  dialog=document.createElement('dialog');dialog.id='glassSettingsDialog';dialog.setAttribute('aria-labelledby','glassSettingsTitle');dialog.setAttribute('aria-describedby','glassSettingsDescription');
  const categories={general:'일반',theme:'테마',glass:'유리 효과',advanced:'고급'};
- dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">설정</h2><p id="glassSettingsDescription">나에게 맞는 화면</p></div><button type="button" class="glass-settings-close" aria-label="설정 닫기">×</button></div>
+ dialog.innerHTML=`<div class="glass-settings-head"><div><h2 id="glassSettingsTitle">설정</h2><p id="glassSettingsDescription">실제 화면을 보면서 조절하세요</p></div><button type="button" class="glass-settings-close" aria-label="설정 닫기">×</button></div>
  <div class="settings-layout"><nav class="settings-categories" role="tablist" aria-label="설정 카테고리">${Object.entries(categories).map(([id,label])=>`<button type="button" role="tab" id="settings-tab-${id}" aria-controls="settings-panel-${id}" data-settings-tab="${id}">${label}</button>`).join('')}</nav>
  <div class="glass-settings-body">
- <section role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" data-settings-panel="general"><h3>일반</h3><section class="settings-install" aria-label="앱 설치"><h4>앱으로 사용하기</h4><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><p>대화 저장과 알림은 채팅 입력창의 설정에서 관리할 수 있습니다.</p></section>
+ <section role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" data-settings-panel="general"><section class="settings-install" aria-label="앱 설치"><h3>앱으로 사용하기</h3><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><h3>대화 저장 · 알림</h3><p>전체 대화 입력창의 설정에서 관리할 수 있습니다.</p></section>
  <section role="tabpanel" id="settings-panel-theme" aria-labelledby="settings-tab-theme" data-settings-panel="theme" hidden><h3>테마</h3><p>선택하면 화면 전체에 바로 적용됩니다.</p><div class="theme-choices">${Object.entries(window.FrommThemes?.names||{glow:'Glow ME'}).map(([id,label])=>`<button type="button" data-theme-choice="${id}" aria-pressed="false"><span class="theme-swatch theme-swatch-${id}" aria-hidden="true"></span><span>${label}</span></button>`).join('')}</div><p class="theme-storage-note"></p></section>
- <section role="tabpanel" id="settings-panel-glass" aria-labelledby="settings-tab-glass" data-settings-panel="glass" hidden><h3>유리 효과</h3><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
+ <section role="tabpanel" id="settings-panel-glass" aria-labelledby="settings-tab-glass" data-settings-panel="glass" hidden><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
+ <div class="glass-settings-preview" role="img" aria-label="실제 유리 엔진 미리보기"><span class="glass-preview-pattern" aria-hidden="true">Aa · Fromm · 123</span><span class="glass-preview-lens" aria-hidden="true"></span><span class="glass-preview-caption">실제 엔진 미리보기</span></div>
  <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset><p class="glass-settings-note" role="status"></p></section>
- <section role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" data-settings-panel="advanced" hidden><h3>고급</h3><p>기기의 동작 줄이기·투명도 줄이기 설정을 우선합니다. 영상 재생 중에는 유리 렌더링 부하를 줄입니다.</p><button class="btn settings-position-reset" type="button">설정창 위치 초기화</button><p>기본값 복원은 화면 설정만 변경합니다. 저장된 대화는 유지됩니다.</p></section>
+ <section role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" data-settings-panel="advanced" hidden><h3>효과 동작</h3><p>동시 효과 수와 저사양·영상 재생 중 자동 제한을 해제했습니다. 직접 끄기와 기기의 접근성 설정은 유지합니다.</p><button class="btn settings-position-reset" type="button">설정창 위치 초기화</button><p>기본값 복원은 화면 설정만 변경합니다. 저장된 대화는 유지됩니다.</p></section>
  </div></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
  document.body.append(dialog);placeInstall();
- trigger.onclick=()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();renderThemes();if(!dialog.open){dialog.showModal();selectCategory(category);placePanel();}};
+ trigger.onclick=()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();renderThemes();if(!dialog.open){dialog.dataset.modal=String(!glassPC.matches);if(glassPC.matches)dialog.show();else dialog.showModal();selectCategory(category);placePanel();dialog.querySelector(`[data-settings-tab="${category}"]`).focus({preventScroll:true});}};
  const close=()=>dialog.close();dialog.querySelector('.glass-settings-close').onclick=close;dialog.querySelector('.glass-settings-done').onclick=close;
  dialog.querySelector('.glass-settings-reset').onclick=()=>{glassPreferences.reset();window.FrommThemes?.reset();position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
  dialog.querySelector('.settings-position-reset').onclick=()=>{position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
@@ -129,7 +134,7 @@ export function mountGlassSettings(){
  const endDrag=()=>{if(!drag)return;drag=null;const r=dialog.getBoundingClientRect();position={x:r.left,y:r.top};persistPosition();};
  for(const name of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(name,endDrag);
  dialog.addEventListener('close',()=>{endDrag();emit();const restore=()=>{if(document.querySelector('.app')?.inert||dialog.open)return;if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});if(trigger.checkVisibility())trigger.focus({preventScroll:true});};restore();requestAnimationFrame(restore);});
- dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
+ dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
  document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);

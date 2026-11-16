@@ -95,9 +95,6 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control.save-ready{background:var(--theme-accent)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control #saveSelectedBtn{background:transparent!important;color:var(--theme-muted)!important;border-color:transparent!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control.save-ready #saveSelectedBtn{color:var(--theme-on-accent)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-optics-backdrop{background:var(--theme-soft)!important;border-color:var(--theme-line)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-save-control .capsule-optics-backdrop{background:var(--theme-accent)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) .capsule-optics-lens{background:color-mix(in srgb,var(--theme-soft) 10%,transparent)!important;border-color:var(--theme-line)!important;box-shadow:inset 0 1px 2px color-mix(in srgb,var(--theme-line) 35%,transparent)!important}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
  :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#mediaActionDock,.pc-list-host) .batch-selection-tools{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
  :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .rail-pointer-light:not([data-control-optics="engine"]){background:color-mix(in srgb,var(--theme-accent) 18%,var(--theme-header))!important;border-color:color-mix(in srgb,var(--theme-accent) 55%,var(--theme-line))!important;box-shadow:inset 0 1px 1px #ffffff60,0 2px 6px color-mix(in srgb,var(--theme-accent) 20%,transparent)!important}
@@ -126,10 +123,7 @@
 /* Native range thumbs remain white; both large-player fills share one accent. */
 :root[data-fromm-theme] .mvc-panel{--accent2:var(--theme-accent)}
 /* One selected row, one moving lens; ordinary rows stay transparent. */
-:root[data-fromm-theme] #sidebar .glowme-nav button[aria-current="page"]{background:var(--theme-selected)!important;box-shadow:inset 3px 0 0 var(--theme-accent)!important;border-color:var(--theme-accent)!important}
-@media(min-width:701px) and (hover:hover) and (pointer:fine){
- :root[data-fromm-theme].pc-control-glass.pc-layout .rail-pointer-light[data-control-optics="engine"]{background:color-mix(in srgb,var(--theme-accent) 16%,transparent);border-color:color-mix(in srgb,var(--theme-accent) 65%,white);box-shadow:inset 0 1px 1px #ffffffa0,0 2px 7px color-mix(in srgb,var(--theme-accent) 25%,transparent)}
-}
+:root[data-fromm-theme] #sidebar .glowme-nav button[aria-current="page"]{background:var(--theme-selected)!important;background-image:none!important;box-shadow:none!important;border-color:var(--theme-selected)!important}
 @media(forced-colors:active){
  :root[data-fromm-theme] .download-selection-box{border-color:Highlight!important;background:transparent!important}
  :root[data-fromm-theme] #sidebar .glowme-nav button[aria-current="page"],:root[data-fromm-theme].glowme-phase3 .replay-filter.active{background:Highlight!important;color:HighlightText!important;border-color:Highlight!important}
@@ -141,3 +135,15 @@
 :root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--theme-accent) var(--volume,100%),#ffffff40 var(--volume,100%))}
 :root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--theme-accent) var(--volume,100%),#ffffff40 var(--volume,100%))}
 :root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-webkit-slider-thumb{margin-top:-3.5px}
+
+/* Palette belongs to the base controls; optical layers stay colorless. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ :root[data-fromm-theme].pc-control-glass.pc-layout #sidebar .rail-pointer-light{background:none!important;border-color:#ffffffb3!important;box-shadow:inset 0 1px 1px #ffffffa0,0 2px 7px #0002!important}
+ :root[data-fromm-theme].pc-control-glass.pc-layout [data-control-optics]>.control-glass-surface:not(.rail-lens-surface){background:none!important;border-color:#ffffff9c!important;box-shadow:inset 0 1px 1px #ffffff99,inset 0 -1px 1px #0002,0 2px 6px #0002!important}
+ :root[data-fromm-theme].pc-control-glass.pc-layout .glass-pressed>.control-glass-surface:not(.rail-lens-surface){box-shadow:inset 0 2px 3px #0003,inset 0 -1px 0 #ffffff99!important}
+ :root[data-fromm-theme].pc-layout .capsule-optics-backdrop{background:none!important;border-color:transparent!important}
+ :root[data-fromm-theme].pc-layout .capsule-optics-lens{background:none!important;border-color:#ffffff70!important;box-shadow:inset 0 1px 2px #ffffff66,inset 0 -1px 2px #0002!important}
+}
+/* Clear voice controls still need readable foregrounds on a light chat card. */
+:root[data-fromm-theme].glowme-phase3.pc-layout:not(.glass-disabled) #timeline .chat-sound-bubble .chat-audio-player :is(.chat-audio-play,.chat-sound-download){color:var(--theme-text)!important}
+@media(forced-colors:active){:root[data-fromm-theme].glowme-phase3.pc-layout:not(.glass-disabled) #timeline .chat-sound-bubble .chat-audio-player :is(.chat-audio-play,.chat-sound-download){color:ButtonText!important}}

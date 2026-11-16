@@ -35,7 +35,7 @@ async function press(p,selector){
  const high={newContext:async options=>{const c=await b.newContext({...options,...(out&&options.viewport.width===1440?{recordVideo:{dir:path.join(out,'recording'),size:{width:1440,height:900}}}:{})});await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return c;}};
  try{
  for(const opt of [{width:1440,height:900},{width:760,height:900},{width:900,height:700,installed:true}]){
-  const{page:p,context,errors}=await open(high,url,opt);await p.evaluate(()=>setFilter('image'));await ready(p);await lens(p,'.card-download');await lens(p,'.glowme-nav button.active');await lens(p,'.room.active');
+  const{page:p,context,errors}=await open(high,url,opt);await p.evaluate(()=>setFilter('image'));await ready(p);await lens(p,'.card-download');assert.equal(await p.locator('.glowme-nav button.active .control-glass-surface').count(),0,'selected navigation stays flat');await lens(p,'.room.active');
   const label=opt.width+(opt.installed?'-standalone':'');await shot(p,label+'-media');
   if(opt.width===1440){
    // Pixel evidence: a real SVG lens bends a diagnostic pattern under the
@@ -149,7 +149,7 @@ async function press(p,selector){
    const target=p.locator(selector).first();
    assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' initializes the LiquidGlass engine');
    assert.equal(await target.locator('.control-glass-surface').count(),1,selector+' keeps one decorative glass face');
-   assert.ok(await target.evaluate(el=>el.classList.contains('glass-on-image')),selector+' uses the dark glass tint for the existing white glyph');
+   assert.ok(await target.evaluate(el=>el.classList.contains('glass-on-image')),selector+' retains the existing image-control hook with a clear optical layer');
    const displacement=await target.locator('.control-glass-surface').evaluate(face=>{
     const id=/url\(["']?#([^"')]+)/.exec(face.style.backdropFilter)?.[1];
     return Number(document.querySelector('#'+id+' feDisplacementMap')?.getAttribute('scale')||0);

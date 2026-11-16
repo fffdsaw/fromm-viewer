@@ -1,7 +1,7 @@
-import './web-glass-controls.js?v=reader-palette-20261116';
+import './web-glass-controls.js?v=clear-optics-20261116';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=clear-optics-20261116').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{}); // An unavailable optional adapter leaves the plain mint capsule usable.
 /* Limited control optics: idle initialization, no content capture or media hooks. */
@@ -16,17 +16,16 @@ function eligible(){
  return !glassPC.matches&&preferences.enabled&&!!visibility&&!lowPower&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');
 }
 // Scale the same preferences to the existing small mobile profile. Default
-// values reproduce its original 16/18/2.5/110/.42/.3 material; retain balanced
+// values retain 16/18/2.5/110/.3 optics with a zero-alpha tint; retain balanced
 // quality, one-pixel maps and all accessibility/low-power/idle guards.
 function mobileMaterial(){
- const theme=document.documentElement.dataset.frommTheme,hex=getComputedStyle(document.documentElement).getPropertyValue('--theme-header').trim();
- const rgb=theme&&theme!=='glow'&&/^#[0-9a-f]{6}$/i.test(hex)?[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(','):'222,245,232';
+ const theme=document.documentElement.dataset.frommTheme;
  return {
  scheme:theme==='classic'?'dark':'light',
  refraction:16*preferences.refraction/34,thickness:Math.max(4,18*preferences.thickness/28),
  blur:Math.min(6,2.5+preferences.blur),saturation:Math.min(150,110+preferences.saturation-108),
- tint:'rgba('+rgb+','+Math.min(.9,.42*preferences.opacity/28)+')',
- specularIntensity:.3+preferences.specular/100
+ tint:'rgba(255,255,255,0)',
+ specularIntensity:(.3+preferences.specular/100)*preferences.opacity/28
  };}
 function queueBuild(){
  if(idleTask||retry||loading||!eligible())return;
@@ -48,7 +47,7 @@ function sync(){
  if(scheduled)return;scheduled=true;
  requestAnimationFrame(()=>{
   scheduled=false;
-  const controls=[...document.querySelectorAll('#chatToolsBtn,.glowme-nav [aria-current="page"],#tokenLifeWrap,#scanBtn,#logoutMiniBtn')];
+  const controls=[...document.querySelectorAll('#chatToolsBtn,#tokenLifeWrap,#scanBtn,#logoutMiniBtn')];
   for(const el of controls)if(visibility&&!watched.has(el)){watched.add(el);visibility.observe(el);}
   const targets=eligible()?controls.filter(el=>{
    const r=el.getBoundingClientRect();

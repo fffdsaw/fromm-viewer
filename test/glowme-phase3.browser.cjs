@@ -71,7 +71,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  assert.ok(panelBox.x>=railBox.x+railBox.width,'search preserves access to collapsed rail');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');}
  const pc=await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'));
- const opticalTarget=pc?'.glowme-nav [aria-current="page"] .control-glass-surface':'.glowme-nav [aria-current="page"]';
+ const opticalTarget=pc?'.rail-pointer-light .control-glass-surface':'#chatToolsBtn';
  await page.waitForFunction(selector=>{const e=document.querySelector(selector);return e&&getComputedStyle(e).backdropFilter.includes('url(')},opticalTarget);
  const optics=await page.locator(opticalTarget).first().evaluate(e=>getComputedStyle(e).backdropFilter);assert.match(optics,/url\(/,'Chromium uses actual SVG refraction');
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>FrommGlass.count===0&&FrommControlGlass.snapshot.live===0);

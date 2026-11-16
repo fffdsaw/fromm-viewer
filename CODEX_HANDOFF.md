@@ -2,6 +2,23 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## Flat navigation selection and colorless optics follow-up — 2026-11-16
+
+User requested a single-color selected sidebar row and transparent engines across theme changes, then explicitly extended the transparency requirement to **other engine effects**. Implementation continues from clean feature head `df7cf907b8ba813b06ebaa59269c7e224a074336`; remote main was `362b064a8956c424856e7f3858907d8574ab327c`, no open PR. Existing production/deployment receipts below remain history. This new refinement is for review; do not claim it is deployed until an approved merge/deploy is completed.
+
+- Selected navigation is a flat palette-selected fill with matching border, no inset leading stripe/shadow/gradient. Navigation buttons are excluded from PC/mobile SDK allocation; the single independent moving pointer lens remains. Artist markers, routes, layout and hit boxes stay intact.
+- PC controls, mobile controls and the transient save capsule now pass **zero-alpha neutral tint** to the SDK in every palette. Decorative control/capsule faces and the cursor carrier are clear with neutral white/gray rims/highlights rather than green/blue/pink material. Base themed headers, surfaces, selected filters and save-button status colors remain. Preference brightness modulates neutral specular intensity instead of colored fill; refraction/blur/gloss, eight-engine budget, playback parking, reduced motion/transparency, forced colors, low-power and lifecycle guards remain.
+- Resting voice faces match the clear post-initialization face. Theme foregrounds keep voice play/download glyphs readable on light chat cards. Glass OFF preserves its existing dark fallback. No playback/download/cache/conversation handlers changed. Changed asset/import URLs are versioned, including the save-capsule adapter.
+- Existing browser assertions now require a flat selected row rather than its old stripe/engine; SVG/refraction tests target the independent cursor or a mobile header control. All actual maps, displacement, clear-label pixel comparisons, interactive/focus/press behavior, native routes, queues and engine budget checks are retained. Settings/themes explicitly check flat selection, zero-alpha PC/mobile SDK tint and transparent PC faces across all six palettes. Save-pulse inspection also requires clear decorative layers.
+
+Local Node **24.22.1**, Playwright **1.62.1**, Chromium **151.0.7922.34**, synthetic fixtures only. Receipts/screenshots: `/workspace/clear-optics-20261116/`.
+
+- Unit suite: **326 pass / 0 fail / 1 platform skip** (`unit.log`; final rerun `unit-final.log`).
+- Passed: `settings-themes` (PC/short window/mobile, six palettes, persistence/blocked storage/AA), `glass-settings` (four PC/PWA sizes plus invalid/blocked/mobile preferences), `glass-controls` (three PC/PWA sizes, actual refraction/press/download/lifecycle + fallback/touch), `rail-lens-spinner`, `rail-glyph-lens`, `rail-startup`, `glowme-phase3`, `desktop-startup-reply-lists`, `menu-settings-queue`, `media-action-dock`, `capsule-materialize`, `uiux-review` (held-module first paint/ON/OFF/hover return), `header-glass` (solid base panes), `glowme-phase3-a11y` (zero axe violations), `conversation-audio` (four widths), `conversation-controls` (three widths), and `header-glass-performance` (~16.7ms median; engine-ON decoded video dropped zero frames).
+- One-off Sky/Classic actual cursor inspection confirms flat selected row, clear carrier and zero-alpha SDK tint. `/workspace/clear-optics-20261116/sidebar-sky.png` and `sidebar-classic.png` were captured; Sky screenshot was inspected. Physical Mac/Safari and real-account service remain unverified locally. No uploaded/private media or real session was used.
+
+Next: commit/push task files, create/attach a PR to main, inspect exact-head CI. Keep production PR #129 intact until the next approved deployment. Resume with `node test/settings-themes.browser.cjs`, `node test/glass-controls.browser.cjs`, `node test/rail-lens-spinner.browser.cjs`, `node test/capsule-materialize.browser.cjs`.
+
 ## PR #129 production deployment confirmed — 2026-11-16 (Asia/Seoul)
 
 - User explicitly approved merge/deploy. [PR #129](https://github.com/fffdsaw/fromm-viewer/pull/129) merged into main at `362b064a8956c424856e7f3858907d8574ab327c`, with final verified head `4e62f40a6e4b8b3a5e11561c7ffec1a9a9e2f741`. All **10/10 final-head checks succeeded**, including Windows Chrome/Edge, Linux conversation and the complete media browser suite.

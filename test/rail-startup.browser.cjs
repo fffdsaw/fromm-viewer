@@ -8,7 +8,7 @@ const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
  let release;const held=new Promise(r=>release=r);await page.route('**/vendor/meapri/liquid-glass.js',async route=>{await held;await route.continue();});
  await seed(page);await page.locator('#sidebar').hover({position:{x:20,y:20}});assert.equal(await page.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'true','rail opens while optics download is pending');
  assert.equal(await page.evaluate(()=>FrommControlGlass.snapshot.live),0);await page.keyboard.press('Escape');assert.equal(await page.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'false');
- release();await page.waitForFunction(()=>document.querySelector('.glowme-nav [aria-current="page"] .control-glass-surface')?.style.backdropFilter.includes('url('));
+ release();await page.waitForFunction(()=>document.querySelector('.rail-pointer-light .control-glass-surface')?.style.backdropFilter.includes('url('));
  await page.mouse.move(700,200);await page.waitForTimeout(300);await page.locator('#sidebar').hover({position:{x:20,y:20}});await page.waitForTimeout(40);
  const sidebar=page.locator('#sidebar');
  assert.equal(await sidebar.evaluate(el=>getComputedStyle(el).backdropFilter),'none','expanding rail never uses a pane lens');

@@ -50,7 +50,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
    pending=false;
    // Build the map at the final layout size; only the decorative stage moves.
    stage.style.transform='none';
-   try{glass=new LiquidGlass(lens,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',refraction:12,thickness:8,blur:.5,saturation:104,chromaticAberration:0,mapPixelRatio:1,specular:true,specularIntensity:.2,edges:false,applyRadius:false,tint:'rgba(218,243,231,.04)',respectReducedMotion:true});builds++;}
+   try{glass=new LiquidGlass(lens,{variant:'regular',profile:'control',preset:'balanced',scheme:'light',quality:'balanced',refraction:12,thickness:8,blur:.5,saturation:104,chromaticAberration:0,mapPixelRatio:1,specular:true,specularIntensity:.2,edges:false,applyRadius:false,tint:'rgba(255,255,255,0)',respectReducedMotion:true});builds++;}
    catch{usePlain();return;}
    if(glass.resolved.usesFallback){usePlain();return;}
    const ready=()=>{if(!glass)return;if(lens.style.backdropFilter.includes('url(')){clearTimeout(readyTimer);readyTimer=0;mode='svg';mark();glass.flexRefraction(phase==='shown'?null:glass.configuredRefraction*Math.max(0,x));if(phase==='entering'&&!frame&&!warmFrame){warmFrame=requestAnimationFrame(()=>{warmFrame=requestAnimationFrame(()=>{warmFrame=0;if(ticket!==generation||!target)return;paint();last=performance.now();frame=requestAnimationFrame(tick);});});}}};

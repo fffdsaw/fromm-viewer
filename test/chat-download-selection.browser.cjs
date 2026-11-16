@@ -8,9 +8,13 @@ async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.s
   const{page:p,context,errors}=await open(b,s.url,{width,height:900,installed});const label=(installed?'pwa-':'web-')+width,iconInset=width>=851?9:10,iconSize=width>=851?34:38;
   await p.evaluate(()=>setFilter('image'));await p.locator('.media-card').first().click({position:{x:30,y:30}});await p.waitForFunction(()=>state.selected.size===1);
   const chosen=p.locator('.media-card.selected').first();assert.equal(await chosen.evaluate(e=>getComputedStyle(e).outlineWidth),'3px');assert.equal(await chosen.locator('.card-body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(201, 233, 218)');await shot(p,label+'-selected');
-  // Real pointer drag and autoscroll use the same teal hue, including newly mounted cards.
+  // Real pointer drag/autoscroll recolor their border and fill with each palette.
   const card=await p.locator('.media-card').nth(1).boundingBox();await p.mouse.move(card.x+20,card.y+50);await p.mouse.down();await p.mouse.move(card.x+100,880,{steps:8});await p.waitForFunction(()=>!!document.querySelector('.download-selection-box'));
-  const box=p.locator('.download-selection-box');assert.equal(await box.evaluate(e=>getComputedStyle(e).borderTopColor),'rgb(20, 126, 105)');assert.equal(await box.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(20, 126, 105, 0.2)');
+  const box=p.locator('.download-selection-box');
+  for(const [theme,rgb] of Object.entries({glow:[22,123,101],aqua:[8,119,125],sky:[34,107,158],lavender:[117,81,152],neutral:[70,107,112],classic:[255,91,115]})){
+   await p.evaluate(t=>FrommThemes.set(t),theme);const paint=await box.evaluate(el=>{const style=getComputedStyle(el),canvas=document.createElement('canvas');canvas.width=canvas.height=1;const c=canvas.getContext('2d');c.fillStyle=style.backgroundColor;c.fillRect(0,0,1,1);return{border:style.borderTopColor,fill:[...c.getImageData(0,0,1,1).data]};});assert.equal(paint.border,`rgb(${rgb.join(', ')})`,theme+' drag border uses the theme accent');assert.ok(paint.fill.slice(0,3).every((v,i)=>Math.abs(v-rgb[i])<=3)&&Math.abs(paint.fill[3]-46)<=1,theme+' drag fill uses the same accent at 18% alpha');
+  }
+  await p.evaluate(()=>FrommThemes.set('glow'));
   const before=await p.evaluate(()=>scrollY);await p.waitForFunction(y=>scrollY>y+50,before);await shot(p,label+'-drag-scrolled');await p.mouse.up();assert.equal(await box.count(),0);
   assert.ok((await p.locator('.media-card.selected .card-body').evaluateAll(es=>es.map(e=>getComputedStyle(e).backgroundColor))).every(c=>c==='rgb(201, 233, 218)'));
   const keys=await p.evaluate(()=>[...state.selected].sort());await p.evaluate(()=>{state.filter='all';syncLiveToolbarControls();render();scrollTo(0,0);});

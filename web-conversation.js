@@ -19,6 +19,12 @@
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);
  const storageKey=account=>'fromm.conversation.storage:'+account;
  const lastRoomKey=account=>'fromm.conversation.lastRoom:'+account;
+ const readerKey=c=>'fromm.conversation.view:'+JSON.stringify([c.storageAccount,c.host]);
+ function savedReader(c){try{const v=JSON.parse(sessionStorage.getItem(readerKey(c)));return v&&typeof v.id==='string'&&v.id.length<512&&Number.isFinite(v.offset)&&Math.abs(v.offset)<20000&&typeof v.latest==='boolean'?v:null;}catch{return null;}}
+ function checkpoint(c){
+  if(!roomCurrent(c)||!c.storageAccount||!c.enabled||c.restoring||state.chatAutoTopPending||window.FrommViewState?.pending)return;
+  const view=viewPosition(c);if(view)try{sessionStorage.setItem(readerKey(c),JSON.stringify(view));}catch{}
+ }
  const cacheNamespace=()=>currentAuth().accountKey?currentAccountScope():(currentReplyUserId()?'user:'+currentReplyUserId():'');
  const epochKey=(account,room)=>'fromm.conversation.epoch:'+JSON.stringify([account,room]);
  function epoch(account,room){try{return localStorage.getItem(epochKey(account,room))||'';}catch{return'';}}
@@ -33,7 +39,7 @@
  const roomCurrent=c=>authCurrent(c)&&context===c&&c.host===String(state.room?.hostChatRoomId||'')&&c.roomId===String(state.room?.id||'')&&c.generation===state.scanGeneration;
  const viewing=c=>roomCurrent(c)&&state.filter==='all'&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');
  function viewPosition(c){
-  if(state.filter==='all'&&!state.chatAutoTopPending){const row=[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8);
+  if(state.filter==='all'&&!c.restoring&&!state.chatAutoTopPending&&!window.FrommViewState?.pending){const row=[...document.querySelectorAll('#timeline .msg')].find(el=>el.getBoundingClientRect().bottom>chatHeaderInset()+8);
    if(row)c.lastView={id:row.dataset.messageId,offset:row.getBoundingClientRect().top,latest:atLatest()};
   }return c.lastView||null;
  }
@@ -59,7 +65,7 @@
  }
  function showLatest(c){
   if(!viewing(c))return;
-  c.restoreView=null;pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
+  pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
   const list=filteredMessages();
   if(list.length&&state.infiniteRendered<list.length)renderChatWindow(list,list.length-1);
   if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));
@@ -82,7 +88,7 @@
    clearTimeout(latestEnterTimer);latestEnterTimer=0;
    latestHideTimer=setTimeout(()=>{latestHideTimer=0;if(newButton){newButton.hidden=true;newButton.classList.remove('conversation-latest-leaving');}},180);
   }
-  const badge=newButton.querySelector('span');badge.hidden=!pendingCount;badge.textContent=pendingCount>99?'99+':String(pendingCount);
+  const badge=newButton.querySelector('.conversation-latest-count');badge.hidden=!pendingCount;badge.textContent=pendingCount>99?'99+':String(pendingCount);
   newButton.setAttribute('aria-label',pendingCount?`새 메시지 ${pendingCount}개 · 최신 대화로 이동`:'최신 대화로 이동');
  }
  function layout(){
@@ -292,8 +298,6 @@
    owner:new AbortController(),persisted:new Map(),conflicts:new Map(),pendingConflictCandidates:new Map(),conflictOverflowIds:new Set(),conflictCandidateCount:0,conflictCandidateBytes:0,pendingConflictCandidateBytes:0,volatileConflictCandidateBytes:0,draft:'',selectedEmoticon:null,emoteItems:new Map(),emotePacks:[],outbox:null,accepted:[],saved:false,saving:false,storageError:false,restoring:true,cached:false,
    phase:'connecting',notice:'',denied:false,rules:null,ruleJob:null,sending:false,feed:null,refreshFeed:null,refreshPromise:null,finishRefresh:null,pushClose:null,pushOnline:false,pushBusy:false,syncedUntil:0,sendNotBefore:0,enabled:true,cacheEpoch:'',storageAccount:''};
   const remembered=memories.get(memoryKey(c))||carry;if(remembered)Object.assign(c,remembered);
-  // Switching artists never replays a previous reading position, even from IndexedDB.
-  if(!restoreViewOnEntry)c.restoreView=null;
   if(input)input.value=c.draft;
   context=c;
   restoreJob=(async()=>{
@@ -302,7 +306,7 @@
     if(!cacheNamespace())await ensureReplyIdentity();if(!roomCurrent(c))return;
     c.storageAccount=cacheNamespace();if(!c.storageAccount)throw new Error('Account identity unavailable');
     c.enabled=storageEnabled(c.storageAccount);
-    if(!restore)try{localStorage.setItem(epochKey(c.storageAccount,c.host),crypto.randomUUID());}catch{}
+    if(!restore)try{sessionStorage.removeItem(readerKey(c));localStorage.setItem(epochKey(c.storageAccount,c.host),crypto.randomUUID());}catch{}
     c.cacheEpoch=epoch(c.storageAccount,c.host);
     try{localStorage.setItem(lastRoomKey(c.storageAccount),JSON.stringify({roomId:c.roomId,host:c.host}));}catch{}
     const cached=restore?await store.read(c.storageAccount,c.host):(await store.clearRoom(c.storageAccount,c.host),null);if(!roomCurrent(c))return;
@@ -352,10 +356,11 @@
       c.cached=true;c.saved=true;c.syncedUntil=Number.isFinite(cached.meta.syncedUntil)&&cached.meta.syncedUntil>0&&cached.meta.syncedUntil<Date.now()+60000?cached.meta.syncedUntil:newest(messages);
       for(const message of diskMessages)c.persisted.set(core.messageKey(message),message);
       if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
-      const view=remembered?.lastView||cached.meta.view;
-      if(view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000){c.lastView=view;if(restoreViewOnEntry&&!view.latest)c.restoreView=view;}
+      const view=(c.enabled?savedReader(c):null)||remembered?.lastView||cached.meta.view;
+      const resumeView=restoreViewOnEntry&&view&&typeof view.id==='string'&&Number.isFinite(view.offset)&&Math.abs(view.offset)<20000&&messages.some(m=>messageStableKey(m)===view.id);
+      if(resumeView){c.lastView=view;window.FrommViewState?.resume(view);state.chatAutoTopPending=false;}
       input.value=c.draft;
-      if(!hotComplete){buildMediaSequences();render();}
+      if(!hotComplete||resumeView){buildMediaSequences();render();}
       if(c.pendingConflictCandidates.size||state.messages.some(message=>c.persisted.get(core.messageKey(message))!==message))saveSoon();
      }else if(!remembered){c.selectedEmoticon=core.cleanEmoticon(cached.meta.emoticonDraft);c.draft=typeof cached.meta.draft==='string'?cached.meta.draft.slice(0,10000):'';input.value=c.draft;const pending=cleanPending(cached.meta.outbox);c.outbox=pending?{...pending,uncertain:true}:null;c.accepted=Array.isArray(cached.meta.accepted)?cached.meta.accepted.map(cleanPending).filter(Boolean).slice(0,20):[];}
     }
@@ -384,7 +389,7 @@
   // Keep the tolerance to one dock height plus a small layout margin. A 220px
   // floor can label a reader in the middle of a short cached conversation as
   // "latest" and make a data-only cache flush pull the viewport downward.
-  return !readingSelection&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(80,(dock?.offsetHeight||0)+16);
+  return !readingSelection&&state.infiniteRendered>=state.infiniteList.length&&document.documentElement.scrollHeight-(scrollY+innerHeight)<Math.max(80,(dock?.offsetHeight||0)+16);
  }
  function updateView(oldList,changes,follow){
   if(state.filter!=='all'||!context)return;
@@ -582,15 +587,6 @@
   if(!viewing(c)){const keepGalleryRefresh=['media','image','video','sound'].includes(state.filter)&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)');stop(c,{includeRefresh:!keepGalleryRefresh});c.phase='paused';paint();return;}
   if(c.owner.signal.aborted)c.owner=new AbortController();
   if(!c.rules&&!c.ruleJob&&!c.denied)void getRules(c).catch(()=>{});
-  if(c.restoreView&&!c.restoring){
-   cancelAnimationFrame(c.restoreFrame);c.restoreFrame=requestAnimationFrame(()=>{
-    if(!viewing(c)||!c.restoreView)return;const view=c.restoreView;c.restoreView=null;
-    const list=filteredMessages(),index=list.findIndex(message=>messageStableKey(message)===view.id);if(index<0)return;
-    window.FrommViewState?.cancel();state.chatAutoTopPending=false;renderChatWindow(list,index);
-    const row=[...document.querySelectorAll('#timeline .msg')].find(el=>el.dataset.messageId===view.id);
-    if(row){scrollBy({top:row.getBoundingClientRect().top-view.offset,behavior:'instant'});window.FrommViewState?.settleAnchor(row,()=>view.offset-12,()=>viewing(c),1200);}
-   });
-  }
   start(c);paint();
  }
  async function submit(event){
@@ -637,7 +633,7 @@
  function mount(){
   if(mounted)return;mounted=true;
   dock=document.createElement('form');dock.id='conversationDock';dock.hidden=true;dock.setAttribute('aria-label','메시지 보내기');
-  dock.innerHTML='<div class="conversation-meta" hidden><span id="conversationStatus" role="status" aria-live="polite" hidden></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button></div><button id="conversationNew" type="button" title="최신 대화로 이동" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v16m-6-6 6 6 6-6"/></svg><span hidden aria-hidden="true"></span></button><div id="conversationEmoticonPreview" hidden><img alt="선택한 이모티콘"><button type="button" aria-label="이모티콘 선택 해제">×</button></div><div class="conversation-compose"><div class="conversation-input-shell"><textarea id="conversationInput" rows="1" aria-label="메시지 입력" aria-describedby="conversationCount" placeholder="메시지 입력" enterkeyhint="send"></textarea><button id="conversationEmoticonButton" class="conversation-icon" type="button" aria-label="이모티콘 고르기" aria-haspopup="dialog" aria-controls="conversationEmoticons" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M8 9h1m6 0h1"/></svg></button></div><output id="conversationCount" class="conversation-sr-only"></output><button id="conversationSend" type="submit" disabled>전송</button><button id="conversationStorage" class="conversation-icon" type="button" aria-label="채팅 설정" title="채팅 설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div><section id="conversationEmoticons" role="dialog" aria-labelledby="conversationEmoticonTitle" hidden><div class="conversation-emoticon-head"><strong id="conversationEmoticonTitle">이모티콘</strong><button type="button" id="conversationEmoticonClose" aria-label="이모티콘 창 닫기">×</button></div><div id="conversationEmoticonPacks" aria-label="이모티콘 팩"></div><p id="conversationEmoticonStatus" role="status"></p><div id="conversationEmoticonItems" aria-label="이모티콘 목록"></div><button id="conversationEmoticonRetry" type="button" hidden>다시 불러오기</button></section>';
+  dock.innerHTML='<div class="conversation-meta" hidden><span id="conversationStatus" role="status" aria-live="polite" hidden></span><button id="conversationRetry" type="button" class="btn" hidden>다시 확인</button><button id="conversationResolve" type="button" class="btn" hidden>전송 확인</button></div><button id="conversationNew" type="button" title="최신 대화로 이동" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v16m-6-6 6 6 6-6"/></svg><span class="conversation-latest-count" hidden aria-hidden="true"></span></button><div id="conversationEmoticonPreview" hidden><img alt="선택한 이모티콘"><button type="button" aria-label="이모티콘 선택 해제">×</button></div><div class="conversation-compose"><div class="conversation-input-shell"><textarea id="conversationInput" rows="1" aria-label="메시지 입력" aria-describedby="conversationCount" placeholder="메시지 입력" enterkeyhint="send"></textarea><button id="conversationEmoticonButton" class="conversation-icon" type="button" aria-label="이모티콘 고르기" aria-haspopup="dialog" aria-controls="conversationEmoticons" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M8 9h1m6 0h1"/></svg></button></div><output id="conversationCount" class="conversation-sr-only"></output><button id="conversationSend" type="submit" disabled>전송</button><button id="conversationStorage" class="conversation-icon" type="button" aria-label="채팅 설정" title="채팅 설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div><section id="conversationEmoticons" role="dialog" aria-labelledby="conversationEmoticonTitle" hidden><div class="conversation-emoticon-head"><strong id="conversationEmoticonTitle">이모티콘</strong><button type="button" id="conversationEmoticonClose" aria-label="이모티콘 창 닫기">×</button></div><div id="conversationEmoticonPacks" aria-label="이모티콘 팩"></div><p id="conversationEmoticonStatus" role="status"></p><div id="conversationEmoticonItems" aria-label="이모티콘 목록"></div><button id="conversationEmoticonRetry" type="button" hidden>다시 불러오기</button></section>';
   document.body.append(dock);input=dock.querySelector('textarea');status=dock.querySelector('#conversationStatus');send=dock.querySelector('#conversationSend');count=dock.querySelector('output');storage=dock.querySelector('#conversationStorage');newButton=dock.querySelector('#conversationNew');
   // Place latest-message navigation before the input field while preserving its existing click and visibility behavior.
   dock.querySelector('.conversation-input-shell').before(newButton);
@@ -654,7 +650,7 @@
    dialog.querySelector('#conversationDesktopEnabled').checked=alerts.desktop;
    dialog.querySelector('#conversationAlertState').textContent='소리와 브라우저 알림을 꺼도 사이드바 숫자 배지는 유지됩니다.';
    dialog.querySelector('#conversationStorageState').textContent=context?.storageError?'저장 공간 또는 브라우저 설정을 확인해주세요. 현재 대화 조회는 계속 사용할 수 있습니다.':'저장된 대화는 현재 기기에만 보관됩니다.';dialog.showModal();};
-  dialog.querySelector('#conversationStoreEnabled').onchange=event=>{const c=context;if(!roomCurrent(c)||!c.storageAccount)return;c.enabled=event.target.checked;try{localStorage.setItem(storageKey(c.storageAccount),c.enabled?'on':'off');}catch{}if(c.enabled)void persist({force:true});paint();};
+  dialog.querySelector('#conversationStoreEnabled').onchange=event=>{const c=context;if(!roomCurrent(c)||!c.storageAccount)return;c.enabled=event.target.checked;if(!c.enabled)try{sessionStorage.removeItem(readerKey(c));}catch{}try{localStorage.setItem(storageKey(c.storageAccount),c.enabled?'on':'off');}catch{}if(c.enabled)void persist({force:true});paint();};
   dialog.querySelector('#conversationSoundEnabled').onchange=event=>window.FrommUnread?.setPrefs({sound:event.target.checked});
   dialog.querySelector('#conversationSoundPreview').onclick=()=>{void window.FrommUnread?.previewSound();};
   dialog.querySelector('#conversationDesktopEnabled').onchange=async event=>{
@@ -675,9 +671,9 @@
   dialog.addEventListener('close',()=>storage.focus({preventScroll:true}));
   new ResizeObserver(layout).observe(document.querySelector('.main'));new ResizeObserver(layout).observe(dock);
   window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);
-  window.addEventListener('scroll',()=>{updateLatestButton();if(viewing(context)&&!context.restoring){clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),500);}},{passive:true});
+  window.addEventListener('scroll',()=>{updateLatestButton();if(viewing(context)&&!context.restoring){checkpoint(context);clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),500);}},{passive:true});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(roomCurrent(context)){context.draft=input.value;void persist();}stop();}else sync();});
-  window.addEventListener('pagehide',()=>{if(roomCurrent(context)){context.draft=input.value;void persist();}stop();});window.addEventListener('pageshow',sync);window.addEventListener('online',sync);
+  window.addEventListener('pagehide',()=>{if(roomCurrent(context)){checkpoint(context);context.draft=input.value;void persist();}stop();});window.addEventListener('pageshow',sync);window.addEventListener('online',sync);
   window.addEventListener('storage',event=>{const c=context;if(c&&event.key===epochKey(c.storageAccount,c.host)&&c.cacheEpoch!==epoch(c.storageAccount,c.host)){clearTimeout(saveTimer);c.notice='다른 창에서 저장 기록을 갱신했습니다. 이 창을 새로고침하면 이어서 저장합니다.';paint();}if(c&&event.key===storageKey(c.storageAccount)){c.enabled=storageEnabled(c.storageAccount);if(!c.enabled)clearTimeout(saveTimer);paint();}});
   new MutationObserver(sync).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
   const originalFilter=setFilter;setFilter=async function(...args){const promise=originalFilter.apply(this,args);sync();try{return await promise;}finally{sync();}};

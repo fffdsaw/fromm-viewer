@@ -11,6 +11,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(Math.round(last.width),32,'existing avatar size retained');
   assert.match(await p.locator('[data-glow-nav="sound"] path').getAttribute('d'),/M12 3v18/,'audio tab uses waveform');
   await p.evaluate(()=>{FrommGlowME.setRailOpen(false);state.filter='all';render();scrollTo(0,0)});
+  await p.evaluate(()=>{state.messages.push({messageId:'outgoing-name',userType:'fan',type:'text',content:'Synthetic outgoing',createdAt:1791534600000+181*60000});state.chatMessages=state.messages;render();});assert.equal(await p.locator('[data-message-id="outgoing-name"] .bubble>.meta').count(),0,'outgoing name label removed');assert.equal(await p.locator('[data-message-id="outgoing-name"] .chat-message-time').count(),1,'outgoing time retained');
   const text=p.locator('.msg.star .bubble:has(>.text)').first();
   assert.equal(await text.locator(':scope > .meta').count(),0,'incoming text omits repeated artist name');
   assert.equal(await text.locator('..').locator('.chat-message-time').count(),1,'message time remains outside the card');

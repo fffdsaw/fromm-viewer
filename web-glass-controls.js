@@ -153,7 +153,9 @@ new MutationObserver(records=>{
 }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['class','hidden','aria-current','disabled','open']});
 for(const query of [glassPC,motion,opaque,contrast])query.addEventListener('change',()=>{clearPress();schedule();});
 glassPreferences.subscribe(()=>{settings=glassPreferences.value;schedule();});
-window.addEventListener('fromm-theme-change',()=>{for(const item of faces.values())item.settings=null;schedule();});
+// The SDK's update path refreshes tint but can reuse a specular map baked for
+// the previous light/dark scheme. Rebuild only our bounded active engines.
+window.addEventListener('fromm-theme-change',()=>{for(const item of faces.values()){releaseEngine(item);item.settings=null;failed.delete(item.el);}schedule();});
 for(const type of ['playing','pause','ended','emptied'])document.addEventListener(type,schedule,true);
 document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});

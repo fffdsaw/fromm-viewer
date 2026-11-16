@@ -6,7 +6,7 @@
 #conversationStatus{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--muted,#4c6570)}
 #conversationNew{position:absolute;bottom:calc(100% + 6px);left:0;display:grid;place-items:center;box-sizing:border-box;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#d6f4e9;color:#145b53;padding:7px;cursor:pointer;box-shadow:0 2px 6px #174a4010}
 #conversationNew svg{width:18px;height:18px;pointer-events:none}
-#conversationNew span{position:absolute;top:-5px;left:24px;min-width:15px;padding:1px 3px;border-radius:10px;background:#167b65;color:white;font-size:10px;line-height:14px;white-space:nowrap}
+#conversationNew>span:not(.control-glass-surface){position:absolute;top:-5px;left:24px;min-width:15px;padding:1px 3px;border-radius:10px;background:#167b65;color:white;font-size:10px;line-height:14px;white-space:nowrap}
 
 .conversation-compose{display:flex;gap:6px;align-items:flex-end}
 .conversation-input-shell{position:relative;display:flex;flex:1;min-width:0}
@@ -218,3 +218,6 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 #timeline .msg .bubble:has(>.text,>.reply-quote){padding:12px 14px;border-radius:18px;line-height:1.6}
 #timeline .reply-quote{border-radius:12px;padding:10px 12px;border-inline-start:3px solid var(--accent2,#428e7a);background:var(--panel2,#edf5f5)}
 #timeline .reply-quote .reply-content{overflow-wrap:anywhere}
+
+/* Reserve the sticker canvas before its image decodes, preventing row jumps. */
+#timeline .emoticon-img{width:160px;height:160px;max-width:100%;object-fit:contain}

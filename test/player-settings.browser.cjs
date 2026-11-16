@@ -33,6 +33,18 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    },{kind,height:viewport.height});
    const video=page.locator('#menuTestVideo'),settings=page.locator('.mvc-settings'),summary=settings.locator('summary');
    await video.evaluate(async v=>{await v.play();});await page.waitForFunction(()=>document.querySelector('#menuTestVideo').readyState>=2);
+   const volumeSelector=viewport.width<700?'.mvc-volume-extra':'.mvc-volume';
+   if(viewport.width<700)await summary.click();
+   for(const theme of ['glow','sky','classic','lavender']){
+    await page.evaluate(t=>FrommThemes.set(t),theme);
+    const range=page.locator(volumeSelector);await range.evaluate(el=>{el.value='0.4';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    assert.ok(Math.abs(await video.evaluate(v=>v.volume)-.4)<.01,'volume input controls decoded video');
+    assert.equal(await range.evaluate(el=>el.style.getPropertyValue('--volume')),'40%');
+    const png=(await range.screenshot()).toString('base64'),expected=({glow:[22,123,101],sky:[34,107,158],classic:[255,91,115],lavender:[117,81,152]})[theme];
+    const painted=await page.evaluate(async({png,expected})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(expected.every((v,j)=>Math.abs(data[i+j]-v)<12))count++;return count;},{png,expected});assert.ok(painted>8,theme+' paints the actual themed volume track');
+   }
+   if(viewport.width<700)await summary.click();
+   await page.evaluate(()=>FrommThemes.set('glow'));
    if(viewport.width===1440||viewport.width===844){
     await checkControlsFade(page,page.locator('.modern-video-controls'),video.locator('..'),{touch:viewport.width===844,cancelTouch:kind==='channel',resetPlayback:async()=>{await video.evaluate(async v=>{v.currentTime=0;await v.play();});}});
     console.log(`${kind} ${viewport.width}: real fade, interaction hold/release and reduced motion PASS`);

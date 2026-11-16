@@ -30,6 +30,7 @@ async function cursorLens(p,label){
  await p.evaluate(()=>FrommGlowME.setRailOpen(false));await p.waitForTimeout(260);
 }
 async function playingFallback(p){
+ for(const theme of ['sky','classic','lavender','glow']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await p.waitForFunction(scheme=>document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='engine'&&document.querySelector('.rail-lens-surface')?.dataset.scheme===scheme,theme==='classic'?'dark':'light');const resources=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(resources.live<=resources.limit&&resources.builds-resources.disposed===resources.live,'theme re-bakes bounded engines without leaks');}
  const target=p.locator('[data-glow-nav="image"]');await target.hover();await p.waitForTimeout(300);const before=await target.boundingBox();
  await p.evaluate(()=>{const v=document.createElement('video');v.id='playing-optics-fixture';Object.defineProperties(v,{readyState:{get:()=>2},paused:{get:()=>false},ended:{get:()=>false}});document.body.append(v);v.dispatchEvent(new Event('playing',{bubbles:true}));});
  await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='basic');
@@ -38,7 +39,7 @@ async function playingFallback(p){
  const x=await target.evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width-12,y:r.y+r.height/2}});await p.mouse.move(x.x,x.y);await p.waitForTimeout(100);
  const position=await p.locator('.rail-pointer-light').evaluate(el=>el.style.getPropertyValue('--rail-light-x'));assert.ok(parseFloat(position)>before.width/2,'fallback still tracks the cursor');
  assert.deepEqual(await target.boundingBox(),before,'menu hit boxes remain fixed during fallback');
- for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await p.locator('.glowme-nav button.active').hover();await p.waitForTimeout(100);const c=await p.locator('.glowme-nav button.active').evaluate(el=>getComputedStyle(el).backgroundColor);assert.equal(c,'rgba(0, 0, 0, 0)',theme+' active menu does not cover the moving highlight');assert.equal(await p.locator('.rail-pointer-light').evaluate(el=>getComputedStyle(el).opacity),'1',theme+' retains menu tracking during playback');}await p.evaluate(()=>FrommThemes.set('glow'));
+ for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);await p.locator('.glowme-nav button.active').hover();await p.waitForTimeout(100);const c=await p.locator('.glowme-nav button.active').evaluate(el=>getComputedStyle(el).backgroundColor);assert.notEqual(c,'rgba(0, 0, 0, 0)',theme+' selected row remains identifiable beneath the moving highlight');assert.equal(await p.locator('.rail-pointer-light').evaluate(el=>getComputedStyle(el).opacity),'1',theme+' retains menu tracking during playback');}await p.evaluate(()=>FrommThemes.set('glow'));
  await p.evaluate(()=>{document.getElementById('playing-optics-fixture').remove();document.dispatchEvent(new Event('pause'));});
  await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='engine');
 }

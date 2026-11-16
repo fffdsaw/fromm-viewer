@@ -40,9 +40,11 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
     const range=page.locator(volumeSelector);await range.evaluate(el=>{el.value='0.4';el.dispatchEvent(new Event('input',{bubbles:true}));});
     assert.ok(Math.abs(await video.evaluate(v=>v.volume)-.4)<.01,'volume input controls decoded video');
     assert.equal(await range.evaluate(el=>el.style.getPropertyValue('--volume')),'40%');
-    const png=(await range.screenshot()).toString('base64'),expected=({glow:[22,123,101],sky:[34,107,158],classic:[255,91,115],lavender:[117,81,152]})[theme];
-    const painted=await page.evaluate(async({png,expected})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(expected.every((v,j)=>Math.abs(data[i+j]-v)<12))count++;return count;},{png,expected});assert.ok(painted>8,theme+' paints the actual themed volume track');
+    await range.focus();await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.modern-video-controls')).opacity)>=.999);
+    const rect=await range.boundingBox(),png=(await page.screenshot()).toString('base64'),expected=({glow:[22,123,101],sky:[34,107,158],classic:[255,91,115],lavender:[117,81,152]})[theme];
+    const painted=await page.evaluate(async({png,expected,rect})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const data=ctx.getImageData(Math.round(rect.x),Math.round(rect.y),Math.floor(rect.width),Math.floor(rect.height)).data;let count=0;for(let i=0;i<data.length;i+=4)if(expected.every((v,j)=>Math.abs(data[i+j]-v)<12))count++;return count;},{png,expected,rect});assert.ok(painted>8,theme+' paints the actual themed volume track '+JSON.stringify(await range.evaluate(el=>({rect:el.getBoundingClientRect().toJSON(),fill:el.style.getPropertyValue('--volume'),theme:FrommThemes.value,accent:getComputedStyle(el).getPropertyValue('--theme-accent'),stage:el.closest('.modern-video-controls').className}))));
    }
+   await page.locator(volumeSelector).evaluate(el=>el.blur());
    if(viewport.width<700)await summary.click();
    await page.evaluate(()=>FrommThemes.set('glow'));
    if(viewport.width===1440||viewport.width===844){

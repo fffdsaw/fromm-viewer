@@ -98,7 +98,7 @@
   for(const type of ['loadedmetadata','durationchange','timeupdate','seeking','seeked','play','playing','volumechange','emptied'])listen(video,type,sync);
   for(const type of ['loadedmetadata','seeking','seeked','play','playing','pause','volumechange','emptied'])listen(video,type,reveal);
   listen(video,'pause',()=>{sync();reveal();if(!item.visible)dispose(video,item);});
-  listen(video,'ended',()=>{sync();reveal();if(!item.visible)dispose(video,item);});
+  listen(video,'ended',()=>{video.pause();item.dragging=false;video.currentTime=0;sync();reveal();if(!item.visible)dispose(video,item);});
   listen(doc,'fullscreenchange',reveal);
   sync();
  }

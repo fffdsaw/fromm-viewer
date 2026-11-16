@@ -19,6 +19,9 @@
  const newest=messages=>messages.reduce((time,message)=>Math.max(time,core.messageTime(message)),0);
  const storageKey=account=>'fromm.conversation.storage:'+account;
  const lastRoomKey=account=>'fromm.conversation.lastRoom:'+account;
+ // Only reload/history navigation resumes a reading bookmark. A fresh visit
+ // may have an old disk or copied-tab checkpoint, but must open the latest chat.
+ const restoreStartupReader=['reload','back_forward'].includes(performance.getEntriesByType('navigation')[0]?.type);
  const readerKey=c=>'fromm.conversation.view:'+JSON.stringify([c.storageAccount,c.host]);
  function savedReader(c){try{const v=JSON.parse(sessionStorage.getItem(readerKey(c)));return v&&typeof v.id==='string'&&v.id.length<512&&Number.isFinite(v.offset)&&Math.abs(v.offset)<20000&&typeof v.latest==='boolean'?v:null;}catch{return null;}}
  function checkpoint(c){
@@ -579,7 +582,7 @@
    if(!cacheNamespace()){if(!resumeIdentityPending){resumeIdentityPending=true;void ensureReplyIdentity().then(ready=>{resumeIdentityPending=false;if(ready)sync();});}return;}
    try{const saved=JSON.parse(localStorage.getItem(lastRoomKey(cacheNamespace()))||'null');
     const index=saved?state.rooms.findIndex(room=>String(room.id)===saved.roomId&&String(room.hostChatRoomId)===saved.host):-1;
-    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button,{restoreHistoryPosition:true});return;}
+    const button=document.querySelectorAll('#rooms .room')[index];if(index>=0&&button){selectRoom(index,button,{restoreHistoryPosition:restoreStartupReader});return;}
    }catch{}
   }
   const c=context;

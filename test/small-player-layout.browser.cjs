@@ -69,6 +69,16 @@ async function volumeUI(p,root,media,{touch=false}={}){
     assert.ok(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress')))>30,'seek updates its filled portion');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),'actual seek track paints theme-colored pixels '+id);
     if(type==='audio'&&(width===1440||width===390)){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);assert.ok((await root.locator('.small-player-button,output').evaluateAll(es=>es.map(el=>getComputedStyle(el).color))).every(color=>color==='rgb(255, 255, 255)'),theme+' keeps gallery glyphs/time white against the dark cover');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),theme+' keeps the gallery seek fill visible');await volumeUI(p,root,media,{touch:width<700});}await p.evaluate(()=>FrommThemes.set('glow'));}
     await volumeUI(p,root,media,{touch:width<700});
+    // Finish real decoded video/audio. Both reset to zero and stay paused;
+    // the metadata and volume survive, so replay remains immediately usable.
+    const keptVolume=await media.evaluate(el=>el.volume);
+    await media.evaluate(el=>{el.addEventListener('ended',()=>el.dataset.finished='true',{once:true});el.currentTime=el.duration-.15;el.playbackRate=8;});
+    await root.locator('[data-small="play"]').click();
+    await p.waitForFunction(id=>{const el=document.querySelector(`[data-message-id="${id}"] video,[data-message-id="${id}"] audio`);return el.dataset.finished==='true'&&el.paused&&el.currentTime===0;},id);
+    assert.equal(await root.locator('.small-player-seek').inputValue(),'0');
+    assert.equal(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress'))),0);
+    await p.waitForTimeout(150);assert.equal(await media.evaluate(el=>el.paused&&el.currentTime===0),true,'completion does not repeat');
+    assert.equal(await media.evaluate(el=>el.volume),keptVolume);
    }
    await p.evaluate(()=>{state.filter='all';render();FrommViewState.cancel();scrollTo(0,0);});
    const voice=p.locator('.chat-sound-bubble .chat-audio-player');await voice.scrollIntoViewIfNeeded();

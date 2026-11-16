@@ -23,7 +23,7 @@
     if(!['live','replay','channel'].includes(key))button.dataset.filter=key;
     button.title=label;button.setAttribute('aria-label',label);button.innerHTML=svg(paths[key])+`<span>${label}</span>`;
     button.addEventListener('click',async()=>{
-      if(button.disabled)return;button.disabled=true;
+      if(button.disabled)return;clearRailLight();button.disabled=true;
       try{if(['live','replay','channel'].includes(key)){
         if(state.filter==='live')await setLiveCenterMode(key);else{state.live.centerMode=key;await setFilter('live');}
       }else await setFilter(key);}finally{button.disabled=false;syncNavigation();setRailOpen(false);if(!mediaPC.matches||keyboardFocus)toggle.focus({preventScroll:true});else if(document.activeElement===button)button.blur();}
@@ -31,38 +31,64 @@
   }
   railHead.after(nav);
   // A single decoration follows the pointer independently of the optional lens.
-  const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
-  const railDropLayer=document.createElement('span');railDropLayer.className='rail-drop-layer';railDropLayer.setAttribute('aria-hidden','true');railDropLayer.inert=true;sidebar.append(railDropLayer);
-  const railDrops=Array.from({length:2},()=>{const drop=document.createElement('span');drop.className='rail-lens-drop';drop.setAttribute('aria-hidden','true');drop.inert=true;railDropLayer.append(drop);return drop;});
-  let dripRow=null;
-  function clearRailDrops(){for(const drop of railDrops){drop.getAnimations().forEach(animation=>animation.cancel());drop.style.opacity='0';}}
-  function releaseRailDrops(left,top,width){
-    if(!document.documentElement.classList.contains('pc-control-glass')||document.documentElement.classList.contains('glass-disabled'))return;
-    const navBox=nav.getBoundingClientRect(),railBox=sidebar.getBoundingClientRect();
-    left+=navBox.left-railBox.left-nav.scrollLeft;top+=navBox.top-railBox.top-nav.scrollTop;
-    railDrops.forEach((drop,index)=>{
-      drop.getAnimations().forEach(animation=>animation.cancel());
-      const x=left+width/2+(index?8:-6)-drop.offsetWidth/2,y=top-7;
-      const at=(dy,sx,sy)=>`translate3d(${x}px,${y+dy}px,0) scale(${sx},${sy})`;
-      drop.animate([{transform:at(0,.5,1.35),opacity:0},{transform:at(4,.8,1.5),opacity:.9,offset:.18},{transform:at(19,1,.95),opacity:.75,offset:.55},{transform:at(42,.65,.8),opacity:0}],{duration:660+index*100,delay:120+index*90,easing:'cubic-bezier(.32,.03,.65,1)',fill:'none'});
-    });
+  const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.dataset.phase='idle';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
+  const liquidLayer=document.createElement('span');liquidLayer.className='rail-liquid-layer';liquidLayer.setAttribute('aria-hidden','true');liquidLayer.inert=true;sidebar.append(liquidLayer);
+  const liquid=document.createElement('span');liquid.className='rail-liquid-lens';liquid.hidden=true;liquid.dataset.phase='idle';
+  liquid.innerHTML=`<span class="rail-liquid-body"></span><svg class="rail-liquid-rim" aria-hidden="true"><defs><filter id="railLiquidRim" x="-10%" y="-10%" width="120%" height="120%"><feMorphology in="SourceAlpha" operator="erode" radius="1.1" result="inside"/><feComposite in="SourceAlpha" in2="inside" operator="out" result="edge"/><feFlood flood-color="white" flood-opacity=".75"/><feComposite in2="edge" operator="in"/><feDropShadow dx="0" dy="1" stdDeviation=".65" flood-color="black" flood-opacity=".24"/></filter><mask id="railLiquidMask" maskUnits="userSpaceOnUse" x="0" y="0" style="mask-type:alpha"><path class="rail-liquid-mask" fill="white" filter="url(#railLiquidRim)"/></mask></defs><g filter="url(#railLiquidRim)" fill="white"><path class="rail-liquid-source"/><path class="rail-liquid-current"/><path class="rail-liquid-neck"/></g></svg>`;liquidLayer.append(liquid);
+  const liquidBody=liquid.querySelector('.rail-liquid-body'),liquidSvg=liquid.querySelector('svg'),liquidMask=liquid.querySelector('#railLiquidMask'),liquidMaskPath=liquid.querySelector('.rail-liquid-mask'),liquidPaths=['source','current','neck'].map(name=>liquid.querySelector('.rail-liquid-'+name));
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null,lastLens=null,peel=null;
+  liquidBody.style.mask='url("#railLiquidMask")';liquidBody.style.webkitMask='url("#railLiquidMask")';
+  function clearPeel(){peel=null;liquid.hidden=true;liquid.dataset.phase='idle';liquidBody.style.backdropFilter='';liquidBody.style.webkitBackdropFilter='';liquidBody.style.clipPath='';liquidPaths.forEach(path=>path.setAttribute('d',''));liquidMaskPath.setAttribute('d','');nav.classList.remove('rail-peeling');}
+  function clearRailLight(){clearPeel();lastLens=null;cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');railLight.dataset.phase='idle';delete railLight.dataset.target;}
+  // One connected silhouette: overlapping capsules form a union, and the neck
+  // pinches off between them. Its outline is computed from the UNION's alpha,
+  // so an internal rim never cuts across the connected liquid body.
+  function capsulePath(cx,cy,w,h){
+    if(w<.2||h<.2)return '';
+    const r=Math.min(w,h)/2,l=cx-w/2,t=cy-h/2,b=cy+h/2,right=cx+w/2;
+    return `M${l+r} ${t}H${right-r}A${r} ${r} 0 0 1 ${right} ${t+r}V${b-r}A${r} ${r} 0 0 1 ${right-r} ${b}H${l+r}A${r} ${r} 0 0 1 ${l} ${b-r}V${t+r}A${r} ${r} 0 0 1 ${l+r} ${t}Z`;
   }
-  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null;
-  function clearRailLight(){clearRailDrops();dripRow=null;cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
+  function neckPath(a,b,age){
+    if(age>=300)return '';
+    const upper=a.y<b.y?a:b,lower=a.y<b.y?b:a,uy=upper.y+upper.h*.22,ly=lower.y-lower.h*.22;
+    if(ly<=uy)return '';
+    const ua=Math.min(upper.w*.24,upper.h*.7),la=Math.min(lower.w*.24,lower.h*.7),my=(uy+ly)/2,mx=(upper.x+lower.x)/2;
+    const radius=Math.max(.15,Math.min(ua,la,18*Math.pow(1-age/300,1.4))),bend=(ly-uy)*.24;
+    return `M${upper.x-ua} ${uy}L${upper.x+ua} ${uy}C${upper.x+ua} ${uy+bend} ${mx+radius} ${my-bend} ${mx+radius} ${my}C${mx+radius} ${my+bend} ${lower.x+la} ${ly-bend} ${lower.x+la} ${ly}L${lower.x-la} ${ly}C${lower.x-la} ${ly-bend} ${mx-radius} ${my+bend} ${mx-radius} ${my}C${mx-radius} ${my-bend} ${upper.x-ua} ${uy+bend} ${upper.x-ua} ${uy}Z`;
+  }
+  function paintPeel(now,current,offset,filter){
+    if(!peel)return false;
+    const age=now-peel.start;if(age>=460||!filter?.includes('url(')){clearPeel();return false;}
+    const shrink=age<300?.16+.84*Math.pow(1-age/300,1.8):.16*Math.pow(Math.max(0,1-(age-300)/160),2);
+    const source={x:peel.x+offset.x,y:peel.y+offset.y,w:peel.w*shrink,h:peel.h*shrink};
+    const moving={x:current.x+offset.x,y:current.y+offset.y,w:current.w,h:current.h};
+    const left=Math.min(source.x-source.w/2,moving.x-moving.w/2)-2,top=Math.min(source.y-source.h/2,moving.y-moving.h/2)-2;
+    const width=Math.max(source.x+source.w/2,moving.x+moving.w/2)-left+2,height=Math.max(source.y+source.h/2,moving.y+moving.h/2)-top+2;
+    for(const shape of [source,moving]){shape.x-=left;shape.y-=top;}
+    const paths=[capsulePath(source.x,source.y,source.w,source.h),capsulePath(moving.x,moving.y,moving.w,moving.h),neckPath(source,moving,age)];
+    liquid.hidden=false;liquid.dataset.phase=age<300?'connected':'separating';nav.classList.add('rail-peeling');
+    Object.assign(liquid.style,{left:left+'px',top:top+'px',width:width+'px',height:height+'px'});liquidSvg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    liquidPaths.forEach((path,i)=>path.setAttribute('d',paths[i]));liquidBody.style.clipPath=`path("${paths.join(' ')}")`;
+    liquidMaskPath.setAttribute('d',paths.join(' '));liquidMask.setAttribute('width',width);liquidMask.setAttribute('height',height);
+    // Reuse the existing lens's real optical filter; no extra SDK maps or free
+    // droplets are created. Only this transient connected silhouette is drawn.
+    liquidBody.style.backdropFilter=filter;liquidBody.style.webkitBackdropFilter=filter;return true;
+  }
   function paintRailLight(now=performance.now()){
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
-    const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect();
+    const box=button.getBoundingClientRect(),parent=nav.getBoundingClientRect(),railBox=sidebar.getBoundingClientRect();
     const left=box.left-parent.left+nav.scrollLeft;
     const target=box.top-parent.top+nav.scrollTop+box.height/2+Math.max(-3,Math.min(3,(y-box.top-box.height/2)*.14));
-    const tracking=nav.classList.contains('rail-pointer-tracking');
+    const tracking=nav.classList.contains('rail-pointer-tracking'),filter=railLight.querySelector('.rail-lens-surface')?.style.backdropFilter;
+    const optical=document.documentElement.classList.contains('pc-control-glass')&&!document.documentElement.classList.contains('glass-disabled')&&filter?.includes('url(');
     if(!lightState||!tracking)lightState={y:target,velocity:0,time:now};
-    if(tracking&&dripRow&&dripRow!==button)releaseRailDrops(left,target+box.height/2,box.width);
-    dripRow=button;
+    if(tracking&&lastLens&&lastLens.button!==button&&optical)peel={...lastLens,start:now};
+    if(!optical&&peel)clearPeel();
+    const age=peel?now-peel.start:0,drag=peel?Math.min(1,age/100):1;
+    const pullTarget=peel?peel.y+(target-peel.y)*drag:target;
     const dt=Math.max(.001,Math.min(.032,(now-lightState.time)/1000));lightState.time=now;
-    // A damped, bounded spring carries the existing SVG lens between
-    // rows. Only its decoration stretches; the buttons and glyph hit areas stay put.
-    lightState.velocity+=(520*(target-lightState.y)-40*lightState.velocity)*dt;
+    lightState.velocity+=(520*(pullTarget-lightState.y)-40*lightState.velocity)*dt;
     lightState.y+=lightState.velocity*dt;
     const moving=Math.abs(target-lightState.y)>.04||Math.abs(lightState.velocity)>.4;
     if(!moving){lightState.y=target;lightState.velocity=0;}
@@ -73,7 +99,10 @@
     railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-parent.left-left+nav.scrollLeft))}px`);
     railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-parent.top-top+nav.scrollTop))}px`);
     nav.classList.add('rail-pointer-tracking');
-    if(moving)lightFrame=requestAnimationFrame(paintRailLight);
+    const current={button,x:left+box.width/2,y:lightState.y,w:box.width/Math.sqrt(stretch),h:box.height*stretch};
+    const peeling=paintPeel(now,current,{x:parent.left-railBox.left-nav.scrollLeft,y:parent.top-railBox.top-nav.scrollTop},filter);lastLens=current;
+    railLight.dataset.target=button.dataset.glowNav;railLight.dataset.phase=moving||peeling?'moving':'idle';
+    if(moving||peeling)lightFrame=requestAnimationFrame(paintRailLight);
   }
   function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}
   nav.addEventListener('pointermove',event=>{
@@ -84,7 +113,6 @@
     lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
   },{passive:true});
   nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
-  reducedMotion.addEventListener('change',clearRailLight);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRailLight();});window.addEventListener('pagehide',clearRailLight);
   nav.addEventListener('scroll',clearRailLight,{passive:true});
   new ResizeObserver(()=>{if(lightPoint)scheduleRailLight();}).observe(nav);
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});

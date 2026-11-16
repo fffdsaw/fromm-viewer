@@ -1193,7 +1193,7 @@ html.glowme .reply-content{color:#244c42}
  .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet:not(.rail-pointer-light)){isolation:isolate;box-shadow:none!important}
  .pc-control-glass.glowme-phase3.pc-layout .glass-control{background:transparent!important;border-color:transparent!important}
  .pc-control-glass.glowme-phase3.pc-layout .glass-control-relative{position:relative}
- .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet):not(.rail-pointer-light,.rail-lens-drop,#scrollTopBtn){transform:none!important}
+ .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet):not(.rail-pointer-light,#scrollTopBtn){transform:none!important}
  .pc-control-glass.glowme-phase3.pc-layout :is(.glass-control,.glass-droplet)>.control-glass-surface{display:block!important;visibility:visible!important;position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;box-sizing:border-box;background:linear-gradient(145deg,#ffffff70,#edfff526);border:1px solid #ffffffb8;box-shadow:inset 0 1px 1px #fff9,inset 0 -1px 1px #306e5624,0 2px 5px #173e3014;transform:perspective(700px) rotateX(var(--lg-tilt-x,0deg)) rotateY(var(--lg-tilt-y,0deg));transition:transform 380ms cubic-bezier(.34,1.56,.64,1),opacity 160ms ease}
  .pc-control-glass.glowme-phase3.pc-layout .glass-on-image{color:#fff;text-shadow:0 1px 3px #000b}
  .pc-control-glass.glowme-phase3.pc-layout .glass-on-image>.control-glass-surface{background:linear-gradient(145deg,#ffffff52,#102c223d);border-color:#ffffff9c;box-shadow:inset 0 1px 1px #fffd,inset 0 -1px 2px #173e3047,0 2px 6px #0002}
@@ -1421,14 +1421,17 @@ html.glowme .reply-content{color:#244c42}
 :root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>svg{width:24px;height:24px;flex:none;margin:0}
 :root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>.control-glass-surface{background:transparent!important;border:0!important;box-shadow:none!important}
 
-/* Two decorative, engine-backed drops detach from the moving menu lens. */
-.glowme-phase3 .rail-lens-drop{display:none;position:absolute;left:0;top:0;width:20px;height:24px;opacity:0;z-index:4;pointer-events:none;border-radius:60% 60% 50% 50%;transform-origin:50% 0;overflow:hidden}
-.glowme-phase3 .rail-lens-drop:last-child{width:14px;height:18px}
+/* A lens pulls away from its previous position through one clear membrane. */
+.glowme-phase3 .rail-liquid-layer{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit}
+.glowme-phase3 .rail-liquid-lens{display:none;position:absolute;pointer-events:none}
+.glowme-phase3 .rail-liquid-lens[hidden]{display:none!important}
+.glowme-phase3 :is(.rail-liquid-body,.rail-liquid-rim){position:absolute;inset:0;width:100%;height:100%;pointer-events:none;background:none}
+.glowme-phase3 .rail-liquid-rim{overflow:visible}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .pc-control-glass.glowme-phase3.pc-layout:not(.glass-disabled) .rail-lens-drop{display:block}
- :root[data-fromm-theme].pc-control-glass.glowme-phase3.pc-layout #sidebar .rail-lens-drop>.control-glass-surface{background:transparent!important;transform:none!important;border-radius:inherit;border-color:#ffffffbf!important;box-shadow:inset 0 2px 2px #ffffffed,inset 0 -2px 3px #0004,0 2px 4px #0002!important}
+ .pc-control-glass.glowme-phase3.pc-layout:not(.glass-disabled) .rail-liquid-lens{display:block}
+ .pc-control-glass.glowme-phase3.pc-layout .glowme-nav.rail-peeling .rail-pointer-light{opacity:0!important}
 }
-@media(prefers-reduced-motion:reduce),(prefers-reduced-transparency:reduce),(forced-colors:active){.glowme-phase3 .rail-lens-drop{display:none!important}}
+@media(prefers-reduced-motion:reduce),(prefers-reduced-transparency:reduce),(forced-colors:active){.glowme-phase3 .rail-liquid-lens{display:none!important}}
 
 /* Big-player idle cursor follows the same transport visibility owner. */
 .modern-video-stage:has(>.modern-video-controls.mvc-hidden),.modern-video-stage:has(>.modern-video-controls.mvc-hidden)>video{cursor:none}
@@ -1442,5 +1445,3 @@ html.glowme .reply-content{color:#244c42}
  :root[data-fromm-theme].glowme-phase3 .capsule-save-control #saveSelectedBtn{background:var(--theme-soft)!important}
  :root[data-fromm-theme].glowme-phase3 .capsule-save-control #saveSelectedBtn:not(:disabled){background:var(--theme-accent)!important;color:var(--theme-on-accent)!important}
 }
-
-.glowme-phase3 .rail-drop-layer{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit}

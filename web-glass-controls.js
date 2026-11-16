@@ -24,12 +24,12 @@ function stopInteractive(item){
 }
 function remove(el,item){releaseEngine(item);stopInteractive(item);el.removeAttribute('data-control-optics');item.face.remove();el.classList.remove('glass-control','glass-droplet','glass-control-relative','glass-on-image','glass-pressed');faces.delete(el);}
 function create(el,relative){
- const rail=el.matches('.rail-pointer-light,.rail-lens-drop'),drop=rail||el.matches(selected);
+ const rail=el.matches('.rail-pointer-light'),drop=rail||el.matches(selected);
  if(!rail&&relative)el.classList.add('glass-control-relative');
  // Keep the translating carrier separate from its lens. The rail lens
  // samples menu glyphs underneath it without owning their hit targets.
  const face=document.createElement('span');
- face.className='control-glass-surface'+(el.matches('.rail-lens-drop')?' rail-drop-surface':rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
+ face.className='control-glass-surface'+(rail?' rail-lens-surface':'');face.setAttribute('aria-hidden','true');face.inert=true;el.prepend(face);
  el.classList.add(drop?'glass-droplet':'glass-control');
  if(el.matches('.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play'))el.classList.add('glass-on-image');
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
@@ -38,7 +38,7 @@ function create(el,relative){
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
  const {el}=item;
- const menu=el.matches('.rail-pointer-light,.rail-lens-drop,.glowme-nav button');
+ const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  return {...materialOptions(settings),specular:menu||settings.specular>0,
   specularIntensity:((menu?.22:0)+settings.specular/100)*settings.opacity/28};
@@ -47,16 +47,16 @@ function sync(){
  frame=0;
  const look=!!enabled();if(document.documentElement.classList.contains('pc-control-glass')!==look)document.documentElement.classList.toggle('pc-control-glass',look);
  if(!look){active=null;clearPress();for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();return;}
- const all=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light,.rail-lens-drop')];
+ const all=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];
  for(const el of all)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
  for(const el of watched)if(!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
- const candidates=look?all.filter(el=>!el.matches('.rail-pointer-light,.rail-lens-drop')&&inView.has(el)&&visible(el)):[];
+ const candidates=look?all.filter(el=>!el.matches('.rail-pointer-light')&&inView.has(el)&&visible(el)):[];
  const pointer=document.querySelector('.rail-pointer-light');
- // Prewarm the cursor lens and its two reusable drop faces before first hover.
+ // Prewarm the single cursor lens at the active row's size, before first hover.
  // Its existing rail position/scroll/leave logic remains authoritative.
  if(look&&pointer){
   if(!pointer.style.width){const r=document.querySelector('.glowme-nav button')?.getBoundingClientRect();if(r){pointer.style.width=r.width+'px';pointer.style.height=r.height+'px';}}
-  candidates.unshift(pointer,...document.querySelectorAll('.rail-lens-drop'));
+  candidates.unshift(pointer);
  }
  if(active&&(!active.isConnected||!inView.has(active)||!visible(active)))active=null;
  // Start interacted controls first without excluding other visible controls.

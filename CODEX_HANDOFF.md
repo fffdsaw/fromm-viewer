@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## PR #129 production deployment confirmed — 2026-11-16 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #129](https://github.com/fffdsaw/fromm-viewer/pull/129) merged into main at `362b064a8956c424856e7f3858907d8574ab327c`, with final verified head `4e62f40a6e4b8b3a5e11561c7ffec1a9a9e2f741`. All **10/10 final-head checks succeeded**, including Windows Chrome/Edge, Linux conversation and the complete media browser suite.
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43799374908) and [public asset verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43799375305) both succeeded for the merge SHA. Independent verification matched **21 public HTML/JS/CSS files byte-for-byte**; fresh anonymous Chromium loaded the login/shared player, Classic persisted after reload, and **zero page errors** occurred.
+- All twelve reviewed items are included: palette coverage, large volume tracks, Replay/Channel badges and outgoing name removal, stronger selected/hover navigation and palette-correct engines, green-bar isolation, rounded composer and first-entry/reload/late-layout reader behavior. Earlier stabilization history is preserved. No real account/comment, user cache deletion, uploaded media fixture or preview publication was used.
+- Public receipts: `/workspace/review-20261116-followup/production-129-verified.json` and `production-129-login.png`; synthetic screenshots/logs are in the same directory. Physical Mac/Safari remains unverified locally. Feature branch was fast-forwarded to production; this documentation-only receipt needs no runtime deployment.
+- The pending CI/merge instructions below are historical and superseded. Production is fully updated; future work continues from this preserved branch/history.
+
 ## Twelve-item palette, navigation and reader-position follow-up — 2026-11-16
 
 The user reviewed/expanded a twelve-item list, explicitly withheld edits during review, then authorized implementation. Continue `codex/fromm-viewer-uiux-stabilization-20261114` from clean `97015cc90dd89f890221456c90b11d13d5f18057`; remote main is `0a7cac67ba75599ef7e56dbe007fe94799c55390`, and there was no open PR. This new scope is implemented in [PR #129](https://github.com/fffdsaw/fromm-viewer/pull/129); the user subsequently explicitly approved **merge and production deployment**. Complete after the final-head CI succeeds. Previous deployment receipts below are history.

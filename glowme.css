@@ -504,8 +504,8 @@ html.glowme .reply-content{color:#244c42}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .media-selection-slot{transition:none}.glowme-phase3 .scroll-top.is-returning svg{animation:none}}
 
 .glowme-phase3 .date-day.selected{color:#173f32;background:#a9d9c4;border-color:#428e7a;box-shadow:inset 0 1px 1px #fff}
-.glowme-phase3 .date-day.has-chat::after{background:#428e7a}
-.glowme-phase3 .date-day.selected.has-chat::after{background:#214f3f}
+.glowme-phase3 .date-day.has-chat::after{background:var(--theme-accent)}
+.glowme-phase3 .date-day.selected.has-chat::after{background:var(--theme-accent)}
 .glowme-phase3 .msg:is(.chat-match-active,.date-target-flash,.reply-target-flash) .bubble{border-color:#428e7a;box-shadow:inset 0 0 0 1px #428e7a66;background-image:linear-gradient(#94d9c415,#94d9c415)}
 .glowme-phase3 .date-sep.date-jump-start{color:#285e4b}
 .glowme-phase3 mark{background:#b2dec8;color:#143c2e}
@@ -536,8 +536,9 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #sidebarToggleBtn{box-shadow:inset 0 1px 1px #fff,0 2px 5px #315b4414}
 .glowme-phase3 .glowme-nav button.meapri-control[aria-current="page"]{border-color:#c7dfd1!important}
 .glowme-phase3 :is(.replay-page-back,.replay-page-download,#dateJumpBtn){background:linear-gradient(135deg,#f4fcf6,#cce6d8);border-color:#bad5c5;box-shadow:inset 0 1px 1px #fff,0 2px 6px #315b4410;color:#244f40}
-.glowme-phase3 .vote-list-item{background:transparent;border:0;border-bottom:1px solid #bddbcc;border-radius:0;box-shadow:none}
-.glowme-phase3 .vote-list-item:hover{background:#94d9c420}
+.glowme-phase3 .vote-list-item{background:transparent;border:0;border-bottom:1px solid var(--theme-line);border-radius:0;box-shadow:none}
+.glowme-phase3 .vote-list-item:is(:hover,:focus-visible){background:var(--theme-soft)}
+.glowme-phase3 .vote-list-item:focus-visible{outline:2px solid var(--theme-accent);outline-offset:-2px}
 .glowme-phase3 .vote-dialog{background:linear-gradient(140deg,#f1fbf4f5,#dbeee3f7);border-color:#fff;box-shadow:inset 0 1px 1px #fff,0 18px 50px #20453240}
 .glowme-phase3 .vote-dialog::backdrop{background:#294b3e66}
 .glowme-phase3 .vote-option{background:#f5fcf8bb;border-color:#b2d6c6;box-shadow:none}
@@ -550,7 +551,7 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3::-webkit-scrollbar,.glowme-phase3 #rooms::-webkit-scrollbar,.glowme-phase3 #chatToolsPanel::-webkit-scrollbar{width:6px}
 .glowme-phase3::-webkit-scrollbar-track,.glowme-phase3 #rooms::-webkit-scrollbar-track,.glowme-phase3 #chatToolsPanel::-webkit-scrollbar-track{background:transparent}
 .glowme-phase3::-webkit-scrollbar-thumb,.glowme-phase3 #rooms::-webkit-scrollbar-thumb,.glowme-phase3 #chatToolsPanel::-webkit-scrollbar-thumb{background:#85b8a4;border:0;border-radius:8px}
-.glowme-phase3 ::selection{background:#a9d8c1;color:#163d2c}
+.glowme-phase3 ::selection{background:var(--theme-selected);color:var(--theme-text)}
 @media(prefers-reduced-transparency:reduce){.glowme-phase3 :is(.topbar,#sidebar,#chatToolsPanel,.batch-selection-tools,.vote-dialog){background:#edf8f0!important;backdrop-filter:none!important}.glowme-phase3 .topbar::before{display:none}}
 @media(forced-colors:active){.glowme-phase3 :is(.topbar,#sidebar,#chatToolsPanel,.vote-dialog,.rail-toggle,.glowme-nav button){background:Canvas!important;color:CanvasText!important;border:1px solid CanvasText!important;box-shadow:none!important}.glowme-phase3 .glowme-nav button[aria-current="page"]{outline:2px solid Highlight;outline-offset:-3px}}
 /* An independent keyboard selection button avoids a checkbox wrapping links,
@@ -562,7 +563,7 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 :is(.media-missing,.reply-media-label,.artist-select-prompt){color:#48675e}
 .glowme-phase3 #artistLoadStatus{font-size:12px;line-height:1.5;color:#345c4f;margin-top:3px}
 .glowme-phase3 #artistLoadStatus:empty{display:none}
-.glowme-phase3 #chatToolsPanel #chatMatchNav{position:static;justify-content:center;margin-top:12px;padding:4px;gap:10px;border:1px solid #bddbcc;border-radius:12px;background:#edf8f0}
+.glowme-phase3 #chatToolsPanel #chatMatchNav{position:static;justify-content:center;margin-top:12px;padding:4px;gap:10px;border:1px solid var(--theme-line);border-radius:12px;background:var(--theme-soft)}
 .glowme-phase3 #chatToolsPanel #chatMatchNav[hidden]{display:none}
 .glowme-phase3 #chatToolsPanel #chatMatchNav .btn{min-width:40px;min-height:40px}
 
@@ -571,22 +572,27 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 #chatSearchDock[hidden]{display:none}
 .glowme-phase3 .chat-match-slot{max-width:0;opacity:0;visibility:hidden;pointer-events:none;overflow:hidden;transform:translateX(8px);transition:max-width 200ms ease,opacity 180ms ease,transform 200ms ease,visibility 0s linear 200ms}
 .glowme-phase3 .chat-match-slot.expanded{max-width:160px;opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
-.glowme-phase3 .chat-match-slot #chatMatchNav{position:static;flex-wrap:nowrap;white-space:nowrap;padding:4px;gap:4px;background:#edf8f0;border:1px solid #a5cbbb;border-radius:16px;box-shadow:0 3px 12px #244b3a1a}
+.glowme-phase3 .chat-match-slot #chatMatchNav{position:static;flex-wrap:nowrap;white-space:nowrap;padding:4px;gap:4px;background:var(--theme-soft);border:1px solid var(--theme-line);border-radius:16px;box-shadow:0 3px 12px color-mix(in srgb,var(--theme-text) 10%,transparent)}
 .glowme-phase3 .chat-match-slot #chatMatchNav .btn{width:44px;height:44px;padding:0}
 .glowme-phase3 .chat-match-slot #chatMatchPosition{font-size:12px;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .chat-match-slot{transition:none;transform:none}}
 
-/* Unified search and inline date picker, preserving the existing mint surfaces. */
-.glowme-phase3 #chatToolsPanel{padding:0;overflow:hidden;background:linear-gradient(135deg,#f6fff8fc,#e0f1e7fc)}
+/* Unified search and inline date picker on the shared theme surface. */
+.glowme-phase3 #chatToolsPanel{padding:0;overflow:hidden;background:var(--theme-card)}
 .glowme-phase3 #chatToolsPanel.open{display:flex;flex-direction:column}
 .glowme-phase3 .search-panel-heading{flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 14px 12px 18px;border-bottom:1px solid var(--line)}
 .glowme-phase3 .search-panel-heading .chat-tools-title{padding:0;margin:0;font-size:16px}
 .glowme-phase3 .search-panel-heading .glowme-search-close{position:static;flex:none}
 .glowme-phase3 .glowme-search-fields{padding:16px 18px 10px}
 .glowme-phase3 .search-panel-scroll{overflow-y:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#85b8a4 transparent}
-.glowme-phase3 .search-panel-footer{flex:none;padding:12px 18px 16px;border-top:1px solid var(--line);background:#e4f4eb}
+.glowme-phase3 .search-panel-footer{flex:none;padding:12px 18px 16px;border-top:1px solid var(--theme-line);background:var(--theme-card)}
 .glowme-phase3 .search-panel-option{display:flex;align-items:center;gap:10px;min-height:40px;margin:4px 0;color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
-.glowme-phase3 #chatToolsPanel input[type=checkbox]{appearance:auto;width:20px;height:20px;min-height:20px;margin:0;padding:0;flex:none;accent-color:#428e7a;cursor:pointer}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]{appearance:none;display:inline-grid;place-items:center;width:20px;height:20px;min-height:20px;margin:0;padding:0;flex:none;border:2px solid var(--theme-line);border-radius:50%;background:var(--theme-card);accent-color:var(--theme-accent);cursor:pointer}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]::after{content:"";width:5px;height:9px;border:solid var(--theme-on-accent);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg);opacity:0}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]:checked{background:var(--theme-accent);border-color:var(--theme-accent)}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]:checked::after{opacity:1}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]:focus-visible{outline:2px solid var(--theme-accent);outline-offset:3px}
+@media(forced-colors:active){:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]{appearance:auto;border:0}:root[data-fromm-theme].glowme-phase3 #chatToolsPanel input[type=checkbox]::after{display:none}}
 .glowme-phase3 .search-panel-option:has(input:disabled){opacity:.6;cursor:default}
 .glowme-phase3 #chatToolsPanel .date-picker-row[hidden]{display:none}
 .glowme-phase3 #dateCalendar{margin:8px 0 14px;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}
@@ -1047,44 +1053,45 @@ html.glowme .reply-content{color:#244c42}
 }
 
 
-/* Calendar selected/hover/today states use the Glow ME palette. Keep focus
+/* Calendar selected/hover/today states use the current palette. Keep focus
    and today's ring INSIDE each date cell so last-column corners are not clipped. */
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day{
+  background:transparent;
   box-sizing:border-box;
   border-radius:10px;
   outline-offset:-3px;
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day:hover:not(.selected){
-  background:#e0f4e9;
-  color:#214b3d;
+  background:var(--theme-soft);
+  color:var(--theme-text);
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected,
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected:hover,
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.selected:active{
-  background:#a9d9c4;
-  color:#173f32;
+  background:var(--theme-selected);
+  color:var(--theme-text);
   border:0;
-  box-shadow:inset 0 0 0 1px #79b69d;
+  box-shadow:inset 0 0 0 1px var(--theme-line);
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.today{
   outline:none;
-  box-shadow:inset 0 0 0 2px #428e7a;
+  box-shadow:inset 0 0 0 2px var(--theme-accent);
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day.today.selected{
-  box-shadow:inset 0 0 0 2px #428e7a;
+  box-shadow:inset 0 0 0 2px var(--theme-accent);
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar .date-day:focus-visible{
-  outline:2px solid #116c63;
+  outline:2px solid var(--theme-accent);
   outline-offset:-3px;
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).selected,
 .glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).selected:hover{
-  background:#a9d9c4;
-  color:#173f32;
-  box-shadow:inset 0 0 0 1px #79b69d;
+  background:var(--theme-selected);
+  color:var(--theme-text);
+  box-shadow:inset 0 0 0 1px var(--theme-line);
 }
 .glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option):focus-visible{
-  outline:2px solid #116c63;
+  outline:2px solid var(--theme-accent);
   outline-offset:-3px;
 }
 @media(forced-colors:active){
@@ -1399,3 +1406,14 @@ html.glowme .reply-content{color:#244c42}
 }
 /* The header PiP shortcut is hidden; the player's existing PiP control remains. */
 .live-head #livePipBtn{display:none!important}
+
+.glowme-phase3 #chatToolsPanel #dateCalendar :is(.date-year-option,.date-month-option).has-chat::after{background:var(--theme-accent)}
+
+/* The calendar shares its search panel surface across every palette. */
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel :is(#dateCalendar,.date-year-panel,.date-month-panel){background:transparent}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel :is(input,button):focus-visible{outline-color:var(--theme-accent)}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel :is(.glowme-search-close,.chat-search-clear,.date-nav-btn,.date-calendar-title,.date-calendar-link){background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:var(--theme-text)}
+:root[data-fromm-theme].glowme-phase3 #chatToolsPanel :is(.glowme-search-close,.chat-search-clear,.date-nav-btn,.date-calendar-title,.date-calendar-link):hover{color:var(--theme-accent)}
+:root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent){width:40px;height:40px;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:8px;gap:0;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--theme-text)!important}
+:root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>svg{width:24px;height:24px;flex:none;margin:0}
+:root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>.control-glass-surface{background:transparent!important;border:0!important;box-shadow:none!important}

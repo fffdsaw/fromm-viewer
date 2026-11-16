@@ -62,7 +62,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
     const card=p.locator(`[data-message-id="${id}"]`),media=card.locator(type);await card.scrollIntoViewIfNeeded();
     const root=card.locator('.small-player');await root.waitFor();await rowGeometry(root);
     assert.equal(await root.locator('[data-compact="full"]').count(),0,'approved layout omits a fullscreen icon');
-    if(type==='audio')assert.equal(await card.locator('.audio-icon').isVisible(),true,'headphone cover remains');
+    if(type==='audio')assert.equal(await card.locator('.audio-icon').isVisible(),true,'waveform cover remains');
     await root.locator('[data-small="play"]').click();await p.waitForFunction(id=>{const el=document.querySelector(`[data-message-id="${id}"] video,[data-message-id="${id}"] audio`);return !el.paused&&el.currentTime>0;},id);
     await root.locator('[data-small="play"]').click();assert.equal(await media.evaluate(el=>el.paused),true);
     await root.locator('.small-player-seek').fill('6');await p.waitForTimeout(80);assert.ok(Math.abs(await media.evaluate(el=>el.currentTime)-6)<.3,'seek changes decoded media position '+JSON.stringify({id,type,position:await media.evaluate(el=>({t:el.currentTime,ready:el.readyState,source:!!el.getAttribute('src'),paused:el.paused,duration:el.duration,seekable:[...Array(el.seekable.length)].map((_,i)=>[el.seekable.start(i),el.seekable.end(i)])})),range:await root.locator('.small-player-seek').inputValue()}));

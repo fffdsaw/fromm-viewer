@@ -15,6 +15,7 @@ async function benchmark(browser,url,label,options={}){
  const rows=[];
  for(let run=0;run<3;run++){
   const start=performance.now(),{page,context,errors}=await open(browser,url,options);
+  if(options.optics===false){await page.evaluate(()=>FrommGlassSettings.set({enabled:false},{immediate:true}));await page.waitForFunction(()=>FrommGlass.count+FrommControlGlass.snapshot.live===0);}
   await page.waitForFunction(()=>document.querySelector('.msg'));
   const readyMs=performance.now()-start,cdp=await context.newCDPSession(page);
   await cdp.send('Performance.enable');
@@ -70,7 +71,7 @@ async function benchmark(browser,url,label,options={}){
    }
    if(!process.env.PHASE3_SKIP_PERF)results.performance.push(await benchmark(browser,server.url,label));
   }
-  if(!process.env.PHASE3_SKIP_PERF)results.performance.push(await benchmark(browser,after.url,'after-no-optics',{lowPower:true}));
+  if(!process.env.PHASE3_SKIP_PERF)results.performance.push(await benchmark(browser,after.url,'after-no-optics',{optics:false}));
   fs.writeFileSync(path.join(output,process.env.PHASE3_SKIP_PERF?'screens.json':'metrics.json'),JSON.stringify(results,null,2));
   console.log(JSON.stringify({screens:output,performance:results.performance.map(({label,median})=>({label,...median}))}));
  }finally{await browser.close();await before.close();await after.close();fs.rmSync(temp,{recursive:true,force:true});}

@@ -79,9 +79,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  }
  for(const options of [{lowPower:true},{userAgent:'Mozilla/5.0 Version/18.0 Safari/605.1.15'}]){
   const {page,context,errors}=await open(browser,server.url,options);await page.waitForTimeout(150);
-  const filter=await page.locator('.glowme-nav [aria-current="page"]').evaluate(e=>getComputedStyle(e.querySelector('.control-glass-surface')||e).backdropFilter);
-  assert.ok(!filter.includes('url('),'low-power and Safari-UA fallback avoids SVG backdrop');
-  if(options.lowPower)assert.equal(await page.evaluate(()=>FrommGlass.count+FrommControlGlass.snapshot.live),0);
+  if(options.lowPower){
+   await page.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('));
+   assert.ok(await page.evaluate(()=>FrommGlass.count+FrommControlGlass.snapshot.live)>0,'low-memory devices retain actual SVG optics');
+  }else{
+   const filter=await page.locator('.rail-lens-surface').evaluate(e=>getComputedStyle(e).backdropFilter);
+   assert.ok(!filter.includes('url('),'unsupported Safari-UA keeps its browser fallback');
+  }
   assert.deepEqual(errors,[]);await context.close();
  }
  const accessibility=await open(browser,server.url);

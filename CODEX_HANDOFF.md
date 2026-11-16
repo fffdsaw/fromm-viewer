@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## PR #130 production deployment confirmed — 2026-11-16 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #130](https://github.com/fffdsaw/fromm-viewer/pull/130) merged into main at `efc5d5cfcb8043af9862ac42ba6d0dfa97b90887`, including final verified head `87f6876b6697c3e495a3a25c2045690fc09780f4`. All **10/10 final-head CI checks passed**, including Windows Chrome/Edge and the full media browser suite.
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43807640220) and [public verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43807640213) succeeded. Independent verification matched **22 public HTML/JS/CSS assets byte-for-byte**, including `web-capsule-materialize.js`; fresh anonymous Chromium loaded the login/shared player, Classic persisted after reload, and **zero page errors** occurred.
+- Production now has flat single-color sidebar selection and colorless PC/mobile/save-pulse optics, with theme base fills, real refraction/gloss, readable chat voice controls and existing functions preserved. All prior PR #129 stabilization/palette/reader changes remain in main. No real account/comment/cache deletion or preview publication was used.
+- Receipts: `/workspace/clear-optics-20261116/production-130-verified.json` and `production-130-login.png`; synthetic sidebar screenshots and local logs are in the same directory. Physical Mac/Safari remains unverified locally. Feature branch was fast-forwarded to production; this documentation-only receipt needs no runtime deployment.
+- Prior pending-review/deploy notes below are historical and superseded. Continue from the preserved feature history for later work.
+
 ## Flat navigation selection and colorless optics follow-up — 2026-11-16
 
 User requested a single-color selected sidebar row and transparent engines across theme changes, then explicitly extended the transparency requirement to **other engine effects**. Implementation continues from clean feature head `df7cf907b8ba813b06ebaa59269c7e224a074336`; remote main was `362b064a8956c424856e7f3858907d8574ab327c`, no open PR. Existing production/deployment receipts below remain history. This new refinement is for review; do not claim it is deployed until an approved merge/deploy is completed.

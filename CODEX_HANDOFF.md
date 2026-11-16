@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-16 (Asia/Seoul)
 
+## PR #131 production deployment confirmed — 2026-11-16 (Asia/Seoul)
+
+- User explicitly approved merge/deploy. [PR #131](https://github.com/fffdsaw/fromm-viewer/pull/131) merged into main at `99555a5a340b907400ea2923ae0f38742bb3b687`, including final verified head `a1d2f21d0946cdb9d6eee345aada92b220ea296b`. All **10/10 final-head CI checks passed**, including Chromium/Windows Chrome/Edge and the complete media browser suites.
+- [Pages deployment](https://github.com/fffdsaw/fromm-viewer/actions/runs/43839906361) and [public verification](https://github.com/fffdsaw/fromm-viewer/actions/runs/43839906329) succeeded. Independent verification matched **25 public HTML/JS/CSS assets byte-for-byte**, including `web-glass-material.js`, `web-glass-settings.js` and the patched vendor SDK. Fresh anonymous Chromium loaded login/shared player and the new chromatic control/real-preview DOM, Classic persisted across reload, and **zero page errors** occurred.
+- Production includes the full reviewed scope: transparent top shortcut, cancellable animated virtual-chat return, unrestricted visible-engine policies and direct strengths, chromatic control (default 0), compact live settings/real preview without backdrop blur, and correctly filled themed range endpoints. Prior stabilization, cache/reader, player and palette work remains. No real account/comment/cache deletion, uploaded-media fixture or preview publication was used.
+- Receipts: `/workspace/live-optics-20261116/production-131-verified.json` and `production-131-login.png`; local synthetic logs and `ci-final.json` are in the same directory. Physical Mac/Safari remains unverified locally. The feature branch was fast-forwarded to production; this documentation-only receipt needs no runtime deployment. Its remote fetch configuration tracks only the feature branch, so future main refreshes should use `git fetch origin refs/heads/main:refs/remotes/origin/main` explicitly.
+- Pending CI/merge notes below are historical and superseded. Continue from the preserved feature history for future work.
+
 ## Full-strength live optics, settings and animated conversation start — 2026-11-16
 
 User approved implementing the reviewed seven-item scope, including chromatic control. Work continues on `codex/fromm-viewer-uiux-stabilization-20261114` from `c7f2ca1323bad80249334fc4b8f8b706b6d31c2e`; fetched main remains PR #130 production `efc5d5cfcb8043af9862ac42ba6d0dfa97b90887`. No open PR existed at start. Implementation `745a9ce2a3262228d7200b280fdb255d185ed886` is pushed in [PR #131](https://github.com/fffdsaw/fromm-viewer/pull/131), attached to this chat. Exact-head CI is running; inspect its final result. This refinement is for review; do not merge/deploy without explicit approval for this refinement.

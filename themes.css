@@ -34,7 +34,7 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #sidebar .rail-artists{border:0!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.viewer-header,.topbar,.live-head,.replay-page-head,.channel-page-head,.collection-header){background:var(--theme-header)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .viewer-header :is(.title,.stats,#artistTitle,.artist-name){color:var(--theme-text)!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#glassSettingsBtn,.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.logout-mini-btn,.reload-btn,.token-life-wrap,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#glassSettingsBtn,.sort-btn,.replay-page-back,.replay-page-download,#selectAllBtn,#clearSelectionBtn){background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.sort-btn,.replay-filter,.replay-page-back,.replay-page-download,.rail-toggle,#chatToolsBtn,#scrollTopBtn,#tokenLifeWrap,#logoutMiniBtn,#scanBtn,#selectAllBtn,#clearSelectionBtn)>.control-glass-surface{background:var(--theme-soft);border-color:var(--theme-line);box-shadow:none}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button{border-color:transparent!important;color:var(--theme-text)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .glowme-nav button.active{background:var(--theme-selected)!important}
@@ -43,7 +43,7 @@
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #rooms .room.active::before{background:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #rooms .room.active .rail-avatar{outline-color:var(--theme-accent);border-color:var(--theme-accent)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) .rail-pointer-light:not([data-control-optics="engine"]){background:color-mix(in srgb,var(--theme-selected) 85%,transparent)!important;border-color:var(--theme-line)!important;box-shadow:none!important}
-:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#chatToolsPanel,.conversation-dock,.conversation-reply-preview,.conversation-input-shell,#conversationInput){background:var(--theme-card)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important}
+:root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(#chatToolsPanel,.conversation-dock,.conversation-reply-preview,#conversationInput){background:var(--theme-card)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #chatToolsPanel :is(input,select,button,.date-calendar,.date-year-panel,.date-month-panel){background:var(--theme-soft);color:var(--theme-text);border-color:var(--theme-line)}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) #chatToolsPanel :is(.date-day.selected,.date-year-option.selected,.date-month-option.selected){background:var(--theme-selected)!important;color:var(--theme-text)!important;border-color:var(--theme-accent)!important}
 :root[data-fromm-theme]:not([data-fromm-theme="glow"]) :is(.card-title,.replay-title,.reply-quote,.reply-preview,.reply-box,.chat-message-time,.date-sep,.meta,.card-date,.replay-meta){color:var(--theme-text)!important}
@@ -108,3 +108,36 @@
 :root[data-fromm-theme]::-webkit-scrollbar-thumb,:root[data-fromm-theme] ::-webkit-scrollbar-thumb,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll)::-webkit-scrollbar-thumb{background:var(--theme-accent);border-color:var(--theme-bg)}
 :root[data-fromm-theme]::-webkit-scrollbar-track,:root[data-fromm-theme] ::-webkit-scrollbar-track,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll)::-webkit-scrollbar-track{background:transparent}
 @media(forced-colors:active){:root[data-fromm-theme] .small-player{--small-player-fill:Highlight;--small-player-rest:GrayText}:root[data-fromm-theme],:root[data-fromm-theme] *,:root[data-fromm-theme] :is(#rooms,#chatToolsPanel,.search-panel-scroll,.glass-settings-body,.mvc-popover){scrollbar-color:auto}}
+
+/* Complete palette coverage for selection, polls, list filters and composer. */
+:root[data-fromm-theme] .download-selection-box{border-color:var(--theme-accent)!important;background:color-mix(in srgb,var(--theme-accent) 18%,transparent)!important}
+:root[data-fromm-theme] .vote-option{background:var(--theme-soft);border-color:var(--theme-line);color:var(--theme-text)}
+:root[data-fromm-theme] .vote-option.artist-pick{border-color:var(--theme-accent)}
+:root[data-fromm-theme] .vote-bar{background:var(--theme-line)}
+:root[data-fromm-theme] .vote-bar>span{background:var(--theme-accent)}
+:root[data-fromm-theme].glowme-phase3 .replay-filter{background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-line)!important}
+:root[data-fromm-theme].glowme-phase3 .replay-filter:hover{background:var(--theme-selected)!important;border-color:var(--theme-accent)!important}
+:root[data-fromm-theme].glowme-phase3 .replay-filter.active{background:var(--theme-selected)!important;color:var(--theme-text)!important;border-color:var(--theme-accent)!important;box-shadow:inset 0 0 0 1px var(--theme-accent)!important}
+:root[data-fromm-theme] .replay-filter.active>.control-glass-surface{background-color:color-mix(in srgb,var(--theme-accent) 16%,transparent)!important;border-color:var(--theme-accent)!important}
+:root[data-fromm-theme] .conversation-input-shell{background:transparent!important;border-radius:20px}
+:root[data-fromm-theme] :is(#conversationNew,.conversation-icon){color:var(--theme-accent)}
+:root[data-fromm-theme] .conversation-icon:hover,:root[data-fromm-theme] .conversation-icon[aria-expanded="true"]{background:var(--theme-selected);border-color:var(--theme-line)}
+:root[data-fromm-theme] #conversationNew>span:not(.control-glass-surface){background:var(--theme-accent);color:var(--theme-on-accent)}
+/* Native range thumbs remain white; both large-player fills share one accent. */
+:root[data-fromm-theme] .mvc-panel{--accent2:var(--theme-accent)}
+/* One selected row, one moving lens; ordinary rows stay transparent. */
+:root[data-fromm-theme] #sidebar .glowme-nav button[aria-current="page"]{background:var(--theme-selected)!important;box-shadow:inset 3px 0 0 var(--theme-accent)!important;border-color:var(--theme-accent)!important}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ :root[data-fromm-theme].pc-control-glass.pc-layout .rail-pointer-light[data-control-optics="engine"]{background:color-mix(in srgb,var(--theme-accent) 16%,transparent);border-color:color-mix(in srgb,var(--theme-accent) 65%,white);box-shadow:inset 0 1px 1px #ffffffa0,0 2px 7px color-mix(in srgb,var(--theme-accent) 25%,transparent)}
+}
+@media(forced-colors:active){
+ :root[data-fromm-theme] .download-selection-box{border-color:Highlight!important;background:transparent!important}
+ :root[data-fromm-theme] #sidebar .glowme-nav button[aria-current="page"],:root[data-fromm-theme].glowme-phase3 .replay-filter.active{background:Highlight!important;color:HighlightText!important;border-color:Highlight!important}
+ :root[data-fromm-theme] .mvc-panel{--theme-accent:Highlight}
+ :root[data-fromm-theme] :is(#conversationNew,.conversation-icon){color:ButtonText}
+}
+/* Phase 3 paints native range tracks rather than the input background. */
+:root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra){background:transparent!important}
+:root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--theme-accent) var(--volume,100%),#ffffff40 var(--volume,100%))}
+:root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(to right,var(--theme-accent) var(--volume,100%),#ffffff40 var(--volume,100%))}
+:root[data-fromm-theme] .mvc-panel :is(input.mvc-volume,input.mvc-volume-extra)::-webkit-slider-thumb{margin-top:-3.5px}

@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=chat-waveform-20261116';
+import './web-glass-controls.js?v=reader-palette-20261116';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=uiux-review-switch-20261115';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
 import('./web-capsule-materialize.js').then(({createCapsuleMaterializer})=>{
@@ -74,7 +74,7 @@ function sync(){
 }
 window.FrommGlass=Object.freeze({sync,get count(){return instances.size;}});
 glassPreferences.subscribe(()=>{preferences=glassPreferences.value;sync();});
-window.addEventListener('fromm-theme-change',()=>{for(const glass of instances.values())versions.delete(glass);sync();});
+window.addEventListener('fromm-theme-change',()=>{for(const [el,glass]of instances){glass.destroy();el.classList.remove('meapri-control');}instances.clear();sync();});
 for(const query of [glassPC,reduce,opaque,contrast])query.addEventListener('change',sync);
 document.addEventListener('visibilitychange',sync);window.addEventListener('pageshow',sync);
 window.addEventListener('pagehide',()=>{

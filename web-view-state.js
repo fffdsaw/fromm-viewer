@@ -2,23 +2,25 @@
 (() => {
  'use strict';
  const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false;
+ // Our message anchors own reload/navigation restoration, never raw browser Y.
+ if('scrollRestoration' in history)history.scrollRestoration='manual';
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
  const chatWaiting=()=>state.filter==='all'&&(((state.chatHistoryLoading||!state.chatHistoryComplete)&&!state.chatMessages.length&&!window.FrommConversation?.canShowCached())||state.chatAutoTopPending);
- const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>8);
+ const row=()=>[...document.querySelectorAll('#timeline [data-message-id],#timeline [data-vote-id]')].find(el=>el.getBoundingClientRect().bottom>(state.filter==='all'?chatHeaderInset()+8:8));
  function capture(){
   if(state.filter==='live'||pending||restoring||chatWaiting())return false;
   const el=row();
   // A loading/empty notice is not a message the reader chose to keep.
   if(state.filter==='all'&&!el)return false;
   const dockHeight=state.filter==='all'?(document.querySelector('#conversationDock')?.offsetHeight||0):0;
-  const latest=state.filter==='all'&&(latestFollowing||document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(80,dockHeight+16));
+  const latest=state.filter==='all'&&state.infiniteRendered>=state.infiniteList.length&&(latestFollowing||document.documentElement.scrollHeight-(window.scrollY+window.innerHeight)<=Math.max(80,dockHeight+16));
   positions.set(key(),{y:scrollY,id:el?.dataset.messageId||'',vote:el?.dataset.voteId||'',offset:el?.getBoundingClientRect().top||0,latest});
   // Navigation history is bounded; only scalar positions/IDs are retained.
   if(positions.size>120)positions.delete(positions.keys().next().value);
   return true;
  }
  function enter(filter=state.filter,options={}){
-  latestCleanup?.();active=key(filter);serial++;
+  cancel();active=key(filter);
   const saved=positions.get(active);
   latestFollowing=filter==='all'&&!!saved?.latest;
   // New conversation entry is handled by the latest-message virtual window,
@@ -35,12 +37,12 @@
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;
   if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete)&&!state.chatMessages.length&&!window.FrommConversation?.canShowCached())return;
-  const job=pending,pos=job.position;restoring=true;let windowed=false;
+  const job=pending,pos=job.position;restoring=true;
   try{
    let el=pos.id?document.querySelector(`#timeline [data-message-id="${CSS.escape(pos.id)}"]`):pos.vote?document.querySelector(`#timeline [data-vote-id="${CSS.escape(pos.vote)}"]`):null;
-   if(!el&&pos.id){
+   if(!el&&pos.id&&!pos.latest){
     const index=state.infiniteList.findIndex(m=>String(m.messageId)===pos.id);
-    if(index>=0){if(state.filter==='all'){renderChatWindow(state.infiniteList,index);windowed=true;}
+    if(index>=0){if(state.filter==='all'){renderChatWindow(state.infiniteList,index);}
      else await appendInfiniteBatch(Math.max(1,Math.ceil((index+1-state.infiniteRendered)/state.chunkSize)),state.infiniteVersion);
      el=document.querySelector(`#timeline [data-message-id="${CSS.escape(pos.id)}"]`);
     }
@@ -54,7 +56,9 @@
     }
    }
    if(pending!==job||job.serial!==serial||job.key!==key())return;
-   if(el&&windowed){
+   if(pos.latest&&state.filter==='all'){
+    pending=null;settleLatest(()=>job.key===key()&&state.filter==='all');
+   }else if(el){
     scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
     pending=null;
     settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all');
@@ -91,8 +95,8 @@
   tl?.addEventListener('load',schedule,true);
   document.fonts?.addEventListener('loadingdone',schedule);
   document.fonts?.addEventListener('loadingerror',schedule);
-  timer=setTimeout(()=>{align();cleanup();},1450);
-  schedule();
+  timer=setTimeout(()=>{align();cleanup();},4000);
+  align();
  }
  function settleAnchor(el,inset,valid=()=>true,watchMs=0){
   cancel();watchMs=Math.max(0,Math.min(2000,Number(watchMs)||0));const ticket=serial;let count=0,queued=false,closed=false,observer=null,timer=0;
@@ -164,13 +168,14 @@
   if(typeof ResizeObserver==='function'&&tl){observer=new ResizeObserver(schedule);for(const node of [tl,document.querySelector('.main'),document.querySelector('#conversationDock')])if(node)observer.observe(node);}
   document.fonts?.addEventListener('loadingdone',schedule);
   document.fonts?.addEventListener('loadingerror',schedule);
-  timer=setTimeout(()=>{align();cleanup();},1400);
-  schedule();
+  timer=setTimeout(()=>{align();cleanup();},4000);
+  align();
  }
  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;void restore();});}
  new MutationObserver(schedule).observe(document.querySelector('#timeline'),{childList:true,subtree:true});
  // User-directed movement always wins over an asynchronous restore.
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get pending(){return !!pending;},get followingLatest(){return latestFollowing;}});
+ function resume(position){cancel();active=key();positions.set(active,position);pending={key:active,position,serial};}
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;}});
 })();

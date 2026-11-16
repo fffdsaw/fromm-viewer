@@ -1098,18 +1098,18 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=chat-waveform-20261116">
+<link rel="stylesheet" href="glowme.css?v=reader-palette-20261116">
 <link rel="preload" as="script" href="web-glowme.js?v=controls-live-20261116">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=chat-audio-20261109">
+<link rel="preload" as="script" href="web-view-state.js?v=reader-palette-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<link rel="stylesheet" href="conversation.css?v=unified-small-20261115">
+<link rel="stylesheet" href="conversation.css?v=reader-palette-20261116">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
-<link rel="stylesheet" href="themes.css?v=theme-surfaces-20261116">
+<link rel="stylesheet" href="themes.css?v=reader-palette-20261116">
 <link rel="stylesheet" href="settings-panel.css?v=controls-live-20261116">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=room-latest-20261111"></script>
+<script src="web-conversation.js?v=reader-palette-20261116"></script>
 <script src="web-small-player.js?v=unified-small-20261115"></script>
 <script src="web-chat-audio.js?v=chat-waveform-20261116"></script>
 </head>
@@ -1781,7 +1781,7 @@ function renderChannelVideosView() {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
       const thumb = replayThumb(p);
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
-        <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><span class="replay-badge">업로드된 비디오</span><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button></div>
+        <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
     }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
@@ -4421,7 +4421,7 @@ function renderReplayView(){
     const thumb=replayThumb(p);
     const active=selected && String(selected.id)===String(p.id) && selected._channelId===p._channelId;
     return `<article class="replay-card ${active?"active":""}" data-replay-post="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" role="button" tabindex="0" aria-label="${esc(p.title || "LIVE Replay")} 재생">
-      <div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async"/>`:`<div class="replay-thumb-empty">Replay</div>`}<span class="replay-badge">${esc(p._channelName)}</span><button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">${downloadFeedbackIcon()}</button><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
+      <div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async"/>`:`<div class="replay-thumb-empty">Replay</div>`}<button class="replay-download" data-replay-download="${esc(String(p.id))}" data-replay-channel="${esc(p._channelId)}" type="button" aria-label="${esc(p.title || "LIVE Replay")} 다운로드" title="Replay 다운로드">${downloadFeedbackIcon()}</button><button class="replay-play" type="button" aria-label="${esc(p.title || "LIVE Replay")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button></div>
       <div class="replay-body"><div class="replay-title">${esc(p.title || "LIVE Replay")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
     </article>`;
   }).join("")}</div>` : `<div class="replay-empty">${state.live.replayLoading?"Replay를 불러오는 중...":state.live.replayError?esc(state.live.replayError):"표시할 Replay가 없습니다."}</div>`;
@@ -4673,7 +4673,9 @@ function installModernVideoControls(player) {
     $('.mvc-time').textContent=`${time(shown)} / ${time(duration)}`;
     if(play.dataset.paused!==String(video.paused)){paintIcon(play,icon(video.paused?icons.play:icons.pause));play.dataset.paused=String(video.paused);}play.setAttribute('aria-label',video.paused?'재생':'일시정지');play.title=video.paused?'재생':'일시정지';
     if(sound.dataset.muted!==String(video.muted||video.volume===0)){paintIcon(sound,icon(video.muted||video.volume===0?icons.muted:icons.sound));sound.dataset.muted=String(video.muted||video.volume===0);}sound.setAttribute('aria-label',video.muted?'음소거 해제':'음소거');sound.setAttribute('aria-pressed',String(video.muted));
-    volume.value=String(video.muted?0:video.volume);$('.mvc-volume-extra').value=volume.value;$('.mvc-rate').value=String(video.playbackRate);
+    volume.value=String(video.muted?0:video.volume);$('.mvc-volume-extra').value=volume.value;
+    for(const range of [volume,$('.mvc-volume-extra')])range.style.setProperty('--volume',Number(volume.value)*100+'%');
+    $('.mvc-rate').value=String(video.playbackRate);
   };
   const toggle=()=>{if(video.paused)video.play().catch(()=>message('재생 버튼을 다시 눌러주세요.'));else video.pause();reveal();};
   const fullscreen=async()=>{try{if(doc.fullscreenElement===stage)await doc.exitFullscreen();else if(stage.requestFullscreen)await stage.requestFullscreen();else if(video.webkitEnterFullscreen)video.webkitEnterFullscreen();}catch{message('이 브라우저에서 전체 화면을 열지 못했습니다.');}reveal();};
@@ -8592,16 +8594,19 @@ function renderFullConversation(version){
 
   // On first entry, render a bounded window ending at the newest message.
   // Merely scrolling a first-page DOM to the bottom would show old messages.
-  if(state.chatAutoTopPending){
+  const position=window.FrommViewState?.position;
+  if(position&&!position.latest&&position.id){
+    const index=list.findIndex(m=>messageStableKey(m)===position.id);
+    if(index>=0){state.chatAutoTopPending=false;renderChatWindow(list,index);void FrommViewState.restore();return;}
+  }
+  if(state.chatAutoTopPending||position?.latest){
     const latest=renderChatWindow(list,list.length-1);
     if(latest){
-      requestAnimationFrame(()=>{
-        if(state.filter!=="all" || latest.version!==state.infiniteVersion || !tl.isConnected) return;
-        state.chatAutoTopPending=false;
-        const valid=()=>state.filter==="all" && latest.version===state.infiniteVersion && tl.isConnected;
-        if(window.FrommViewState?.settleLatest) window.FrommViewState.settleLatest(valid);
-        else window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
-      });
+      state.chatAutoTopPending=false;
+      const valid=()=>state.filter==="all" && latest.version===state.infiniteVersion && tl.isConnected;
+      if(position?.latest)void FrommViewState.restore();
+      else if(window.FrommViewState?.settleLatest)window.FrommViewState.settleLatest(valid);
+      else window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
       return;
     }
   }
@@ -9135,10 +9140,8 @@ function renderMessage(m){
   bubble.className="bubble";
   if(t==="sound" && artist) bubble.classList.add("chat-sound-bubble");
 
-  const who=artist?(state.room?.host?.nick||"아티스트"):"나";
-  // Media bubbles omit redundant sender names; only timestamps stay beneath them.
-  const chatMedia=["image","video","sound"].includes(t);
-  let html=chatMedia||artist?"":`<div class="meta"><span>${esc(who)}</span></div>`;
+  // Sender names are redundant in the two-sided conversation; keep timestamps below.
+  let html="";
 
   const quoted = getQuotedMessage(m);
   if(quoted){
@@ -11258,7 +11261,7 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=chat-audio-20261109"></script>
+<script src="web-view-state.js?v=reader-palette-20261116"></script>
 <script src="web-glowme.js?v=controls-live-20261116" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
@@ -11278,6 +11281,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=chat-waveform-20261116"></script>
+<script type="module" src="web-glass.js?v=reader-palette-20261116"></script>
 </body>
 </html>

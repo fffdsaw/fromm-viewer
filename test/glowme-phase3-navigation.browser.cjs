@@ -50,7 +50,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  assert.equal(latest.sorted,'fresh699');
  assert.ok(latest.lastVisible,'newest message visible at first entry');
  assert.ok(Math.abs(latest.y-latest.max)<6,'initial viewport starts at latest messages');
- await p.evaluate(()=>scrollTo(0,Math.max(0,document.documentElement.scrollHeight-innerHeight-700)));
+ await p.mouse.move(viewport.width/2,viewport.height/2);await p.mouse.wheel(0,-700);
  await p.waitForTimeout(120);
  const read=await p.evaluate(()=>{
   const e=[...document.querySelectorAll('#timeline [data-message-id]')].find(el=>el.getBoundingClientRect().bottom>8);

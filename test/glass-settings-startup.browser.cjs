@@ -5,7 +5,7 @@ const{serve,open,seed}=require('./helpers/phase3-fixture.cjs');
  const high={newContext:async options=>{const c=await b.newContext(options);await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return c;}};
  const{page:p,context,errors}=await open(high,s.url,{login:true});
  assert.equal(await p.evaluate(()=>performance.getEntriesByType('resource').filter(e=>e.name.includes('/vendor/meapri/')).length),0,'login does not load unused optics');
- let requested;const seen=new Promise(r=>requested=r),held=new Promise(r=>release=r);await p.route('**/vendor/meapri/liquid-glass.js',async route=>{requested();await held;await route.continue()});
+ let requested;const seen=new Promise(r=>requested=r),held=new Promise(r=>release=r);await p.route('**/vendor/meapri/liquid-glass.js*',async route=>{requested();await held;await route.continue()});
  await seed(p);await Promise.race([seen,new Promise((_,reject)=>setTimeout(()=>reject(Error('missing delayed optics request')),7000))]);
  await p.locator('#sidebar').hover({position:{x:20,y:20}});assert.equal(await p.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'true');
  assert.equal(await p.evaluate(()=>FrommControlGlass.snapshot.live),0);await p.keyboard.press('Escape');assert.equal(await p.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'false');

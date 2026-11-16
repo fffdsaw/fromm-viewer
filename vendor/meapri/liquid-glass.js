@@ -36,8 +36,9 @@ class Ve {
   feDispB;
   feSaturate;
   chromaticEnabled;
+  chromaticAmount;
   constructor(e) {
-    this.defs = Ut(e.root), this.id = `lg-filter-${++zt}`, this.chromaticEnabled = e.chromaticAberration > 0.12, this.filter = document.createElementNS(b, "filter"), this.filter.setAttribute("id", this.id);
+    this.defs = Ut(e.root), this.id = `lg-filter-${++zt}`, this.chromaticAmount = e.chromaticAberration, this.chromaticEnabled = e.chromaticAberration > 0, this.filter = document.createElementNS(b, "filter"), this.filter.setAttribute("id", this.id);
     const t = e.displacementPadding / e.width * 100, i = e.displacementPadding / e.height * 100;
     if (this.filter.setAttribute("x", `${-t}%`), this.filter.setAttribute("y", `${-i}%`), this.filter.setAttribute("width", `${100 + t * 2}%`), this.filter.setAttribute("height", `${100 + i * 2}%`), this.filter.setAttribute("filterUnits", "objectBoundingBox"), this.filter.setAttribute("primitiveUnits", "userSpaceOnUse"), this.filter.setAttribute("color-interpolation-filters", "sRGB"), this.feBlur = document.createElementNS(b, "feGaussianBlur"), this.feBlur.setAttribute("in", "SourceGraphic"), this.feBlur.setAttribute("stdDeviation", String(e.blur)), this.feBlur.setAttribute("edgeMode", "duplicate"), this.feBlur.setAttribute("result", "blurred"), this.filter.appendChild(this.feBlur), this.feImageDisp = document.createElementNS(b, "feImage"), this.feImageDisp.setAttribute("href", e.displacementMapUrl), this.feImageDisp.setAttribute("x", String(-e.displacementPadding)), this.feImageDisp.setAttribute("y", String(-e.displacementPadding)), this.feImageDisp.setAttribute(
       "width",
@@ -143,8 +144,8 @@ class Ve {
   }
   updateRefraction(e) {
     if (this.chromaticEnabled && this.feDispR && this.feDispB) {
-      const t = 2 * e;
-      this.feDispR.setAttribute("scale", String(t * 0.82)), this.feDispG.setAttribute("scale", String(t)), this.feDispB.setAttribute("scale", String(t * 1.18));
+      const t = 2 * e, spread = 0.35 * this.chromaticAmount;
+      this.feDispR.setAttribute("scale", String(t * (1 - spread))), this.feDispG.setAttribute("scale", String(t)), this.feDispB.setAttribute("scale", String(t * (1 + spread)));
     } else
       this.feDispG.setAttribute("scale", String(2 * e));
   }

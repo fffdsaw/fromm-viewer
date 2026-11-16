@@ -3,7 +3,36 @@
 Upstream: https://github.com/Meapri/liquid-glass-web
 Revision: 1613f8311dbc31bc2331afcfe51a143c56dd6308 (version 0.1.0), MIT ©2026 Meapri.
 
-Built without source changes using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution.
+Originally built using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution. The two app patches below are now applied to the ESM bundle; the pinned worker is unchanged.
+
+## Current full-strength control integration — 2026-11-16
+
+This supersedes the historical pane/balanced/budget descriptions below. Headers
+and sidebar retain their opaque theme surfaces; controls use zero-alpha tint.
+
+- `web-glass-material.js` wraps the pinned engine with explicit `high` quality,
+  full map sampling, direct preference values for refraction/thickness/blur and
+  specular strength, and no size/profile reductions. It bypasses the initial
+  time-sliced build queue and coalesces live map changes within one paint.
+  These named SDK method overrides must be reviewed on an upstream upgrade.
+- PC controls have no eight-instance or two-build-per-frame policy. Mobile
+  controls have no low-memory exclusion, 800ms quiet gate or one-build gate.
+  Video playback no longer parks optics. Visible/offscreen, page lifecycle,
+  explicit OFF, reduced motion/transparency, forced colors, unsupported-browser
+  fallback, stale-build cancellation and resource destruction remain.
+- Bundle patches: activate RGB displacement for **every positive** chromatic
+  value (previous dead zone `<=0.12`); retain that value when displacement is
+  updated (previous update hardcoded RGB factors 0.82/1.18). The app rebuilds
+  filter topology on chromatic changes. Default chromatic remains zero.
+- The SDK's geometric lens model, valid canvas/color bounds, worker and caches
+  are preserved. No backdrop source, content clone or WebGL capture is used.
+- The save pulse now reads the same preferences and releases its transient
+  engine after settling. The settings preview uses the actual SDK; desktop
+  settings are nonmodal, mobile settings retain native modal focus behavior.
+
+Regression coverage: `test/live-optics-settings.browser.cjs`,
+`test/scroll-top-motion.browser.cjs`, and the existing controls/settings/rail/
+capsule/performance suites. Use synthetic media only.
 
 The PC panes use `LiquidGlass`, Regular/bar, balanced (single SVG displacement pass, no chromatic aberration), with no `backdropSource`. Existing save/legacy controls use Regular/control. It therefore does not request the optional WebGL renderer or clone private conversations/video. The original small-control adapter adds no per-frame animation; the PC save-button adapter below animates a short activation highlight and releases its lens when settled. The upstream pointer field is shared and event-driven.
 

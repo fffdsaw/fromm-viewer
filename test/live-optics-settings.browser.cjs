@@ -16,9 +16,10 @@ async function channels(page,expected){await page.waitForFunction(({selector,exp
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
   const {page,context,errors}=await open(browser,server.url,{...viewport,lowPower:true});
   await page.evaluate(()=>setFilter('image'));
-  if(viewport.width>700){await page.waitForFunction(()=>FrommControlGlass.snapshot.live>8);const resources=await page.evaluate(()=>FrommControlGlass.snapshot);assert.equal(resources.limit,null,'no engine count limit');assert.equal(resources.builds-resources.disposed,resources.live);}
+  await show(page);
+  if(viewport.width>700){await page.waitForFunction(()=>FrommControlGlass.snapshot.live>0);const resources=await page.evaluate(()=>FrommControlGlass.snapshot);assert.equal(resources.limit,null,'no engine count limit');assert.equal(resources.builds-resources.disposed,resources.live);}
   else await page.waitForFunction(()=>FrommGlass.count>0,null,{timeout:3000});
-  await show(page);await channels(page,[68]);
+  await channels(page,[68]);
   const box=await page.locator('#glassSettingsDialog').boundingBox();assert.ok(box.width<=400&&box.x>=0&&box.y>=0&&box.y+box.height<=viewport.height+1,'compact panel fits screen');
   assert.equal(await page.locator('#glassSettingsDialog').evaluate(el=>el.matches(':modal')),viewport.width<700);
   if(viewport.width>700){assert.ok(box.x>viewport.width/2,'desktop panel leaves the page in view');await page.locator('[data-glow-nav="video"]').hover();await page.waitForFunction(()=>document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));}

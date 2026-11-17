@@ -50,7 +50,7 @@ function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
  if(!values.enabled)return '유리 효과를 끕니다. 설정은 자동으로 저장됩니다.';
  if(['prefers-reduced-motion: reduce','prefers-reduced-transparency: reduce','forced-colors: active'].some(query=>matchMedia('('+query+')').matches))return '기기의 접근성 설정을 우선 적용합니다. 조절한 값은 저장됩니다.';
- return '실제 화면과 미리보기에 바로 적용하고 자동으로 저장합니다.';
+ return '사이드바는 고정 효과로 표시합니다. 조절 값은 나머지 유리 효과에 바로 적용하고 자동 저장합니다.';
 }
 function renderControls(){
  if(!dialog)return;

@@ -4,7 +4,7 @@ const{serve,open}=require('./helpers/phase3-fixture.cjs');
 const out=process.env.RAIL_LENS_DIR;
 async function shot(p,name,clip){if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,name+'.png'),...(clip?{clip}:{})});}}
 async function cursorLens(p,label){
- await p.waitForFunction(()=>FrommControlGlass?.snapshot.live>=2);
+ await p.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('));
  await p.locator('#sidebar').hover({position:{x:20,y:20}});await p.waitForTimeout(300);
  const artist=await p.locator('.room.active').evaluate(e=>({shadow:getComputedStyle(e).boxShadow,color:getComputedStyle(e).backgroundColor,border:getComputedStyle(e.querySelector('.rail-avatar')).outline}));
  await p.locator('[data-glow-nav="sound"]').hover();

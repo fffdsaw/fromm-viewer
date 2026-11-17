@@ -1,8 +1,9 @@
-import './web-glass-controls.js?v=continuous-lens-20261117';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=live-optics-20261116';
+import './web-clear-controls.js?v=clear-controls-20261117';
+import './web-glass-controls.js?v=clear-controls-20261117';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=clear-controls-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=continuous-lens-20261117').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=clear-controls-20261117').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while
@@ -16,7 +17,7 @@ function sync(){if(!frame&&!leaving)frame=requestAnimationFrame(update);}
 function release(el,glass){glass?.destroy();saveFaces.get(el)?.remove();saveFaces.delete(el);el.classList.remove('meapri-control','save-glass-control');}
 function update(){
  frame=0;
- const controls=[...document.querySelectorAll('#chatToolsBtn,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#scrollTopBtn,#saveSelectedBtn,.glass-preview-lens')];
+ const controls=[...document.querySelectorAll('#chatToolsBtn,.glass-preview-lens')];
  for(const el of controls)if(visibility&&!watched.has(el)){watched.add(el);visibility.observe(el);}
  for(const el of watched)if(!el.isConnected){visibility?.unobserve(el);watched.delete(el);}
  const targets=eligible()?controls.filter(el=>{const r=el.getBoundingClientRect();return el.checkVisibility()&&!el.disabled&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&getComputedStyle(el).pointerEvents!=='none';}):[];

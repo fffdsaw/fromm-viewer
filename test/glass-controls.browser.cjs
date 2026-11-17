@@ -1,10 +1,12 @@
 'use strict';
 const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const{serve,open}=require('./helpers/phase3-fixture.cjs');
+const {plain,native}=require('./helpers/clear-controls.cjs');
 const out=process.env.GLASS_CONTROLS_DIR;
 async function shot(p,name){if(out){fs.mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,name+'.png')});}}
-const ready=p=>p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2);
+const ready=p=>p.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('));
 async function lens(p,selector){
+ if(native.has(selector)){await plain(p,selector);return;}
  const target=p.locator(selector).first();await target.waitFor({state:'visible'});
  if(!['.rail-pointer-light','.glowme-nav button.active','.room.active'].includes(selector))await target.hover();
  await p.waitForFunction(selector=>{const e=document.querySelector(selector),face=e?.querySelector('.control-glass-surface')||e,id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return !!id&&!!document.getElementById(id);},selector);
@@ -17,6 +19,7 @@ async function collection(p,mode){await p.evaluate(mode=>{
  channelVideoState.channelId='a';channelVideoState.pages=new Map(['a','b'].map(id=>[id,{loaded:true,isLast:true,posts:posts(id)}]));renderLiveView();syncLoadingUI();scrollTo(0,0);
  },mode);}
 async function press(p,selector){
+ if(native.has(selector)){const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();await plain(p,selector);await p.waitForTimeout(300);await button.hover();await p.waitForTimeout(250);const before=await button.boundingBox();await p.mouse.down();assert.deepEqual(await button.boundingBox(),before);assert.equal(await button.evaluate(e=>e.classList.contains('glass-pressed')),false);await p.mouse.move(0,0);await p.mouse.up();await plain(p,selector);return;}
  const button=p.locator(selector).first();await button.scrollIntoViewIfNeeded();await p.mouse.move(0,0);await p.waitForTimeout(420);const baseline=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));await button.hover();await p.waitForTimeout(230);const before=await button.boundingBox();await p.mouse.down();
  await p.waitForFunction(selector=>document.querySelector(selector)?.classList.contains('glass-pressed'),selector);
  assert.deepEqual(await button.boundingBox(),before,'press never moves the hit box');
@@ -43,8 +46,7 @@ async function press(p,selector){
    // download face; the foreground icon is outside that filter.
    await p.locator('.card-download').first().focus();
    const restore=await p.locator('.media-card .thumb').first().evaluate(e=>{const image=e.querySelector('img'),old={background:e.style.background,opacity:image.style.opacity};e.style.background='repeating-conic-gradient(#173f32 0% 25%,#edf8f0 0% 50%) 0 0 / 8px 8px';image.style.opacity='0';return old;});
-   const id=await p.locator('.card-download .control-glass-surface').first().evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]),map=p.locator(`#${id} feDisplacementMap`),scale=await map.getAttribute('scale');assert.ok(Number(scale)>0);await p.waitForTimeout(250);
-   const clip=await p.locator('.card-download').first().boundingBox(),optical=await p.screenshot({clip});await map.evaluate(e=>e.setAttribute('scale','0'));await p.waitForTimeout(80);assert.equal(optical.equals(await p.screenshot({clip})),false,'actual control displacement changes backdrop pixels');await map.evaluate((e,s)=>e.setAttribute('scale',s),scale);
+   await p.waitForTimeout(300);const clip=await p.locator('.card-download').first().boundingBox(),beforePixels=await p.screenshot({clip});await p.evaluate(()=>FrommGlassSettings.set({refraction:80,chromatic:100},{immediate:true,persist:false}));await p.waitForTimeout(250);assert.ok(beforePixels.equals(await p.screenshot({clip})),'native download pixels ignore refraction settings');await p.evaluate(()=>FrommGlassSettings.reset());
    await p.locator('.media-card .thumb').first().evaluate((e,old)=>{e.style.background=old.background;e.querySelector('img').style.opacity=old.opacity},restore);
   }
   // The rail retains a solid fill from the first frame of width motion.
@@ -75,7 +77,7 @@ async function press(p,selector){
     };
    });
   }
-  const dl=p.waitForEvent('download');await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');
+  const dl=p.waitForEvent('download');dl.catch(()=>{});await p.locator('.card-download').first().focus();await p.keyboard.press('Enter');
   if(opt.width===1440){
    const button=p.locator('.card-download').first();
    const ring=button.locator('.download-feedback-ring');
@@ -98,7 +100,7 @@ async function press(p,selector){
    assert.ok(samples[0].y<0&&samples[1].x>0&&samples[2].y>0&&samples[3].x<0,'the arc rotates clockwise from 12 o’clock');
    await p.evaluate(()=>window.measureDownloadFixture());
    await p.waitForFunction(()=>document.querySelector('.card-download').style.getPropertyValue('--download-remaining')==='54');
-   assert.equal(await button.locator('.control-glass-surface').isVisible(),true);
+   assert.equal(await button.locator('.control-glass-surface').count(),0);await plain(p,'.card-download');
    assert.equal(await p.locator('.card-download-panel').count(),0);
    await p.evaluate(()=>window.finishDownloadFixture());
   }
@@ -129,7 +131,7 @@ async function press(p,selector){
     assert.equal(await button.locator('.download-feedback-ring').isVisible(),false);
    }
    await press(p,'.replay-play');await p.evaluate(()=>scrollTo(0,0));await p.locator('#selectAllBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.deepEqual(await p.locator('.replay-card').first().evaluate(e=>[e.offsetLeft,e.offsetTop,e.offsetWidth,e.offsetHeight]),box,'selection does not move the list');
-   await shot(p,label+'-'+mode);await p.evaluate(()=>scrollTo(0,650));await p.waitForTimeout(220);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);assert.ok(await p.locator('.replay-download.glass-control').count()>0);await shot(p,label+'-'+mode+'-scrolled');
+   await shot(p,label+'-'+mode);await p.evaluate(()=>scrollTo(0,650));await p.waitForTimeout(220);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);assert.ok(await p.locator('.replay-download').count()>0);assert.equal(await p.locator('.replay-download.glass-control').count(),0);await shot(p,label+'-'+mode+'-scrolled');
   }
   await p.evaluate(()=>{state.filter='all';syncLiveToolbarControls();render();scrollTo(0,0)});const photo=p.locator('.media-wrap img').first();await photo.scrollIntoViewIfNeeded();await lens(p,'.chat-media-download');assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);await shot(p,label+'-chat');
   // Pointer leave must settle the decorative hover expansion before checking
@@ -148,16 +150,7 @@ async function press(p,selector){
   for(const selector of ['.chat-audio-play','.chat-sound-download']){
    await lens(p,selector);
    const target=p.locator(selector).first();
-   assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' initializes the LiquidGlass engine');
-   assert.equal(await target.locator('.control-glass-surface').count(),1,selector+' keeps one decorative glass face');
-   assert.ok(await target.evaluate(el=>el.classList.contains('glass-on-image')),selector+' retains the existing image-control hook with a clear optical layer');
-   const displacement=await target.locator('.control-glass-surface').evaluate(face=>{
-    const id=/url\(["']?#([^"')]+)/.exec(face.style.backdropFilter)?.[1];
-    return Number(document.querySelector('#'+id+' feDisplacementMap')?.getAttribute('scale')||0);
-   });
-   assert.ok(displacement>0,selector+' refracts the backdrop through the LiquidGlass engine');
-   if(selector==='.chat-sound-download')assert.equal(await target.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','download toggle leaves the live lens visible');
-
+   await plain(p,selector);
    await press(p,selector);
   }
   if(opt.width===1440){
@@ -176,6 +169,7 @@ async function press(p,selector){
    for(const selector of ['#tokenLifeWrap','#scanBtn','#logoutMiniBtn','#chatMatchPrev','#chatMatchNext']){
     await lens(p,selector);
     const target=p.locator(selector).first();
+    if(native.has(selector)){await plain(p,selector);continue;}
     assert.equal(await target.getAttribute('data-control-optics'),'engine',selector+' receives the real bounded Meapri engine');
     const displacement=await target.locator('.control-glass-surface').evaluate(face=>{
      const id=/url\(["']?#([^"')]+)/.exec(face.style.backdropFilter)?.[1];
@@ -193,7 +187,7 @@ async function press(p,selector){
   await p.waitForFunction(()=>!document.querySelector('.chat-audio-play .control-glass-surface')&&!document.querySelector('.chat-sound-download .control-glass-surface'));
   for(let i=0;i<8;i++)await p.evaluate(async i=>{await setFilter(i%2?'image':'all');FrommGlowME.setRailOpen(i%2===0);},i);
   await p.waitForTimeout(500);const count=await p.evaluate(()=>FrommControlGlass.snapshot);assert.ok(count.limit===null&&count.live<=count.count);assert.ok(count.interactive<=count.live,'spatial interactions share the bounded control budget');assert.equal(count.builds-count.disposed,count.live,'no orphaned engines after rapid changes');
-  await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').evaluate(e=>getComputedStyle(e).transform),'none');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
+  await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0);await p.locator('#sortBtn').hover();await p.mouse.down();assert.equal(await p.locator('#sortBtn .control-glass-surface').count(),0);await plain(p,'#sortBtn');await p.mouse.move(500,400);await p.mouse.up();await p.emulateMedia({reducedMotion:'no-preference'});await ready(p);
   await p.evaluate(()=>showLoginGate());await p.waitForFunction(()=>FrommControlGlass.snapshot.live===0&&FrommControlGlass.snapshot.count===0);assert.equal(await p.locator('.control-glass-surface').count(),0);
   assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(label+': opaque rail through expansion, rail drops/trails, real download, press with fixed hit boxes, Replay/Channel/chat/sticky, lifecycle/reduced motion PASS');
  }

@@ -2,9 +2,9 @@
 const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const{serve,open,seed}=require('./helpers/phase3-fixture.cjs');
 const key='fromm.pcGlass.v1',out=process.env.GLASS_SETTINGS_DIR;
-const ready=p=>p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2,null,{timeout:7000});
-const navFace='.rail-pointer-light .control-glass-surface';
-function scale(p){return p.locator(navFace).evaluate(e=>{
+const ready=p=>p.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('),null,{timeout:7000});
+const navFace='.rail-pointer-light .control-glass-surface',tunableFace='.glass-preview-lens .control-glass-surface';
+function scale(p){return p.locator(tunableFace).evaluate(e=>{
  const id=/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)?.[1];
  return Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'));
 });}
@@ -32,26 +32,28 @@ async function clickRailSettings(p){
   assert.match(railStyle.background,/linear-gradient/,'single-pane rail retains its own mint face');
   assert.equal(railStyle.innerLayer,'none','no nested rail glass pane');
   await p.waitForFunction(selector=>document.querySelector(selector)?.style.backdropFilter.includes('url('),navFace);
-  const originalScale=await scale(p);
   await p.locator('.media-card').first().click({position:{x:30,y:30}});await p.waitForFunction(()=>state.selected.size===1);
   const before=await geometry(p),label=opt.width+'x'+opt.height+(opt.installed?'-pwa':'');await shot(p,label+'-clear');
   await clickRailSettings(p);assert.equal(await p.locator('dialog[open]').count(),1);assert.deepEqual(await geometry(p),before);
   await shot(p,label+'-settings');
+  await p.waitForFunction(selector=>document.querySelector(selector)?.style.backdropFilter.includes('url('),tunableFace);const originalScale=await scale(p);
   const chosen={refraction:60,thickness:40,blur:4,saturation:120,opacity:40,specular:20,chromatic:0};
   for(const[k,value]of Object.entries(chosen)){await p.locator(`[name="${k}"]`).fill(String(value));await p.locator(`[name="${k}"]`).dispatchEvent('change');}
+  await p.locator('.glass-preview-lens').scrollIntoViewIfNeeded();
   await p.waitForFunction(({selector,original})=>{
    const e=document.querySelector(selector),id=/url\(["']?#([^"')]+)/.exec(e?.style.backdropFilter)?.[1];
    const map=document.getElementById(id),value=Number(map?.querySelector('feDisplacementMap')?.getAttribute('scale'));
    return value>original&&!!map.querySelector('feImage[result="specMap"]');
-  },{selector:navFace,original:originalScale});
+  },{selector:tunableFace,original:originalScale});
   assert.deepEqual(await p.evaluate(()=>FrommGlassSettings.value),{enabled:true,...chosen});
   const strongerScale=await scale(p);
   await p.locator('[name="refraction"]').fill('10');
+  await p.locator('.glass-preview-lens').scrollIntoViewIfNeeded();
   await p.waitForFunction(({selector,previous})=>{
    const e=document.querySelector(selector),id=/url\(["']?#([^"')]+)/.exec(e?.style.backdropFilter)?.[1];
    const value=Number(document.getElementById(id)?.querySelector('feDisplacementMap')?.getAttribute('scale'));
    return value>0&&value<previous;
-  },{selector:navFace,previous:strongerScale});
+  },{selector:tunableFace,previous:strongerScale});
   await p.locator('[name="refraction"]').fill('60');
   await p.locator('[name="refraction"]').dispatchEvent('change');
   assert.deepEqual(await geometry(p),before,'material changes do not move cards or tools');

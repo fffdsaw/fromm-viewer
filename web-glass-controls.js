@@ -40,7 +40,10 @@ function opticalSettings(item){
  const {el}=item;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- return {...materialOptions(settings),specular:menu||settings.specular>0,
+ // A shallow menu lens bends labels at its boundary, without the deep
+ // control profile swallowing a whole glyph. Dispersion is intrinsic here;
+ // the preference adds to it, and refraction zero still removes displacement.
+ return {...materialOptions(settings),...(item.rail?{refraction:settings.refraction*.2,chromaticAberration:settings.chromatic/100+.24,blur:0}:{}),specular:menu||settings.specular>0,
   specularIntensity:((menu?.22:0)+settings.specular/100)*settings.opacity/28};
 }
 function sync(){

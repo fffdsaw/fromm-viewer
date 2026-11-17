@@ -12,13 +12,13 @@ async function cursorLens(p,label){
  await p.waitForTimeout(320);await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.phase==='idle');
  const carrier=p.locator('.rail-pointer-light'),clip=await carrier.boundingBox();
  const id=await p.locator('.rail-lens-surface').evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]);
- const map=p.locator(`#${id} feDisplacementMap`),scale=await map.getAttribute('scale');assert.ok(Number(scale)>0);
+ const map=p.locator(`#${id} feDisplacementMap`),scales=await map.evaluateAll(es=>es.map(e=>e.getAttribute('scale')));assert.equal(scales.length,3);assert.ok(scales.every(value=>Number(value)>0));
  // A settled cursor now has a clear centre rather than warping the menu label.
  const text=await p.locator('[data-glow-nav="sound"] span').boundingBox(),centre={x:text.x,y:text.y,width:text.width,height:text.height};
  const optical=await p.screenshot({clip:centre});await shot(p,label+'-lens',clip);
- await map.evaluate(e=>e.setAttribute('scale','0'));await p.waitForTimeout(80);
+ await map.evaluateAll(es=>es.forEach(e=>e.setAttribute('scale','0')));await p.waitForTimeout(80);
  assert.equal(optical.equals(await p.screenshot({clip:centre})),true,'settled label stays clear inside the rim-only lens');
- await shot(p,label+'-zero-displacement',clip);await map.evaluate((e,s)=>e.setAttribute('scale',s),scale);
+ await shot(p,label+'-zero-displacement',clip);await map.evaluateAll((es,values)=>es.forEach((e,i)=>e.setAttribute('scale',values[i])),scales);
  const initial=await p.evaluate(()=>FrommControlGlass.snapshot.builds);
  for(const key of ['image','channel','video']){await p.locator(`[data-glow-nav="${key}"]`).hover();await p.waitForTimeout(280);}
  assert.equal(await p.locator('.rail-lens-surface').count(),1,'one translating carrier and one lens');

@@ -7,7 +7,9 @@ async function plain(page,selector){
  assert.equal(await target.getAttribute('data-control-optics'),null,selector+' is disconnected from adjustable optics');
  const look=await target.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,backdrop:s.backdropFilter,shadow:s.boxShadow}});
  assert.deepEqual(look,{fill:'rgba(0, 0, 0, 0)',backdrop:'none',shadow:'none'},selector+' is clear native styling');
- if(await page.evaluate(()=>window.FrommGlassSettings?.value.enabled&&!matchMedia('(prefers-reduced-transparency: reduce)').matches&&!matchMedia('(forced-colors: active)').matches)){
+ if(await target.evaluate(el=>el.matches('.small-player-button'))){
+  assert.equal(await target.locator('.fixed-glass-surface').count(),0,selector+' compact icon has no fixed material either');
+ }else if(await page.evaluate(()=>window.FrommGlassSettings?.value.enabled&&!matchMedia('(prefers-reduced-transparency: reduce)').matches&&!matchMedia('(forced-colors: active)').matches)){
   const face=target.locator(':scope > .fixed-glass-surface');await face.waitFor({state:'attached'});
   assert.equal(await face.count(),1,selector+' has exactly one independent fixed material');
   assert.equal(await face.getAttribute('aria-hidden'),'true');

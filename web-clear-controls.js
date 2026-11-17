@@ -2,6 +2,9 @@
 import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
 export const clearControls='#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
+// Keep compact play/volume in the native policy (no refractive engine), but
+// exclude them from both fixed material and pointer glints: they are icons only.
+const fixedAction=el=>!el.matches('.small-player-button');
 const fixedPreset=Object.freeze({refraction:0,thickness:11,blur:.4,saturation:117,chromatic:0,opacity:51,specular:26});
 const opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const surfaces=new Map(),watched=new Set(),near=new Set();
@@ -14,7 +17,7 @@ function syncMaterial(){
  materialFrame=0;
  if(!enabled()){for(const [el,item]of surfaces)removeSurface(el,item);return;}
  if(dirty){
-  const targets=new Set(document.querySelectorAll(clearControls));dirty=false;
+  const targets=new Set([...document.querySelectorAll(clearControls)].filter(fixedAction));dirty=false;
   for(const el of watched)if(!targets.has(el)||!el.isConnected){visibility?.unobserve(el);watched.delete(el);near.delete(el);}
   for(const el of targets)if(!watched.has(el)){watched.add(el);visibility?.observe(el);if(!visibility)near.add(el);}
  }
@@ -54,13 +57,13 @@ const fine=matchMedia('(hover:hover) and (pointer:fine)'),motion=matchMedia('(pr
 let frame=0,point=null;
 function paint(){
  frame=0;const {el,x,y}=point||{};point=null;
- if(!el?.isConnected||el.disabled||!fine.matches||motion.matches)return;
+ if(!el?.isConnected||!fixedAction(el)||el.disabled||!fine.matches||motion.matches)return;
  const rect=el.getBoundingClientRect();
  el.style.setProperty('--clear-pointer-x',(x-rect.left)+'px');el.style.setProperty('--clear-pointer-y',(y-rect.top)+'px');
 }
 document.addEventListener('pointermove',event=>{
  if(event.pointerType==='touch'||!fine.matches||motion.matches)return;
- const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el)return;
+ const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el||!fixedAction(el))return;
  point={el,x:event.clientX,y:event.clientY};if(!frame)frame=requestAnimationFrame(paint);
 },{passive:true});
 function reset(){cancelAnimationFrame(frame);frame=0;point=null;}

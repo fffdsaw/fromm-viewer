@@ -16,9 +16,15 @@ async function paintedThemeFill(p,input){
  return p.evaluate(async ({png,expected})=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);const data=context.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(Math.abs(data[i]-expected[0])<12&&Math.abs(data[i+1]-expected[1])<12&&Math.abs(data[i+2]-expected[2])<12)count++;return count>8;},{png,expected});
 }
 
-async function rowGeometry(root){
- const look=await root.locator('.small-player-button').evaluateAll(es=>es.map(el=>{const s=getComputedStyle(el);return{background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth,shadow:s.boxShadow,faces:el.querySelectorAll('.control-glass-surface').length};}));
+async function iconSurfaces(root){
+ // Let native player mount + effect observers finish before inspecting the
+ // complete painted button, including decorations beneath its icon.
+ await root.page().waitForTimeout(160);
+ const look=await root.locator('.small-player-button').evaluateAll(es=>es.map(el=>{const s=getComputedStyle(el);return{background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth,shadow:s.boxShadow,faces:el.querySelectorAll('.control-glass-surface,.fixed-glass-surface,.mobile-save-glass').length};}));
  assert.ok(look.every(s=>s.background==='none'&&s.color==='rgba(0, 0, 0, 0)'&&s.border==='0px'&&s.shadow==='none'&&s.faces===0),'icon-only buttons retain no circle or engine '+JSON.stringify(look));
+}
+async function rowGeometry(root){
+ await iconSurfaces(root);
  const g=await root.evaluate(el=>{const rect=selector=>el.querySelector(selector).getBoundingClientRect().toJSON();return{play:rect('[data-small="play"]'),seek:rect('.small-player-seek'),sound:rect('[data-small="sound"]'),time:rect('output'),width:el.clientWidth,scroll:el.scrollWidth};});
  assert.ok(g.play.right<g.seek.left&&g.seek.right<g.sound.left,'play → seek → volume');
  assert.ok(Math.abs(g.play.y+g.play.height/2-g.sound.y-g.sound.height/2)<1,'play and volume share one baseline');
@@ -61,6 +67,17 @@ async function volumeUI(p,root,media,{touch=false}={}){
    for(const [id,type] of [['small-video','video'],['small-audio','audio']]){
     const card=p.locator(`[data-message-id="${id}"]`),media=card.locator(type);await card.scrollIntoViewIfNeeded();
     const root=card.locator('.small-player');await root.waitFor();await rowGeometry(root);
+    await card.locator('.card-download .fixed-glass-surface').waitFor({state:'attached'});
+    if(width===1440){
+     const targets=()=>root.evaluate(el=>[...el.querySelectorAll('.small-player-button,.small-player-seek')].map(n=>n.getBoundingClientRect().toJSON()));
+     const beforeHover=await targets();
+     for(const action of ['play','sound']){
+      const button=root.locator('[data-small="'+action+'"]');await button.hover();await iconSurfaces(root);
+      assert.deepEqual(await targets(),beforeHover,'hover/volume popup never moves compact hit targets');
+      assert.equal(await button.evaluate(el=>el.style.getPropertyValue('--clear-pointer-x')),'','compact icons never receive the action glint');
+     }
+     await root.locator('[data-small="sound"]').press('Escape');await p.mouse.move(1,1);
+    }
     assert.equal(await root.locator('[data-compact="full"]').count(),0,'approved layout omits a fullscreen icon');
     if(type==='audio')assert.equal(await card.locator('.audio-icon').isVisible(),true,'waveform cover remains');
     await root.locator('[data-small="play"]').click();await p.waitForFunction(id=>{const el=document.querySelector(`[data-message-id="${id}"] video,[data-message-id="${id}"] audio`);return !el.paused&&el.currentTime>0;},id);
@@ -69,6 +86,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
     assert.ok(parseFloat(await root.locator('.small-player-seek').evaluate(el=>el.style.getPropertyValue('--small-player-progress')))>30,'seek updates its filled portion');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),'actual seek track paints theme-colored pixels '+id);
     if(type==='audio'&&(width===1440||width===390)){for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){await p.evaluate(theme=>FrommThemes.set(theme),theme);assert.ok((await root.locator('.small-player-button,output').evaluateAll(es=>es.map(el=>getComputedStyle(el).color))).every(color=>color==='rgb(255, 255, 255)'),theme+' keeps gallery glyphs/time white against the dark cover');assert.ok(await paintedThemeFill(p,root.locator('.small-player-seek')),theme+' keeps the gallery seek fill visible');await volumeUI(p,root,media,{touch:width<700});}await p.evaluate(()=>FrommThemes.set('glow'));}
     await volumeUI(p,root,media,{touch:width<700});
+    if(out&&(width===1440||width===390)){fs.mkdirSync(out,{recursive:true});await card.screenshot({path:path.join(out,`gallery-${type}-${width}.png`)});}
     // Finish real decoded video/audio. Both reset to zero and stay paused;
     // the metadata and volume survive, so replay remains immediately usable.
     const keptVolume=await media.evaluate(el=>el.volume);

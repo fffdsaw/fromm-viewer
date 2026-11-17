@@ -1,6 +1,6 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
 import {glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
-import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
+import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
 export function createCapsuleMaterializer(element,onHidden,onResume){

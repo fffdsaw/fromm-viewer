@@ -45,6 +45,10 @@
     railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
     railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-box.left))}px`);
     railLight.style.setProperty('--rail-light-y',`${box.height/2}px`);
+    // Keep a label clear when centred; reveal the curved field as the lens
+    // crosses between rows. This follows position, with no timer or settling.
+    railLight.style.setProperty('--rail-crossing',String(Math.min(1,Math.abs(y-box.top-box.height/2)/(box.height/4))));
+    window.FrommControlGlass?.syncRailLens();
     railLight.dataset.target=button.dataset.glowNav;railLight.dataset.phase='idle';nav.classList.add('rail-pointer-tracking');
   }
   function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}

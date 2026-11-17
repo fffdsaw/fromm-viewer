@@ -1,8 +1,9 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
+import {updateRailCrossing} from './web-rail-lens.js?v=continuous-lens-20261117';
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
-import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
+import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
 const selected='.sidebar-open #rooms .room.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -41,10 +42,10 @@ function opticalSettings(item){
  const {el}=item;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- // A shallow menu lens bends labels at its boundary, without the deep
- // control profile swallowing a whole glyph. Dispersion is intrinsic here;
- // the preference adds to it, and refraction zero still removes displacement.
- return {...materialOptions(settings),...(item.rail?{refraction:settings.refraction*.2,chromaticAberration:settings.chromatic/100+.24,blur:0}:{}),specular:menu||settings.specular>0,
+ // Use the requested refraction strength on the menu too. Its soft optical
+ // band keeps the resting label clear; a small intrinsic dispersion separates
+ // the curved edge without turning default text into a rainbow.
+ return {...materialOptions(settings),...(item.rail?{refraction:settings.refraction,chromaticAberration:settings.chromatic/100+.08,blur:0}:{}),specular:menu||settings.specular>0,
   specularIntensity:((menu?.22:0)+settings.specular/100)*settings.opacity/28};
 }
 function sync(){
@@ -119,6 +120,7 @@ function sync(){
 }
 function controlAt(target){return target instanceof Element?target.closest(controls+','+selected):null;}
 function pressable(el){return !!el?.matches('button,a,[role="button"],summary')&&!el.disabled&&el.getAttribute('aria-disabled')!=='true';}
+function syncRailLens(){const el=document.querySelector('.rail-pointer-light'),glass=faces.get(el)?.glass;if(glass)updateRailCrossing(glass);}
 function clearPress(){pressed?.classList.remove('glass-pressed');pressed=null;}
 document.addEventListener('pointerover',event=>{const el=controlAt(event.target);if(el!==active){active=el;schedule();}},{passive:true});
 document.addEventListener('pointerout',event=>{
@@ -159,5 +161,5 @@ document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});
 window.addEventListener('pagehide',()=>{leaving=true;active=null;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();allControls=[];allSet.clear();discoveryDirty=true;});
 window.addEventListener('pageshow',()=>{leaving=false;schedule();});
-window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{scans,parked:[...faces.values()].filter(x=>x.glass?.suspended).length,count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:null};}});
+window.FrommControlGlass=Object.freeze({sync:schedule,syncRailLens,get snapshot(){return{scans,parked:[...faces.values()].filter(x=>x.glass?.suspended).length,count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:null};}});
 schedule();

@@ -1,8 +1,8 @@
-import './web-glass-controls.js?v=flat-filters-20261117';
+import './web-glass-controls.js?v=continuous-lens-20261117';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=live-optics-20261116';
-import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
+import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=live-optics-20261116').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=continuous-lens-20261117').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while

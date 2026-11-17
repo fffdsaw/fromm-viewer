@@ -2,6 +2,16 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #138 merged and production verified — 2026-11-17 (Asia/Seoul)
+
+The user's explicit “배포해줘” approval has been fulfilled for the continuous sidebar lens. PR https://github.com/fffdsaw/fromm-viewer/pull/138 merged at `2026-11-17T10:14:05Z`. Exact tested head `cdf7e4125fd8fae2f172ac068e045aefd779f63b` passed all ten hosted checks; production main/merge is `a3a18b9f939c9868f089b2a70d3e435d7940bc53`, with exactly the tested tree. Merge used the reviewed-head SHA guard; no direct main push or history rewrite. Completed approval is not a blanket approval for future releases.
+
+GitHub Pages deployment https://github.com/fffdsaw/fromm-viewer/actions/runs/44062915374 and hosted public verification https://github.com/fffdsaw/fromm-viewer/actions/runs/44062916746 both succeeded. Independent public checks matched 28 deployed HTML/CSS/JS assets including `web-rail-lens.js` to merge hashes, passed fresh anonymous login/module/settings persistence smoke, and reported zero page errors. Actual production assets with isolated synthetic state passed glow/sky/classic label pixel refraction/RGB separation, retained selection, direct tracking/no settling, live refraction 80/0/default and accessibility fallback checks.
+
+A separate public-asset browser operated the native refraction/chromatic sliders for five settings pairs (0/0, 80/0, 80/50, 20/50, 34/0). Actual label pixels change with each effect, expected RGB scales update, and the surface remains transparent with no alpha mask; no page errors. The first standalone slider harness sampled a hidden label after the rail collapsed; its failure log is retained. Reopening the rail before each measurement fixed the harness and the complete rerun passed, without changing application code. Screenshots reviewed. As disclosed to the user, colour setting zero retains the small intrinsic sidebar dispersion; this release does not change that behavior. Physical Mac/Safari and actual signed-in service remain unverified; no user data, cache deletion or external sends were used.
+
+Production: https://fffdsaw.github.io/fromm-viewer/?v=20261117-continuous-lens . Receipts: `/workspace/deploy-138-20261117/` (`authorization.json`, `ci-final.json`, `merge-result.json`, `pr-merged.json`, `pages-final.json`, `production-138-verified.json`, `settings-verified.json`, public logs/screenshots/scripts). Repeat with `NODE_USE_ENV_PROXY=1 node /workspace/deploy-138-20261117/verify-production.cjs a3a18b9f939c9868f089b2a70d3e435d7940bc53`, and the same prefix/commit for `verify-refraction.cjs` and `verify-settings.cjs`. Existing feature branch receives this documentation receipt after deployment. Explicit main refresh remains `git fetch origin main:refs/remotes/origin/main`.
+
 ## Continuous sidebar glyph refraction — 2026-11-17 (Asia/Seoul)
 
 User supplied a HEIC showing the moving sidebar capsule cutting thin horizontal slices through menu lettering and reported no perceived refraction. This batch changes the sidebar only; previous Replay/Channel filters remain flat. Continued the existing feature branch from `e60baebf28f14ea7108670c2a37f5e0b7af72da4`, clean worktree and no open PR. Fetched main remains PR #137 deployment `1574c65ac1800e16cfeb913752293348e303731e`. No merge/deploy approval was given for this new adjustment; prepare the PR for review.

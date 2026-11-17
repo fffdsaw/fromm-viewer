@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #140 deployment approved; inline-link contract updated — 2026-11-18 (Asia/Seoul)
+
+User explicitly requested “병합배포해즈너” for https://github.com/fffdsaw/fromm-viewer/pull/140. This authorizes merge/deployment and necessary release corrections; the earlier implementation-only statement below is historical. Initial head `1908664ebfef6926c300961c32fe7b964d0c4ed0` passed other completed hosted checks but Channel browser job `134129215793` in run `44109024186` stopped at `chat-download-selection.browser.cjs:32`: the old mobile link assertion expected CSS `position:static`, while the fixed decorative child intentionally needs `relative`. Reproduced the same failure locally before changing the test.
+
+Application code is unchanged. Updated only that obsolete contract: require relative positioning with the inert fixed surface, static positioning when material is off, and exactly identical media/link/selection-button rectangles across off/on. Retains the selection, accessible label/text, overflow, real download bytes, gallery restoration and preview assertions. Complete local chat-download-selection matrix passes web1440, web760, installed900 and touch390. Receipts `/workspace/deploy-140-20261117/chat-before.log`, `chat-final.log`, `chat-final/`; initial CI state `initial-checks.json`. Fetch exact-head hosted checks after pushing; merge with the reviewed-head guard only after success, then verify Pages and public assets/browser. Production remains PR139 until that completes. User approval persists: do not ask again.
+
 ## Stable gallery selection and fixed action glass — 2026-11-17 (Asia/Seoul)
 
 User supplied a short recording of gallery select-all jumping down/back and requested fixed transparent glass for header/top/play/download buttons, without refraction or chromatic effects, matching the settings screenshot. This is a new implementation request after PR #139 deployment; no new merge/deployment approval. Continued clean branch `codex/fromm-viewer-uiux-stabilization-20261114` from `23d7ca37b1aadabbf25822afa295bcd3b637dfa5`; remote feature matched and main remained `1db702ed58e11bcc78451576d94706a261fedbca`, with no open PR before edits. Create the next PR after pushing this change; find its URL with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`.

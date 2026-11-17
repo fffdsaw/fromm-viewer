@@ -1,6 +1,14 @@
 # Fromm Viewer — cross-account handoff
 
-Last reviewed: 2026-11-17 (Asia/Seoul)
+Last reviewed: 2026-11-18 (Asia/Seoul)
+
+## PR #140 merged and production verified — 2026-11-18 (Asia/Seoul)
+
+The user's explicit “병합배포해즈너” request is fulfilled. PR https://github.com/fffdsaw/fromm-viewer/pull/140 merged at 2026-11-17T15:26:25Z (2026-11-18 00:26 KST). Exact tested head `d4721ce484c830fd4b204f470d95549543347009` passed all ten hosted checks; production main/merge is `3c06992c0e5024ad148ae52f0ae728ae5837520a`, exactly matching the tested tree. The full Channel browser job completed successfully in 19m57s. Merge used the reviewed-head SHA guard; no direct main push or history rewrite. Pending statements below are historical. This completed approval does not cover future releases.
+
+GitHub Pages deployment https://github.com/fffdsaw/fromm-viewer/actions/runs/44114352612 and hosted public verification https://github.com/fffdsaw/fromm-viewer/actions/runs/44114353832 both succeeded. Independent public verification matched all29 deployed HTML/CSS/JS assets to merge hashes and passed fresh anonymous login/module/settings/Classic persistence smoke with zero page errors. Actual production assets with isolated synthetic state passed fixed-material checks at1440, installed900 and390 across six palettes (real SDK specular, no distortion, slider independence/map reuse, native Save/download/top, pointer glint and accessibility); gallery select-all/clear/history-completion frame-by-frame scroll and node preservation at1440/390; and full chat download/selection/preview/geometry coverage at1440/760/installed900/390. All four public suites exited0; screenshots reviewed. No actual account/messages/cache were used or deleted. Physical Mac/Safari, hardware high-refresh FPS and real signed-in service remain unverified.
+
+Live entry: https://fffdsaw.github.io/fromm-viewer/?v=20261118-fixed-actions . Receipts `/workspace/deploy-140-20261117/`: `ci-final.json`, `merge-request.json`, `merge-result.json`, `pr-merged.json`, `pages-final.json`, `production-140-verified.json`, `public-smoke.log`, `public-clear.log`, `public-selection.log`, `public-chat.log`, standalone verification scripts and screenshots. The final handoff receipt is pushed only to the existing feature branch after deployment; it changes no production application bytes.
 
 ## PR #140 deployment approved; inline-link contract updated — 2026-11-18 (Asia/Seoul)
 

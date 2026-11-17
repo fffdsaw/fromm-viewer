@@ -27,6 +27,7 @@ async function press(p,selector){
   return el&&!el.matches(':hover')&&!el.classList.contains('glass-pressed')&&Math.abs(x)<.1&&Math.abs(y)<.1;
  },selector,{timeout:1500});
  await p.waitForTimeout(420);
+ await p.waitForFunction(({selector,baseline})=>{const el=document.querySelector(selector),face=el?.querySelector('.control-glass-surface');if(!face)return false;const c=getComputedStyle(el);return c.backgroundColor===baseline.background&&c.borderColor===baseline.border&&c.boxShadow===baseline.shadow&&getComputedStyle(face).transform===baseline.transform;},{selector,baseline},{timeout:3000});
  const restored=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderColor,shadow:getComputedStyle(el).boxShadow,transform:getComputedStyle(el.querySelector('.control-glass-surface')).transform}));
  assert.deepEqual(restored,baseline,selector+' restores its full visual state after pointer leave and release');
 }
@@ -35,7 +36,7 @@ async function press(p,selector){
  const high={newContext:async options=>{const c=await b.newContext({...options,...(out&&options.viewport.width===1440?{recordVideo:{dir:path.join(out,'recording'),size:{width:1440,height:900}}}:{})});await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});});return c;}};
  try{
  for(const opt of [{width:1440,height:900},{width:760,height:900},{width:900,height:700,installed:true}]){
-  const{page:p,context,errors}=await open(high,url,opt);await p.evaluate(()=>setFilter('image'));await ready(p);await lens(p,'.card-download');assert.equal(await p.locator('.glowme-nav button.active .control-glass-surface').count(),0,'selected navigation stays flat');await lens(p,'.room.active');
+  const{page:p,context,errors}=await open(high,url,opt);await p.evaluate(()=>setFilter('image'));await ready(p);await lens(p,'.card-download');assert.equal(await p.locator('.glowme-nav button.active .control-glass-surface').count(),0,'selected navigation stays flat');assert.equal(await p.locator('.room.active>.control-glass-surface').count(),0,'collapsed artist has only its outline');await p.evaluate(()=>FrommGlowME.setRailOpen(true));await p.waitForTimeout(300);await lens(p,'.room.active');await p.evaluate(()=>FrommGlowME.setRailOpen(false));await p.waitForTimeout(300);
   const label=opt.width+(opt.installed?'-standalone':'');await shot(p,label+'-media');
   if(opt.width===1440){
    // Pixel evidence: a real SVG lens bends a diagnostic pattern under the

@@ -4,15 +4,15 @@
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
 import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
-const selected='#rooms .room.active,.replay-filter.active';
+const selected='.sidebar-open #rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
-let settings=glassPreferences.value;
+let settings=glassPreferences.value,discoveryDirty=true,allControls=[],allSet=new Set(),scans=0;
 let module=null,loading=null,importFailed=false,frame=0,active=null,pressed=null,builds=0,disposed=0,leaving=false;
-const visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const e of entries)e.isIntersecting?inView.add(e.target):inView.delete(e.target);schedule();}):null;
+const visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const e of entries)e.isIntersecting?inView.add(e.target):inView.delete(e.target);schedule();},{rootMargin:innerHeight+'px 0px'}):null;
 function enabled(){return !!visibility&&glassPC.matches&&settings.enabled&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
 function optics(){return enabled()&&!motion.matches&&!document.hidden;}
-function visible(el){const r=el.getBoundingClientRect();return !el.hidden&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth&&r.right>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
+function visible(el){return !el.hidden&&el.checkVisibility()&&el.clientWidth>0&&el.clientHeight>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).pointerEvents!=='none';}
 function releaseEngine(item){if(item.glass){item.glass.destroy();item.glass=null;item.face.style.backgroundColor='';disposed++;}if(item.el.dataset.controlOptics!=='basic')item.el.dataset.controlOptics='basic';}
 function stopInteractive(item){
  if(!item.interactive)return;
@@ -35,6 +35,7 @@ function create(el,relative){
  if(rail||el.matches('.glowme-nav button'))face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
  const item={el,face,rail,drop,glass:null,interactive:null,settings:null};faces.set(el,item);return item;
 }
+function invalidate(){discoveryDirty=true;schedule();}
 function schedule(){if(!frame&&!leaving)frame=requestAnimationFrame(sync);}
 function opticalSettings(item){
  const {el}=item;
@@ -49,11 +50,13 @@ function opticalSettings(item){
 function sync(){
  frame=0;
  const look=!!enabled();if(document.documentElement.classList.contains('pc-control-glass')!==look)document.documentElement.classList.toggle('pc-control-glass',look);
- if(!look){active=null;clearPress();for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();return;}
- const all=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];
- for(const el of all)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
- for(const el of watched)if(!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
- const candidates=look?all.filter(el=>!el.matches('.rail-pointer-light')&&inView.has(el)&&visible(el)):[];
+ if(!look){active=null;clearPress();for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();allControls=[];allSet.clear();discoveryDirty=true;return;}
+ if(discoveryDirty){
+  allControls=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];allSet=new Set(allControls);discoveryDirty=false;scans++;
+  for(const el of allControls)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
+  for(const el of watched)if(!allSet.has(el)||!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
+ }
+ const candidates=[...inView].filter(el=>allSet.has(el)&&!el.matches('.rail-pointer-light')&&visible(el));
  const pointer=document.querySelector('.rail-pointer-light');
  // Prewarm the single cursor lens at the active row's size, before first hover.
  // Its existing rail position/scroll/leave logic remains authoritative.
@@ -76,34 +79,40 @@ function sync(){
   return el.id==='scrollTopBtn'?50:0;
  };
  candidates.sort((a,b)=>priority(b)-priority(a));
- const targets=candidates,engineTargets=candidates.filter(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'),useEngine=optics();
+ const targets=candidates,engineTargets=new Set(candidates.filter(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true')),useEngine=optics();
  // Batch reads before adding faces; reading computed position after each
  // insertion otherwise forces a layout per newly visible card while scrolling.
  const relative=new Set(targets.filter(el=>(!faces.has(el)||!faces.get(el).face.isConnected)&&(el.classList.contains('glass-control-relative')||getComputedStyle(el).position==='static')));
- for(const [el,item]of faces)if(!targets.includes(el)||!item.face.isConnected)remove(el,item);
+ for(const [el,item]of faces)if(!allSet.has(el)||!el.isConnected||!item.face.isConnected)remove(el,item);
  for(const el of targets)if(!faces.has(el))create(el,relative.has(el));
  if(!useEngine){for(const item of faces.values()){releaseEngine(item);stopInteractive(item);}return;}
  if(!module){
   if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116').then(m=>{module=m;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(module)schedule();});
   return;
  }
- // Only visible controls own maps. There is no count or per-frame build cap.
+ // Prepare one viewport ahead. Retain completed maps on connected controls;
+ // suspend distant filters instead of rebuilding them on every return. No count cap.
  for(const item of faces.values()){
-  const prioritized=engineTargets.includes(item.el);
+  const prioritized=engineTargets.has(item.el);
   if(prioritized&&!item.rail&&!item.interactive&&typeof module.LiquidInteractive==='function')item.interactive=new module.LiquidInteractive(item.el);
-  if(!prioritized){releaseEngine(item);stopInteractive(item);continue;}
+  if(!prioritized){item.glass?.suspend();stopInteractive(item);continue;}
+  if(item.glass?.suspended){
+   const glass=item.glass;
+   if(glass.filter||glass.usesFallback)glass.resume();
+   else{glass.suspended=false;glass.scheduleBuild(()=>glass.installFilter());}
+  }
   if(failed.has(item.el))continue;
-  const height=item.el.clientHeight;
-  if(item.glass&&item.settings===settings&&item.height===height)continue;
+  const height=item.el.clientHeight,width=item.el.clientWidth;
+  if(item.glass&&item.settings===settings&&item.height===height&&item.width===width)continue;
   const {el,face}=item;
   try{
    const options=opticalSettings(item);
-   if(item.glass)item.glass.update(options);
+   if(item.glass){item.glass.update(options);if(item.height!==height||item.width!==width)item.glass.scheduleRegen();}
    else{
     item.glass=createGlass(module.LiquidGlass,face,{variant:'regular',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...options});
     builds++;
    }
-   item.settings=settings;item.height=height;
+   item.settings=settings;item.height=height;item.width=width;
    el.dataset.controlOptics=item.glass.resolved.usesFallback?'basic':'engine';
   }catch{releaseEngine(item);failed.add(el);el.dataset.controlOptics='basic';}
  }
@@ -131,15 +140,16 @@ new MutationObserver(records=>{
    // press/decoration classes requires re-reading every visible control.
    const clean=value=>(value||'').replace(/\bglass-(?:control-relative|control|droplet|on-image|pressed)\b/g,'').replace(/\s+/g,' ').trim();
    if(r.attributeName==='class'&&clean(r.oldValue)===clean(r.target.getAttribute('class')))continue;
-   if(r.target===document.body||r.target.matches(controls+',.room,.glowme-nav button,#loginGate,#glassSettingsDialog'))return schedule();
+   if(r.target===document.body||r.target.matches(controls+',.room,.glowme-nav button,#loginGate,#glassSettingsDialog'))return invalidate();
   }else{
    if(r.target instanceof SVGElement||r.target.closest?.('.control-glass-surface'))continue;
-   if([...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&(n.matches(controls+','+selected)||n.querySelector(controls+','+selected))))return schedule();
-   const item=faces.get(r.target);if(item&&!item.face.isConnected)return schedule();
+   if([...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&(n.matches(controls+',.room,.rail-pointer-light')||n.querySelector(controls+',.room,.rail-pointer-light'))))return invalidate();
+   const item=faces.get(r.target);if(item&&!item.face.isConnected)return invalidate();
   }
  }
 }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['class','hidden','aria-current','disabled','open']});
-for(const query of [glassPC,motion,opaque,contrast])query.addEventListener('change',()=>{clearPress();schedule();});
+new MutationObserver(records=>{if(records.some(r=>(r.oldValue||'').includes('sidebar-open')!==document.documentElement.classList.contains('sidebar-open')))invalidate();}).observe(document.documentElement,{attributes:true,attributeOldValue:true,attributeFilter:['class']});
+for(const query of [glassPC,motion,opaque,contrast])query.addEventListener('change',()=>{clearPress();invalidate();});
 glassPreferences.subscribe(()=>{settings=glassPreferences.value;schedule();});
 // The SDK's update path refreshes tint but can reuse a specular map baked for
 // the previous light/dark scheme. Rebuild only our bounded active engines.
@@ -147,7 +157,7 @@ window.addEventListener('fromm-theme-change',()=>{for(const item of faces.values
 for(const type of ['playing','pause','ended','emptied'])document.addEventListener(type,schedule,true);
 document.addEventListener('visibilitychange',()=>{clearPress();schedule();});
 window.addEventListener('resize',schedule,{passive:true});
-window.addEventListener('pagehide',()=>{leaving=true;active=null;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();});
+window.addEventListener('pagehide',()=>{leaving=true;active=null;clearPress();cancelAnimationFrame(frame);frame=0;for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();allControls=[];allSet.clear();discoveryDirty=true;});
 window.addEventListener('pageshow',()=>{leaving=false;schedule();});
-window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:null};}});
+window.FrommControlGlass=Object.freeze({sync:schedule,get snapshot(){return{scans,parked:[...faces.values()].filter(x=>x.glass?.suspended).length,count:faces.size,live:[...faces.values()].filter(x=>x.glass).length,interactive:[...faces.values()].filter(x=>!!x.interactive).length,builds,disposed,limit:null};}});
 schedule();

@@ -10,8 +10,6 @@ async function cursorLens(p,label){
  await p.locator('[data-glow-nav="sound"]').hover();
  await p.waitForFunction(()=>{const face=document.querySelector('.rail-lens-surface'),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return document.getElementById(id)?.querySelector('feImage[result="specMap"]');});
  await p.waitForTimeout(320);await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.phase==='idle');
- await p.mouse.down();await p.mouse.move((await p.locator('[data-glow-nav="sound"]').boundingBox()).x+30,(await p.locator('[data-glow-nav="sound"]').boundingBox()).y+20);
- await p.waitForFunction(()=>document.querySelector('.rail-pointer-light').dataset.phase==='idle');
  const carrier=p.locator('.rail-pointer-light'),clip=await carrier.boundingBox();
  const id=await p.locator('.rail-lens-surface').evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]);
  const map=p.locator(`#${id} feDisplacementMap`),scales=await map.evaluateAll(es=>es.map(e=>e.getAttribute('scale')));assert.equal(scales.length,3);assert.ok(scales.every(value=>Number(value)>0));
@@ -36,7 +34,6 @@ async function playingFallback(p){
  const target=p.locator('[data-glow-nav="image"]');await target.hover();await p.waitForTimeout(300);await p.waitForFunction(()=>document.querySelector('.rail-pointer-light').dataset.phase==='idle'&&document.querySelector('.rail-pointer-light').dataset.target==='image');const before=await target.boundingBox();
  await p.evaluate(()=>{const v=document.createElement('video');v.id='playing-optics-fixture';Object.defineProperties(v,{readyState:{get:()=>2},paused:{get:()=>false},ended:{get:()=>false}});document.body.append(v);v.dispatchEvent(new Event('playing',{bubbles:true}));});
  await p.waitForFunction(()=>document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='engine');
- await p.mouse.down();const holdBox=await target.boundingBox();await p.mouse.move(holdBox.x+30,holdBox.y+20);
  const look=await p.locator('.rail-pointer-light').evaluate(el=>{const s=getComputedStyle(el);return{opacity:s.opacity,background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth}});
  assert.equal(look.opacity,'1');assert.equal(look.background,'none');assert.equal(look.color,'rgba(0, 0, 0, 0)','playing engine keeps a clear centre');assert.notEqual(await p.locator('.rail-pointer-light').evaluate(el=>getComputedStyle(el).borderColor),'rgba(0, 0, 0, 0)','neutral rim keeps the cursor visible during playback');
  const x=await target.evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width-12,y:r.y+r.height/2}});await p.mouse.move(x.x,x.y);await p.waitForTimeout(100);

@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=glyph-refraction-20261117';
+import './web-glass-controls.js?v=direct-optics-20261117';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=live-optics-20261116';
 import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
@@ -44,4 +44,4 @@ document.addEventListener('visibilitychange',sync);
 window.addEventListener('resize',sync,{passive:true});window.addEventListener('scroll',sync,{passive:true});
 window.addEventListener('pageshow',()=>{leaving=false;sync();});
 window.addEventListener('pagehide',()=>{leaving=true;cancelAnimationFrame(frame);frame=0;clear();visibility?.disconnect();watched.clear();});
-new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','open','disabled']});sync();
+new MutationObserver(records=>{if(glassPC.matches)return;if(records.some(r=>!(r.target instanceof SVGElement)&&!r.target.closest?.('.control-glass-surface,.lg-scroll-safe-layer')))sync();}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','open','disabled']});sync();

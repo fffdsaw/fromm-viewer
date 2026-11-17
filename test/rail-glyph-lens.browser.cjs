@@ -9,6 +9,8 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const {page,context,errors}=await open(high,server.url,cfg);await page.locator('#sidebar').hover({position:{x:20,y:20}});await page.waitForTimeout(350);
   const artist=await page.locator('.room.active').evaluate(e=>({background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow,outline:getComputedStyle(e.querySelector('.rail-avatar')).outline}));
   await page.locator('[data-glow-nav="sound"]').hover();await page.waitForFunction(()=>{const face=document.querySelector('.rail-lens-surface'),id=/url\(["']?#([^"')]+)/.exec(face?.style.backdropFilter)?.[1];return document.querySelector('.rail-pointer-light')?.dataset.controlOptics==='engine'&&document.getElementById(id)?.querySelector('feImage[result="specMap"]')});await page.waitForTimeout(350);
+  assert.equal(await page.locator('.rail-lens-surface').evaluate(el=>getComputedStyle(el).visibility),'hidden','plain hover has no optical face');
+  await page.mouse.down();const hold=await page.locator('[data-glow-nav="sound"]').boundingBox();await page.mouse.move(hold.x+30,hold.y+hold.height/2);await page.waitForFunction(()=>document.querySelector('.glowme-nav').classList.contains('rail-glass-drag')&&document.querySelector('.rail-pointer-light').dataset.phase==='idle');
   const single=await page.evaluate(()=>{
    const carrier=document.querySelector('.rail-pointer-light'),face=carrier.querySelector('.rail-lens-surface'),css=getComputedStyle(carrier),faces=[...document.querySelectorAll('.glowme-nav .control-glass-surface')].filter(el=>getComputedStyle(el).visibility!=='hidden'&&Number(getComputedStyle(el).opacity)>0&&Number(getComputedStyle(el.parentElement).opacity)>0);
    return{faces:faces.length,carrierShadow:css.boxShadow,carrierBorder:css.borderColor,pseudo:[carrier,face].flatMap(el=>['::before','::after'].map(p=>getComputedStyle(el,p).content)),padding:getComputedStyle(face).padding,mask:getComputedStyle(face).maskImage};
@@ -21,27 +23,28 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.equal(await page.evaluate(()=>FrommControlGlass.snapshot.builds),builds);assert.equal(await page.locator('.rail-lens-surface').evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]),mapId);
   // Settled menu text lies in the clear centre: changing SVG displacement must not move it.
   await page.locator('[data-glow-nav="sound"]').hover();await page.waitForTimeout(350);
-  const centre=await page.locator('[data-glow-nav="sound"] span').boundingBox(),centreClip={x:centre.x,y:centre.y,width:centre.width,height:centre.height},displacement=page.locator(`#${mapId} feDisplacementMap`),normalScale=await displacement.getAttribute('scale');
+  const centre=await page.locator('[data-glow-nav="sound"] span').boundingBox(),centreClip={x:centre.x,y:centre.y,width:centre.width,height:centre.height},displacement=page.locator(`#${mapId} feDisplacementMap`),normalScales=await displacement.evaluateAll(es=>es.map(e=>e.getAttribute('scale')));
   const centreOptical=await page.screenshot({clip:centreClip});
   if(out)await page.screenshot({path:path.join(out,'clear-centre-'+cfg.width+'.png')});
-  await displacement.evaluate(e=>e.setAttribute('scale','0'));await page.waitForTimeout(80);
+  await displacement.evaluateAll(es=>es.forEach(e=>e.setAttribute('scale','0')));await page.waitForTimeout(80);
   assert.ok(centreOptical.equals(await page.screenshot({clip:centreClip})),'settled menu text stays unchanged by rim displacement');
-  await displacement.evaluate((e,value)=>e.setAttribute('scale',value),normalScale);
+  await displacement.evaluateAll((es,values)=>es.forEach((e,i)=>e.setAttribute('scale',values[i])),normalScales);
   // Freeze the live carrier precisely where its top edge crosses a text glyph.
   await page.locator('[data-glow-nav="sound"]').hover();await page.waitForTimeout(350);
   const ready=page.waitForFunction(()=>{
    const light=document.querySelector('.rail-pointer-light'),label=document.querySelector('[data-glow-nav="video"] span'),r=light.getBoundingClientRect(),text=label.getBoundingClientRect();
    if(Math.abs(r.top-text.top-text.height/2)>12)return false;
-   const style=document.createElement('style');style.id='freeze-rail-proof';style.textContent='.rail-pointer-light{transform:'+getComputedStyle(light).transform+'!important}.rail-pointer-light::before,.rail-pointer-light::after{background:none!important}';document.head.append(style);return true;
+   const rim=getComputedStyle(light.querySelector('.rail-lens-surface')).getPropertyValue('--rail-rim-width');const style=document.createElement('style');style.id='freeze-rail-proof';style.textContent='.rail-pointer-light{transform:'+getComputedStyle(light).transform+'!important}.rail-pointer-light>.rail-lens-surface{--rail-rim-width:'+rim+'!important}.rail-pointer-light::before,.rail-pointer-light::after{background:none!important}';document.head.append(style);return true;
   },null,{timeout:3000});
   await page.locator('[data-glow-nav="video"]').hover();await ready.catch(async error=>{console.error(await page.evaluate(()=>({light:document.querySelector('.rail-pointer-light').getBoundingClientRect().toJSON(),label:document.querySelector('[data-glow-nav="video"]').innerHTML,spans:[...document.querySelectorAll('[data-glow-nav="video"] span')].map(e=>({class:e.className,rect:e.getBoundingClientRect().toJSON()}))})));throw error});await page.waitForTimeout(100);
   assert.equal(await page.locator('.rail-pointer-light').evaluate(e=>getComputedStyle(e).pointerEvents),'none');
   const label=await page.locator('[data-glow-nav="video"] span').boundingBox(),clip={x:Math.max(0,label.x-4),y:Math.max(0,label.y-5),width:label.width+8,height:label.height+10};
-  const refracted=await page.screenshot({clip}),map=page.locator(`#${mapId} feDisplacementMap`),scale=await map.getAttribute('scale');assert.ok(Number(scale)>0);
+  const refracted=await page.screenshot({clip}),map=page.locator(`#${mapId} feDisplacementMap`),scales=await map.evaluateAll(es=>es.map(e=>e.getAttribute('scale')));assert.equal(scales.length,3);assert.ok(scales.every(value=>Number(value)>0));
   if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'glyph-refracted-'+cfg.width+'.png'),refracted)}
-  await map.evaluate(e=>e.setAttribute('scale','0'));await page.waitForTimeout(80);const plain=await page.screenshot({clip});assert.equal(refracted.equals(plain),false,'real SVG displacement bends menu lettering, without an injected light field');
+  await map.evaluateAll(es=>es.forEach(e=>e.setAttribute('scale','0')));await page.waitForTimeout(80);const plain=await page.screenshot({clip});assert.equal(refracted.equals(plain),false,'real SVG displacement bends menu lettering, without an injected light field');
   if(out)fs.writeFileSync(path.join(out,'glyph-zero-'+cfg.width+'.png'),plain);
-  await map.evaluate((e,value)=>e.setAttribute('scale',value),scale);await page.locator('#freeze-rail-proof').evaluate(e=>e.remove());
+  await map.evaluateAll((es,values)=>es.forEach((e,i)=>e.setAttribute('scale',values[i])),scales);await page.locator('#freeze-rail-proof').evaluate(e=>e.remove());
+  await page.mouse.move(600,350);await page.mouse.up();
   await page.locator('[data-glow-nav="video"]').click();await page.waitForFunction(()=>state.filter==='video'&&document.querySelector('[data-glow-nav="video"]')?.getAttribute('aria-current')==='page');assert.equal(await page.locator('[data-glow-nav="video"]').getAttribute('aria-current'),'page','lens never intercepts menu clicks');
   assert.deepEqual(await page.locator('.room.active').evaluate(e=>({background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow,outline:getComputedStyle(e.querySelector('.rail-avatar')).outline})),artist);
   await page.mouse.move(600,350);

@@ -3,8 +3,8 @@
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
 import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
-const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
-const selected='.sidebar-open #rooms .room.active,.replay-filter.active';
+const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
+const selected='.sidebar-open #rooms .room.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
 let settings=glassPreferences.value,discoveryDirty=true,allControls=[],allSet=new Set(),scans=0;

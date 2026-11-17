@@ -2,6 +2,16 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## Flat Replay/Channel header filters — 2026-11-17 (Asia/Seoul)
+
+User explicitly authorized this filter adjustment plus merge/deployment (“상단바 … 필터 … 유리효과 … 빼고 … PR135번이랑 같이 병합배포”). PR #135 is already merged/deployed at `08385838b9817364577ed13e996ccb40776995ab`; documentation-only PR #136 has now also merged at `69fd5c05c70e6babf8ce25551a017be1c8d01a16`. Continue the existing feature branch from `e795c9685a2d9b178f5f9b49832b765a812b6398`; no open PR existed when this batch began. This explicit approval covers merging/deploying the current filter fix after its checks pass.
+
+Removed both active and inactive `.replay-filter` pills from the control engine's discovery/selected selectors. Replay and Channel share these filters. Their native filtering, theme-token fill/text/border, selected state and hover remain; selected filters no longer gain the extra inset rim. Other header/action controls retain their existing optics. Updated only relevant stylesheet/module cache versions. Extended the existing collection-header regression to check no optical face/attribute, no backdrop filter and no shadow on active/inactive filters across all six palettes in both modes.
+
+Validation: Node 24.22.1 / Playwright 1.62.1 / Chromium 151.0.7922.34. Units 278/278 passed. Full collection-header browser suite passed desktop 1440/900/760/701, installed 900, touch 390; native filtering/counts/selection/refresh/keyboard/sticky geometry retained. Full glass-controls browser suite passed PC 1440/760, installed 900, touch 390 and missing-observer fallback, including real synthetic downloads, other optical controls and lifecycle/reduced-motion cleanup. Complete diff and CRLF-aware whitespace checks pass. Synthetic fixtures only; no user data/cache operations. Actual signed-in service/CDN and physical Mac/Safari remain unverified. Local receipts: `/workspace/header-filter-20261117/{header,unit,glass-controls}.log`; public verification scripts are prepared there for after deployment.
+
+Resume: locate the new PR with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`; wait for all fresh exact-head checks before the approved merge. Explicitly refresh main using `git fetch origin main:refs/remotes/origin/main`. After Pages deployment, run `NODE_USE_ENV_PROXY=1 node /workspace/header-filter-20261117/verify-production.cjs MERGE_SHA` and `NODE_USE_ENV_PROXY=1 node /workspace/header-filter-20261117/verify-filters.cjs MERGE_SHA`, then record the deployed receipt.
+
 ## Documentation organization — 2026-11-17 (Asia/Seoul)
 
 User selected “문서·개발 자료부터 정리 (추천)”; JS/CSS/runtime reorganization is outside this batch. Continues on `codex/fromm-viewer-uiux-stabilization-20261114` from receipt `fa6e9f33c9473bd0b88647c3d75f192e34c1e692`; fetched production main remains PR #135 merge `08385838b9817364577ed13e996ccb40776995ab`. No open PR existed at the start. Locate the new review with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`. No new merge/deploy approval is implied by the completed prior release.

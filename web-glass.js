@@ -1,4 +1,4 @@
-import './web-glass-controls.js?v=direct-optics-20261117';
+import './web-glass-controls.js?v=flat-filters-20261117';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=live-optics-20261116';
 import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});

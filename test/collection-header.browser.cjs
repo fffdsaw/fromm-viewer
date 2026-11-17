@@ -27,6 +27,8 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
    }
    if(width===1440)for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){
     await p.evaluate(theme=>FrommThemes.set(theme),theme);
+    await p.waitForFunction(()=>FrommControlGlass.snapshot.live>0);
+    for(const filter of await p.locator('.replay-filter').all()){await filter.hover();assert.equal(await filter.locator('.control-glass-surface').count(),0,theme+' active/inactive filters have no glass face');assert.equal(await filter.getAttribute('data-control-optics'),null);const look=await filter.evaluate(el=>({filter:getComputedStyle(el).backdropFilter,shadow:getComputedStyle(el).boxShadow}));assert.deepEqual(look,{filter:'none',shadow:'none'},theme+' filters use the flat header treatment');}
     const palette=await p.evaluate(()=>{const probe=document.createElement('span');document.body.append(probe);const rgb=token=>{probe.style.color=`var(--theme-${token})`;return getComputedStyle(probe).color;};const result={count:getComputedStyle(document.querySelector('.pc-mode-count')).color,expectedCount:rgb('muted'),left:getComputedStyle(document.querySelector('.pc-mode-heading'),'::after').backgroundColor,right:getComputedStyle(document.querySelector('.header-icon-cluster'),'::before').backgroundColor,expectedLine:rgb('line')};probe.remove();return result;});
     assert.equal(palette.count,palette.expectedCount,theme+' count text follows the palette');assert.equal(palette.left,palette.expectedLine,theme+' filter divider follows the palette');assert.equal(palette.right,palette.expectedLine,theme+' action divider follows the palette');
    }

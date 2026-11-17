@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #137 merged and production verified — 2026-11-17 (Asia/Seoul)
+
+Fulfilled the user's explicit approval for flat Replay/Channel header filters plus merge/deployment. PR https://github.com/fffdsaw/fromm-viewer/pull/137 merged at `2026-11-17T08:36:04Z`; tested head `c4e97888f0923a3c93b10c08f3cb2c84403f98bc` passed all ten hosted checks. Production main/merge `1574c65ac1800e16cfeb913752293348e303731e` has exactly the tested tree. This also includes previously merged PR #135 and documentation organization PR #136. No direct main push was used.
+
+Pages deployment https://github.com/fffdsaw/fromm-viewer/actions/runs/44048136884 and hosted verification https://github.com/fffdsaw/fromm-viewer/actions/runs/44048137772 both succeeded. Independent public checks matched all 27 deployed HTML/CSS/JS assets to the merge commit and passed anonymous login/module/settings persistence smoke with zero page errors. Actual production assets plus isolated synthetic state verified active/inactive filter optics absent in both Replay/Channel across all six palettes (12 cases); native selection/count changes work, while other header buttons retain glass. Screenshots were reviewed. No user data, cache deletion or messages sent. Physical Mac/Safari and actual signed-in service behavior remain unverified.
+
+Production: https://fffdsaw.github.io/fromm-viewer/?v=20261117-flat-filters . Receipts and exact repeat scripts: `/workspace/header-filter-20261117/` (`ci-final.json`, `merge-result.json`, `pr-merged.json`, `pages-final.json`, `production-filter-verified.json`, `production-filter-interactions.json`, screenshots/logs). Run `NODE_USE_ENV_PROXY=1 node /workspace/header-filter-20261117/verify-production.cjs 1574c65ac1800e16cfeb913752293348e303731e` and the same command with `verify-filters.cjs`. This receipt is backed up on the existing feature branch after deployment; completed approval is not a blanket authorization for future releases.
+
 ## Flat Replay/Channel header filters — 2026-11-17 (Asia/Seoul)
 
 User explicitly authorized this filter adjustment plus merge/deployment (“상단바 … 필터 … 유리효과 … 빼고 … PR135번이랑 같이 병합배포”). PR #135 is already merged/deployed at `08385838b9817364577ed13e996ccb40776995ab`; documentation-only PR #136 has now also merged at `69fd5c05c70e6babf8ce25551a017be1c8d01a16`. Continue the existing feature branch from `e795c9685a2d9b178f5f9b49832b765a812b6398`; no open PR existed when this batch began. This explicit approval covers merging/deploying the current filter fix after its checks pass.

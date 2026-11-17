@@ -11,7 +11,7 @@ submission-to-ACK / ACK-to-GET-echo times, never raw cursors or comment data.
 The composer sits at the stage bottom; controls move to the top while comments are
 open. Native video uses100% stage height with contain. Receive diagnostics have no
 on-screen UI: use `await FrommSetLiveDiagnostics(true)`, `FrommLiveMetrics()` and
-`await FrommSetLiveDiagnostics(false)`. [Evidence and limitations](docs/design-review/live-fit-comments/README.md).
+`await FrommSetLiveDiagnostics(false)`. [Evidence and limitations](../design-review/live-fit-comments/README.md).
 
 The sections below record the original read-only implementation and its historical
 runtime evidence; current behavior is described above and in the linked review.

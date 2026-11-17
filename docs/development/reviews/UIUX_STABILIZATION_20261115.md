@@ -56,7 +56,7 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 - 캐시 새로고침/캐시 복원/로딩 중 탭 복귀: 기존 동작 보존.
 - 실제 SVG displacement on/off 픽셀 차이, header/reply/audio 렌즈, Hover 복귀·맵 한도·reduced-motion 정리.
 
-[데스크톱 설정 화면](design-review/uiux-stabilization-20261115/settings-desktop.png) · [모바일 설정 화면](design-review/uiux-stabilization-20261115/settings-mobile.png)
+[데스크톱 설정 화면](../../design-review/uiux-stabilization-20261115/settings-desktop.png) · [모바일 설정 화면](../../design-review/uiux-stabilization-20261115/settings-mobile.png)
 
 ## 제한된 광학 성능 측정
 
@@ -70,7 +70,7 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 
 유리 효과는 추가 CPU 비용이 있다. 영상 재생 중 실제 광학 맵은 0으로 내려가며, 선택/조작 장면은 기존 한도 8을 지킨다. 짧은 영상 샘플에서 drop은 OFF 1/88, ON 3/88이었다. 이 표로 성능 부담이 없다고 주장하지 않는다. JS heap은 전체 프로세스/GPU 메모리가 아니다. 저사양 Windows·실기기의 장시간 영상/유리 효과 성능은 추가 확인이 필요하다.
 
-[원본 합성 측정 JSON](design-review/uiux-stabilization-20261115/glass-performance.json)
+[원본 합성 측정 JSON](../../design-review/uiux-stabilization-20261115/glass-performance.json)
 
 ## 승인 및 미검증 범위
 
@@ -92,11 +92,11 @@ Node 24.19.0, Playwright 1.62.1, Linux headless Chromium 151.0.7922.34. CI는 No
 
 **전체 10개 검사 성공, 실패 0.** 새 설정/테마/카드 및 Replay·Channel 선택 색 일치 검사도 세 브라우저 행렬에서 통과했다. 모든 13개 항목은 이 합성 검증 범위에서 완료됐으며, 실제 인증 서비스와 실기기 검증은 아래 한계대로 별도다.
 
-추가 로컬 전체 Channel 브라우저 실행은 52개 명령을 모두 통과했다. 실행 명령·환경은 [검증 manifest](design-review/uiux-stabilization-20261115/local-browser-manifest.json)에 남겼다. 개발 체크포인트에서 진행한 로컬 회귀 결과와 최종 원격 커밋의 CI 결과를 구분한다. Windows 설정/테마 직접 검증도 최종 Conversation 행렬에 포함했다.
+추가 로컬 전체 Channel 브라우저 실행은 52개 명령을 모두 통과했다. 실행 명령·환경은 [검증 manifest](../../design-review/uiux-stabilization-20261115/local-browser-manifest.json)에 남겼다. 개발 체크포인트에서 진행한 로컬 회귀 결과와 최종 원격 커밋의 CI 결과를 구분한다. Windows 설정/테마 직접 검증도 최종 Conversation 행렬에 포함했다.
 
-[기본 테마 대화·인용 카드](design-review/uiux-stabilization-20261115/chat-cards.png) · [기존 유리 설정 보존](design-review/uiux-stabilization-20261115/glass-settings.png)
+[기본 테마 대화·인용 카드](../../design-review/uiux-stabilization-20261115/chat-cards.png) · [기존 유리 설정 보존](../../design-review/uiux-stabilization-20261115/glass-settings.png)
 
-동일 ON/OFF fixture를 최종 플레이어 보강 이후 한 번 더 실행한 결과도 [추가 JSON](design-review/uiux-stabilization-20261115/glass-performance-repeat.json)에 보존했다. 이 반복에서 갤러리 p95 OFF/ON 모두 16.70ms, main-thread 샘플 중앙 133.3/382.8ms, 영상 drop OFF 0/89·ON 0/88, 최대 샘플 JS heap 4.29MiB였다. 앞선 1/88·3/88 drop 측정도 삭제하지 않았다. 실행 간 부하 차이가 있으므로 두 실행을 엔진 버전 개선율로 비교하지 않는다.
+동일 ON/OFF fixture를 최종 플레이어 보강 이후 한 번 더 실행한 결과도 [추가 JSON](../../design-review/uiux-stabilization-20261115/glass-performance-repeat.json)에 보존했다. 이 반복에서 갤러리 p95 OFF/ON 모두 16.70ms, main-thread 샘플 중앙 133.3/382.8ms, 영상 drop OFF 0/89·ON 0/88, 최대 샘플 JS heap 4.29MiB였다. 앞선 1/88·3/88 drop 측정도 삭제하지 않았다. 실행 간 부하 차이가 있으므로 두 실행을 엔진 버전 개선율로 비교하지 않는다.
 
 ## 모바일 설정 보완 및 최종 CI
 

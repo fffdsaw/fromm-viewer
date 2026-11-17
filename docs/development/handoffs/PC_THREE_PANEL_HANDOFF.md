@@ -31,13 +31,13 @@
 
 | 화면 | 변경 전 | 변경 후 |
 | --- | --- | --- |
-| 대화 1440 | [전](design-review/pc-three-panel/before-1440-all.png) | [후](design-review/pc-three-panel/after-1440-all.png) |
-| 미디어 1440 | [전](design-review/pc-three-panel/before-1440-image.png) | [후](design-review/pc-three-panel/after-1440-image.png) |
-| 미디어 선택 1440 | [전](design-review/pc-three-panel/before-1440-image-selected.png) | [후](design-review/pc-three-panel/after-1440-image-selected.png) |
-| Channel 선택 전 | [전](design-review/pc-three-panel/before-1440-channel.png) | [후](design-review/pc-three-panel/after-1440-channel.png) |
-| Channel 선택 후 | [전](design-review/pc-three-panel/before-1440-channel-selected.png) | [후](design-review/pc-three-panel/after-1440-channel-selected.png) |
-| LIVE 1440 | [전](design-review/pc-three-panel/before-1440-live.png) | [후](design-review/pc-three-panel/after-1440-live.png) |
-| 좁은 PC 900 | [전](design-review/pc-three-panel/before-900-channel-selected.png) | [후](design-review/pc-three-panel/after-900-channel-selected.png) |
+| 대화 1440 | [전](../../design-review/pc-three-panel/before-1440-all.png) | [후](../../design-review/pc-three-panel/after-1440-all.png) |
+| 미디어 1440 | [전](../../design-review/pc-three-panel/before-1440-image.png) | [후](../../design-review/pc-three-panel/after-1440-image.png) |
+| 미디어 선택 1440 | [전](../../design-review/pc-three-panel/before-1440-image-selected.png) | [후](../../design-review/pc-three-panel/after-1440-image-selected.png) |
+| Channel 선택 전 | [전](../../design-review/pc-three-panel/before-1440-channel.png) | [후](../../design-review/pc-three-panel/after-1440-channel.png) |
+| Channel 선택 후 | [전](../../design-review/pc-three-panel/before-1440-channel-selected.png) | [후](../../design-review/pc-three-panel/after-1440-channel-selected.png) |
+| LIVE 1440 | [전](../../design-review/pc-three-panel/before-1440-live.png) | [후](../../design-review/pc-three-panel/after-1440-live.png) |
+| 좁은 PC 900 | [전](../../design-review/pc-three-panel/before-900-channel-selected.png) | [후](../../design-review/pc-three-panel/after-900-channel-selected.png) |
 
 다음 시작: 이 브랜치의 Draft PR/최신 head CI 확인, 실패 시 실제 원인 수정. CI 성공 후에도 Draft 유지. 사용자 별도 승인 없이 병합·배포·버전 변경 금지.
 

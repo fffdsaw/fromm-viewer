@@ -26,7 +26,7 @@
 
 일반 시청에서는 Native 창을 열지 않는다. 진단이 필요할 때만 `FROMM_NATIVE_DEBUG=1` 환경 변수를 설정한 터미널에서 Chrome/Edge를 시작한다. 이미 실행 중인 브라우저 프로세스는 새 환경을 물려받지 않으므로 먼저 브라우저를 종료한다. 진단 종료 후 환경 변수를 제거하고 브라우저를 다시 시작한다. Electron을 직접 실행하는 개발자는 `--show-native-player`를 지정할 수도 있다. 웹의 소리 재개 버튼이나 일반 `show` 요청만으로는 진단 모드가 켜지지 않는다.
 
-기존 0.3.0의 2D Canvas 합성 측정은 12초 동안 355프레임, 약 30.2fps였다. 0.4.0은 실제 Agora SDK 렌더러에 합성 I420 프레임을 공급해 숨긴 Canvas 갱신, JPEG 변화, IPC → Windows named pipe → 웹 이미지 해독/표시 → ACK, rAF 주기, 종료와 재생성까지 검사한다. 동기 JPEG 캡처와 프레임당 ACK는 유지한다. 이 검사는 Fromm 인증이나 실제 RTC 수신을 검증하지 않는다. 세부 결과와 음성 검증 범위는 [백그라운드 검증 기록](native-live/BACKGROUND-VALIDATION.md)에 기록한다.
+기존 0.3.0의 2D Canvas 합성 측정은 12초 동안 355프레임, 약 30.2fps였다. 0.4.0은 실제 Agora SDK 렌더러에 합성 I420 프레임을 공급해 숨긴 Canvas 갱신, JPEG 변화, IPC → Windows named pipe → 웹 이미지 해독/표시 → ACK, rAF 주기, 종료와 재생성까지 검사한다. 동기 JPEG 캡처와 프레임당 ACK는 유지한다. 이 검사는 Fromm 인증이나 실제 RTC 수신을 검증하지 않는다. 세부 결과와 음성 검증 범위는 [백그라운드 검증 기록](../../native-live/BACKGROUND-VALIDATION.md)에 기록한다.
 
 ## 연결과 인증
 

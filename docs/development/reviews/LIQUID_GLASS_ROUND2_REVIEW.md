@@ -18,37 +18,37 @@
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 일반 웹 1440×900](design-review/glowme-glass2/web-before-1440.png) | ![수정 후 일반 웹 1440×900](design-review/glowme-glass2/web-after-1440.png) |
+| ![수정 전 일반 웹 1440×900](../../design-review/glowme-glass2/web-before-1440.png) | ![수정 후 일반 웹 1440×900](../../design-review/glowme-glass2/web-after-1440.png) |
 
 ### 앱 3단 배치 모의 1440×900
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 앱 3단 배치 모의 1440×900](design-review/glowme-glass2/app-before-1440.png) | ![수정 후 앱 3단 배치 모의 1440×900](design-review/glowme-glass2/app-after-1440.png) |
+| ![수정 전 앱 3단 배치 모의 1440×900](../../design-review/glowme-glass2/app-before-1440.png) | ![수정 후 앱 3단 배치 모의 1440×900](../../design-review/glowme-glass2/app-after-1440.png) |
 
 ### 일반 웹 모바일 390×844
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 일반 웹 모바일 390×844](design-review/glowme-glass2/mobile-before-390.png) | ![수정 후 일반 웹 모바일 390×844](design-review/glowme-glass2/mobile-after-390.png) |
+| ![수정 전 일반 웹 모바일 390×844](../../design-review/glowme-glass2/mobile-before-390.png) | ![수정 후 일반 웹 모바일 390×844](../../design-review/glowme-glass2/mobile-after-390.png) |
 
 ### Channel 가로 모바일 844×390
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 Channel 가로 모바일 844×390](design-review/glowme-glass2/channel-landscape-before-844.png) | ![수정 후 Channel 가로 모바일 844×390](design-review/glowme-glass2/channel-landscape-after-844.png) |
+| ![수정 전 Channel 가로 모바일 844×390](../../design-review/glowme-glass2/channel-landscape-before-844.png) | ![수정 후 Channel 가로 모바일 844×390](../../design-review/glowme-glass2/channel-landscape-after-844.png) |
 
 ### Channel 헤더·탭 바 원본 확대
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 Channel 헤더·탭 바 원본 확대](design-review/glowme-glass2/channel-landscape-chrome-before-844.png) | ![수정 후 Channel 헤더·탭 바 원본 확대](design-review/glowme-glass2/channel-landscape-chrome-after-844.png) |
+| ![수정 전 Channel 헤더·탭 바 원본 확대](../../design-review/glowme-glass2/channel-landscape-chrome-before-844.png) | ![수정 후 Channel 헤더·탭 바 원본 확대](../../design-review/glowme-glass2/channel-landscape-chrome-after-844.png) |
 
 ### 열린 메뉴의 선택 버튼 원본 확대
 
 | 수정 전 f52d48c | 수정 후 |
 | --- | --- |
-| ![수정 전 열린 메뉴의 선택 버튼 원본 확대](design-review/glowme-glass2/web-buttons-before-1440.png) | ![수정 후 열린 메뉴의 선택 버튼 원본 확대](design-review/glowme-glass2/web-buttons-after-1440.png) |
+| ![수정 전 열린 메뉴의 선택 버튼 원본 확대](../../design-review/glowme-glass2/web-buttons-before-1440.png) | ![수정 후 열린 메뉴의 선택 버튼 원본 확대](../../design-review/glowme-glass2/web-buttons-after-1440.png) |
 
 ## 성능·가독성
 
@@ -66,7 +66,7 @@
 - 추가 장식 WebP **41,986 bytes / 1200×675**. 기존 헤더 포함 총 103,796 bytes, 최초 문서당 장식 1→2요청이며 패널별로 중복 다운로드하지 않습니다. 미디어/Fromm API 추가 요청 없음.
 - 추가 이미지 디코딩 면은 RGBA 약 3.09MiB 추정입니다. JS heap은 GC에 영향을 받으며 이미지/GPU 메모리를 포함하지 않습니다. 전체 GPU/장기 메모리/배터리는 미측정입니다.
 - 새 타이머·리렌더링 JS·Canvas/WebGL·실시간 왜곡·반복 광택 애니메이션 없음. 작은 버튼의 배경/테두리/그림자 전환만 기존 축소 모션 설정에 맞춰 처리합니다.
-- [원본 측정 데이터](design-review/glowme-glass2/measurements.json). 전체 메뉴/오른쪽 패널 및 추가 뷰포트/비교 슬라이더는 최신 CI의 channel-browser-screenshots/liquid-glass artifact에 있습니다.
+- [원본 측정 데이터](../../design-review/glowme-glass2/measurements.json). 전체 메뉴/오른쪽 패널 및 추가 뷰포트/비교 슬라이더는 최신 CI의 channel-browser-screenshots/liquid-glass artifact에 있습니다.
 
 ## 검증 및 남은 차이
 

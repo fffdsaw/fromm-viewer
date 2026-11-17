@@ -14,7 +14,7 @@
 
 ## 브라우저 화면 증거
 
-합성 데이터 Chromium 1440×900: [통계 옆 로딩](design-review/unified-actions/header-loading.png), [스크롤 후 고정 헤더·미디어 저장바](design-review/unified-actions/media-scrolled.png), [Replay 저장바](design-review/unified-actions/replay.png), [Channel 저장바](design-review/unified-actions/channel.png). 마지막 polish 후 신규 검사 재실행 통과. 목록 scrollbar 숨김 이후 실제 scrollTop 변경도 검증.
+합성 데이터 Chromium 1440×900: [통계 옆 로딩](../../design-review/unified-actions/header-loading.png), [스크롤 후 고정 헤더·미디어 저장바](../../design-review/unified-actions/media-scrolled.png), [Replay 저장바](../../design-review/unified-actions/replay.png), [Channel 저장바](../../design-review/unified-actions/channel.png). 마지막 polish 후 신규 검사 재실행 통과. 목록 scrollbar 숨김 이후 실제 scrollTop 변경도 검증.
 
 ## 재개 순서
 

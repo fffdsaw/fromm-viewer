@@ -2,6 +2,14 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## Documentation organization — 2026-11-17 (Asia/Seoul)
+
+User selected “문서·개발 자료부터 정리 (추천)”; JS/CSS/runtime reorganization is outside this batch. Continues on `codex/fromm-viewer-uiux-stabilization-20261114` from receipt `fa6e9f33c9473bd0b88647c3d75f192e34c1e692`; fetched production main remains PR #135 merge `08385838b9817364577ed13e996ccb40776995ab`. No open PR existed at the start. Locate the new review with `gh pr view codex/fromm-viewer-uiux-stabilization-20261114 --json url,headRefOid,statusCheckRollup`. No new merge/deploy approval is implied by the completed prior release.
+
+Moved 37 Markdown documents without deleting their content: 11 root feature guides into `docs/guides/`; six root development/verification notes into `docs/development/`; 17 old `docs/*_HANDOFF.md` records into `docs/development/handoffs/`; three review reports into `docs/development/reviews/`. Current `README.md`, `AGENTS.md` and `CODEX_HANDOFF.md` remain at root. Root Markdown files decrease from 20 to 3 (root files 56 to 39). Design/performance assets stay at their existing paths. Added document, development and prior-handoff indexes; root README now links the guides and explains the repository layout. Historical document bodies/statuses remain historical; only relative link destinations are rebased.
+
+Validation: `/workspace/repo-docs-20261117/verify.py` confirms all 221 original local link destinations are preserved, new index links resolve, no broken local links exist, all 37 moved bodies are unchanged apart from links, and all 414 tracked non-Markdown files are byte-identical to the pre-cleanup head. This includes web entry/scripts/styles, manifest/service worker, assets, extension ZIP/source, native helper, vendor/licenses, tests and workflows. Markdown/path and CRLF-aware diff checks pass. No app/browser tests were rerun for this documentation-only change; runtime bytes have not changed. External historical URLs were not crawled. Receipt/move map: `/workspace/repo-docs-20261117/before.json`, `verification.json`, `verify.py`.
+
 ## PR #135 merged and production verified — 2026-11-17 (Asia/Seoul)
 
 The user's explicit “일단 병합 배포해보자” approval has been fulfilled. PR https://github.com/fffdsaw/fromm-viewer/pull/135 merged at 2026-11-17T04:30:02Z. Exact tested head `e660ed057a1d71855f2958d64d13a81d30cc875a` passed all ten hosted checks after the obsolete menu-spring test expectation was corrected; no app code changed during that release correction. Production merge/main is `08385838b9817364577ed13e996ccb40776995ab`, whose tree matches the tested head exactly. This receipt is backed up on the existing feature branch after deployment. This completed approval does not authorize a later release.
@@ -393,7 +401,7 @@ Resume: inspect `git status --short --branch`, `git rev-parse HEAD`, and `git ls
 
 ### Evidence, limitations and approval gate
 
-- [Korean integration report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
+- [Korean integration report](docs/development/reviews/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
 - Real Fromm login, authenticated API contract, actual user caches/LIVE, physical Android/iOS and Safari are **unverified**. Windows Chrome/Edge coverage is from CI, not a local Windows desktop session.
 - PR #124 enhanced optics and #125 Meapri×ybouane research are separate and unchanged; no experimental optical modes were imported.
 - Keep PR #123 draft. **Main merge and all public/Preview deployments require the user's new final approval**, even if every check is green. Do not interpret historical approvals lower in this file as current authorization.
@@ -459,7 +467,7 @@ Historical evidence for `fc32bc9`, before the additional mobile-renderer/focus f
 
 ### Evidence, limitations and approval gate
 
-- [Korean integration report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
+- [Korean integration report](docs/development/reviews/UIUX_STABILIZATION_20261115.md), desktop/mobile/settings/chat screenshots and paired performance JSON are committed. The glass benchmark compares ON/OFF in short synthetic scenes; it is not an engine-version speedup claim. Added CPU cost, small video frame drops and GPU/heap measurement limits are explicitly reported.
 - Real Fromm login, authenticated API contract, actual user caches/LIVE, physical Android/iOS and Safari are **unverified**. Windows Chrome/Edge coverage is from CI, not a local Windows desktop session.
 - PR #124 enhanced optics and #125 Meapri×ybouane research are separate and unchanged; no experimental optical modes were imported.
 - Keep PR #123 draft. **Main merge and all public/Preview deployments require the user's new final approval**, even if every check is green. Do not interpret historical approvals lower in this file as current authorization.
@@ -520,7 +528,7 @@ Read `AGENTS.md`, this top section, the consolidated report, latest PR completio
 
 ### Integration validation checkpoint
 
-- Added [the consolidated Korean report](docs/UIUX_STABILIZATION_20261115.md), desktop/mobile synthetic screenshots, and raw paired glass-performance JSON. Node 24.19.0 / Playwright 1.62.1 / Chromium 151.0.7922.34.
+- Added [the consolidated Korean report](docs/development/reviews/UIUX_STABILIZATION_20261115.md), desktop/mobile synthetic screenshots, and raw paired glass-performance JSON. Node 24.19.0 / Playwright 1.62.1 / Chromium 151.0.7922.34.
 - Final local unit/native repeat: **326 passed, 0 failed, 1 platform-specific skipped**. Actual compact fullscreen enter/exit (not merely button presence) passed. Repeated full glass-controls suite passed all sizes/fallbacks after the settings singleton/version change.
 - Paired OFF/ON synthetic glass samples: gallery p95 16.70/16.73ms, expanded rail 16.70/16.80ms, video 16.70/16.80ms. Gallery main-thread sample median 182.8/541.1ms: glass costs additional CPU and is not free. Video samples had 1/88 vs 3/88 dropped frames; short emulated samples do not establish device performance. Max sampled JS heap 4.28MiB, not total process/GPU memory. Eight-map budget and zero optical maps while video plays remained enforced. See report for exact limits.
 - Settings/theme and card suites passed again; screenshots visually reviewed. Current all-13 implementation is complete against the scoped local fixtures. **Exact-head whole-branch Actions remain the final acceptance gate**. On pushed code `e54ee9be1da067200f5cfd0e794c36a65429278d`, runs: Channel 43679020720, Conversation 43679020715, Video 43679020707, Media 43679020705 (in progress at this checkpoint). A later final record will identify completed CI rather than claiming these have passed prematurely.

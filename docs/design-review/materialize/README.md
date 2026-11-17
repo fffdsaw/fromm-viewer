@@ -15,4 +15,4 @@
 
 로컬 검증: Node281개 중280성공/0실패/1skip(기존 Agora 타입 미설치), PC1440/900/760 레이아웃, 실제 굴절/빠른 반전/카운트 변경/아티스트·탭 전환/자원 정리/지연 로딩/감소 모션/저사양·UA 대체/standalone 배치 모의, 관련 브라우저 회귀7종 통과. 모바일390 대화·미디어 두 화면은 넘침·헤더·필수 도구의 최소 확인만 수행했다.
 
-미확인: Windows/macOS 실브라우저, 실제 Safari/Firefox/Edge, OS 설치 PWA, 실제 계정·실방송·물리 GPU/CPU/배터리. Safari UA 대체와 standalone 모의 검사를 실제 OS 실기로 기록하지 않는다. 필수 CI 결과는 [인계 문서](../../CAPSULE_MATERIALIZE_HANDOFF.md)에 기록한다.
+미확인: Windows/macOS 실브라우저, 실제 Safari/Firefox/Edge, OS 설치 PWA, 실제 계정·실방송·물리 GPU/CPU/배터리. Safari UA 대체와 standalone 모의 검사를 실제 OS 실기로 기록하지 않는다. 필수 CI 결과는 [인계 문서](../../development/handoffs/CAPSULE_MATERIALIZE_HANDOFF.md)에 기록한다.

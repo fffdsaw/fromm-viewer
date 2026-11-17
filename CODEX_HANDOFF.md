@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #139 audio contract follow-up — 2026-11-17 (Asia/Seoul)
+
+Deployment approval remains active. At head `3267552662189ccb00c7bb6be08a1eb72a912e50`, six hosted checks passed; the Conversation matrix advanced past the corrected controls test, then stopped at `conversation-audio.browser.cjs:49`, which still waited for the intentionally removed play-button optical face. Changed only that audio contract to require a transparent/no-backdrop/no-face native play control, and require the same native button to survive real play/pause/icon changes without reconnecting optics. All metadata/decode/seek/volume/end/reset/buffer/lifecycle/error assertions are unchanged. No application code changed in this follow-up.
+
+The complete synthetic WAV suite passes desktop1440, installed780, touch390 and touch320: bounded metadata, real24s decode, pending play priority, click/touch/keyboard seeks, volume/mute, completion reset without looping, paused-position/buffer/page-lifecycle restoration and error/removal cleanup. Receipt `/workspace/deploy-139-20261117/conversation-audio-final.log`. Fresh exact-head hosted checks are required before the already-approved merge/deployment. Original full Channel browser run `44099857667` may still finish on the previous head; do not substitute it for the latest-head rollup.
+
 ## PR #139 deployment approved; legacy voice fallback corrected — 2026-11-17 (Asia/Seoul)
 
 User explicitly approved deploying PR https://github.com/fffdsaw/fromm-viewer/pull/139 with “베포해줘”. This supersedes the implementation-only status below for this release. Initial head `411ed52f489bcdcbe0ec583652339dbd5d4f3be1` passed six hosted checks; Conversation Chromium/Chrome/Edge stopped at the obsolete dark native voice background assertion in `conversation-controls.browser.cjs:74`, and Channel stopped at `glowme-phase3-review.browser.cjs:11` waiting for an intentionally removed mobile header engine. GitHub connector job logs confirmed these errors; CLI Azure log redirects returned HTTP403. Remote main is still `a3a18b9f939c9868f089b2a70d3e435d7940bc53`; no merge/deploy has occurred yet.

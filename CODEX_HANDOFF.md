@@ -2,6 +2,16 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #135 merged and production verified — 2026-11-17 (Asia/Seoul)
+
+The user's explicit “일단 병합 배포해보자” approval has been fulfilled. PR https://github.com/fffdsaw/fromm-viewer/pull/135 merged at 2026-11-17T04:30:02Z. Exact tested head `e660ed057a1d71855f2958d64d13a81d30cc875a` passed all ten hosted checks after the obsolete menu-spring test expectation was corrected; no app code changed during that release correction. Production merge/main is `08385838b9817364577ed13e996ccb40776995ab`, whose tree matches the tested head exactly. This receipt is backed up on the existing feature branch after deployment. This completed approval does not authorize a later release.
+
+Pages deployment https://github.com/fffdsaw/fromm-viewer/actions/runs/44017599654 and hosted public verification https://github.com/fffdsaw/fromm-viewer/actions/runs/44017601150 both succeeded. Separate local public verification compared 27 deployed HTML/CSS/JS assets against the merge commit's SHA-256 hashes, then checked fresh anonymous login, waveform/shared-player/playlist/glass modules, live preview and Classic persistence with zero page errors. One initial asset request returned transient HTTP 503; a complete retry passed all 27 assets and browser smoke. The first failure log is retained separately.
+
+A second isolated Chromium session using actual production assets and synthetic state verified direct pointer alignment with unit scale/no settling; collapsed artist's single 2px outline with no extra face/fill/side marker; identical glass face/filter after scrolling away and returning; and selection/Save/clear controls. Zero page errors. Selection-toolbar visibility/animation remains unchanged, as item 6 was excluded. The release includes items 1–5 only. No real account/chat data, user cache deletion or external message sends were used. Physical Mac/high-refresh FPS, Safari and actual signed-in service/CDN behavior remain unverified.
+
+Production: https://fffdsaw.github.io/fromm-viewer/?v=20261117-direct-optics . Receipts: `/workspace/deploy-135-20261117/` (`ci-final.json`, `merge-refs.json`, `merge-result.json`, `pr-merged.json`, `pages-final.json`, `production-135-verified.json`, `production-interactions.json`, screenshots/scripts/logs). Repeat checks: `NODE_USE_ENV_PROXY=1 node /workspace/deploy-135-20261117/verify-production-135.cjs 08385838b9817364577ed13e996ccb40776995ab`; same command with `verify-interactions.cjs`. Refresh main explicitly with `git fetch origin main:refs/remotes/origin/main` because the default fetch refspec selects only the feature branch.
+
 ## PR #135 release approved, regression expectation corrected — 2026-11-17
 
 The user explicitly approved merging/deploying PR https://github.com/fffdsaw/fromm-viewer/pull/135 with “일단 병합 배포해보자”. This supersedes the review-only status below for this release. At code head `e5e812d44b7a9ce0573c907699a15b50d92fae41`, nine hosted checks passed; Channel browser run `44014479376` failed at `test/menu-settings-queue.browser.cjs` because that test still required spring-style intermediate movement after a completed hover input. The user explicitly requested removing that behavior.

@@ -2,6 +2,18 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #139 merged and production verified — 2026-11-17 (Asia/Seoul)
+
+The user's explicit “베포해줘” approval is fulfilled. PR https://github.com/fffdsaw/fromm-viewer/pull/139 merged at 2026-11-17T14:34:14Z (23:34 KST). Exact tested feature head `dcb4d7d8cfed35ae2d0f529785df9244cfe9f7fc` passed all ten hosted checks; production main/merge is `1db702ed58e11bcc78451576d94706a261fedbca`, with exactly the tested tree. Used reviewed-head SHA guard, no direct main push or history rewrite. The pending statements below are historical. This completed approval does not cover future releases.
+
+GitHub Pages deployment https://github.com/fffdsaw/fromm-viewer/actions/runs/44104557998 and hosted public verification https://github.com/fffdsaw/fromm-viewer/actions/runs/44104559067 both succeeded. Independent public checks matched 29 deployed HTML/CSS/JS assets to merge hashes, passed fresh anonymous login/module/settings persistence/preview smoke and reported zero page errors. An initial anonymous settings-module wait timed out; the isolated full retry passed every check without application changes. Both logs are retained.
+
+Actual production assets with isolated synthetic fixtures passed clear controls across six palettes at PC1440, installed900 and touch390: native Save/download/top actions, pointer-following shine, fixed sidebar preset under global slider changes, master switch and accessibility fallbacks. A separate public browser passed gallery/rail/theme checks at five viewport sizes and real voice-control reloads with delayed optics, effect switch restoration and press/leave cleanup. Screenshots reviewed. Physical Mac/Safari, high-refresh FPS and real signed-in service remain unverified; no real account data, messages or cache were used or deleted.
+
+Release behavior: top/play/download/header controls are transparent and disconnected from optics, retaining a fine-pointer glint; sidebar retains refraction80, thickness60, blur0, saturation80, chromatic88, brightness60, specular28. Native actions and layout remain intact. Public entry: https://fffdsaw.github.io/fromm-viewer/?v=20261117-clear-controls .
+
+Receipts: `/workspace/deploy-139-20261117/` contains authorization, exact-head CI, merge and Pages results, `production-139-verified.json`, `public-smoke.log`, `public-smoke-initial.log`, `public-clear.log`, `public-voice.log`, verification scripts and screenshots. This final handoff receipt is pushed only to the existing feature branch after deployment; it does not change production application bytes.
+
 ## PR #139 audio contract follow-up — 2026-11-17 (Asia/Seoul)
 
 Deployment approval remains active. At head `3267552662189ccb00c7bb6be08a1eb72a912e50`, six hosted checks passed; the Conversation matrix advanced past the corrected controls test, then stopped at `conversation-audio.browser.cjs:49`, which still waited for the intentionally removed play-button optical face. Changed only that audio contract to require a transparent/no-backdrop/no-face native play control, and require the same native button to survive real play/pause/icon changes without reconnecting optics. All metadata/decode/seek/volume/end/reset/buffer/lifecycle/error assertions are unchanged. No application code changed in this follow-up.

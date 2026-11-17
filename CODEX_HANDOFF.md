@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #135 release approved, regression expectation corrected — 2026-11-17
+
+The user explicitly approved merging/deploying PR https://github.com/fffdsaw/fromm-viewer/pull/135 with “일단 병합 배포해보자”. This supersedes the review-only status below for this release. At code head `e5e812d44b7a9ce0573c907699a15b50d92fae41`, nine hosted checks passed; Channel browser run `44014479376` failed at `test/menu-settings-queue.browser.cjs` because that test still required spring-style intermediate movement after a completed hover input. The user explicitly requested removing that behavior.
+
+Updated only the obsolete motion assertion: it now verifies direct target alignment, constant height, unit scale and no autonomous settling after the pointer stops. Native focus, unchanged artist markers, settings installation/viewport restoration and actual Replay/Channel sequential-download assertions remain intact. The complete menu-settings-queue suite passes locally (`/workspace/deploy-135-20261117/menu-test.log`). Other motion/spring assertions were searched: remaining spring assertions belong to the unchanged Save capsule; sidebar motion suites already cover direct input and real glyph refraction. No application code changed during this correction. Wait for fresh exact-head CI before merging. Production remains `516af31c0c0168358480362904a54ea8b9970df2` until the approved merge/deployment completes.
+
 ## Reused media optics and direct sidebar tracking — 2026-11-17 (Asia/Seoul)
 
 User authorized items 1–5 only. Selection-toolbar visibility/animation changes (item 6) are explicitly excluded; its selection count, select-all, Save and clear behavior stay as deployed. Continues from feature receipt `8cc4e2660d8a8968278bef69ecdc9b69cd0c8f55`; production/main remains PR #134 merge `516af31c0c0168358480362904a54ea8b9970df2`. This is a new review batch, not approved for merge/deploy. Continue on `codex/fromm-viewer-uiux-stabilization-20261114`; no open PR existed at the start.

@@ -46,13 +46,14 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390},{width
  assert.ok(layout.time.right<=layout.r.right+1&&layout.scroll<=layout.width+1,JSON.stringify(layout));assert.match(await seek.evaluate(e=>getComputedStyle(e).backgroundImage),/linear-gradient/,'the full mint seek track is painted');
  const play=player.getByRole('button',{name:'음성 재생',exact:true});
  if(cfg.width===1440){
-  await play.focus();await page.waitForFunction(()=>document.querySelector('[data-message-id="sound-0"] .chat-audio-play .control-glass-surface'));
-  await play.evaluate(el=>{window.preservedVoiceLens=el.querySelector('.control-glass-surface')});
+  await play.focus();assert.equal(await play.locator('.control-glass-surface').count(),0,'native voice play has no optical face');
+  const look=await play.evaluate(el=>({fill:getComputedStyle(el).backgroundColor,backdrop:getComputedStyle(el).backdropFilter}));assert.deepEqual(look,{fill:'rgba(0, 0, 0, 0)',backdrop:'none'});
+  await play.evaluate(el=>{window.preservedVoiceControl=el});
  }
  await play.click();await page.waitForFunction(()=>{const a=document.querySelector('[data-message-id="sound-0"] audio');return !a.paused&&a.currentTime>0;});
  if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-playing-'+cfg.width+'.png')});
  await player.getByRole('button',{name:'음성 일시정지',exact:true}).click();assert.equal(await audio.evaluate(a=>a.paused),true);
- if(cfg.width===1440)assert.equal(await player.locator('.chat-audio-play').evaluate(el=>el.querySelector('.control-glass-surface')===window.preservedVoiceLens),true,'real voice play/pause preserves the optical face while changing its icon');
+ if(cfg.width===1440){assert.equal(await player.locator('.chat-audio-play').evaluate(el=>el===window.preservedVoiceControl),true,'real voice play/pause preserves the native control while changing its icon');assert.equal(await play.locator('.control-glass-surface').count(),0,'playing media never reconnects native controls to optics');}
  await seek.click({position:{x:(await seek.boundingBox()).width*.35,y:12}});await page.waitForTimeout(100);
  let position=await audio.evaluate(a=>a.currentTime);assert.ok(position>7&&position<10,'click seeks decoded audio '+JSON.stringify({position,range:await seek.inputValue(),state:await audio.evaluate(a=>({ready:a.readyState,duration:a.duration,seekable:[...Array(a.seekable.length)].map((_,i)=>[a.seekable.start(i),a.seekable.end(i)])}))}));assert.match(await time.innerText(),/^0:0[789] \/ 0:24$/);
  assert.ok(await seek.evaluate(e=>parseFloat(e.style.getPropertyValue('--audio-progress')))>25);if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-seek-'+cfg.width+'.png')});

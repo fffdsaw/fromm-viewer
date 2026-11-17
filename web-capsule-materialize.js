@@ -1,9 +1,11 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
-import {glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
+import {glassPreferences} from './web-glass-settings.js?v=clear-controls-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
 export function createCapsuleMaterializer(element,onHidden,onResume){
+ // Header Save is now a native transparent control, with no optical entrance.
+ const passive=element.classList.contains('capsule-save-control');
  const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
  const stage=document.createElement('span');stage.className='capsule-optics';stage.setAttribute('aria-hidden','true');
  const backdrop=document.createElement('span');backdrop.className='capsule-optics-backdrop';
@@ -59,6 +61,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
   }).catch(()=>{if(ticket===generation){pending=false;usePlain();}});
  }
  function sync(show,scope,active){
+  if(passive){const wasShown=phase==='shown';key=scope;enabled=active;observedShow=show;target=show&&active&&!document.hidden?1:0;phase=target?'shown':'hidden';mode='plain';x=target;mark();if(wasShown&&phase==='hidden')onHidden();return;}
   const fresh=show&&!observedShow;observedShow=show;
   if(scope!==key||!active){if(scope!==key||enabled!==active||phase!=='hidden'||glass||pending||frame)reset();key=scope;enabled=active;if(!active)return;}
   enabled=active;

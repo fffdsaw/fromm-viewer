@@ -10,7 +10,7 @@ const{serve,open,seed}=require('./helpers/phase3-fixture.cjs');
  await p.locator('#sidebar').hover({position:{x:20,y:20}});assert.equal(await p.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'true');
  assert.equal(await p.evaluate(()=>FrommControlGlass.snapshot.live),0);await p.keyboard.press('Escape');assert.equal(await p.locator('#sidebarToggleBtn').getAttribute('aria-expanded'),'false');
  await p.evaluate(()=>{setFilter('image');chooseDownloadItem('media',state.infiniteList[0]);});assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true,'selection works before maps are downloaded');
- release();await p.waitForFunction(()=>FrommControlGlass.snapshot.live>=2,null,{timeout:7000});
+ release();await p.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('),null,{timeout:7000});
  assert.equal(await p.locator('.header-glass-surface,.sidebar-glass-surface').count(),0);
  await p.setViewportSize({width:900,height:560});await p.evaluate(()=>FrommGlowME.setRailOpen(true));await p.waitForTimeout(250);
  await p.locator('.glowme-nav').evaluate(e=>e.scrollTop=e.scrollHeight);await p.locator('[data-glow-nav="channel"]').hover();await p.waitForFunction(()=>document.querySelector('.glowme-nav').classList.contains('rail-pointer-tracking'));

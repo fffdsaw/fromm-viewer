@@ -54,26 +54,25 @@ async function voiceLook(page){return page.evaluate(selectors=>selectors.map(sel
    assert.equal(await p.locator('.chat-audio-play .control-glass-surface').count(),0,'test observes the pre-initialization state');
    const before=await voiceLook(p);
    if(reload===2){
-    assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0.72)'),'saved disabled setting paints the original flat voice buttons before modules load');
+    assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'&&x.shadow==='none'),'saved disabled setting keeps native voice buttons clear before modules load');
     release();await p.waitForFunction(()=>window.FrommControlGlass&&window.FrommGlassSettings?.value.enabled===false);await p.waitForTimeout(400);
     assert.deepEqual(await voiceLook(p),before,'disabled voice buttons stay flat after asynchronous setup');
     assert.equal(await p.locator('.chat-audio-play .control-glass-surface,.chat-sound-download .control-glass-surface').count(),0);
     await p.evaluate(()=>FrommGlassSettings.set({enabled:true},{immediate:true}));
-    await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface'));
-    assert.ok((await voiceLook(p)).every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'),'switching back on restores the optical material');
+    await p.waitForFunction(()=>FrommControlGlass.snapshot.live>0);assert.equal(await p.locator('.chat-audio-play .control-glass-surface,.chat-sound-download .control-glass-surface').count(),0,'switching on optics does not attach native voice buttons');
+    assert.ok((await voiceLook(p)).every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'),'switching back on preserves native transparent styling');
     assert.deepEqual(errors,[]);continue;
    }
-   assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'&&x.shadow!=='none'),'voice buttons have their final clear resting material on first paint');
-   release();await p.waitForFunction(()=>document.querySelector('.chat-audio-play .control-glass-surface')&&document.querySelector('.chat-sound-download .control-glass-surface'));await p.waitForTimeout(400);
+   assert.ok(before.every(x=>x.background==='none'&&x.color==='rgba(0, 0, 0, 0)'&&x.shadow==='none'),'voice buttons have their final clear resting material on first paint: '+JSON.stringify(before));
+   release();await p.waitForFunction(()=>window.FrommControlGlass&&FrommControlGlass.snapshot.live>0);await p.waitForTimeout(400);
    assert.deepEqual(await voiceLook(p),before,'asynchronous setup preserves both resting colors and rims');
    for(const selector of voiceSelectors){
     const target=p.locator(selector),rest=await voiceLook(p),box=await target.boundingBox();
-    await target.hover();await p.waitForFunction(selector=>document.querySelector(selector).dataset.controlOptics==='engine',selector);
+    await target.hover();await p.waitForFunction(selector=>getComputedStyle(document.querySelector(selector)).backgroundImage.includes('radial-gradient'),selector);assert.equal(await target.locator('.control-glass-surface').count(),0,'pointer highlight uses no engine face');
     // Mouse focus must not keep an optical hover state alive after leaving.
     await p.mouse.down();await p.mouse.move(1400,800);await p.mouse.up();await p.waitForTimeout(650);
     assert.deepEqual(await voiceLook(p),rest,selector+' restores its baseline after press/leave');
-    const illumination=await target.locator('.control-glass-surface').evaluate(face=>[getComputedStyle(face,'::before').opacity,getComputedStyle(face,'::after').opacity]);
-    assert.deepEqual(illumination,['0','0'],selector+' leaves no hover illumination');
+    assert.equal(await target.evaluate(el=>getComputedStyle(el).backgroundImage),'none',selector+' leaves no hover illumination');assert.equal(await target.getAttribute('data-control-optics'),null,'voice stays disconnected after hover');
     assert.deepEqual(await target.boundingBox(),box,'voice hit box stays fixed');
    }
    await shot(p,'review-voice-reload-'+reload);assert.deepEqual(errors,[]);

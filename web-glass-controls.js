@@ -1,11 +1,13 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
+import {clearControls} from './web-clear-controls.js?v=clear-controls-20261117';
 import {updateRailCrossing} from './web-rail-lens.js?v=continuous-lens-20261117';
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=clear-controls-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=continuous-lens-20261117';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
 const selected='.sidebar-open #rooms .room.active';
+const sidebarPreset=Object.freeze({refraction:80,thickness:60,blur:0,saturation:80,chromatic:88,opacity:60,specular:28});
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
 let settings=glassPreferences.value,discoveryDirty=true,allControls=[],allSet=new Set(),scans=0;
@@ -42,18 +44,16 @@ function opticalSettings(item){
  const {el}=item;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- // Use the requested refraction strength on the menu too. Its soft optical
- // band keeps the resting label clear; a small intrinsic dispersion separates
- // the curved edge without turning default text into a rainbow.
- return {...materialOptions(settings),...(item.rail?{refraction:settings.refraction,chromaticAberration:settings.chromatic/100+.08,blur:0}:{}),specular:menu||settings.specular>0,
-  specularIntensity:((menu?.22:0)+settings.specular/100)*settings.opacity/28};
+ // Sidebar optics are a dedicated preset; global sliders still tune the
+ // preview and other optical controls. The master/accessibility switches remain.
+ return materialOptions(el.closest('#sidebar')?sidebarPreset:settings);
 }
 function sync(){
  frame=0;
  const look=!!enabled();if(document.documentElement.classList.contains('pc-control-glass')!==look)document.documentElement.classList.toggle('pc-control-glass',look);
  if(!look){active=null;clearPress();for(const [el,item]of faces)remove(el,item);visibility?.disconnect();watched.clear();inView.clear();allControls=[];allSet.clear();discoveryDirty=true;return;}
  if(discoveryDirty){
-  allControls=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')];allSet=new Set(allControls);discoveryDirty=false;scans++;
+  allControls=[...document.querySelectorAll(controls+','+selected+',.rail-pointer-light')].filter(el=>!el.matches(clearControls));allSet=new Set(allControls);discoveryDirty=false;scans++;
   for(const el of allControls)if(!watched.has(el)){watched.add(el);visibility.observe(el);}
   for(const el of watched)if(!allSet.has(el)||!el.isConnected){visibility.unobserve(el);watched.delete(el);inView.delete(el);}
  }
@@ -118,7 +118,7 @@ function sync(){
   }catch{releaseEngine(item);failed.add(el);el.dataset.controlOptics='basic';}
  }
 }
-function controlAt(target){return target instanceof Element?target.closest(controls+','+selected):null;}
+function controlAt(target){const el=target instanceof Element?target.closest(controls+','+selected):null;return el&&!el.matches(clearControls)?el:null;}
 function pressable(el){return !!el?.matches('button,a,[role="button"],summary')&&!el.disabled&&el.getAttribute('aria-disabled')!=='true';}
 function syncRailLens(){const el=document.querySelector('.rail-pointer-light'),glass=faces.get(el)?.glass;if(glass)updateRailCrossing(glass);}
 function clearPress(){pressed?.classList.remove('glass-pressed');pressed=null;}

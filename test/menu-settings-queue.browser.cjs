@@ -6,7 +6,7 @@ const{serve,open}=require('./helpers/phase3-fixture.cjs');
 (async()=>{const s=await serve(),b=await chromium.launch(process.env.PUBLIC_SHA?{proxy:{server:process.env.HTTPS_PROXY||process.env.HTTP_PROXY}}:{});const url=process.env.PUBLIC_SHA?'https://fffdsaw.github.io/fromm-viewer/?deployment='+process.env.PUBLIC_SHA:s.url;try{
  const high={newContext:async o=>{const c=await b.newContext({...o,...(out?{recordVideo:{dir:out,size:{width:1440,height:900}}}:{})});await c.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>8});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8})});return c}};
  const{page:p,context,errors}=await open(high,url);
- await p.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>=2);
+ await p.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('));
  await p.locator('#sidebar').hover({position:{x:20,y:20}});await p.waitForTimeout(250);
  const artist=await p.locator('.room.active').evaluate(e=>({shadow:getComputedStyle(e).boxShadow,color:getComputedStyle(e).backgroundColor,border:getComputedStyle(e.querySelector('.rail-avatar')).outline}));
  await p.locator('[data-glow-nav="image"]').hover();await p.waitForTimeout(280);

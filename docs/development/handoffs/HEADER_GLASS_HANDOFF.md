@@ -9,7 +9,7 @@
 사용자가 스크롤 중 효과가 사라지는 방식을 거절하여 scroll→frost 처리를 제거했습니다.
 실제 굴절은 스크롤 내내 연결하고 맵을 재사용합니다. blur=0/specular=false로
 계산을 줄이며 굴절 강도는 유지합니다. 영상/레일 크기 변경 대체는 기존대로입니다.
-현재 근거는 [header-scroll 검토](design-review/header-scroll/README.md)입니다.
+현재 근거는 [header-scroll 검토](../../design-review/header-scroll/README.md)입니다.
 아래 PR80의 scroll/frost 기록은 과거 정책이며 복원하면 안 됩니다.
 Node285 PASS/기존SKIP1, PC1440/760/900standalone·모바일390·대체경로 검사 PASS,
 단독 스크롤 p95 끔/켬16.8/16.8ms, 실제 휠 녹화124프레임 모두 SVG 유지.

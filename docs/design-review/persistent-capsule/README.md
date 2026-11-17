@@ -7,4 +7,4 @@
 
 PC 웹/standalone 배치 각1440/900/760에서 0·첫 선택·여러 개·X·실제 전체선택·busy·감소 모션·키보드·숫자 변경 검사 통과. 카드/다운로드/도구/정렬/스크롤 좌표 동일. 실제 SVG scale 변경과 짧은 렌즈 해제, 진행 텍스트 갱신 시 장식층 보존, 활성 저장의 흰 글자 확인. 직접 선택 및 실제 bulk bytes/names/실패 처리 회귀 통과. 모바일390 기존 조건부 도구·저장·넘침 최소 확인 통과.
 
-전체 CI/병합/공개 배포의 최신 상태는 해당 PR 설명을 따른다. [인계 문서](../../PERSISTENT_CAPSULE_HANDOFF.md).
+전체 CI/병합/공개 배포의 최신 상태는 해당 PR 설명을 따른다. [인계 문서](../../development/handoffs/PERSISTENT_CAPSULE_HANDOFF.md).

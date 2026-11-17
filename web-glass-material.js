@@ -1,6 +1,7 @@
 /* App-owned full-strength optics for the pinned Meapri engine. The upstream
  * material model/worker and browser fallback remain; policy reductions do not.
  * Keep these overrides covered when upgrading vendor/meapri (MIT). */
+import {applyRailLens} from './web-rail-lens.js?v=continuous-lens-20261117';
 const classes=new WeakMap();
 const regenerating=new WeakMap();
 export function materialOptions(settings){
@@ -17,6 +18,8 @@ export function createGlass(Engine,element,options){
  let FullGlass=classes.get(Engine);
  if(!FullGlass){
   FullGlass=class extends Engine {
+   async installFilter(){await super.installFilter();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
+   async regenerateAfterResize(){await super.regenerateAfterResize();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
    effectiveRefraction(){return this.options.refraction;}
    profiledRefraction(){return this.options.refraction;}
    computedThickness(){return this.options.thickness;}

@@ -154,7 +154,7 @@
  :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav button{transform:none!important;transition:none!important}
  :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav button[aria-current="page"]{background:var(--theme-selected)!important;background-image:none!important;box-shadow:none!important;border-color:transparent!important}
  :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .rail-pointer-light{transition:none!important;transform-origin:center}
- :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .rail-lens-surface{--rail-rim-width:2px}
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .rail-lens-surface{-webkit-mask:none;mask:none}
  :root[data-fromm-theme].glowme-phase3.pc-layout:not(.sidebar-open) #rooms .room.active{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
  :root[data-fromm-theme].glowme-phase3.pc-layout:not(.sidebar-open) #rooms .room.active::before{display:none!important}
  :root[data-fromm-theme].glowme-phase3.pc-layout:not(.sidebar-open) #rooms .room.active>.control-glass-surface{display:none!important}

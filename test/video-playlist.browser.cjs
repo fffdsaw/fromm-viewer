@@ -9,12 +9,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  try{for(const viewport of [{width:1440,height:900},{width:390,height:844},{width:568,height:320}]){
   const {page,context,errors}=await open(browser,host.url,viewport),detailCalls=[];
   await page.route('**/queue-*.mp4',route=>route.fulfill({contentType:'video/mp4',body:fs.readFileSync(file)}));
-  let deny=false,listFailure=false,listed=[],listPages=[],listCursors=[];
+  let deny=false,listFailure=false,listed=[],listPages=[],listCursors=[],pagedPosts=null;
   await page.route('**/*',route=>{
    let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
    if(!u.hostname.endsWith('frommyarti.com'))return route.fallback();
    const json=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify({success:status===200,data})});
-   if(u.pathname==='/media/posts'){listCursors.push(u.searchParams.get('postId'));return json(listFailure?{posts:[],isLast:false}:listPages.shift()||{posts:listed,isLast:true},listFailure?503:200);}
+   if(u.pathname==='/media/posts'){const cursor=u.searchParams.get('postId');listCursors.push(cursor);if(pagedPosts){const start=cursor?pagedPosts.findIndex(p=>p.id===cursor)+1:0,end=start+Number(u.searchParams.get('limit')||50);return json({posts:pagedPosts.slice(start,end),isLast:end>=pagedPosts.length});}return json(listFailure?{posts:[],isLast:false}:listPages.shift()||{posts:listed,isLast:true},listFailure?503:200);}
    if(u.pathname.startsWith('/media/posts/')){
     const id=u.pathname.split('/').at(-1);detailCalls.push(id);
     return json({post:{id,type:id.startsWith('r')?'live_record':'video',isVisible:true,title:'합성 영상 '+id,url:host.url+'queue-'+id+'.mp4'}},deny?403:200);
@@ -36,10 +36,18 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    // move reveals both; pausing also makes both available without another timer.
    await video.evaluate(el=>{el.muted=true;el.currentTime=0;void el.play();});await page.mouse.move(1,1);
    await page.waitForFunction(()=>document.querySelector('.modern-video-controls')?.classList.contains('mvc-hidden'));
-   await toggle.waitFor({state:'hidden'});assert.equal(await toggle.isVisible(),false,'playlist icon disappears with idle transport controls');
-   await video.hover();await toggle.waitFor({state:'visible'});await video.evaluate(el=>el.pause());
+   await toggle.waitFor({state:'hidden'});assert.equal(await toggle.isVisible(),false,'playlist icon disappears with idle transport controls');assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','normal-size idle player hides the cursor too');
+   await video.hover();await toggle.waitFor({state:'visible'});assert.notEqual(await video.evaluate(el=>getComputedStyle(el).cursor),'none','pointer movement restores the cursor');await video.evaluate(el=>el.pause());
    await toggle.click();await page.locator('.video-playlist-auto input').click();assert.equal(await toggle.getAttribute('aria-expanded'),'true','inside interactions do not dismiss the queue');await page.locator('.video-playlist-auto input').click();
    if(viewport.width===390)await page.touchscreen.tap(2,2);else await page.mouse.click(2,2);assert.equal(await toggle.getAttribute('aria-expanded'),'false','clicking outside the queue dismisses it without a video change');
+   const surfacePoint=()=>video.evaluate(el=>{const r=el.getBoundingClientRect();for(const fy of [.02,.2,.5,.8])for(const fx of [.01,.1,.3,.5]){const x=r.x+r.width*fx,y=r.y+r.height*fy;if(x>0&&y>0&&x<innerWidth&&y<innerHeight&&document.elementFromPoint(x,y)===el)return{x,y};}throw Error('No exposed video surface');});
+   const hitSurface=async()=>{const p=await surfacePoint();if(viewport.width===390)await page.touchscreen.tap(p.x,p.y);else await page.mouse.click(p.x,p.y);};
+   for(const paused of [false,true]){
+    await video.evaluate(async(el,paused)=>{el.currentTime=0;if(paused)el.pause();else await el.play();},paused);await video.hover();await toggle.click();await hitSurface();
+    assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await video.evaluate(el=>el.paused),paused,'dismissing the queue preserves playing/paused state');
+    await hitSurface();assert.equal(await video.evaluate(el=>el.paused),!paused,'a subsequent ordinary click still controls playback');
+   }
+   await video.evaluate(el=>el.pause());await toggle.click();await page.locator('[data-mvc="play"]').click();assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await video.evaluate(el=>el.paused),false,'explicit play button still works while closing the queue');await video.evaluate(el=>el.pause());
    for(const button of [page.locator('.replay-page-back'),page.locator('.replay-page-download')]){assert.equal((await button.textContent()).trim(),'','header uses icons only');assert.ok(await button.getAttribute('aria-label'));assert.equal(await button.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');}
    const before=await video.boundingBox();await toggle.click();await page.waitForTimeout(280);
    assert.deepEqual(await video.boundingBox(),before,'drawer never resizes the video');assert.equal(await toggle.textContent(),'','icon only');
@@ -107,6 +115,15 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    assert.equal(await page.locator('.video-playlist-toggle,#channelVideo').count(),0);assert.equal(await page.evaluate(()=>state.filter),'image');
   }
   if(viewport.width===1440){
+   pagedPosts=Array.from({length:365},(_,i)=>({id:'r'+i,num:1000-i,type:'live_record',isVisible:true,title:'긴 Replay '+i,displayStartAt:1791534600000-i*1000,_channelId:'fixture-channel'}));
+   await page.evaluate(posts=>{stopChannelVideoPlayback();stopReplayPlayback();state.filter='live';state.live.centerMode='replay';state.live.replayFilter='fixture-channel';state.live.replayPosts=posts;state.live.replayPaging.clear();Object.assign(replayPagingFor('fixture-channel'),{loaded:true,lastPost:posts.at(-1),isLast:false});},pagedPosts.slice(0,30));
+   await page.evaluate(()=>playReplay('r14','fixture-channel'));await page.waitForFunction(()=>document.querySelector('#replayVideo')?.readyState>=2);await page.locator('#replayVideo').evaluate(el=>el.pause());
+   const toggle=page.locator('.video-playlist-toggle');if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+   await page.waitForFunction(()=>state.live.replayPosts.length===365&&replayPagingFor('fixture-channel').isLast&&!state.live.replayLoading);
+   assert.equal(await page.locator('.video-playlist-item').count(),365);assert.equal(await page.locator('.video-playlist-notice').textContent(),'');assert.equal(await page.locator('.video-playlist-count').textContent(),'15 / 365');
+   assert.equal(detailCalls.includes('r364'),false,'large queue only loads metadata');await page.locator('[data-queue="close"]').click();pagedPosts=null;await page.evaluate(()=>stopReplayPlayback());
+  }
+  if(viewport.width===1440){
    // Hash/login restoration can create the existing player before this asset
    // arrives. Loading the real module late must attach to that engine too.
    await page.evaluate(()=>{window.FrommVideoPlaylist=undefined;state.filter='live';state.live.centerMode='channel';});
@@ -123,7 +140,9 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   if(viewport.width===1440){
    const video=page.locator('#lightboxVideo'),toggle=page.locator('#imageLightbox .video-playlist-toggle');
    await video.evaluate(async el=>{el.muted=true;el.currentTime=0;await el.play();});await page.mouse.move(1,1);await toggle.waitFor({state:'hidden'});
+   assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','enlarged native player hides idle cursor');
    await video.hover();await toggle.waitFor({state:'visible'});await video.evaluate(el=>el.pause());
+   for(const paused of [false,true]){await video.evaluate(async(el,paused)=>{el.currentTime=0;if(paused)el.pause();else await el.play();},paused);await toggle.click();await video.click({position:{x:25,y:25}});assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await video.evaluate(el=>el.paused),paused,'native enlarged-player dismissal also preserves playback');}
   }
   await page.locator('#imageLightbox .video-playlist-toggle').click();await page.locator('#imageLightbox [data-queue="next"]').click();
   await page.waitForFunction(()=>document.querySelector('#lightboxVideo').getAttribute('src').includes('queue-big0.mp4'));assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').getAttribute('aria-expanded'),'false','enlarged media also dismisses after choosing');

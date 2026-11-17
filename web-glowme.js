@@ -22,8 +22,9 @@
     const button=document.createElement('button');button.type='button';button.dataset.glowNav=key;button.className='pill';
     if(!['live','replay','channel'].includes(key))button.dataset.filter=key;
     button.title=label;button.setAttribute('aria-label',label);button.innerHTML=svg(paths[key])+`<span>${label}</span>`;
-    button.addEventListener('click',async()=>{
-      if(button.disabled)return;button.disabled=true;
+    button.addEventListener('click',async event=>{
+      if(event.isTrusted&&event.detail>0&&performance.now()<railClickSuppressedUntil){event.preventDefault();return;}
+      if(button.disabled)return;clearRailLight();button.disabled=true;
       try{if(['live','replay','channel'].includes(key)){
         if(state.filter==='live')await setLiveCenterMode(key);else{state.live.centerMode=key;await setFilter('live');}
       }else await setFilter(key);}finally{button.disabled=false;syncNavigation();setRailOpen(false);if(!mediaPC.matches||keyboardFocus)toggle.focus({preventScroll:true});else if(document.activeElement===button)button.blur();}
@@ -31,9 +32,10 @@
   }
   railHead.after(nav);
   // A single decoration follows the pointer independently of the optional lens.
-  const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
-  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null;
-  function clearRailLight(){cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');}
+  const railLight=document.createElement('span');railLight.className='rail-pointer-light';railLight.dataset.phase='idle';railLight.setAttribute('aria-hidden','true');nav.append(railLight);
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');let lightFrame=0,lightPoint=null,lightState=null,railHold=null,railClickSuppressedUntil=0;
+  function endRailHold(){const hold=railHold;railHold=null;nav.classList.remove('rail-glass-drag');if(hold&&nav.hasPointerCapture(hold.id))nav.releasePointerCapture(hold.id);}
+  function clearRailLight(){if(railHold)railClickSuppressedUntil=performance.now()+400;endRailHold();cancelAnimationFrame(lightFrame);lightFrame=0;lightPoint=null;lightState=null;nav.classList.remove('rail-pointer-tracking');railLight.classList.remove('rail-light-moving');railLight.dataset.phase='idle';delete railLight.dataset.target;}
   function paintRailLight(now=performance.now()){
     lightFrame=0;if(!lightPoint||!hover.matches||reducedMotion.matches||document.hidden)return clearRailLight();
     const {button,x,y}=lightPoint;if(!button.isConnected)return clearRailLight();
@@ -49,24 +51,44 @@
     lightState.y+=lightState.velocity*dt;
     const moving=Math.abs(target-lightState.y)>.04||Math.abs(lightState.velocity)>.4;
     if(!moving){lightState.y=target;lightState.velocity=0;}
-    const stretch=1+Math.min(.12,Math.abs(lightState.velocity)/4000),top=lightState.y-box.height/2;
-    railLight.classList.toggle('rail-light-moving',tracking);
+    const stretch=railHold?.dragged?1+Math.min(.12,Math.abs(lightState.velocity)/4000):1,top=lightState.y-box.height/2;
+    railLight.classList.toggle('rail-light-moving',moving);
+    railLight.dataset.phase=moving?'moving':'idle';railLight.dataset.target=button.dataset.glowNav;
     railLight.style.transform=`translate3d(${left}px,${top}px,0) scale(${1/Math.sqrt(stretch)},${stretch})`;
     railLight.style.width=`${box.width}px`;railLight.style.height=`${box.height}px`;
+    railLight.style.setProperty('--rail-pass-rim',`${2+(box.height/2-2)*Math.min(1,Math.abs(lightState.velocity)/180)}px`);
     railLight.style.setProperty('--rail-light-x',`${Math.max(0,Math.min(box.width,x-parent.left-left+nav.scrollLeft))}px`);
     railLight.style.setProperty('--rail-light-y',`${Math.max(0,Math.min(box.height,y-parent.top-top+nav.scrollTop))}px`);
     nav.classList.add('rail-pointer-tracking');
     if(moving)lightFrame=requestAnimationFrame(paintRailLight);
   }
   function scheduleRailLight(){if(!lightFrame)lightFrame=requestAnimationFrame(paintRailLight);}
+  function railButtonAt(event){const el=nav.hasPointerCapture(event.pointerId)?document.elementFromPoint(event.clientX,event.clientY):event.target;const button=el?.closest?.('button');return button&&nav.contains(button)?button:null;}
+  nav.addEventListener('pointerdown',event=>{
+    railClickSuppressedUntil=0;
+    if(event.button!==0||event.pointerType==='touch'||!hover.matches||reducedMotion.matches||!railButtonAt(event))return;
+    railHold={id:event.pointerId,x:event.clientX,y:event.clientY,dragged:false};
+  });
   nav.addEventListener('pointermove',event=>{
-    const button=event.target.closest('button');
     if(event.pointerType==='touch'||!hover.matches||reducedMotion.matches)return clearRailLight();
-    // Crossing the small row gaps must not restore a second hover background.
-    if(!button||!nav.contains(button))return;
+    const button=railButtonAt(event);
+    if(railHold&&event.pointerId===railHold.id){
+      if(!(event.buttons&1))endRailHold();
+      else if(!railHold.dragged&&Math.hypot(event.clientX-railHold.x,event.clientY-railHold.y)>=4){railHold.dragged=true;nav.classList.add('rail-glass-drag');nav.setPointerCapture(event.pointerId);}
+    }
+    // Small gaps keep the moving highlight; leaving the rail cancels a drag.
+    const r=nav.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)return clearRailLight();
+    if(!button)return;
     lightPoint={button,x:event.clientX,y:event.clientY};scheduleRailLight();
   },{passive:true});
-  nav.addEventListener('pointerleave',clearRailLight);nav.addEventListener('pointercancel',clearRailLight);
+  window.addEventListener('pointerup',event=>{
+    if(!railHold||event.pointerId!==railHold.id)return;
+    const dragged=railHold.dragged,button=railButtonAt(event);endRailHold();
+    if(dragged){railClickSuppressedUntil=performance.now()+400;clearRailLight();if(button&&!button.disabled)button.click();}
+  },true);
+  nav.addEventListener('pointerleave',()=>{if(!railHold?.dragged)clearRailLight();});
+  nav.addEventListener('pointercancel',clearRailLight);nav.addEventListener('lostpointercapture',()=>{if(railHold)clearRailLight();});
+  window.addEventListener('blur',clearRailLight);
   nav.addEventListener('scroll',clearRailLight,{passive:true});
   new ResizeObserver(()=>{if(lightPoint)scheduleRailLight();}).observe(nav);
   sidebar.addEventListener('transitionend',()=>{if(lightPoint)scheduleRailLight();});

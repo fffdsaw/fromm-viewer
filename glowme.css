@@ -574,6 +574,9 @@ html.glowme .reply-content{color:#244c42}
 .glowme-phase3 .chat-match-slot.expanded{max-width:160px;opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
 .glowme-phase3 .chat-match-slot #chatMatchNav{position:static;flex-wrap:nowrap;white-space:nowrap;padding:4px;gap:4px;background:var(--theme-soft);border:1px solid var(--theme-line);border-radius:16px;box-shadow:0 3px 12px color-mix(in srgb,var(--theme-text) 10%,transparent)}
 .glowme-phase3 .chat-match-slot #chatMatchNav .btn{width:44px;height:44px;padding:0}
+:root[data-fromm-theme].glowme-phase3 #chatMatchNav :is(#chatMatchPrev,#chatMatchNext){display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border-radius:50%!important}
+:root[data-fromm-theme].glowme-phase3 #chatMatchNav{border-radius:999px}
+:root[data-fromm-theme].glowme-phase3 #chatMatchNav button>svg{display:block}
 .glowme-phase3 .chat-match-slot #chatMatchPosition{font-size:12px;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){.glowme-phase3 .chat-match-slot{transition:none;transform:none}}
 
@@ -816,7 +819,7 @@ html.glowme .reply-content{color:#244c42}
  .pc-mode-heading[hidden],.pc-mode-count[hidden]{display:none!important}
  .glowme-phase3.pc-layout.pc-video-list .topbar{padding:8px 12px;gap:10px}
  .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{flex:0 0 174px;width:174px}
- .glowme-phase3.pc-layout .pc-mode-count{flex:0 0 64px;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#527367;font-variant-numeric:tabular-nums}
+ .glowme-phase3.pc-layout .pc-mode-count{flex:0 0 64px;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--theme-muted);font-variant-numeric:tabular-nums}
  .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-count{display:none!important}
  .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:12px}
  .glowme-phase3.pc-layout.pc-video-list .replay-filter-strip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:2px!important;overscroll-behavior-inline:contain}
@@ -824,7 +827,7 @@ html.glowme .reply-content{color:#244c42}
  .glowme-phase3.pc-layout.pc-video-list .replay-filter.active{background:#cbe7d8;background-image:none;border-color:var(--pc-tools-line);box-shadow:var(--pc-tools-glint)}
  .glowme-phase3.pc-layout.pc-video-list .top-auth-controls{padding-left:0!important;gap:0!important}
  .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster{gap:8px!important;margin-left:0!important;padding-left:12px!important}
- .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster::before{display:block;left:0;top:6px;bottom:6px;background:#adcbbb}
+ .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster::before{display:block;left:0;top:6px;bottom:6px;background:var(--theme-line)}
  .glowme-phase3.pc-layout.pc-video-list .header-icon-cluster :is(#logoutMiniBtn,#scanBtn,#channelRefresh){flex:0 0 var(--pc-tools-height)!important;width:var(--pc-tools-height)!important;min-width:var(--pc-tools-height)!important;height:var(--pc-tools-height)!important;min-height:var(--pc-tools-height)!important;margin:0!important;padding:5px!important;border:1px solid var(--pc-tools-line)!important;border-radius:50%!important;background:var(--pc-tools-fill)!important;box-shadow:var(--pc-tools-glint)!important;color:var(--pc-tools-text)}
  .glowme-phase3.pc-layout.pc-video-list #channelRefresh{font-size:0!important}
  .glowme-phase3.pc-layout.pc-video-list #channelRefresh::after{content:'↻';font-size:21px;line-height:1}
@@ -902,7 +905,7 @@ html.glowme .reply-content{color:#244c42}
   }
   .glowme-phase3.pc-layout.pc-video-list .pc-mode-heading::after{
     content:"";display:block;flex:0 0 1px;width:1px;height:18px;
-    margin-inline:2px;background:#afcfbf;
+    margin-inline:2px;background:var(--theme-line);
   }
   .glowme-phase3.pc-layout.pc-video-list .topbar{gap:8px}
   .glowme-phase3.pc-layout.pc-video-list .pc-list-host .replay-toolbar{gap:6px}
@@ -1281,6 +1284,12 @@ html.glowme .reply-content{color:#244c42}
   -webkit-mask:var(--rail-rim-mask);mask:var(--rail-rim-mask);
   -webkit-mask-composite:source-over;mask-composite:add;
  }
+ /* The curved optical band widens with travel speed, then returns to a
+    clear centre as the lens settles. It samples the actual glyphs below. */
+ .pc-control-glass.glowme-phase3.pc-layout .rail-pointer-light.rail-light-moving[data-control-optics="engine"]>.rail-lens-surface{
+  --rail-rim-width:var(--rail-pass-rim,2px);
+ }
+
 }
 
 
@@ -1417,3 +1426,16 @@ html.glowme .reply-content{color:#244c42}
 :root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent){width:40px;height:40px;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:8px;gap:0;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--theme-text)!important}
 :root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>svg{width:24px;height:24px;flex:none;margin:0}
 :root[data-fromm-theme].glowme-phase3 .replay-page-head :is(#replayBackToList,#channelBackToList,#replayDownloadCurrent,#channelDownloadCurrent)>.control-glass-surface{background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* Big-player idle cursor follows the same transport visibility owner. */
+.modern-video-stage:has(>.modern-video-controls.mvc-hidden),.modern-video-stage:has(>.modern-video-controls.mvc-hidden)>video{cursor:none}
+.video-playlist-drawer{cursor:auto}
+#imageLightbox:has(.video-playlist-toggle.is-idle),#imageLightbox:has(.video-playlist-toggle.is-idle) #lightboxVideo{cursor:none}
+#saveSelectedBtn.save-glass-control{position:relative;isolation:isolate}
+#saveSelectedBtn>.mobile-save-glass{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:none;border:1px solid #ffffff9c;box-shadow:inset 0 1px 1px #ffffff99,inset 0 -1px 1px #0002,0 2px 6px #0002}
+
+:root[data-fromm-theme].glowme-phase3 .header-icon-cluster::before{background:var(--theme-line)}
+@media(max-width:700px),(hover:none),(pointer:coarse){
+ :root[data-fromm-theme].glowme-phase3 .capsule-save-control #saveSelectedBtn{background:var(--theme-soft)!important}
+ :root[data-fromm-theme].glowme-phase3 .capsule-save-control #saveSelectedBtn:not(:disabled){background:var(--theme-accent)!important;color:var(--theme-on-accent)!important}
+}

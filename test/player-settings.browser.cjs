@@ -88,6 +88,11 @@ const media=fs.readFileSync(path.join(temp,'fixture.mp4'));
    if(viewport.width===1440){
     await page.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>!!document.fullscreenElement);
     await dismiss(false);await dismiss(true);
+    await video.evaluate(async el=>{el.currentTime=0;await el.play();});await hoverVideo();await page.mouse.move(1,1);
+    await page.waitForFunction(()=>document.querySelector('.modern-video-controls').classList.contains('mvc-hidden'));
+    assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','fullscreen idle hides the cursor with the controls');
+    await hoverVideo();await page.waitForFunction(()=>!document.querySelector('.modern-video-controls').classList.contains('mvc-hidden'));assert.notEqual(await video.evaluate(el=>getComputedStyle(el).cursor),'none','moving restores the fullscreen cursor');
+    await video.evaluate(el=>el.pause());assert.notEqual(await video.evaluate(el=>getComputedStyle(el).cursor),'none','paused playback keeps cursor available');
     await page.locator('[data-mvc="full"]').click();await page.waitForFunction(()=>!document.fullscreenElement);
    }
    await page.evaluate(()=>window.menuControlsCleanup());assert.equal(await page.locator('.modern-video-controls').count(),0);

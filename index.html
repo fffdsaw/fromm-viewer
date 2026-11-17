@@ -990,6 +990,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 .lightbox video{display:none;width:min(95vw,1400px);height:80vh;height:80dvh;max-height:calc(100dvh - 110px);object-fit:contain;background:#000;border-radius:10px}
 .lightbox.video-preview #lightboxImage{display:none}
 .lightbox.video-preview video{display:block}
+#lightboxPlaceholder{display:none;position:absolute;inset:0;margin:auto;width:min(95vw,1400px);height:80dvh;max-height:calc(100dvh - 110px);object-fit:contain;background:transparent;box-shadow:none;pointer-events:none}
+.lightbox.preview-loading #lightboxPlaceholder{display:block}
+.lightbox.preview-loading #lightboxImage{opacity:0}
 .channel-list-shell .replay-filter-strip{flex:1;min-width:0}
 @media(max-width:650px){.channel-list-shell .replay-filter-strip{flex-basis:100%}.channel-list-shell .replay-count{flex:1;margin-left:0}.channel-player .replay-page-copy{display:block}.channel-player .replay-page-title,.channel-player .replay-page-meta{display:block}}
 @media(max-height:500px){
@@ -1099,18 +1102,18 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=clean-controls-20261117">
-<link rel="preload" as="script" href="web-glowme.js?v=controls-live-20261116">
+<link rel="stylesheet" href="glowme.css?v=glyph-refraction-20261117">
+<link rel="preload" as="script" href="web-glowme.js?v=press-glass-20261117">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=reader-palette-20261116">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
-<link rel="stylesheet" href="themes.css?v=live-optics-20261116">
+<link rel="stylesheet" href="themes.css?v=press-glass-20261117">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=fresh-entry-20261116"></script>
+<script src="web-conversation.js?v=navigation-intent-20261117"></script>
 <script src="web-small-player.js?v=unified-small-20261115"></script>
 <script src="web-chat-audio.js?v=ended-reset-20261116"></script>
 </head>
@@ -1227,9 +1230,9 @@ body.download-marquee-active{user-select:none;cursor:default}
       <button class="btn good" id="saveSelectedBtn" title="폴더를 한 번 선택하면 기존 파일을 건너뛰고 선택 항목을 자동 저장">저장</button>
 
       <div id="chatMatchNav" class="chat-match-nav" aria-label="찾은 대화 이동" hidden>
-        <button id="chatMatchPrev" class="btn" type="button" aria-label="이전 일치 대화" title="이전 일치 대화">↑</button>
+        <button id="chatMatchPrev" class="btn" type="button" aria-label="이전 일치 대화" title="이전 일치 대화"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
         <output id="chatMatchPosition" aria-live="polite">0 / 0</output>
-        <button id="chatMatchNext" class="btn" type="button" aria-label="다음 일치 대화" title="다음 일치 대화">↓</button>
+        <button id="chatMatchNext" class="btn" type="button" aria-label="다음 일치 대화" title="다음 일치 대화"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14m-6-6 6 6 6-6"/></svg></button>
       </div>
       <div class="chat-tools" id="chatTools">
         <button id="chatToolsBtn" class="chat-tools-btn" type="button"
@@ -1303,6 +1306,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 </div>
 
 <div id="imageLightbox" class="lightbox" aria-hidden="true">
+  <img id="lightboxPlaceholder" alt="" aria-hidden="true">
   <button id="lightboxClose" class="lightbox-close" type="button" aria-label="닫기"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <img id="lightboxImage" alt="Fromm image enlarged">
   <video id="lightboxVideo" controls playsinline preload="none" aria-label="영상 크게 보기"></video>
@@ -4028,6 +4032,13 @@ async function fetchReplayPage(channel,{loadMore=false,current=replayListCurrent
   let data;
   let raw;
 
+  // A foreground request can advance while a prefetch for the old cursor
+  // completes. Never consume that stale page as the following page.
+  if(loadMore && paging.prefetched && paging.prefetched.cursorKey!==replayCursorKey(paging.lastPost)){
+    paging.prefetched=null;
+    paging.prefetchError="";
+  }
+
   if(loadMore && paging.prefetched){
     const prefetched=paging.prefetched;
     paging.prefetched=null;
@@ -4216,9 +4227,14 @@ function scheduleReplayPrefetch(channels){
   if(!channels?.length) return;
 
   const current=replayListCurrent();
-  const run=()=>prefetchReplayPages(channels,current).catch(e=>{
-    console.debug("Replay 다음 페이지 미리 불러오기 건너뜀",e);
-  });
+  const run=()=>{
+    // An open player owns sequential playlist loading; do not race it with
+    // another idle prefetch scheduled by the collection screen.
+    if(state.live.replaySelected) return;
+    return prefetchReplayPages(channels,current).catch(e=>{
+      console.debug("Replay 다음 페이지 미리 불러오기 건너뜀",e);
+    });
+  };
 
   if("requestIdleCallback" in window){
     window.requestIdleCallback(run,{timeout:1200});
@@ -4644,7 +4660,7 @@ function installModernVideoControls(player) {
   const loadingWrapper=doc.createElement('div');loadingWrapper.innerHTML=videoLoadingIndicator();const loader=loadingWrapper.firstElementChild;
   const removers=[];let timer=null,loadingTimer=null,dragging=false,dead=false,keyboardMode=false,rotation=0,preparing=true,hasFrame=video.readyState>=2,waiting=false,failed=false,controlHovered=false,controlActive=false;
   const $=selector=>controls.querySelector(selector), seek=$('.mvc-seek'), volume=$('.mvc-volume'), play=$('[data-mvc="play"]'), sound=$('[data-mvc="sound"]'), settings=$('details');
-  const listen=(target,event,fn)=>{target.addEventListener(event,fn);removers.push(()=>target.removeEventListener(event,fn));};
+  const listen=(target,event,fn,options)=>{target.addEventListener(event,fn,options);removers.push(()=>target.removeEventListener(event,fn,options));};
   const loadingNeeded=()=>!failed&&!video.ended&&(preparing||!hasFrame||waiting);
   const renderLoading=()=>{
     if(dead)return;
@@ -4748,7 +4764,7 @@ function installModernVideoControls(player) {
     for(const [name,delta] of [['left',-90],['right',90]])listen($(`[data-mvc="${name}"]`),'click',()=>{rotation=(rotation+delta+360)%360;rotateLayout();});
     if(player.owner.ResizeObserver){const observer=new player.owner.ResizeObserver(rotateLayout);observer.observe(stage);removers.push(()=>observer.disconnect());}
     listen(player.owner,'resize',rotateLayout);listen(video,'loadedmetadata',rotateLayout);listen(doc,'fullscreenchange',rotateLayout);
-    listen(doc,'click',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
+    listen(doc,'click',event=>{if(settings.open&&!settings.contains(event.target)){settings.open=false;if(event.target===video){stage.focus({preventScroll:true});event.preventDefault();event.stopPropagation();}}},true);
     listen(settings,'keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();settings.open=false;settings.querySelector('summary').focus({preventScroll:true});}});
     listen(settings,'toggle',()=>{if(settings.open)placeSettings();else closePopup();reveal();});listen(player.owner,'resize',placeSettings);listen(controls,'focusin',reveal);listen(controls,'focusout',reveal);
     listen($('.mvc-panel'),'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
@@ -8110,8 +8126,9 @@ function openDownloadPreview(kind,item){
   if(kind==="channel"){playChannelVideo(item.id);return;}
   if(kind==="replay"){playReplay(item.id,item._channelId);return;}
   const type=normType(item.type), caption=`${baseName(item)} · ${dateKey(item)} ${timeLabel(item)}`;
-  if(type==="image") openImageLightbox(proxyUrl(item,false),caption);
-  if(type==="video") openVideoLightbox(proxyUrl(item,false),caption);
+  const card=mediaCardForMessage(item), image=card?.querySelector("img"), video=card?.querySelector("video");
+  if(type==="image") openImageLightbox(proxyUrl(item,false),caption,image?.currentSrc||previewUrl(item)||"");
+  if(type==="video") openVideoLightbox(proxyUrl(item,false),caption,video?.poster||resolvePreviewUrl(item)||"");
 }
 
 function bindDownloadSelection(el,kind,item){
@@ -8805,36 +8822,44 @@ function renderGalleryList(tl, shown){
   }
 }
 
-function openImageLightbox(src, caption=""){
+function openImageLightbox(src, caption="", preview=""){
   closeImageLightbox();
   const box = $("#imageLightbox");
-  $("#lightboxImage").src = src;
+  const image=$("#lightboxImage"), placeholder=$("#lightboxPlaceholder"), version=lightboxPreviewGeneration;
+  if(preview && !imageUrlSame(preview,src)){placeholder.src=preview;box.classList.add("preview-loading");}
+  image.onload=()=>{if(version===lightboxPreviewGeneration){box.classList.remove("preview-loading");placeholder.removeAttribute("src");}};
+  image.onerror=()=>{if(version===lightboxPreviewGeneration&&box.classList.contains("preview-loading"))$("#lightboxCaption").textContent=caption+" · 원본 이미지를 불러오지 못했습니다.";};
+  image.src = src;
   $("#lightboxCaption").textContent = caption;
   box.classList.add("open");
   box.setAttribute("aria-hidden","false");
   document.documentElement.classList.add("image-lightbox-open");
 }
 
-let lightboxPlaylistCleanup=null;
-function openVideoLightbox(src,caption=""){
+let lightboxPlaylistCleanup=null,lightboxPreviewGeneration=0,lightboxAttachFrame=0,lightboxAttachTimer=0;
+function openVideoLightbox(src,caption="",poster=""){
   closeImageLightbox();
   for(const video of document.querySelectorAll('#timeline video')) video.pause();
   const box=$("#imageLightbox"), video=$("#lightboxVideo");
+  video.poster=poster;
   video.src=src;
   $("#lightboxCaption").textContent=caption;
   box.classList.add("open","video-preview");box.setAttribute("aria-hidden","false");
   document.documentElement.classList.add("image-lightbox-open");
-  lightboxPlaylistCleanup=window.FrommVideoPlaylist?.attachLightbox(video,src);
+  // Paint the enlarged player/poster before preparing a potentially large queue.
+  const version=lightboxPreviewGeneration;
+  lightboxAttachFrame=requestAnimationFrame(()=>{lightboxAttachFrame=0;lightboxAttachTimer=setTimeout(()=>{lightboxAttachTimer=0;if(version===lightboxPreviewGeneration&&box.classList.contains("open")){lightboxPlaylistCleanup?.();lightboxPlaylistCleanup=window.FrommVideoPlaylist?.attachLightbox(video,src);}},0);});
   video.play().catch(()=>{});
 }
 
 function closeImageLightbox(){
+  lightboxPreviewGeneration++;cancelAnimationFrame(lightboxAttachFrame);clearTimeout(lightboxAttachTimer);lightboxAttachFrame=0;lightboxAttachTimer=0;
   lightboxPlaylistCleanup?.();lightboxPlaylistCleanup=null;
   const box = $("#imageLightbox");
-  box.classList.remove("open","video-preview");
+  box.classList.remove("open","video-preview","preview-loading");
   box.setAttribute("aria-hidden","true");
-  $("#lightboxImage").src = "";
-  const video=$("#lightboxVideo");video.pause();video.removeAttribute("src");video.load();
+  $("#lightboxImage").onload=null;$("#lightboxImage").onerror=null;$("#lightboxImage").removeAttribute("src");$("#lightboxPlaceholder").removeAttribute("src");
+  const video=$("#lightboxVideo");if(video.hasAttribute("src")){video.pause();video.removeAttribute("src");video.load();}video.removeAttribute("poster");
   document.documentElement.classList.remove("image-lightbox-open");
 }
 
@@ -11275,14 +11300,14 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=controls-live-20261116" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=press-glass-20261117" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=controls-live-20261116"></script>
 <script src="web-live-controls.js?v=stable-glass-glyph-20261115"></script>
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
-<script src="web-video-playlist.js?v=full-queue-20261117"></script>
+<script src="web-video-playlist.js?v=queue-recovery-20261117"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
 <script>
 (function () {
@@ -11296,6 +11321,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=live-optics-20261116"></script>
+<script type="module" src="web-glass.js?v=glyph-refraction-20261117"></script>
 </body>
 </html>

@@ -148,3 +148,20 @@
 /* Clear voice controls still need readable foregrounds on a light chat card. */
 :root[data-fromm-theme].glowme-phase3.pc-layout:not(.glass-disabled) #timeline .chat-sound-bubble .chat-audio-player :is(.chat-audio-play,.chat-sound-download){color:var(--theme-text)!important}
 @media(forced-colors:active){:root[data-fromm-theme].glowme-phase3.pc-layout:not(.glass-disabled) #timeline .chat-sound-bubble .chat-audio-player :is(.chat-audio-play,.chat-sound-download){color:ButtonText!important}}
+
+/* Calendar-style menu states: a flat hover marker, optics only during a held drag. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav button{transform:none!important;transition:none!important}
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav:not(.rail-glass-drag) .rail-pointer-light{
+  z-index:0!important;background:var(--theme-selected)!important;border-color:transparent!important;box-shadow:none!important;
+ }
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav:not(.rail-glass-drag) .rail-lens-surface{visibility:hidden!important}
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav button[aria-current="page"]{
+  background:var(--theme-selected)!important;background-image:none!important;box-shadow:none!important;border-color:transparent!important;
+ }
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav button[aria-current="page"]:hover{
+  background:color-mix(in srgb,var(--theme-selected) 80%,var(--theme-accent))!important;
+ }
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav.rail-glass-drag .rail-pointer-light[data-control-optics="engine"]{z-index:3!important}
+ :root[data-fromm-theme].glowme-phase3.pc-layout #sidebar .glowme-nav.rail-glass-drag .rail-pointer-light:not([data-control-optics="engine"]){background:var(--theme-selected)!important;border-color:transparent!important;box-shadow:none!important}
+}

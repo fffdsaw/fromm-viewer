@@ -3,7 +3,7 @@
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=live-optics-20261116';
 import {createGlass,materialOptions} from './web-glass-material.js?v=live-optics-20261116';
-const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
+const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.replay-filter,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
 const selected='#rooms .room.active,.replay-filter.active';
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const faces=new Map(),inView=new Set(),watched=new Set(),failed=new WeakSet();
@@ -40,7 +40,10 @@ function opticalSettings(item){
  const {el}=item;
  const menu=el.matches('.rail-pointer-light,.glowme-nav button');
  if(menu)item.face.style.setProperty('--rail-lens-radius',(Math.min(el.clientWidth,el.clientHeight)/2||20)+'px');
- return {...materialOptions(settings),specular:menu||settings.specular>0,
+ // A shallow menu lens bends labels at its boundary, without the deep
+ // control profile swallowing a whole glyph. Dispersion is intrinsic here;
+ // the preference adds to it, and refraction zero still removes displacement.
+ return {...materialOptions(settings),...(item.rail?{refraction:settings.refraction*.2,chromaticAberration:settings.chromatic/100+.24,blur:0}:{}),specular:menu||settings.specular>0,
   specularIntensity:((menu?.22:0)+settings.specular/100)*settings.opacity/28};
 }
 function sync(){

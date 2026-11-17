@@ -578,7 +578,7 @@
  }
  function sync(){
   if(!mounted)return;
-  if(!context&&!state.room&&state.rooms.length&&document.querySelector('#loginGate')?.classList.contains('hidden')){
+  if(!context&&!state.room&&!['live','vote'].includes(state.filter)&&state.rooms.length&&document.querySelector('#loginGate')?.classList.contains('hidden')){
    if(!cacheNamespace()){if(!resumeIdentityPending){resumeIdentityPending=true;void ensureReplyIdentity().then(ready=>{resumeIdentityPending=false;if(ready)sync();});}return;}
    try{const saved=JSON.parse(localStorage.getItem(lastRoomKey(cacheNamespace()))||'null');
     const index=saved?state.rooms.findIndex(room=>String(room.id)===saved.roomId&&String(room.hostChatRoomId)===saved.host):-1;

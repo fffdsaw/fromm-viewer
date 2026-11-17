@@ -24,6 +24,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('.chat-match-slot').classList.contains('expanded'));
   await page.waitForTimeout(230);
   await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(80);
+  for(const id of ['chatMatchPrev','chatMatchNext']){const control=page.locator('#'+id);assert.equal(await control.evaluate(el=>getComputedStyle(el).borderRadius),'50%');assert.equal(await control.locator('svg').count(),1);}
   const nav=await page.locator('#chatMatchNav').boundingBox(),button=await search.boundingBox();
   assert.ok(nav&&nav.x>=0&&Math.abs(nav.y-button.y)<2);assert.ok(nav.x+nav.width<=button.x,'navigation expands beside search without overlap');
   await page.evaluate(()=>scrollTo(0,0));const title=await page.locator('#artistTitle').boundingBox();assert.ok(nav.x+nav.width<=title.x||nav.x>=title.x+title.width||nav.y+nav.height<=title.y||nav.y>=title.y+title.height,'reply controls do not cover artist title');

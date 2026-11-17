@@ -7,8 +7,11 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
  for(const viewport of [{width:320,height:640},{width:844,height:390},{width:1440,height:900,installed:true}]){
   const {page,context,errors}=await open(browser,server.url,viewport);
   const pc=await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'));
-  if(pc)await page.waitForFunction(()=>window.FrommControlGlass?.snapshot.live>0);
-  else await page.waitForFunction(()=>document.querySelector('#logoutMiniBtn').classList.contains('meapri-control'));
+  if(pc)await page.waitForFunction(()=>document.querySelector('.rail-lens-surface')?.style.backdropFilter.includes('url('));
+  else await page.waitForFunction(()=>window.FrommGlass&&window.FrommControlGlass);
+  assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'native header never attaches a mobile engine');
+  assert.equal(await page.locator('#logoutMiniBtn .control-glass-surface').count(),0,'native header has no PC engine face');
+  assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)','header action remains transparent');
   await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(100);
   if(await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'))){
    assert.ok((await page.locator('.viewer-header').boundingBox()).y>=0,'PC header stays visible');

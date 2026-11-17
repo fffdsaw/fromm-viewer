@@ -2,6 +2,16 @@
 
 Last reviewed: 2026-11-17 (Asia/Seoul)
 
+## PR #139 deployment approved; legacy voice fallback corrected — 2026-11-17 (Asia/Seoul)
+
+User explicitly approved deploying PR https://github.com/fffdsaw/fromm-viewer/pull/139 with “베포해줘”. This supersedes the implementation-only status below for this release. Initial head `411ed52f489bcdcbe0ec583652339dbd5d4f3be1` passed six hosted checks; Conversation Chromium/Chrome/Edge stopped at the obsolete dark native voice background assertion in `conversation-controls.browser.cjs:74`, and Channel stopped at `glowme-phase3-review.browser.cjs:11` waiting for an intentionally removed mobile header engine. GitHub connector job logs confirmed these errors; CLI Azure log redirects returned HTTP403. Remote main is still `a3a18b9f939c9868f089b2a70d3e435d7940bc53`; no merge/deploy has occurred yet.
+
+Updated those native-control contracts to require transparency/no engine while preserving downloads, keyboard/focus, reader/search/date and responsive assertions. Searched the remaining tests and updated `uiux-review`'s old voice-engine/opaque-disabled assumptions too, retaining real reload/delayed-module, before/after identity, press/leave, fixed hit box and global switch coverage. That stronger first-paint test exposed a real remaining high-specificity legacy voice shadow in `conversation.css`; removed only that five-line pre-engine fallback, and refreshed its entry stylesheet version. Voice controls now have no shadow before/after SDK initialization or with the global effect switch off. The new test requires that behavior rather than masking the CSS issue.
+
+Validation: units278/278, complete `conversation-controls` (1440/PWA780/touch390, real WAV download), `glowme-phase3-review` (320/landscape844/installed1440) and `uiux-review` (five viewports plus three true delayed-module reloads and effect-switch/press cleanup) all passed locally. Complete diff and CRLF-aware checks pass. No changes to account/cache/message behavior and no real user data. Prior clear-controls/preset/browser receipts remain valid; this correction narrows only the obsolete voice fallback. Hosted exact-head CI must now rerun before the approved merge, Pages deployment and independent public validation.
+
+Receipts: `/workspace/deploy-139-20261117/` (`failed-summary.json`, `conversation-connector.log`, `channel-connector.log`, `unit-final.log`, `conversation-controls-final.log`, `glowme-phase3-review-final.log`, `uiux-review-final.log`). Resume with `gh pr view 139 --json headRefOid,statusCheckRollup`. User approval already covers completing this correction and deployment; do not ask again.
+
 ## Clear controls and fixed sidebar preset — 2026-11-17 (Asia/Seoul)
 
 User requested disconnecting the scroll-to-top engine, fixing sidebar effects to the supplied settings screenshot, and agreed to applying clear styling to all play/download controls (“함께 적용”). Follow-up explicitly includes header buttons: transparent, with only a pointer-following shine. Continues existing feature branch from `07f4fd8169e988631239b301be65834cec08b685`, clean start, no open PR; fetched main remains PR #138 deployment `a3a18b9f939c9868f089b2a70d3e435d7940bc53`. This new batch has implementation approval, not merge/deploy approval; prepare a reviewable PR.

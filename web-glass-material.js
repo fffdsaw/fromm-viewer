@@ -18,8 +18,23 @@ export function createGlass(Engine,element,options){
  let FullGlass=classes.get(Engine);
  if(!FullGlass){
   FullGlass=class extends Engine {
-   async installFilter(){await super.installFilter();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
-   async regenerateAfterResize(){await super.regenerateAfterResize();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
+   get fixedSurface(){return this.element.classList.contains('fixed-glass-surface');}
+   // Fixed action chrome needs the SDK's specular material, but no displacement
+   // map, RGB topology, GPU scene copy or scroll-safe filter swapping.
+   shouldFallback(){return this.fixedSurface?false:super.shouldFallback();}
+   shouldUseScrollSafe(){return !this.fixedSurface&&super.shouldUseScrollSafe();}
+   async installFixedMaterial(){
+    if(this.suspended||this.destroyed)return;
+    this.cancelPendingBuild();const generation=this.buildGeneration;
+    const map=this.options.specular?await this.specularMapUrl():null;
+    if(!this.isBuildCurrent(generation))return;
+    this.element.style.backgroundImage=map?`url("${map}")`:'none';
+    const filter=`blur(${this.effectiveBlur()}px) saturate(${this.options.saturation/100})`;
+    this.element.style.backdropFilter=filter;this.element.style.webkitBackdropFilter=filter;
+    this.element.dataset.fixedMaterial='ready';
+   }
+   async installFilter(){if(this.fixedSurface)return this.installFixedMaterial();await super.installFilter();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
+   async regenerateAfterResize(){if(this.fixedSurface)return this.installFixedMaterial();await super.regenerateAfterResize();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
    effectiveRefraction(){return this.options.refraction;}
    profiledRefraction(){return this.options.refraction;}
    computedThickness(){return this.options.thickness;}

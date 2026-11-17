@@ -13,6 +13,23 @@ async function rail(page){return page.locator('.rail-lens-surface').evaluate(e=>
    assert.equal(await p.locator('.capsule-save-control').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
    assert.equal(await p.evaluate(()=>FrommGlowME.capsule.builds),0,'native Save never creates a capsule engine');
   }
+  await p.waitForFunction(()=>document.querySelector('.card-download .fixed-glass-surface')?.dataset.fixedMaterial==='ready');
+  const fixedAction=await p.locator('.card-download .fixed-glass-surface').first().evaluate(e=>{window.preservedFixedAction=e;return {map:e.style.backgroundImage,filter:e.style.backdropFilter};});
+  assert.match(fixedAction.map,/url\(/,'actual SDK specular map is installed');assert.equal(fixedAction.filter,'blur(0.4px) saturate(1.17)');
+  assert.deepEqual(await p.evaluate(()=>FrommFixedGlass.preset),{refraction:0,thickness:11,blur:.4,saturation:117,chromatic:0,opacity:51,specular:26});
+  const actionBuilds=await p.evaluate(()=>FrommFixedGlass.snapshot.builds);
+  for(const patch of [{refraction:80,chromatic:100,blur:6,saturation:150,opacity:60,specular:60},{refraction:0,chromatic:0,blur:0,saturation:80,opacity:0,specular:0}]){
+   await p.evaluate(patch=>FrommGlassSettings.set(patch,{immediate:true,persist:false}),patch);await p.waitForTimeout(120);
+   assert.deepEqual(await p.locator('.card-download .fixed-glass-surface').first().evaluate(e=>({map:e.style.backgroundImage,filter:e.style.backdropFilter})),fixedAction,'sliders cannot change fixed actions');
+  }
+  assert.equal(await p.evaluate(()=>FrommFixedGlass.snapshot.builds),actionBuilds,'slider input never rebuilds action maps');
+  assert.equal(await p.locator('.card-download .fixed-glass-surface').first().evaluate(e=>e===preservedFixedAction),true);
+  assert.equal(await p.locator('.card-download feDisplacementMap,.card-download filter').count(),0,'fixed chrome never constructs a displacement/RGB filter');
+  const selectAll=p.locator('#selectAllBtn');await p.waitForFunction(()=>document.querySelector('#selectAllBtn .fixed-glass-surface')?.dataset.fixedMaterial==='ready');
+  await selectAll.evaluate(e=>{window.fixedSelectFace=e.querySelector('.fixed-glass-surface');});
+  const beforeToggle=await p.evaluate(()=>FrommFixedGlass.snapshot.builds);await selectAll.dispatchEvent('click');await p.waitForTimeout(120);
+  assert.equal(await selectAll.evaluate(e=>e.querySelector('.fixed-glass-surface')===fixedSelectFace),true,'native text changes retain the exact fixed material');
+  assert.equal(await p.evaluate(()=>FrommFixedGlass.snapshot.builds),beforeToggle,'selection does not bake another specular map');
   if(config.width>700){
    const target=p.locator('#selectAllBtn'),box=await target.boundingBox();await p.mouse.move(box.x+4,box.y+6);await p.waitForTimeout(80);const first=await target.evaluate(e=>({x:e.style.getPropertyValue('--clear-pointer-x'),paint:getComputedStyle(e).backgroundImage}));await p.mouse.move(box.x+box.width-4,box.y+box.height-6);await p.waitForTimeout(80);const second=await target.evaluate(e=>({x:e.style.getPropertyValue('--clear-pointer-x'),paint:getComputedStyle(e).backgroundImage}));assert.notEqual(first.x,second.x);assert.notEqual(first.paint,second.paint);assert.match(second.paint,/radial-gradient/);await plain(p,'#selectAllBtn');
    await p.evaluate(()=>FrommGlowME.setRailOpen(true));await p.waitForTimeout(300);await p.locator('[data-glow-nav="sound"]').hover();await p.waitForFunction(()=>{const e=document.querySelector('.rail-lens-surface'),id=/url\(["']?#([^"')]+)/.exec(e?.style.backdropFilter)?.[1];return !!document.querySelector('#'+id+' [data-rail-neutral]')});
@@ -24,6 +41,6 @@ async function rail(page){return page.locator('.rail-lens-surface').evaluate(e=>
   }
   const download=p.waitForEvent('download');await p.locator('.card-download').first().click();assert.ok(fs.statSync(await(await download).path()).size>0,'native download still returns fixture bytes');
   if(output){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,'clear-'+config.width+'.png')});}
-  await p.emulateMedia({reducedMotion:'reduce'});await plain(p,'.card-download');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(config.width+': six clear palettes, native Save/download/top, pointer glint, fixed sidebar sliders/master and accessibility PASS');
+  await p.emulateMedia({reducedMotion:'reduce'});await plain(p,'.card-download');await p.emulateMedia({forcedColors:'active'});await p.waitForFunction(()=>FrommFixedGlass.snapshot.count===0);await p.emulateMedia({forcedColors:'none'});await p.emulateMedia({reducedMotion:'no-preference'});await p.waitForFunction(()=>getComputedStyle(document.querySelector('.card-download')).backgroundColor==='rgba(0, 0, 0, 0)');await plain(p,'.card-download');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();console.log(config.width+': six palettes, native actions, real fixed SDK specular/zero distortion, pointer glint, independent presets and accessibility PASS');
  }
 }finally{await b.close();await s.close()}})().catch(e=>{console.error(e);process.exitCode=1});

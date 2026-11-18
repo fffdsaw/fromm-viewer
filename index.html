@@ -1109,8 +1109,9 @@ body.download-marquee-active{user-select:none;cursor:default}
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=clear-controls-20261117">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
-<link rel="stylesheet" href="themes.css?v=fixed-actions-20261117">
+<link rel="stylesheet" href="themes.css?v=compact-icons-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
+<link rel="stylesheet" href="channel-photos.css?v=albums-20261118">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -1456,7 +1457,7 @@ function videoListError(kind) {
 function bindVideoListAuto(kind, filter) {
   disconnectVideoListAuto();
   bindVideoListThumbnails();
-  const s = videoListAuto, scope = JSON.stringify([kind, filter]);
+  const s = videoListAuto, scope = JSON.stringify(kind === "channel" && channelVideoState.mediaType === "image" ? [kind,filter,"image"] : [kind, filter]);
   if (s.scope !== scope) Object.assign(s, {scope, emptyPages:0, paused:false});
   const sameSession = channelVideoSession();
   const current = () => sameSession() && state.filter === "live" && state.live.centerMode === kind &&
@@ -1545,7 +1546,7 @@ async function replayListRequest(path, options, current) {
 // Uploaded channel videos use the Viewer's session and media helpers.
 // List, selection, playback and request generations are independent of Replay.
 const channelVideoState = {
-  channelId: "", pages: new Map(), loading: false, error: "", requestSeq: 0,
+  channelId: "", mediaType: "video", mediaScrolls: new Map(), pages: new Map(), loading: false, error: "", requestSeq: 0,
   notice: "", loadingMessage: "", requestAbort: null,
   selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0, historyListId: "",
 };
@@ -1559,7 +1560,12 @@ function channelVideosActive() {
 }
 
 function channelVideoPage() {
-  return channelVideoState.pages.get(channelVideoState.channelId);
+  return channelVideoState.pages.get(channelVideoPageKey());
+}
+
+function channelVideoPageKey() {
+  const s=channelVideoState;
+  return s.mediaType === "image" ? JSON.stringify([s.channelId,"image"]) : s.channelId;
 }
 
 function channelVideoSession() {
@@ -1594,7 +1600,10 @@ function resetChannelVideos() {
   stopChannelVideoPlayback();
   channelVideoState.requestSeq++;
   channelVideoState.requestAbort?.abort();
+  window.FrommChannelPhotos?.close();
+  channelVideoState.mediaScrolls.clear();
   channelVideoState.pages.clear();
+  channelVideoState.mediaType = "video";
   channelVideoState.channelId = "";
   channelVideoState.listScrollY = 0;
   channelVideoState.loading = false;
@@ -1675,7 +1684,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
   s.loading = true;
   s.error = "";
   s.notice = "";
-  s.loadingMessage = loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
+  s.loadingMessage = s.mediaType === "image" ? "채널 사진을 불러오는 중..." : loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
   if (channelVideosActive() && !s.selected) renderLiveView();
   try {
     const channels = await channelVideoChannels(current);
@@ -1685,8 +1694,9 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
     }
     const channel = channels.find(c => c.id === s.channelId);
     if (!channel) return;
-    if (refresh) s.pages.delete(channel.id);
-    let page = s.pages.get(channel.id);
+    const pageKey=channelVideoPageKey();
+    if (refresh) s.pages.delete(pageKey);
+    let page = s.pages.get(pageKey);
     if (page?.loaded && !loadMore) return;
     if (loadMore && page?.isLast) return;
     page ||= {posts: [], lastPost: null, loaded: false, isLast: false};
@@ -1718,7 +1728,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       const cursor = raw.at(-1);
       const posts = new Map(page.posts.map(p => [String(p.id), p]));
       for (const p of raw) {
-        if (p?.id != null && p.type === "video" && p.isVisible !== false) {
+        if (p?.id != null && p.type === s.mediaType && p.isVisible !== false) {
           posts.set(String(p.id), {...p, _channelId: channel.id, _channelName: channel.channelName});
         }
       }
@@ -1727,13 +1737,13 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       page.lastPost = cursor || page.lastPost;
       page.isLast = data.isLast === true || raw.length === 0;
       page.loaded = true;
-      s.pages.set(channel.id, page);
+      s.pages.set(pageKey, page);
       if (cursor) seen.add(cursorKey(cursor));
       page.cursorKeys = seen;
       if (page.posts.length > initialCount || page.isLast) break;
     }
     if (page.posts.length === initialCount) {
-      s.notice = page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 다시 시도를 누르면 이어서 확인합니다.";
+      s.notice = s.mediaType === "image" ? (page.isLast ? "업로드된 사진을 모두 확인했습니다." : "아직 추가 사진이 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 다시 시도를 누르면 이어서 확인합니다.";
     }
   } catch (e) {
     if (current()) s.error = safeErrorDetail(e?.message || "채널 영상을 불러오지 못했습니다.");
@@ -1750,6 +1760,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
 
 async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
   if (!restoreHistory) channelHistoryNavigation++;
+  window.FrommChannelPhotos?.close();
   const requested=String(channelId || "");
   const focused=document.activeElement?.dataset?.channelVideoFilter===requested;
   const id=(state.live.channelsLoaded || state.live.channels.length) ? subscribedChannelSelection(requested) : requested;
@@ -1784,29 +1795,32 @@ function renderChannelVideosView() {
     </div>`;
   } else {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
+      if(s.mediaType === "image") return renderChannelPhotoCard(p);
       const thumb = replayThumb(p);
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
         <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
-    }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? "채널 영상을 불러오는 중..." : !state.live.channels.length ? "구독 중인 채널이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다."}</div>`;
+    }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? (s.mediaType === "image" ? "채널 사진을 불러오는 중..." : "채널 영상을 불러오는 중...") : !state.live.channels.length ? "구독 중인 채널이 없습니다." : (s.mediaType === "image" ? "이 페이지에 업로드된 사진이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다.")}</div>`;
     body = `<div class="video-list-content">${body}</div><div class="video-list-footer">`;
-    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice || (!s.error && channelVideoPage()?.loaded && channelVideoPage()?.isLast && posts.length) ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice || "더 불러올 영상이 없습니다.")}</p>`;
+    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice || (!s.error && channelVideoPage()?.loaded && channelVideoPage()?.isLast && posts.length) ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice || (s.mediaType === "image" ? "더 불러올 사진이 없습니다." : "더 불러올 영상이 없습니다."))}</p>`;
     if (s.loading || s.error || (s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast))) {
       body += `<button id="channelLoadMore" class="btn replay-more" type="button" ${s.loading ? 'disabled aria-busy="true"' : ""}>${s.loading ? "불러오는 중..." : s.error ? "다시 시도" : "더 불러오기"}</button>`;
     }
   }
   if (!selected) body += `</div>`;
   const markup = `<div class="live-shell replay-list-shell channel-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
-    <div class="replay-toolbar"><div class="replay-filter-strip" aria-label="구독 채널 선택">${filters}</div><span class="replay-count">업로드된 비디오 ${posts.length}개</span><button id="channelRefresh" class="btn" type="button" ${s.loading ? "disabled" : ""}>새로고침</button></div>
+    <div class="replay-toolbar"><div class="replay-filter-strip" aria-label="구독 채널 선택">${filters}</div><span class="replay-count">${s.mediaType === "image" ? "사진 게시물" : "업로드된 비디오"} ${posts.length}개</span><button id="channelRefresh" class="btn" type="button" ${s.loading ? "disabled" : ""}>새로고침</button></div>
+    ${selected ? "" : `<div class="channel-media-tabs" role="group" aria-label="채널 미디어 종류">${["video","image"].map(type=>`<button class="replay-filter ${s.mediaType===type ? "active" : ""}" type="button" data-channel-media-type="${type}" aria-pressed="${s.mediaType===type}">${type==="image" ? "사진" : "영상"}</button>`).join("")}</div>`}
     <div class="video-list-feedback">${s.error ? `<p class="live-entry-note replay-error" role="alert">${esc(s.error)}</p>` : ""}</div>${body}
   </div></div></div>`;
   if (selected) $("#timeline").innerHTML = markup;
-  else renderVideoListMarkup(markup, JSON.stringify(["channel", s.channelId]));
+  else renderVideoListMarkup(markup, JSON.stringify(s.mediaType === "image" ? ["channel",s.channelId,"image"] : ["channel", s.channelId]));
   bindLiveCenterTabs();
+  window.FrommChannelPhotos?.bind();
   for (const card of document.querySelectorAll("[data-channel-video-card]")) {
     if (card.dataset.videoListBound) continue;
-    bindDownloadSelection(card,"channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
+    bindDownloadSelection(card,s.mediaType === "image" ? "channel-image" : "channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
     card.dataset.videoListBound = "true";
   }
   for (const btn of document.querySelectorAll("[data-channel-video-filter]")) btn.onclick = () => selectChannelVideos(btn.dataset.channelVideoFilter);
@@ -1891,6 +1905,7 @@ function returnToChannelList() {
 async function restoreChannelHistory(route) {
   const navigation = ++channelHistoryNavigation;
   const s = channelVideoState;
+  if(s.mediaType !== "video") await selectChannelMediaType("video",{restoreHistory:true});
   stopChannelVideoPlayback();
   const current = () => {
     const now = history.state;
@@ -8033,7 +8048,7 @@ function filteredMessages(){
 }
 
 function downloadSelectionContext(){
-  if(state.filter==="live") return `${state.live.centerMode}:${state.live.centerMode==="channel" ? channelVideoState.channelId : state.live.replayFilter}`;
+  if(state.filter==="live") return `${state.live.centerMode}:${state.live.centerMode==="channel" ? channelVideoState.channelId+":"+channelVideoState.mediaType : state.live.replayFilter}`;
   return `media:${state.room?.hostChatRoomId || state.room?.id}:${state.filter}:${state.sortDirection}:${state.chatQuery}:${state.selectedDate}`;
 }
 
@@ -8041,7 +8056,7 @@ function downloadSelectionScope(){
   if(state.filter==="live"){
     const kind=state.live.centerMode;
     const items=kind==="channel" ? (channelVideoPage()?.posts || []) : kind==="replay" ? visibleReplayPosts() : [];
-    return {kind,items,context:downloadSelectionContext()};
+    return {kind:kind==="channel" && channelVideoState.mediaType==="image" ? "channel-image" : kind,items,context:downloadSelectionContext()};
   }
   return {kind:"media",items:filteredMessages().filter(m=>isArtist(m) && hasUsableMedia(m)),context:downloadSelectionContext()};
 }
@@ -8123,6 +8138,7 @@ function downloadSelectionControl(event){
 }
 
 function openDownloadPreview(kind,item){
+  if(kind === "channel-image") { void openChannelPhotoAlbum(item); return; }
   if(kind==="channel"){playChannelVideo(item.id);return;}
   if(kind==="replay"){playReplay(item.id,item._channelId);return;}
   const type=normType(item.type), caption=`${baseName(item)} · ${dateKey(item)} ${timeLabel(item)}`;
@@ -8259,6 +8275,7 @@ function initDownloadMarqueeSelection(){
 }
 
 async function saveSelectedPosts(){
+  if(downloadSelectionScope().kind === "channel-image") return saveSelectedChannelPhotos();
   if(state.postBulkSaving || state.live.replayDownloading || channelVideoState.downloading || postDownloadRunning) return;
   const scope=downloadSelectionScope();
   const items=scope.items.filter(p=>state.postSelected.has(downloadSelectionKey(scope.kind,p)));
@@ -11310,6 +11327,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=queue-recovery-20261117"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
+<script src="web-channel-photos.js?v=albums-20261118"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11322,6 +11340,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=fixed-actions-20261117"></script>
+<script type="module" src="web-glass.js?v=compact-icons-20261118"></script>
 </body>
 </html>

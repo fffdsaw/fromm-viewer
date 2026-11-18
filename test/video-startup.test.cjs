@@ -46,7 +46,7 @@ test('pagination cleanup restarts pending thumbnails even when the terminal page
 // Channel selection now follows a shared first-valid rule; paging behavior is exercised in browser tests.
 test('startup changes preserve LIVE/auth/download and automatic pagination source contracts',()=>{
  const baseline=execFileSync('git',['show','b78f2b1:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
- for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n',''):fn(name),fn(name,baseline),name);
+ for(const name of ['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'])assert.equal(name==='bindVideoListAuto'?fn(name).replace('  bindVideoListThumbnails();\n','').replace('JSON.stringify(kind === \"channel\" && channelVideoState.mediaType === \"image\" ? [kind,filter,\"image\"] : [kind, filter])','JSON.stringify([kind, filter])'):fn(name),fn(name,baseline),name);
  const lf=s=>s.replace(/\r\n/g,'\n');
  const slice=(s,start,end)=>s.slice(s.indexOf(start),s.indexOf(end));
  for(const file of ['web-native-live.js','web-live-pip.js','web-live-chat-probe.js']){

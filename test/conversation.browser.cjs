@@ -60,10 +60,16 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    const beforeRestore=historyRequests;await page.reload();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected'&&typeof window.fakePush==='function');assert.equal(await page.evaluate(()=>state.room?.hostChatRoomId),'host-a','last artist restored after authenticated room discovery');
    assert.equal(historyRequests,beforeRestore,'restored full history does not scan the server from year 2000 again');
    assert.equal(await page.locator('#conversationInput').inputValue(),'재방문해도 남길 작성 중인 글');assert.equal(await page.evaluate(()=>state.messages.length),1200);
+   // This case receives while following latest. Restore/connect completes before
+   // viewport alignment, especially on Windows/mobile; wait for that precondition.
+   await page.waitForFunction(()=>!state.chatAutoTopPending&&!FrommViewState.pending&&state.infiniteRendered>=state.infiniteList.length&&document.documentElement.scrollHeight-scrollY-innerHeight<5);
    // Push is only a hint; the authenticated REST response supplies canonical rows.
    const firstNew={messageId:'push-1',userType:'star',type:'text',content:'실시간 새 대화',createdAt:Date.now()-10};rows.push(firstNew);
    await page.evaluate(()=>fakePush({metadata:{fromCache:false},docChanges:()=>[{type:'added'}]}));
-   await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='push-1'));assert.equal(await page.locator('[data-message-id="push-1"]').count(),1);
+   await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='push-1'));
+   // Canonical rows publish before the coalesced render frame; verify both boundaries.
+   await page.locator('[data-message-id="push-1"]').waitFor({state:'attached'});
+   assert.equal(await page.locator('[data-message-id="push-1"]').count(),1);
    await page.evaluate(()=>fakePush({metadata:{fromCache:false},docChanges:()=>[{type:'modified'}]}));await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>state.messages.filter(m=>m.messageId==='push-1').length),1);
    // Enter during Korean IME composition must not send.
    await page.locator('#conversationInput').fill('입력 중');await page.locator('#conversationInput').dispatchEvent('keydown',{key:'Enter',isComposing:true});await page.waitForTimeout(100);assert.equal(posts.length,0);

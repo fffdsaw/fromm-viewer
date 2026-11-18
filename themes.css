@@ -173,7 +173,7 @@
 :root[data-fromm-theme].glowme.glowme-phase3 #timeline .chat-sound-bubble .small-player-button{color:var(--theme-text)!important;text-shadow:none}
 :root[data-fromm-theme].glowme.glowme-phase3 .capsule-save-control>.capsule-optics{display:none!important}
 @media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
- :root[data-fromm-theme].glowme.glowme-phase3 :is(#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn):hover:not(:disabled){
+ :root[data-fromm-theme].glowme.glowme-phase3 :is(#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn):hover:not(:disabled):not(.small-player-button){
   background-image:radial-gradient(48px circle at var(--clear-pointer-x,50%) var(--clear-pointer-y,50%),#ffffff42,transparent 75%)!important;
  }
 }

@@ -391,3 +391,56 @@ test('existing session request helper supplies authorization, stable UUID and ch
 
 for(const [channels,value,expected] of [[[],"all",""],[[{id:"a"}],"all","a"],[[{id:"a"},{id:"b"}],"b","b"],[[{id:"a"},{id:"b"}],"missing","a"]])test(`shared subscribed channel selection ${value} -> ${expected}`,()=>{const h=setup();h.state.live.channels=channels;h.state.live.channelsLoaded=true;h.state.live.replayFilter=value;assert.equal(h.context.normalizeReplayChannelSelection(),expected);assert.equal(h.context.subscribedChannelSelection(value),expected);});
 test('valid pending Replay selection survives subscription fetch; legacy all never exposes other-channel posts',()=>{const h=setup();h.state.live.replayFilter='b';assert.equal(h.context.normalizeReplayChannelSelection(),'');assert.equal(h.state.live.replayFilter,'b');h.state.live.channels=[{id:'a'},{id:'b'}];h.state.live.channelsLoaded=true;assert.equal(h.context.normalizeReplayChannelSelection(),'b');vm.runInContext(fn('visibleReplayPosts'),h.context);h.state.live.replayPosts=[{id:'a1',_channelId:'a'},{id:'b1',_channelId:'b'}];assert.equal(h.context.visibleReplayPosts()[0].id,'b1');h.state.live.replayFilter='all';assert.deepEqual(Array.from(h.context.visibleReplayPosts(),p=>p.id),['a1']);h.state.live.channels=[];assert.equal(h.context.visibleReplayPosts().length,0);});
+
+test('Channel photos isolate pages, filter images, and keep the raw cursor across photo-empty pages',async()=>{
+  const h=setup();await h.context.loadChannelVideos();
+  h.s.mediaType='image';let requests=0;const cursors=[];
+  h.context.frommApiRequest=async(_path,{query})=>{
+    cursors.push(query.postId);requests++;
+    return {data:requests===1?{posts:[{id:'video-tail',type:'video',num:4,displayStartAt:8}],isLast:false}:{posts:[{id:'album',type:'image',urls:['https://fixture.test/1.jpg']},{id:'hidden-album',type:'image',isVisible:false}],isLast:true}};
+  };
+  await h.context.loadChannelVideos();
+  const photos=h.context.channelVideoPage();
+  assert.deepEqual(cursors,[undefined,'video-tail']);
+  assert.deepEqual(Array.from(photos.posts,p=>p.id),['album']);assert.equal(photos.isLast,true);
+  h.s.mediaType='video';assert.deepEqual(Array.from(h.context.channelVideoPage().posts,p=>p.id),['v1']);
+});
+
+test('photo detail validates permission/type/album URLs and original URLs only change for official content hosts',async()=>{
+  const h=setup();await h.context.loadChannelVideos();h.s.mediaType='image';
+  vm.runInContext(fs.readFileSync(path.join(root,'web-channel-photos.js'),'utf8'),h.context);
+  const post={id:'album',type:'image',_channelId:'a'};
+  h.context.frommApiRequest=async()=>({data:{post:{...post,urls:['https://fixture.test/photo.webp']}}});
+  assert.equal((await h.context.fetchChannelPhotoDetail(post)).urls.length,1);
+  for(const detail of [{...post,type:'video',url:'https://fixture.test/v.m3u8'},{...post,urls:['javascript:bad']},{...post,urls:[]},{...post,isVisible:false,urls:['https://fixture.test/x.jpg']}]){
+    h.context.frommApiRequest=async()=>({data:{post:detail}});
+    await assert.rejects(()=>h.context.fetchChannelPhotoDetail(post));
+  }
+  assert.equal(h.context.channelPhotoOriginal('https://channel-contents.frommyarti.com/album/p_720x1080.webp?key=synthetic'),'https://channel-contents.frommyarti.com/album/p.jpg?key=synthetic');
+  assert.equal(h.context.channelPhotoOriginal('https://fixture.test/photo.webp'),'https://fixture.test/photo.webp');
+  const gate=deferred();h.context.frommApiRequest=()=>gate.promise;
+  const pending=h.context.fetchChannelPhotoDetail(post);h.setAuth({token:'changed',uuid:'changed'});gate.resolve({data:{post:{...post,urls:['https://fixture.test/x.jpg']}}});
+  await assert.rejects(()=>pending,/세션/);
+});
+
+test('album folder save preserves partial selection, retries without overwriting equal-sized files, and rejects stale writes',async()=>{
+  const h=setup();await h.context.loadChannelVideos();h.s.mediaType='image';
+  vm.runInContext(fs.readFileSync(path.join(root,'web-channel-photos.js'),'utf8'),h.context);
+  const post={id:'album',_channelId:'a',title:'Album'},files=new Map();let failSecond=true,writes=0;
+  Object.assign(h.context,{
+    postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',
+    syncDownloadSelection(){},drainPostDownloads(){},downloadSelectionKey:(_kind,p)=>p.id,
+    fetchChannelPhotoDetail:async()=>({...post,urls:['https://fixture.test/one','https://fixture.test/two']}),
+    fetchChannelPhotoBlob:async url=>{if(failSecond&&url.endsWith('two'))throw new Error('offline');return {blob:new Blob(['synthetic image']),contentType:'image/jpeg'};}
+  });
+  h.state.postSelected=new Set(['album']);
+  h.context.window.showDirectoryPicker=async()=>({getFileHandle:async(name,{create}={})=>{
+    if(!create&&!files.has(name))throw Object.assign(new Error('missing'),{name:'NotFoundError'});
+    return {getFile:async()=>files.get(name),createWritable:async()=>({write:async blob=>{writes++;files.set(name,blob);},close:async()=>{},abort:async()=>{}})};
+  }});
+  await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,1);assert.equal(h.state.postSelected.has('album'),true);
+  failSecond=false;await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),false);assert.match(h.alerts.at(-1),/건너뜀/);
+  h.state.postSelected.add('album');
+  h.context.fetchChannelPhotoBlob=async()=>{h.s.playSeq++;return {blob:new Blob(['stale bytes']),contentType:'image/jpeg'};};
+  await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),true);assert.equal(h.state.postBulkSaving,false);
+});

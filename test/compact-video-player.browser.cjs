@@ -55,7 +55,7 @@ const fixture=path.join(fixtureDir,'compact.mp4');
   assert.equal(await page.locator('.mvc-compact-controls .mvc-pip,.mvc-compact-controls .mvc-settings').count(),0,'compact player omits settings and PiP');
   assert.equal(await page.locator('.mvc-compact-controls [data-compact="play"]').getAttribute('aria-label'),'재생');
   await page.locator('.mvc-compact-controls [data-compact="play"]').focus();
-  await page.waitForTimeout(200);assert.equal(await page.locator('.mvc-compact-controls .control-glass-surface').count(),0,'icon-only compact controls never mount optics');
+  await page.waitForTimeout(200);assert.equal(await page.locator('.mvc-compact-controls .control-glass-surface,.mvc-compact-controls .fixed-glass-surface').count(),0,'icon-only compact controls never mount adjustable or fixed optics');
   await page.locator('.mvc-compact-controls [data-compact="play"]').click();
   await page.waitForFunction(()=>{const video=document.querySelector('.media-card[data-message-id="compact-gallery"] video');return video.currentTime>.35;});
   await page.locator('.mvc-compact-controls .mvc-seek').evaluate(input=>{input.value='2';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});

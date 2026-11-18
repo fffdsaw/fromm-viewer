@@ -6,7 +6,9 @@ export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-downlo
 // unrelated fixed actions retain their own material owner.
 export const cssDropletControls='.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button';
 const plainPlayerControls='.modern-video-controls .mvc-button,.video-playlist-toggle';
-const fixedAction=el=>!el.matches(cssDropletControls)&&!(pcMediaPresentation()&&el.matches(plainPlayerControls));
+const desktop=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
+const plainPlayer=el=>desktop.matches&&el.matches(plainPlayerControls);
+const fixedAction=el=>!el.matches(cssDropletControls)&&!plainPlayer(el);
 const fixedPreset=Object.freeze({refraction:0,thickness:11,blur:.4,saturation:117,chromatic:0,opacity:51,specular:26});
 const opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const surfaces=new Map(),watched=new Set(),near=new Set();
@@ -67,13 +69,13 @@ function paint(){
 }
 document.addEventListener('pointermove',event=>{
  if(event.pointerType==='touch'||!fine.matches||motion.matches)return;
- const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el||el.matches('.small-player-button')||pcMediaPresentation()&&el.matches(plainPlayerControls))return;
+ const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el||el.matches('.small-player-button')||plainPlayer(el))return;
  point={el,x:event.clientX,y:event.clientY};if(!frame)frame=requestAnimationFrame(paint);
 },{passive:true});
 document.addEventListener('pointerout',event=>{const el=event.target instanceof Element?event.target.closest(clearControls):null;if(el&&!(event.relatedTarget instanceof Node&&el.contains(event.relatedTarget))){if(point?.el===el){cancelAnimationFrame(frame);frame=0;point=null;}clearLight(el);}},{passive:true});
 function reset(){cancelAnimationFrame(frame);frame=0;point=null;clearLight(lit);}
 window.addEventListener('pagehide',reset);window.addEventListener('blur',reset);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();scheduleMaterial();});
-matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)').addEventListener('change',()=>{dirty=true;scheduleMaterial();});
+desktop.addEventListener('change',()=>{dirty=true;scheduleMaterial();});
 motion.addEventListener('change',()=>{for(const item of surfaces.values()){item.glass?.destroy();item.glass=null;item.face.removeAttribute('style');delete item.face.dataset.fixedMaterial;}scheduleMaterial();});
 scheduleMaterial();

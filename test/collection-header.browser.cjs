@@ -53,6 +53,17 @@ async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true})
   }
   for(const kind of ['media','sound','video','image']){
    await p.evaluate(kind=>{setFilter(kind);scrollTo(0,0);},kind);await p.mouse.move(0,0);await p.waitForTimeout(180);assert.equal(await p.locator('.collection-action-row').isVisible(),true);assert.equal(await p.locator('#sortBtn').isVisible(),true);assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);
+   if(width===1440){
+    const sort=p.locator('#sortBtn'),list=p.locator('.media-card[data-message-id]');
+    const endpoints=await p.evaluate(()=>{const items=filteredMessages();return [items.at(-1).messageId,items[0].messageId];});
+    for(const [label,id] of [['과거순',endpoints[0]],['최신순',endpoints[1]]]){
+     await p.evaluate(()=>scrollTo(0,600));
+     await sort.click();
+     await p.waitForFunction(()=>scrollY===0);
+     assert.equal(await sort.innerText(),label);
+     assert.equal(await list.first().getAttribute('data-message-id'),id);
+    }
+   }
    assert.equal(await p.locator('[data-channel-content-menu]').count(),0);const initial=await stableGeometry(p);await p.evaluate(()=>chooseDownloadItem('media',state.infiniteList[0]));await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown',null,{timeout:5000});await p.mouse.move(0,0);await p.waitForTimeout(180);assert.deepEqual(await stableGeometry(p),initial);await p.locator('#clearSelectionBtn').click();await p.waitForFunction(()=>FrommGlowME.capsule.phase==='hidden');assert.deepEqual(await stableGeometry(p),initial);
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   }

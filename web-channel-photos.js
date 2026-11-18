@@ -128,7 +128,7 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
   const current=channelPhotoContext(),oldHTML=button?.innerHTML;if(!current())return;
   state.postBulkSaving=true;channelVideoState.downloading=true;if(button)button.disabled=true;
-  const iconOnly=button?.matches?.('[data-channel-photo-download]')&&pcMediaPresentation();
+  const iconOnly=button?.matches?.('[data-channel-photo-download]')&&window.pcMediaPresentation?.();
   let directory,ok=0,skipped=0,failed=0,status='',phase="idle";
   try{
     if(supportsDirectorySave()){

@@ -153,7 +153,8 @@ async function checkPlainTransport(controls){
    assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').count(),0);
    await video.evaluate(el=>el.pause());
    await checkPlainTransport(controls);
-   await video.evaluate(async el=>{el.muted=true;el.currentTime=0;await el.play();});await page.mouse.move(1,1);
+   await video.evaluate(async el=>{el.muted=true;el.currentTime=0;await el.play();});
+   await video.hover({position:{x:25,y:25}});
    await controls.waitFor({state:'hidden'});
    assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','enlarged player hides idle cursor');
    await video.hover();await controls.waitFor({state:'visible'});

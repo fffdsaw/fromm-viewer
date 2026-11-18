@@ -56,7 +56,7 @@ async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  let LiquidMenu,timer;
  try{const sdk=await Promise.race([loadEngine(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);if(sdk)({LiquidMenu,LiquidGlass}=sdk);}catch{/* Native filtering stays usable if optional optics cannot load. */}finally{clearTimeout(timer);trigger.removeAttribute('aria-busy');}
  if(pending!==request||!trigger.isConnected||!trigger.checkVisibility())return;pending=null;
- const vertical=pcMediaPresentation();
+ const vertical=!!window.pcMediaPresentation?.();
  const skin=document.createElement('div');skin.className='morph-menu-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;
  // Put the optical filter on the animated surface itself on PC. An opacity
  // or filter on a parent would restrict the backdrop a nested lens can sample.

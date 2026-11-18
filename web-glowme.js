@@ -163,7 +163,15 @@
     document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&selectionCount>0);mediaDock.hidden=!active;mediaGap.hidden=true;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
-    if(active){sortControls.style.display='';if(!$('#sortBtn').disabled)setSortButtonLabel(videoList?state.collectionSort?.[state.live.centerMode]||'desc':state.sortDirection);}
+    if(active){
+      sortControls.style.display='';
+      const sort=$('#sortBtn');
+      if(!sort.disabled){
+        const direction=videoList?state.collectionSort?.[state.live.centerMode]||'desc':state.sortDirection;
+        if(window.setSortButtonLabel)window.setSortButtonLabel(direction);
+        else sort.textContent=direction==='asc'?'과거순 ⌄':'최근순 ⌄';
+      }
+    }
     const playerOrLive=mediaPC.matches&&((state.filter==='live'&&!active)||state.filter==='all');
     batchTools.hidden=playerOrLive||(!active&&!selectionCount);batchTools.inert=playerOrLive||(!active&&selectionCount===0);
     const save=$('#saveSelectedBtn'),busy=!!(state.mediaBulkSaving||state.postBulkSaving);

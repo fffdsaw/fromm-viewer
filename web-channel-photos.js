@@ -221,3 +221,7 @@ window.FrommChannelPhotos=(()=>{
   }
   return {open,close,bind};
 })();
+
+// The shell/reader must initialize before this optional feature. Bind if an
+// already-completed startup request rendered Channel while this file loaded.
+window.addEventListener('DOMContentLoaded',()=>{if(channelVideosActive())window.FrommChannelPhotos.bind();},{once:true});

@@ -60,6 +60,9 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    const beforeRestore=historyRequests;await page.reload();await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected'&&typeof window.fakePush==='function');assert.equal(await page.evaluate(()=>state.room?.hostChatRoomId),'host-a','last artist restored after authenticated room discovery');
    assert.equal(historyRequests,beforeRestore,'restored full history does not scan the server from year 2000 again');
    assert.equal(await page.locator('#conversationInput').inputValue(),'재방문해도 남길 작성 중인 글');assert.equal(await page.evaluate(()=>state.messages.length),1200);
+   // This case receives while following latest. Restore/connect completes before
+   // viewport alignment, especially on Windows/mobile; wait for that precondition.
+   await page.waitForFunction(()=>!state.chatAutoTopPending&&!FrommViewState.pending&&state.infiniteRendered>=state.infiniteList.length&&document.documentElement.scrollHeight-scrollY-innerHeight<5);
    // Push is only a hint; the authenticated REST response supplies canonical rows.
    const firstNew={messageId:'push-1',userType:'star',type:'text',content:'실시간 새 대화',createdAt:Date.now()-10};rows.push(firstNew);
    await page.evaluate(()=>fakePush({metadata:{fromCache:false},docChanges:()=>[{type:'added'}]}));

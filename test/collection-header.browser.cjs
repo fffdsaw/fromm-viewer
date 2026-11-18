@@ -4,9 +4,14 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
 const output=process.env.COLLECTION_HEADER_DIR;
 const {seedCollection:seed,stableGeometry}=require('./helpers/collection-fixture.cjs');
 async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,name+'.png')});}}
+async function horizontalGap(section,following){
+ const [left,right]=await Promise.all([section.boundingBox(),following.boundingBox()]);
+ return Math.round(right.x-left.x-left.width);
+}
 (async()=>{const server=await serve(),browser=await chromium.launch();try{
  for(const [width,installed] of [[1440,false],[900,false],[760,false],[701,false],[900,true],[390,false],[320,false]]){
   const {page:p,context,errors}=await open(browser,server.url,{width,height:900,installed});await p.addStyleTag({content:'.replay-card,.media-card{transition:none!important;transform:none!important}'});await p.evaluate(()=>{for(const m of state.messages)if(['video','sound'].includes(m.type))m.content='https://fixture.test/header.'+(m.type==='video'?'mp4':'wav');});
+  const headerGap=width>1100?21:15;
   for(const mode of ['replay','channel']){
    const selector=mode==='replay'?'[data-replay-filter]':'[data-channel-video-filter]';
    for(const n of [0,1,2]){
@@ -18,6 +23,7 @@ async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true})
    const header=await p.locator('.viewer-header').boundingBox(),row=await p.locator('.collection-action-row').boundingBox(),sort=await p.locator('#sortBtn').boundingBox();
    assert.ok(header.height>=110&&header.height<=128,'both collections share two-row header');assert.ok(row.y>header.y&&row.y+row.height<=header.y+header.height+1);assert.ok(sort.x+sort.width<=header.x+header.width-8);
    assert.equal(await p.locator('.pc-mode-heading').isVisible(),true);assert.equal(await p.locator(selector).first().isVisible(),true,'artist filters remain usable at every viewport');
+   if(width>700)assert.equal(await horizontalGap(p.locator('.pc-mode-title'),p.locator(selector).first()),headerGap,'desktop title and filter use the shared header spacing');
    const refresh=p.locator(mode==='channel'?'#channelRefresh':'#scanBtn');assert.equal(await refresh.isVisible(),true);assert.ok(await refresh.getAttribute('aria-label'));
    if(mode==='channel'){assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'전체 ');assert.equal(await p.locator('[data-channel-media-type]').count(),0);}
    await p.mouse.move(0,0);await p.waitForTimeout(180);const original=await stableGeometry(p);await snapshot(p,`${installed?'pwa-':''}${width}-${mode}-zero`);
@@ -53,6 +59,7 @@ async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true})
   }
   for(const kind of ['media','sound','video','image']){
    await p.evaluate(kind=>{setFilter(kind);scrollTo(0,0);},kind);await p.mouse.move(0,0);await p.waitForTimeout(180);assert.equal(await p.locator('.collection-action-row').isVisible(),true);assert.equal(await p.locator('#sortBtn').isVisible(),true);assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);
+   if(width>700)assert.equal(await horizontalGap(p.locator('#artistTitle'),p.locator('#artistMediaStats')),headerGap,'desktop artist title and statistics use the shared header spacing');
    if(width===1440){
     const sort=p.locator('#sortBtn'),list=p.locator('.media-card[data-message-id]');
     const endpoints=await p.evaluate(()=>{const items=filteredMessages();return [items.at(-1).messageId,items[0].messageId];});

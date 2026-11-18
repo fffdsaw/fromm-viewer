@@ -4,6 +4,8 @@
  .channel-photo-meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
  .channel-photo-date{min-width:0;overflow:hidden;text-overflow:ellipsis}
  .channel-photo-count-badge{flex:none;font-variant-numeric:tabular-nums}
+ /* Arrow navigation focuses the dialog to keep handling keys at album boundaries. */
+ .channel-photo-dialog:focus{outline:none}
 }
 @media(max-width:700px), (hover:none), (pointer:coarse){
  .channel-photo-card .replay-body{position:relative}

@@ -147,9 +147,16 @@
   background-color:#ffffff24!important;
  }
  :root[data-fromm-theme].glowme.glowme-phase3.pc-layout .capsule-horizontal-skin{background:#ffffff12}
- .glowme.glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{width:auto;flex:0 0 auto;padding-inline-end:14px}
+ .glowme.glowme-phase3.pc-layout.collection-list{--collection-header-space:10px}
+ /* The channel filter strip already has 2px of padding for focus outlines. */
+ .glowme.glowme-phase3.pc-layout.pc-video-list .topbar{column-gap:calc(var(--collection-header-space) - 2px)}
+ .glowme.glowme-phase3.pc-layout.pc-video-list .pc-mode-heading{width:auto;flex:0 0 auto;gap:var(--collection-header-space)}
+ .glowme.glowme-phase3.pc-layout.pc-video-list .pc-mode-heading::after{margin-inline:0}
+ .glowme.glowme-phase3.pc-layout.collection-list:not(.pc-collection) .artist-copy{gap:var(--collection-header-space)!important}
+ .glowme.glowme-phase3.pc-layout.collection-list:not(.pc-collection) .artist-meta-line{padding-inline-start:var(--collection-header-space)}
+ .glowme.glowme-phase3.pc-layout.collection-list .collection-action-row{column-gap:var(--collection-header-space)}
  .glowme.glowme-phase3.pc-layout .collection-action-row>.pc-mode-count{
-  flex:none;width:auto;min-width:36px;height:auto;font-size:13px;font-weight:650;line-height:1;
+  flex:none;width:auto;min-width:0;height:auto;font-size:13px;font-weight:650;line-height:1;
  }
  .pc-layout.collection-live-list .video-list-end{
   margin-top:16px;margin-inline:var(--pc-media-inset,8px);
@@ -172,6 +179,9 @@
  }
  .pc-layout .lightbox-shared-player #lightboxVideoStage .mvc-panel{border-radius:0 0 14px 14px}
  .pc-layout .replay-download[data-channel-photo-download][data-download-phase]{opacity:1}
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+ .glowme.glowme-phase3.pc-layout.collection-list{--collection-header-space:7px}
 }
 @media(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-transparency:reduce){
  :root[data-fromm-theme].glowme.glowme-phase3.pc-layout :is(.viewer-header button,#mediaActionDock button){--droplet-tint:var(--theme-card)!important}

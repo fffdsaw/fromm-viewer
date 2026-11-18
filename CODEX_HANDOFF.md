@@ -1,3 +1,15 @@
+## Shared desktop collection-header spacing — 2026-11-19 (Asia/Seoul)
+
+Added to the existing album focus fix and PR #144 at https://github.com/fffdsaw/fromm-viewer/pull/144. One desktop spacing value governs the title separator in Replay/Channel and artist statistics in Media, Voice, Video, and Photo. The rendered gap from title to first filter or statistics is 21px on wide screens and 15px at desktop widths of 701–1100px. Channel's second-row count now uses its natural width and the same group's spacing. The 6px between artist filter buttons is preserved. Both CSS URLs were refreshed across the two changes.
+
+Synthetic tests in `test/collection-header.browser.cjs` verify the measured spacing in all six modes at 1440, 900, 760, and 701px and standalone 900px. The full suite, including 390 and 320px regressions, passed. `test/pc-layout.browser.cjs` also passed its 1440/900/760/390px matrix. Local screenshots are in `/tmp/fromm-header-spacing`; local receipts are `/tmp/fromm-header-gap-after.log`, `/tmp/fromm-header-spacing-browser.log`, and `/tmp/fromm-header-layout.log`. Resume with `gh pr view 144 --json url,headRefOid,statusCheckRollup`.
+
+## Channel photo viewer keyboard outline — 2026-11-19 (Asia/Seoul)
+
+Continued `codex/pc-media-controls-20261118` by fast-forwarding to production main `228253a` (PR #143 merged and Pages verified). Arrow navigation intentionally focuses the album dialog, including at album boundaries. Desktop CSS suppresses the outline on the dialog itself and preserves the visible keyboard focus indicator on its buttons. The stylesheet URL was refreshed.
+
+Synthetic regression reproduced the browser's `outline-style: auto` before the CSS fix. Afterward, desktop Chromium checks pass at both album boundaries, and Tab keeps a visible button outline. The full album browser suite passed at 1440 and 390px, including downloads, Escape, and navigation. Native and web unit suite: 335 passed, one existing Agora skip. Node 24.22.1, Playwright 1.62.1, Chromium 151.0.7922.34. Real account and macOS Safari were not tested. Resume with `node test/channel-photos.browser.cjs` and `gh pr view codex/pc-media-controls-20261118 --json url,headRefOid,statusCheckRollup`. This report supplies implementation scope. A new production deployment requires explicit authorization.
+
 ## PC collection controls and player consistency — 2026-11-18 (Asia/Seoul)
 
 Branch `codex/pc-media-controls-20261118` starts at production main `e46b4ee` (PR142). The user explicitly approved the requested PC changes, main merge and GitHub Pages deployment. Check the exact feature head and hosted checks before merging. Use `gh pr view codex/pc-media-controls-20261118 --json url,headRefOid,statusCheckRollup`.

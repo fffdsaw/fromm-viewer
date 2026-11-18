@@ -176,6 +176,7 @@
  }
  function attachPlayer(player){const adapter=collection(player);return adapter?attach({stage:player.video.closest('.replay-page-stage,.channel-player-stage'),video:player.video,adapter}):()=>{};}
  function attachLightbox(video,src){
+  if(pcMediaPresentation())return()=>{};
   const items=filteredMessages().filter(m=>normType(m.type)==='video'&&resolveMediaUrl(m));
   const selected=items.find(m=>resolveMediaUrl(m)===src||proxyUrl(m,false)===src);if(!selected)return()=>{};
   const room=state.room,account=currentAccountScope(),filter=state.filter;

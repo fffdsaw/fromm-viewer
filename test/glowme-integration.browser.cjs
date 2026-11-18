@@ -19,16 +19,45 @@ async function menuReady(p){await p.waitForFunction(()=>FrommMorphMenus.snapshot
   assert.equal(await p.locator('.replay-card').count(),2);assert.equal(await p.locator('.channel-photo-card').count(),1);assert.equal(await p.locator('.channel-photo-count-badge').textContent(),'2장');assert.equal(await p.locator('.channel-photo-badge').count(),0);
   const baseline=await stableGeometry(p),ordinary=await p.locator('#sortBtn').evaluate(e=>({fill:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow}));await plain(p,'[data-channel-content-menu]');await shot(p,width+'-channel-before');
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);const low=await optical(p);assert.ok(low.images>0&&low.scales.length>0,'real Meapri map/filter installed');assert.deepEqual(await stableGeometry(p),baseline,'opening morph does not reflow header or list');
+  if(width>700){
+   const origin=await p.locator('[data-channel-content-menu]').boundingBox();
+   const rows=await p.getByRole('menuitemradio').all();
+   const first=await rows[0].boundingBox(),last=await rows[2].boundingBox();
+   assert.ok(first.y>origin.y+origin.height&&last.y>first.y&&first.x===last.x,'the PC menu opens below the trigger in a single column');
+   assert.ok(await p.locator('.morph-menu-glass').evaluate(e=>e.matches('.morph-menu-skin') && e.getAnimations().length>0),'the animated pane itself samples the background');
+  }
   const content=await p.locator('.morph-menu-content').boundingBox();assert.ok(content.x>=0&&content.x+content.width<=width);assert.ok(await p.locator('[data-morph-value=image]').evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'menu wins hit testing over sort');
   await p.evaluate(()=>FrommGlassSettings.set({refraction:55,thickness:28,chromatic:85,blur:2,saturation:135},{immediate:true,persist:false}));await p.waitForTimeout(600);const high=await optical(p);assert.notDeepEqual(high.scales,low.scales);assert.equal(high.blur,2);assert.equal(high.saturation,1.35);assert.ok(high.scales.length>=3,'shared chromatic preference updates real RGB filter');
   assert.deepEqual(await p.locator('#sortBtn').evaluate(e=>({fill:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow})),ordinary,'ordinary CSS controls ignore optical preferences');
-  assert.equal(await p.locator('.morph-menu-glass').getAttribute('data-adaptive'),'');await p.evaluate(()=>FrommThemes.set('classic'));await p.waitForFunction(()=>document.querySelector('.morph-menu-glass')?.dataset.scheme==='dark');await p.evaluate(()=>FrommThemes.set('glow'));await p.waitForFunction(()=>document.querySelector('.morph-menu-glass')?.dataset.scheme==='light');await shot(p,width+'-channel-menu');await p.keyboard.press('Escape');await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.evaluate(()=>document.activeElement.matches('[data-channel-content-menu]')),true);
+  assert.equal(await p.locator('.morph-menu-glass').getAttribute('data-adaptive'),'');
+  if(width>700)await p.locator('.morph-menu-glass').evaluate(e=>{
+   const rect=e.getBoundingClientRect(),sample=document.createElement('div');
+   sample.id='solid-glass-backdrop';
+   Object.assign(sample.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',zIndex:'1199',backgroundColor:'#101316'});
+   document.body.append(sample);
+  });
+  await p.evaluate(()=>FrommThemes.set('classic'));await p.waitForFunction(()=>document.querySelector('.morph-menu-glass')?.dataset.scheme==='dark');
+  await p.evaluate(()=>{const sample=document.querySelector('#solid-glass-backdrop');if(sample)sample.style.backgroundColor='#effffb';FrommThemes.set('glow');});
+  await p.waitForFunction(()=>document.querySelector('.morph-menu-glass')?.dataset.scheme==='light');
+  await p.evaluate(()=>document.querySelector('#solid-glass-backdrop')?.remove());
+  await shot(p,width+'-channel-menu');await p.keyboard.press('Escape');await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.evaluate(()=>document.activeElement.matches('[data-channel-content-menu]')),true);
   assert.equal(await p.locator('.morph-menu-skin,.morph-menu-content').count(),0);
   // SDK trigger toggle must reverse once, not double-toggle in document delegation.
-  await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await menuReady(p);await p.keyboard.press('End');assert.equal(await p.evaluate(()=>document.activeElement.dataset.morphValue),'image');await p.keyboard.press('Enter');await p.waitForFunction(()=>channelVideoState.mediaType==='image'&&!channelVideoState.loading);assert.equal(await p.locator('.replay-card').count(),1);assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'사진 ⌄');
+  await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await menuReady(p);await p.keyboard.press('End');assert.equal(await p.evaluate(()=>document.activeElement.dataset.morphValue),'image');await p.keyboard.press('Enter');await p.waitForFunction(()=>channelVideoState.mediaType==='image'&&!channelVideoState.loading);assert.equal(await p.locator('.replay-card').count(),1);assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'사진 ');
   await contentFilter(p,'video');assert.equal(await p.locator('.channel-photo-card').count(),0);assert.equal(await p.locator('[data-channel-video-play]').count(),1);await contentFilter(p,'all');assert.equal(await p.locator('.replay-card').count(),2);
   // The mixed all scope delegates album transfer to the existing real blob saver.
   await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items.find(x=>x.type==='image'));});await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');await shot(p,width+'-selected-capsule');await p.locator('#saveSelectedBtn').click();await p.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===0);await p.waitForTimeout(100);assert.equal(saved.length,2);assert.ok(saved.every(x=>x.bytes.includes(Buffer.from('<svg'))));assert.match(alerts.at(-1),/저장/);
+  if(width>700){
+   assert.equal(await p.locator('.channel-photo-meta .channel-photo-count-badge').innerText(),'2장');
+   const button=p.locator('[data-channel-photo-download="p"]');
+   await button.click();
+   await p.waitForFunction(()=>document.querySelector('[data-channel-photo-download="p"]')?.dataset.downloadPhase==='active');
+   assert.equal(await button.innerText(),'');
+   const feedback=await button.locator('.download-feedback-ring').evaluate(e=>({animation:getComputedStyle(e).animationName,display:getComputedStyle(e).display}));
+   assert.equal(feedback.animation,'download-ring-spin');assert.notEqual(feedback.display,'none');
+   await p.waitForFunction(()=>document.querySelector('[data-channel-photo-download="p"]')?.dataset.downloadPhase==='handed-off');
+   assert.equal(saved.length,4);
+  }
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.mouse.click(width-5,850);await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.locator('.morph-menu-skin').count(),0);
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.setViewportSize({width:width-1,height:899});await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.locator('.morph-menu-content').count(),0);
   await p.emulateMedia({reducedMotion:'reduce'});await p.locator('[data-channel-content-menu]').click();await p.waitForFunction(()=>FrommMorphMenus.snapshot.open);assert.equal(await p.evaluate(()=>FrommMorphMenus.snapshot.live),0);await p.keyboard.press('Escape');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.emulateMedia({reducedMotion:'no-preference'});

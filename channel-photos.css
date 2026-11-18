@@ -1,6 +1,8 @@
 .channel-media-tabs{display:flex;gap:4px;flex:none;align-items:center;margin:4px 0 12px}
 .channel-media-tabs .replay-filter{min-width:48px}
-.channel-photo-count-badge{position:absolute;right:54px;bottom:16px;color:#fff;font-size:12px;font-weight:700;text-shadow:0 1px 3px #000b;pointer-events:none}
+.channel-photo-meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.channel-photo-date{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.channel-photo-count-badge{flex:none;font-variant-numeric:tabular-nums}
 .channel-photo-dialog{width:min(1100px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:0;border:1px solid var(--theme-line);border-radius:22px;background:var(--theme-card);color:var(--theme-text);overflow:auto}
 .channel-photo-dialog::backdrop{background:#000b}
 .channel-photo-dialog header,.channel-photo-dialog footer{display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:space-between}

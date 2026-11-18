@@ -19,7 +19,7 @@ async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true})
    assert.ok(header.height>=110&&header.height<=128,'both collections share two-row header');assert.ok(row.y>header.y&&row.y+row.height<=header.y+header.height+1);assert.ok(sort.x+sort.width<=header.x+header.width-8);
    assert.equal(await p.locator('.pc-mode-heading').isVisible(),true);assert.equal(await p.locator(selector).first().isVisible(),true,'artist filters remain usable at every viewport');
    const refresh=p.locator(mode==='channel'?'#channelRefresh':'#scanBtn');assert.equal(await refresh.isVisible(),true);assert.ok(await refresh.getAttribute('aria-label'));
-   if(mode==='channel'){assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'전체 ⌄');assert.equal(await p.locator('[data-channel-media-type]').count(),0);}
+   if(mode==='channel'){assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'전체 ');assert.equal(await p.locator('[data-channel-media-type]').count(),0);}
    await p.mouse.move(0,0);await p.waitForTimeout(180);const original=await stableGeometry(p);await snapshot(p,`${installed?'pwa-':''}${width}-${mode}-zero`);
    await p.locator('.replay-card').first().click({position:{x:24,y:24}});await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');await p.mouse.move(0,0);await p.waitForTimeout(180);assert.equal(await p.locator('#selectedCount').textContent(),'선택 1개');
    assert.equal(await p.locator('#saveSelectedBtn').isEnabled(),true);assert.deepEqual(await stableGeometry(p),original,'first selection does not move header, sort, list or scroll');
@@ -32,6 +32,23 @@ async function snapshot(p,name){if(output){fs.mkdirSync(output,{recursive:true})
    await p.evaluate(mode=>{if(mode==='replay')state.live.replayFilter='all';else channelVideoState.channelId='all';renderLiveView();},mode);assert.equal(await p.locator('.pc-mode-count').textContent(),'13개');
    await p.evaluate(mode=>{if(mode==='replay')state.live.replayFilter='b';else channelVideoState.channelId='b';renderLiveView();},mode);assert.equal(await p.locator('.pc-mode-count').textContent(),'7개','valid restored id survives');
    await p.evaluate(()=>{state.live.channels=state.live.channels.slice(0,1);renderLiveView();});assert.equal(await p.locator('.pc-mode-count').textContent(),'13개','removed subscription falls back to first');
+   if(width===1440){
+    const sort=p.locator('#sortBtn'),cards=p.locator('.replay-grid .replay-card');
+    assert.equal(await p.locator('.collection-action-row > .pc-mode-count').innerText(),'13개');
+    if(mode==='channel')assert.ok(await p.locator('.pc-mode-count + .channel-media-tabs').isVisible());
+    const lastCard=await cards.last().boundingBox(),end=await p.locator('.video-list-end').boundingBox();
+    assert.ok(end.y-(lastCard.y+lastCard.height)>=14,'terminal note clears the last card');
+    assert.ok(await sort.evaluate(el=>{
+     const label=el.querySelector('[data-sort-label]').getBoundingClientRect(),chevron=el.querySelector('svg').getBoundingClientRect();
+     return Math.abs(label.top+label.height/2-chevron.top-chevron.height/2)<1;
+    }));
+    for(const [label,first] of [['과거순','합성 a 12'],['최신순','합성 a 0']]){
+     await p.evaluate(()=>scrollTo(0,600));await sort.click();
+     await p.waitForFunction(()=>scrollY===0);
+     assert.equal(await sort.innerText(),label);
+     assert.equal(await cards.first().locator('.replay-title').innerText(),first);
+    }
+   }
    await p.evaluate(()=>scrollTo(0,600));assert.equal((await p.locator('.viewer-header').boundingBox()).y,width<=700?8:12);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   }
   for(const kind of ['media','sound','video','image']){

@@ -23,7 +23,7 @@ async function selectChannelMediaType(type,{restoreHistory=false}={}) {
 }
 function renderChannelPhotoCard(post) {
   const thumb=replayThumb(post),title=post.title||'채널 사진',count=channelPhotoCount(post);
-  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta">${esc(replayDateLabel(post.displayStartAt))}</div></div></article>`;
+  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta channel-photo-meta"><span class="channel-photo-date">${esc(replayDateLabel(post.displayStartAt))}</span><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div></div></article>`;
 }
 function channelPhotoCount(post) {
   if(Array.isArray(post?.urls)&&post.urls.length)return post.urls.length;
@@ -128,21 +128,43 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
   const current=channelPhotoContext(),oldHTML=button?.innerHTML;if(!current())return;
   state.postBulkSaving=true;channelVideoState.downloading=true;if(button)button.disabled=true;
-  let directory,ok=0,skipped=0,failed=0,status='';
+  const iconOnly=button?.matches?.('[data-channel-photo-download]')&&pcMediaPresentation();
+  let directory,ok=0,skipped=0,failed=0,status='',phase="idle";
   try{
-    if(supportsDirectorySave())directory=await window.showDirectoryPicker();
+    if(supportsDirectorySave()){
+      if(iconOnly)setDownloadButtonFeedback(button,"picker");
+      directory=await window.showDirectoryPicker();
+    }
+    if(iconOnly)setDownloadButtonFeedback(button,"active");
     for(const post of posts){
       if(!current())break;
       try{
-        const result=await saveChannelPhotoContents(post,{directory,current,index,onProgress:(done,total)=>{if(button)button.textContent=`저장 ${done}/${total}`;}});
+        const result=await saveChannelPhotoContents(post,{directory,current,index,onProgress:(done,total)=>{
+          if(iconOnly){
+            button.title=`다운로드 중 · ${done}/${total}장`;
+            button.setAttribute('aria-label',button.title);
+          }else if(button)button.textContent=`저장 ${done}/${total}`;
+        }});
         ok+=result.ok;skipped+=result.skipped;failed+=result.failed;
         if(current()&&result.complete&&index===null)state.postSelected.delete(downloadSelectionKey('channel-image',post));
       }catch{failed++;}
     }
     status=`${directory?'저장':'다운로드 요청'} ${ok}장${skipped?` · 기존 파일 ${skipped}장 건너뜀`:''}${failed?` · 실패 ${failed}개 (선택 유지)`:''}`;
-    if(current())window.alert(status);
-  }catch(error){if(current()&&error.name!=='AbortError')window.alert('사진을 저장하지 못했습니다. 다시 시도해주세요.');}
-  finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;button.innerHTML=oldHTML;}syncDownloadSelection();void drainPostDownloads();}
+    if(current()){
+      phase=failed?'error':directory?'done':'handed-off';
+      if(iconOnly)setDownloadButtonFeedback(button,phase);
+      else window.alert(status);
+    }
+  }catch(error){
+    if(current()&&error.name!=='AbortError'){
+      phase='error';
+      if(iconOnly)setDownloadButtonFeedback(button,phase);
+      else window.alert('사진을 저장하지 못했습니다. 다시 시도해주세요.');
+    }
+  }
+  finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;if(!iconOnly)button.innerHTML=oldHTML;}
+    if(iconOnly&&phase==="idle")setDownloadButtonFeedback(button);
+    syncDownloadSelection();void drainPostDownloads();}
   return status;
 }
 

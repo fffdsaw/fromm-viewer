@@ -140,10 +140,14 @@
     document.documentElement.classList.toggle('pc-has-list-refresh',!!(list&&pcRefresh));
     if(mounted){const strip=mounted.querySelector('.replay-filter-strip');if(strip){if(pcFilterScroll.has(mounted))strip.scrollLeft=pcFilterScroll.get(mounted);else window.revealSubscribedChannelFilter?.(strip.querySelector('.replay-filter.active'));}}
     pcMediaRow.hidden=!active;pcListInfo.hidden=list;
+    const countParent=pc&&list?pcMediaRow:pcHeading;
+    if(pcModeCount.parentElement!==countParent)countParent.prepend(pcModeCount);
     if(channelList){
       const tabs=document.querySelector('#timeline .channel-media-tabs')||pcChannelTabs;
       if(tabs&&tabs!==pcChannelTabs){restoreChannelTabs();pcChannelTabs=tabs;pcChannelTabsHome=document.createComment('Channel content filter home');tabs.before(pcChannelTabsHome);}
-      if(pcChannelTabs&&pcChannelTabs.parentElement!==pcMediaRow)pcMediaRow.prepend(pcChannelTabs);
+      if(pcChannelTabs&&pcChannelTabs.parentElement!==pcMediaRow){
+        if(pc&&list)pcModeCount.after(pcChannelTabs);else pcMediaRow.prepend(pcChannelTabs);
+      }
     }else restoreChannelTabs();
     if(active){
       if(!list){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;}
@@ -159,7 +163,7 @@
     document.documentElement.classList.toggle('video-list-actions',videoList);document.documentElement.classList.toggle('video-selection-visible',videoList&&selectionCount>0);mediaDock.hidden=!active;mediaGap.hidden=true;
     if(batchTools.parentElement!==destination)destination.append(batchTools);
     const sortParent=active?mediaDock:$('.toolbar');if(sortControls.parentElement!==sortParent)sortParent.append(sortControls);
-    if(active){sortControls.style.display='';if(!$('#sortBtn').disabled)$('#sortBtn').textContent=(videoList?state.collectionSort?.[state.live.centerMode]||'desc':state.sortDirection)==='desc'?'최근순 ⌄':'과거순 ⌄';}
+    if(active){sortControls.style.display='';if(!$('#sortBtn').disabled)setSortButtonLabel(videoList?state.collectionSort?.[state.live.centerMode]||'desc':state.sortDirection);}
     const playerOrLive=mediaPC.matches&&((state.filter==='live'&&!active)||state.filter==='all');
     batchTools.hidden=playerOrLive||(!active&&!selectionCount);batchTools.inert=playerOrLive||(!active&&selectionCount===0);
     const save=$('#saveSelectedBtn'),busy=!!(state.mediaBulkSaving||state.postBulkSaving);

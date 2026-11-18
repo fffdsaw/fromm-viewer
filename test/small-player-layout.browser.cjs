@@ -21,7 +21,10 @@ async function iconSurfaces(root){
  // complete painted button, including decorations beneath its icon.
  await root.page().waitForTimeout(160);
  const look=await root.locator('.small-player-button').evaluateAll(es=>es.map(el=>{const s=getComputedStyle(el);return{background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth,shadow:s.boxShadow,faces:el.querySelectorAll('.control-glass-surface,.fixed-glass-surface,.mobile-save-glass').length};}));
- assert.ok(look.every(s=>s.background==='none'&&s.color!=='rgba(0, 0, 0, 0)'&&s.border==='1px'&&s.shadow!=='none'&&s.faces===0),'CSS droplets retain one native rim and no engine '+JSON.stringify(look));
+ const desktop=await root.page().evaluate(()=>pcMediaPresentation());
+ assert.ok(look.every(s=>s.background==='none'&&s.faces===0&&
+  (desktop?s.color==='rgba(0, 0, 0, 0)'&&s.border==='0px'&&s.shadow==='none':s.color!=='rgba(0, 0, 0, 0)'&&s.border==='1px'&&s.shadow!=='none')),
+  'PC player uses plain icons without a rim or engine '+JSON.stringify(look));
 }
 async function rowGeometry(root){
  await iconSurfaces(root);

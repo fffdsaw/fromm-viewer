@@ -15,7 +15,12 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    releaseImage();await page.waitForFunction(()=>!document.querySelector('#imageLightbox').classList.contains('preview-loading')&&document.querySelector('#lightboxImage').naturalWidth===1600);await page.keyboard.press('Escape');
    await page.evaluate(()=>{setFilter('video');FrommViewState.cancel();scrollTo(0,0);});await page.locator('.media-card video').dblclick({position:{x:80,y:60}});
    await page.locator('#imageLightbox.open.video-preview').waitFor();assert.ok((await page.locator('#lightboxVideo').getAttribute('poster')).endsWith('/instant-preview.svg'),'enlarged video immediately reuses the gallery poster');assert.ok(await page.locator('#lightboxVideo').evaluate(el=>el.readyState<2),'the player opens before waiting for video bytes');
-   releaseVideo();await page.waitForFunction(()=>document.querySelector('#lightboxVideo').readyState>=2);await page.locator('#lightboxVideo').evaluate(el=>el.pause());await page.locator('#imageLightbox .video-playlist-toggle').waitFor();await page.keyboard.press('Escape');
+   releaseVideo();await page.waitForFunction(()=>document.querySelector('#lightboxVideo').readyState>=2);await page.locator('#lightboxVideo').evaluate(el=>el.pause());if(width>700){
+    await page.locator('#lightboxVideoStage .modern-video-controls').waitFor();
+    assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').count(),0);
+    assert.equal(await page.locator('#lightboxVideo').evaluate(el=>el.controls),false);
+   }else await page.locator('#imageLightbox .video-playlist-toggle').waitFor();
+   await page.keyboard.press('Escape');
    await page.evaluate(()=>{openVideoLightbox('https://fixture.test/slow-preview.mp4');closeImageLightbox();});await page.waitForTimeout(150);assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').count(),0,'closing before deferred queue preparation prevents late UI');
    await page.evaluate(()=>{setFilter('image');state.selected.add('preview-image');syncDownloadSelection();});
    for(const theme of ['sky','classic']){

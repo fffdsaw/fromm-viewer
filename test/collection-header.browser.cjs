@@ -33,10 +33,14 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
     assert.equal(palette.count,palette.expectedCount,theme+' count text follows the palette');assert.equal(palette.left,palette.expectedLine,theme+' filter divider follows the palette');assert.equal(palette.right,palette.expectedLine,theme+' action divider follows the palette');
    }
    await p.evaluate(()=>FrommThemes.set('glow'));
-   const g=await geometry(p);if(mode==='replay')replayGeometry=g;else for(const key of ['.viewer-header','.batch-selection-tools','#logoutMiniBtn']){
-    for(const dim of ['x','y','width','height'])assert.ok(Math.abs(g[key][dim]-replayGeometry[key][dim])<1,`${width} same ${key} ${dim}`);
+   const g=await geometry(p);if(mode==='replay')replayGeometry=g;else{
+    for(const dim of ['x','width'])assert.ok(Math.abs(g['.viewer-header'][dim]-replayGeometry['.viewer-header'][dim])<1,`${width} shared outer header ${dim}`);
    }
-   const bar=g['.viewer-header'],cap=g['.batch-selection-tools'],logout=g['#logoutMiniBtn'],filter=g['.replay-filter-strip'];assert.ok(filter.right<=cap.left+1);assert.ok(cap.right<logout.left);assert.ok(bar.height>=56&&bar.height<=64);
+   const bar=g['.viewer-header'],cap=g['.batch-selection-tools'],logout=g['#logoutMiniBtn'],filter=g['.replay-filter-strip'];
+   if(mode==='channel'){
+    assert.ok(filter.right<=logout.left+1);assert.ok(cap.right<=bar.right-8);assert.ok(cap.bottom<=bar.bottom+1);
+    assert.ok(bar.height>=116&&bar.height<=124,'Channel uses a single two-row header');
+   }else{assert.ok(filter.right<=cap.left+1);assert.ok(cap.right<logout.left);assert.ok(bar.height>=56&&bar.height<=64);}
    const heading=g['.pc-mode-heading'];
    // Same compact count slot and centerline for both title labels.
    const headingText=await p.evaluate(()=>{
@@ -53,13 +57,15 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
     assert.equal(await p.locator('[data-channel-media-type]').count(),2);
     assert.equal(await p.locator('[data-channel-media-type="video"]').getAttribute('aria-pressed'),'true');
     const tabs=await p.locator('.channel-media-tabs').boundingBox();
-    assert.ok(tabs.y>=bar.bottom,'media mode tabs have their own row below the header');
+    assert.ok(tabs.y>logout.bottom&&tabs.y+tabs.height<=bar.bottom,'media toggles belong to the lower row inside the same header');
+    assert.ok(Math.abs(tabs.y+tabs.height/2-cap.top-cap.height/2)<1,'mode and selection controls share the lower centerline');
    }
    const capsuleStyle=await p.locator('.batch-selection-tools').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow}));
    assert.deepEqual(capsuleStyle,{border:'0px',background:'rgba(0, 0, 0, 0)',shadow:'none'},`${width} ${mode}: frameless tools blend with header`);
    const refresh=p.locator(mode==='channel'?'#channelRefresh':'#scanBtn');assert.equal(await refresh.isVisible(),true);assert.equal(await refresh.getAttribute('aria-label')!==null,true);
    const refreshBox=await refresh.boundingBox();assert.ok(refreshBox.x>=logout.right);assert.equal(Math.round(refreshBox.width),34);assert.equal(Math.round(refreshBox.height),34);
-   const centers=await p.locator(selector+'.active,#saveSelectedBtn,#selectAllBtn,#logoutMiniBtn').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return r.top+r.height/2;}));assert.ok(Math.max(...centers)-Math.min(...centers)<1,'same control centerline');
+   const centerSelector=mode==='channel'?'[data-channel-media-type],#saveSelectedBtn,#selectAllBtn':selector+'.active,#saveSelectedBtn,#selectAllBtn,#logoutMiniBtn';
+   const centers=await p.locator(centerSelector).evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return r.top+r.height/2;}));assert.ok(Math.max(...centers)-Math.min(...centers)<1,'same control centerline');
    const grid=await p.locator('.replay-grid').boundingBox();assert.ok(Math.abs(grid.x-bar.x)<1);assert.ok(Math.abs(grid.width-bar.width)<1);assert.equal(await p.locator('#selectedCount').evaluate(e=>getComputedStyle(e).borderTopWidth),'0px');
    const original=await geometry(p);await p.locator('.pc-mode-count').evaluate(e=>e.textContent='1,000개');assert.deepEqual(await geometry(p),original,'count digits cannot shift tools');await p.evaluate(()=>FrommGlowME.syncNavigation());
    await snapshot(p,`${installed?'pwa-':''}${width}-${mode}-zero`);

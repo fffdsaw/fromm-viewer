@@ -22,8 +22,31 @@ async function selectChannelMediaType(type,{restoreHistory=false}={}) {
   document.querySelector(`[data-channel-media-type="${type}"]`)?.focus({preventScroll:true});
 }
 function renderChannelPhotoCard(post) {
-  const thumb=replayThumb(post),title=post.title||'채널 사진';
-  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button><span class="channel-photo-badge">${Array.isArray(post.urls)&&post.urls.length?post.urls.length+'장':'사진'}</span></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta">${esc(replayDateLabel(post.displayStartAt))}</div></div></article>`;
+  const thumb=replayThumb(post),title=post.title||'채널 사진',count=channelPhotoCount(post);
+  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button><span class="channel-photo-badge">${count===null?'사진':count+'장'}</span></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta">${esc(replayDateLabel(post.displayStartAt))}</div></div></article>`;
+}
+function channelPhotoCount(post) {
+  if(Array.isArray(post?.urls)&&post.urls.length)return post.urls.length;
+  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType!=='image')return null;
+  return channelVideoPage()?.photoCounts?.get(String(post.id))??null;
+}
+function rememberChannelPhotoCount(post,count) {
+  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType!=='image')return;
+  const page=channelVideoPage();if(!page)return;
+  (page.photoCounts??=new Map()).set(String(post.id),count);
+  window.FrommChannelPhotos?.refreshCounts();
+}
+// Decoded neighbors are reused as DOM images, so advancing never waits for an
+// original-URL probe. Only the current image plus its immediate neighbors live.
+function prepareAlbumImage(url,priority='low') {
+  const image=new Image();image.decoding='async';image.fetchPriority=priority;
+  let finish,settled=false;
+  const entry={image,ready:false,failed:false,promise:new Promise(resolve=>{finish=resolve;})};
+  const complete=ok=>{if(settled)return;settled=true;entry.ready=ok;entry.failed=!ok;finish(ok);};
+  image.onload=async()=>{try{await image.decode();}catch{}complete(image.naturalWidth>0);};
+  image.onerror=()=>complete(false);
+  entry.dispose=()=>{image.onload=null;image.onerror=null;image.removeAttribute('src');complete(false);};
+  image.src=url;return entry;
 }
 function channelPhotoContext() {
   const sameSession=channelVideoSession(),channel=channelVideoState.channelId,generation=channelVideoState.playSeq;
@@ -48,6 +71,7 @@ async function fetchChannelPhotoDetail(post,{signal}={}) {
   const detail=response?.data?.post||response?.result?.post||response?.post;
   if(!detail||String(detail.id)!==String(post.id)||detail.type!=='image'||detail.isVisible===false)throw new Error('이 사진을 볼 수 없습니다. 구독과 공개 상태를 확인해주세요.');
   if(!Array.isArray(detail.urls)||!detail.urls.length||!detail.urls.every(url=>typeof url==='string'&&isHttpMediaUrl(url)))throw new Error('사진 주소를 확인하지 못했습니다.');
+  rememberChannelPhotoCount(post,detail.urls.length);
   return {...post,...detail,_channelId:post._channelId,_channelName:post._channelName};
 }
 function channelPhotoOriginal(url) {
@@ -139,10 +163,11 @@ function saveSelectedChannelPhotos() {
 }
 function openChannelPhotoAlbum(post) {return window.FrommChannelPhotos.open(post);}
 window.FrommChannelPhotos=(()=>{
-  let dialog=null,owner=null;
+  let dialog=null,owner=null,countOwner=null;
   function close(){
     if(!owner)return;
     const previous=owner;owner=null;previous.controller.abort();previous.observer.disconnect();
+    for(const entry of previous.images.values()){entry.preview.dispose();entry.original?.dispose();}previous.images.clear();
     if(dialog?.open)dialog.close();dialog?.remove();dialog=null;
     if(previous.trigger?.isConnected)previous.trigger.focus({preventScroll:true});
   }
@@ -170,31 +195,41 @@ window.FrommChannelPhotos=(()=>{
     stage.addEventListener('pointerup',e=>{if(start&&Math.abs(e.clientX-start.x)>55&&Math.abs(e.clientX-start.x)>Math.abs(e.clientY-start.y)*1.5)move(e.clientX>start.x?-1:1);start=null;});
     dialog.showModal();
   }
+  function cachedImage(o,index,priority='low'){
+    let entry=o.images.get(index);if(entry){if(priority==='high')entry.preview.image.fetchPriority='high';return entry;}
+    entry={preview:prepareAlbumImage(o.detail.urls[index],priority),original:null};o.images.set(index,entry);return entry;
+  }
   function paint(){
     const o=owner;if(!o||!o.detail)return;
-    const image=dialog.querySelector('img'),url=o.detail.urls[o.index],version=++o.imageVersion;
-    dialog.querySelector('.channel-photo-count').textContent=`${o.index+1} / ${o.detail.urls.length}`;
-    dialog.querySelector('[data-photo-action="prev"]').disabled=o.index===0;
-    dialog.querySelector('[data-photo-action="next"]').disabled=o.index===o.detail.urls.length-1;
-    dialog.querySelector('.channel-photo-status').textContent='원본 사진 불러오는 중…';
+    const index=o.index,url=o.detail.urls[index],version=++o.imageVersion,entry=cachedImage(o,index,'high');
+    const current=()=>owner===o&&o.current()&&o.imageVersion===version;
+    const stage=dialog.querySelector('.channel-photo-image'),status=dialog.querySelector('.channel-photo-status');
+    dialog.querySelector('.channel-photo-count').textContent=`${index+1} / ${o.detail.urls.length}`;
+    dialog.querySelector('[data-photo-action="prev"]').disabled=index===0;
+    dialog.querySelector('[data-photo-action="next"]').disabled=index===o.detail.urls.length-1;
     dialog.querySelector('[data-photo-action="retry"]').hidden=true;
-    image.alt=(o.detail.title||'채널 사진')+` · ${o.index+1}번째 사진`;
-    let fallback=false;
-    image.onload=()=>{if(owner===o&&o.imageVersion===version)dialog.querySelector('.channel-photo-status').textContent=fallback?'원본 대신 제공된 사진을 표시합니다.':'';};
-    image.onerror=()=>{
-      if(owner!==o||o.imageVersion!==version)return;
-      if(!fallback&&channelPhotoOriginal(url)!==url){fallback=true;image.src=url;}
-      else {
-        dialog.querySelector('.channel-photo-status').textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';
-        dialog.querySelector('[data-photo-action="retry"]').hidden=false;
-      }
+    const display=source=>{source.image.alt=(o.detail.title||'채널 사진')+` · ${index+1}번째 사진`;source.image.dataset.albumIndex=String(index);if(stage.firstElementChild!==source.image)stage.replaceChildren(source.image);};
+    display(entry.original?.ready?entry.original:entry.preview);
+    const originalUrl=channelPhotoOriginal(url);
+    if(originalUrl!==url&&!entry.original)entry.original=prepareAlbumImage(originalUrl,'high');
+    const update=()=>{
+      if(!current())return;
+      if(entry.original?.ready){display(entry.original);status.textContent='';}
+      else if(entry.preview.ready){
+        display(entry.preview);status.textContent=entry.original?.failed?'원본 대신 제공된 사진을 표시합니다.':entry.original?'사진 표시 중 · 원본을 준비하고 있습니다.':'';
+      }else if(entry.preview.failed&&(!entry.original||entry.original.failed)){
+        status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';dialog.querySelector('[data-photo-action="retry"]').hidden=false;
+      }else status.textContent='사진 불러오는 중…';
     };
-    image.src=channelPhotoOriginal(url);
+    update();entry.preview.promise.then(update);entry.original?.promise.then(update);
+    // Preview only: avoid speculative high-resolution downloads for the album.
+    for(const neighbor of [index+1,index-1])if(neighbor>=0&&neighbor<o.detail.urls.length)cachedImage(o,neighbor);
+    for(const [key,value]of o.images)if(Math.abs(key-index)>1){value.preview.dispose();value.original?.dispose();o.images.delete(key);}
   }
   function move(delta){if(owner?.detail){owner.index=Math.max(0,Math.min(owner.detail.urls.length-1,owner.index+delta));paint();dialog.focus({preventScroll:true});}}
   async function open(post){
     close();const current=channelPhotoContext();if(!post||!current())return;
-    const controller=new AbortController(),o={post,current,controller,index:0,imageVersion:0,trigger:document.activeElement};
+    const controller=new AbortController(),o={post,current,controller,index:0,imageVersion:0,images:new Map(),trigger:document.activeElement};
     o.observer=new MutationObserver(()=>{if(owner===o&&!current())close();});
     owner=o;ensure();o.observer.observe(document.querySelector('#timeline'),{childList:true,subtree:true});
     dialog.querySelector('.channel-photo-title').textContent=post.title||'채널 사진';
@@ -214,12 +249,51 @@ window.FrommChannelPhotos=(()=>{
       }
     }finally{clearTimeout(timer);}
   }
+  function stopCounts(){
+    const c=countOwner;if(!c)return;countOwner=null;c.observer?.disconnect();for(const controller of c.controllers)controller.abort();c.queue.clear();
+  }
+  function countLabel(card,post){
+    const label=card.querySelector('.channel-photo-badge'),count=channelPhotoCount(post);if(!label)return;
+    const text=count===null?'사진':count+'장';if(label.textContent!==text)label.textContent=text;
+    label.setAttribute('aria-label',count===null?'사진 앨범':'사진 '+count+'장');
+  }
+  function refreshCounts(){if(countOwner?.valid())for(const [card,post]of countOwner.cards)countLabel(card,post);}
+  function countPump(c){
+    if(countOwner!==c||!c.valid())return;
+    while(c.active<2&&c.queue.size){
+      const card=c.queue.values().next().value;c.queue.delete(card);const post=c.cards.get(card);
+      if(!card.isConnected||!post||channelPhotoCount(post)!==null||c.requested.has(post))continue;
+      c.requested.add(post);const controller=new AbortController();c.controllers.add(controller);c.active++;
+      fetchChannelPhotoDetail(post,{signal:controller.signal}).then(()=>{if(countOwner===c&&c.valid())refreshCounts();}).catch(()=>{/* Keep a usable album card when count lookup fails. */}).finally(()=>{c.controllers.delete(controller);c.active--;countPump(c);});
+    }
+  }
+  function bindCounts(){
+    if(!channelVideosActive()||channelVideoState.mediaType!=='image'||channelVideoState.selected){stopCounts();return;}
+    if(countOwner&&!countOwner.valid())stopCounts();
+    if(!countOwner){
+      const c={valid:channelPhotoContext(),cards:new Map(),queue:new Set(),requested:new WeakSet(),controllers:new Set(),active:0,observer:null};
+      if(typeof IntersectionObserver==='function')c.observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting)c.queue.add(e.target);else c.queue.delete(e.target);countPump(c);});
+      countOwner=c;
+    }
+    const c=countOwner,posts=channelVideoPage()?.posts||[],cards=new Set(document.querySelectorAll('.channel-photo-card'));
+    for(const card of c.cards.keys())if(!cards.has(card)){c.observer?.unobserve(card);c.cards.delete(card);c.queue.delete(card);}
+    for(const card of cards){
+      const post=posts.find(p=>String(p.id)===card.dataset.channelVideoCard);if(!post)continue;
+      const previous=c.cards.get(card);c.cards.set(card,post);countLabel(card,post);
+      if(previous!==post){if(c.observer)c.observer.observe(card);else{const r=card.getBoundingClientRect();if(r.bottom>0&&r.top<innerHeight)c.queue.add(card);}}
+    }
+    countPump(c);
+  }
   function bind(){
+    bindCounts();
     for(const button of document.querySelectorAll('[data-channel-media-type]'))button.onclick=()=>selectChannelMediaType(button.dataset.channelMediaType);
     for(const button of document.querySelectorAll('[data-channel-photo-open]'))button.onclick=()=>open(channelVideoPage().posts.find(p=>String(p.id)===button.dataset.channelPhotoOpen));
     for(const button of document.querySelectorAll('[data-channel-photo-download]'))button.onclick=()=>saveChannelPhotoPosts([channelVideoPage().posts.find(p=>String(p.id)===button.dataset.channelPhotoDownload)],{button});
   }
-  return {open,close,bind};
+  window.addEventListener('DOMContentLoaded',()=>{new MutationObserver(()=>{if(countOwner&&!countOwner.valid())stopCounts();}).observe(document.querySelector('#timeline'),{childList:true,subtree:true});},{once:true});
+  window.addEventListener('pagehide',()=>{close();stopCounts();});
+  window.addEventListener('pageshow',()=>{if(channelVideosActive())bind();});
+  return {open,close,bind,refreshCounts,get snapshot(){return {cachedImages:owner?.images.size||0,readyPreviews:owner?[...owner.images.values()].filter(e=>e.preview.ready).length:0,pendingCounts:countOwner?.active||0};}};
 })();
 
 // The shell/reader must initialize before this optional feature. Bind if an

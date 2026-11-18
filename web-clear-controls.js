@@ -1,7 +1,7 @@
 /* Native actions: fixed clear material + a cheap pointer light, never lensing. */
 import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
-export const clearControls='#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
+export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
 // Keep compact play/volume in the native policy (no refractive engine), but
 // exclude them from both fixed material and pointer glints: they are icons only.
 const fixedAction=el=>!el.matches('.small-player-button');

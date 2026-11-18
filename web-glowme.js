@@ -89,9 +89,16 @@
   $('.topbar').prepend(pcHeading);$('.topbar').insertBefore(pcListHost,$('.top-auth-controls'));
   const pcMediaRow=document.createElement('div');pcMediaRow.className='pc-media-row';pcMediaRow.hidden=true;
   const pcListInfo=document.createElement('span');pcListInfo.className='pc-list-info';pcMediaRow.append(pcListInfo);$('.viewer-header').append(pcMediaRow);
-  let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0,pcRefresh=null,pcRefreshHome=null;
+  let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0,pcRefresh=null,pcRefreshHome=null,pcChannelTabs=null,pcChannelTabsHome=null;
   const pcFilterScroll=new WeakMap();
+  function restoreChannelTabs(){
+    if(!pcChannelTabs)return;
+    const focused=pcChannelTabs.contains(document.activeElement)?document.activeElement:null;
+    if(pcChannelTabsHome?.isConnected)pcChannelTabsHome.replaceWith(pcChannelTabs);else pcChannelTabs.remove();
+    pcChannelTabs=null;pcChannelTabsHome=null;focused?.isConnected&&focused.focus({preventScroll:true});
+  }
   function restorePCToolbar(){
+    restoreChannelTabs();
     if(pcToolbar)pcFilterScroll.set(pcToolbar,pcToolbar.querySelector('.replay-filter-strip')?.scrollLeft||0);
     const focused=pcToolbar?.contains(document.activeElement)||pcRefresh===document.activeElement?document.activeElement:null;
     if(pcRefresh){if(pcRefreshHome?.isConnected)pcRefreshHome.replaceWith(pcRefresh);else pcToolbar?.append(pcRefresh);}pcRefresh=null;pcRefreshHome=null;
@@ -102,6 +109,8 @@
   function syncPCLayout(){
     if(pcRenderDepth)return;
     const pc=mediaPC.matches,collection=pc&&state.filter==='live',list=collection&&mediaDockActive();
+    const channelList=list&&state.live.centerMode==='channel';
+    document.documentElement.classList.toggle('pc-channel-list',channelList);
     document.documentElement.classList.toggle('pc-layout',pc);
     document.documentElement.classList.toggle('pc-collection',collection);
     document.documentElement.dataset.pcMode=collection?state.live.centerMode:'';
@@ -122,15 +131,22 @@
       const count=candidate.querySelector('.replay-count');
       const value=Number((count?.textContent.match(/([\d,]+)\s*개/)?.[1]||'0').replaceAll(',','')).toLocaleString();
       const text=value+'개';if(pcModeCount.textContent!==text)pcModeCount.textContent=text;pcModeCount.setAttribute('aria-label',(labels[state.live.centerMode]||'')+' '+text);pcModeCount.title=pcModeCount.getAttribute('aria-label');
-      if(selectionSlot.parentElement!==candidate)candidate.append(selectionSlot);
+      const selectionParent=channelList?mediaDock:candidate;
+      if(selectionSlot.parentElement!==selectionParent)selectionParent.append(selectionSlot);
       focused?.focus({preventScroll:true});
     }
     document.documentElement.classList.toggle('pc-has-list-refresh',!!(pc&&pcRefresh));
     if(mounted){const strip=mounted.querySelector('.replay-filter-strip');if(strip){if(pcFilterScroll.has(mounted))strip.scrollLeft=pcFilterScroll.get(mounted);else window.revealSubscribedChannelFilter?.(strip.querySelector('.replay-filter.active'));}}
     const media=pc&&['media','image','video','sound'].includes(state.filter);
-    pcMediaRow.hidden=!media;
+    pcMediaRow.hidden=!(media||channelList);pcListInfo.hidden=channelList;
+    if(channelList){
+      const tabs=document.querySelector('#timeline .channel-media-tabs')||pcChannelTabs;
+      if(tabs&&tabs!==pcChannelTabs){restoreChannelTabs();pcChannelTabs=tabs;pcChannelTabsHome=document.createComment('Channel media tabs home');tabs.before(pcChannelTabsHome);}
+      if(pcChannelTabs&&pcChannelTabs.parentElement!==pcMediaRow)pcMediaRow.prepend(pcChannelTabs);
+      if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);
+    }else restoreChannelTabs();
     if(media){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);}
-    else if(mediaDock.parentElement!==document.body)document.body.append(mediaDock);
+    else if(!channelList&&mediaDock.parentElement!==document.body)document.body.append(mediaDock);
   }
   function syncMediaDock(){
     syncPCLayout();

@@ -164,21 +164,21 @@
 :root[data-fromm-theme] .mobile-save-glass{background:transparent!important;background-image:none!important}
 
 /* Clear native actions stay independent of the glass engine and its sliders. */
-:root[data-fromm-theme].glowme.glowme-phase3 :is(#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn){
+:root[data-fromm-theme].glowme.glowme-phase3 :is([data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn){
  background:transparent!important;background-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
  box-shadow:none!important;transform:none!important;border-color:var(--clear-control-line,#ffffffa0)!important;
 }
 :root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#tokenLifeWrap,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,#scanBtn,#logoutMiniBtn,#channelRefresh,.live-mini-btn){--clear-control-line:var(--theme-line);color:var(--theme-text)!important}
-:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header .replay-filter.active,#saveSelectedBtn:not(:disabled)){--clear-control-line:var(--theme-accent);color:var(--theme-accent)!important}
+:root[data-fromm-theme].glowme.glowme-phase3 :is([data-channel-media-type][aria-pressed="true"],.viewer-header .replay-filter.active,#saveSelectedBtn:not(:disabled)){--clear-control-line:var(--theme-accent);color:var(--theme-accent)!important}
 :root[data-fromm-theme].glowme.glowme-phase3 #timeline .chat-sound-bubble .small-player-button{color:var(--theme-text)!important;text-shadow:none}
 :root[data-fromm-theme].glowme.glowme-phase3 .capsule-save-control>.capsule-optics{display:none!important}
 @media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
- :root[data-fromm-theme].glowme.glowme-phase3 :is(#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn):hover:not(:disabled):not(.small-player-button){
+ :root[data-fromm-theme].glowme.glowme-phase3 :is([data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn):hover:not(:disabled):not(.small-player-button){
   background-image:radial-gradient(48px circle at var(--clear-pointer-x,50%) var(--clear-pointer-y,50%),#ffffff42,transparent 75%)!important;
  }
 }
 @media(forced-colors:active){
- :root[data-fromm-theme].glowme.glowme-phase3 :is(#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn){background:Canvas!important;background-image:none!important;color:ButtonText!important;border-color:ButtonText!important}
+ :root[data-fromm-theme].glowme.glowme-phase3 :is([data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn){background:Canvas!important;background-image:none!important;color:ButtonText!important;border-color:ButtonText!important}
 }
 
 :root[data-fromm-theme].glowme.glowme-phase3 .capsule-save-control{background:transparent!important;box-shadow:none!important}

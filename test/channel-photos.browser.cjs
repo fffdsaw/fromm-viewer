@@ -36,6 +36,7 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   await page.locator('[data-channel-media-type="image"]').click();
   await page.locator('[data-channel-photo-open="p2"]').waitFor();
   assert.equal(await page.locator('.channel-photo-card').count(),2);
+  await page.waitForFunction(()=>[...document.querySelectorAll('.channel-photo-badge')].every(e=>e.textContent==='2장'));
   assert.equal(await page.locator('[data-channel-video-play]').count(),0);
   assert.ok(requests.includes('raw-tail')&&requests.includes('empty-photo-page'),'cursor follows unfiltered raw tail through photo-empty page');
   await page.screenshot({path:`${output}/list-${width}.png`});

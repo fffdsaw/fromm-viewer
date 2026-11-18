@@ -49,6 +49,12 @@ async function geometry(p){return p.evaluate(()=>Object.fromEntries(['.viewer-he
    assert.ok(headingText.gap>=5&&headingText.gap<=9,`${width} ${mode}: consistent title/count gap`);
    assert.equal(headingText.height,34,`${width} ${mode}: count has a stable 34px alignment box`);
    assert.ok(filter.x>=heading.right-1&&filter.x-heading.right<=24,`${width} ${mode}: filter follows title/count without a large gap`);
+   if(mode==='channel'){
+    assert.equal(await p.locator('[data-channel-media-type]').count(),2);
+    assert.equal(await p.locator('[data-channel-media-type="video"]').getAttribute('aria-pressed'),'true');
+    const tabs=await p.locator('.channel-media-tabs').boundingBox();
+    assert.ok(tabs.y>=bar.bottom,'media mode tabs have their own row below the header');
+   }
    const capsuleStyle=await p.locator('.batch-selection-tools').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,background:getComputedStyle(e).backgroundColor,shadow:getComputedStyle(e).boxShadow}));
    assert.deepEqual(capsuleStyle,{border:'0px',background:'rgba(0, 0, 0, 0)',shadow:'none'},`${width} ${mode}: frameless tools blend with header`);
    const refresh=p.locator(mode==='channel'?'#channelRefresh':'#scanBtn');assert.equal(await refresh.isVisible(),true);assert.equal(await refresh.getAttribute('aria-label')!==null,true);

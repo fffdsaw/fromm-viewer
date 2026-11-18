@@ -373,12 +373,19 @@ test('cyclic playback and highest-download masters fail with bounded requests',a
 test('pagination state and requests remain equivalent apart from restarting thumbnail observation',()=>{
   const baseline=execFileSync('git',['show','38fca89:index.html'],{cwd:root,encoding:'utf8',maxBuffer:4e6});
   const normalize=text=>text.replace(/\r\n/g,'\n');
-  // Protect all paging/auth/cancellation code while allowing only the approved subscription targeting change.
+  // Protect paging/auth/cancellation; explicitly model approved subscription and photo-mode additions.
   for(const name of ['bindVideoListAuto','loadReplayCenter','loadChannelVideos']){
     let expected=normalize(fn(name,baseline));
     if(name==='loadReplayCenter')expected=expected.replace(/    let targets;[^]*?    if\(!loadMore\)/, '    normalizeReplayChannelSelection();\n    let targets=channels.filter(c=>c.id===state.live.replayFilter);\n    if(!loadMore)').replace(/    const prefetchTargets=state.live.replayFilter==="all"[^]*?;\n/, '    const prefetchTargets=channels.filter(c=>c.id===state.live.replayFilter);\n');
     if(name==='loadChannelVideos')expected=expected.replace(/      const preferred = String[^]*?      s.channelId = .*;\n/, '      s.channelId = subscribedChannelSelection(s.channelId,channels);\n');
-    assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n',''),expected,name);
+    if(name==='loadChannelVideos')expected=expected
+      .replace('s.loadingMessage = loadMore ?', 's.loadingMessage = s.mediaType === "image" ? "채널 사진을 불러오는 중..." : loadMore ?')
+      .replace('    if (refresh) s.pages.delete(channel.id);\n    let page = s.pages.get(channel.id);','    const pageKey=channelVideoPageKey();\n    if (refresh) s.pages.delete(pageKey);\n    let page = s.pages.get(pageKey);')
+      .replace('p.type === "video"','p.type === s.mediaType')
+      .replace('s.pages.set(channel.id, page)','s.pages.set(pageKey, page)')
+      .replace('s.notice = page.isLast ?', 's.notice = s.mediaType === "image" ? (page.isLast ? "업로드된 사진을 모두 확인했습니다." : "아직 추가 사진이 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : page.isLast ?');
+
+    assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n','').replace('JSON.stringify(kind === \"channel\" && channelVideoState.mediaType === \"image\" ? [kind,filter,\"image\"] : [kind, filter])','JSON.stringify([kind, filter])'),expected,name);
   }
   const declaration=source=>source.match(/^const videoListAuto = .*;$/m)?.[0];
   assert.ok(declaration(html)&&declaration(baseline),'pagination state declarations exist');

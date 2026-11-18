@@ -1,3 +1,9 @@
+## Shared desktop collection-header spacing — 2026-11-19 (Asia/Seoul)
+
+Added to the existing album focus fix and PR #144 at https://github.com/fffdsaw/fromm-viewer/pull/144. One desktop spacing value governs the title separator in Replay/Channel and artist statistics in Media, Voice, Video, and Photo. The rendered gap from title to first filter or statistics is 21px on wide screens and 15px at desktop widths of 701–1100px. Channel's second-row count now uses its natural width and the same group's spacing. The 6px between artist filter buttons is preserved. Both CSS URLs were refreshed across the two changes.
+
+Synthetic tests in `test/collection-header.browser.cjs` verify the measured spacing in all six modes at 1440, 900, 760, and 701px and standalone 900px. The full suite, including 390 and 320px regressions, passed. `test/pc-layout.browser.cjs` also passed its 1440/900/760/390px matrix. Local screenshots are in `/tmp/fromm-header-spacing`; local receipts are `/tmp/fromm-header-gap-after.log`, `/tmp/fromm-header-spacing-browser.log`, and `/tmp/fromm-header-layout.log`. Resume with `gh pr view 144 --json url,headRefOid,statusCheckRollup`.
+
 ## Channel photo viewer keyboard outline — 2026-11-19 (Asia/Seoul)
 
 Continued `codex/pc-media-controls-20261118` by fast-forwarding to production main `228253a` (PR #143 merged and Pages verified). Arrow navigation intentionally focuses the album dialog, including at album boundaries. Desktop CSS suppresses the outline on the dialog itself and preserves the visible keyboard focus indicator on its buttons. The stylesheet URL was refreshed.

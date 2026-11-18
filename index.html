@@ -305,17 +305,18 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .artist-select-prompt { padding-top: 92px; color: rgb(168, 176, 189); font-size: 15px; }
 /* The save result rises from the bottom without blocking the media view. */
 .save-result-sheet{
- position:fixed;inset:auto 16px max(20px,env(safe-area-inset-bottom)) 16px;z-index:1800;
+ position:fixed;inset:auto 16px max(var(--save-sheet-bottom,20px),env(safe-area-inset-bottom)) 16px;z-index:1800;
  width:min(480px,calc(100vw - 32px));max-width:none;margin:0 auto;padding:0;
- border:0;background:transparent;color:var(--theme-text,var(--text));overflow:visible;
+ border:0;background:transparent;color:var(--theme-text,var(--text));overflow:visible;pointer-events:none;
 }
 .save-result-sheet[hidden]{display:none}
 .save-result-sheet.open{animation:save-sheet-enter 260ms cubic-bezier(.2,.75,.25,1) both}
-.save-result-sheet.closing{animation:save-sheet-exit 180ms ease-in both;pointer-events:none}
+.save-result-sheet.closing{animation:save-sheet-exit 180ms ease-in both}
+.save-result-sheet.open :is(button,.save-failure-section){pointer-events:auto}
 @keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}
 @keyframes save-sheet-exit{from{transform:none;opacity:1}to{transform:translateY(calc(100% + 24px));opacity:0}}
 .save-result-card{
- max-height:min(490px,calc(100dvh - 48px));display:flex;flex-direction:column;overflow:hidden;
+ max-height:min(490px,calc(100dvh - var(--save-sheet-bottom,20px) - 16px));display:flex;flex-direction:column;overflow:hidden;
  border:1px solid var(--theme-line,var(--line));border-radius:22px;
  background:color-mix(in srgb,var(--theme-card,var(--card)) 91%,transparent);
  backdrop-filter:blur(16px);box-shadow:0 12px 32px #0004
@@ -10524,6 +10525,20 @@ async function downloadSingleMedia(m,button=null){
   }
 }
 
+function positionSaveResultSheet(){
+  const sheet=$("#saveResultModal");
+  if(!sheet?.classList.contains("open"))return;
+  const albumFooter=sheet.closest(".channel-photo-dialog")?.querySelector("footer");
+  const dock=state.filter==="all"?$("#conversationDock"):null;
+  const controls=albumFooter||dock;
+  const top=controls?.getBoundingClientRect().top;
+  // The conversation's latest-message shortcut can float above its composer.
+  const clearance=controls===dock?48:12;
+  const bottom=controls?.checkVisibility()&&Number.isFinite(top)?Math.max(20,Math.min(innerHeight*.55,innerHeight-top+clearance)):20;
+  sheet.style.setProperty("--save-sheet-bottom",`${bottom}px`);
+}
+window.addEventListener("resize",positionSaveResultSheet);
+
 function openSaveResultSheet(){
   const sheet=$("#saveResultModal");
   if(!sheet)return;
@@ -10536,6 +10551,7 @@ function openSaveResultSheet(){
   sheet.hidden=false;sheet.inert=false;
   sheet.setAttribute("aria-hidden","false");
   sheet.classList.remove("closing");sheet.classList.add("open");
+  positionSaveResultSheet();
   if(typeof sheet.showPopover==="function"&&!sheet.matches(":popover-open")){
     sheet.setAttribute("popover","manual");
     try{sheet.showPopover();}catch{sheet.removeAttribute("popover");}

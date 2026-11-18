@@ -82,11 +82,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(appearance.svgWidth>=button.width-3&&appearance.svgWidth<=button.width,'SVG progress ring fills the circular control');
   assert.ok(appearance.clipPath.includes('50%'),'visible download label must be hidden');
   assert.ok((await download.getAttribute('aria-label')).includes('다운로드'),'download remains accessible by name');
-  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').count(),0);
   await download.hover();await page.waitForTimeout(180);
   assert.equal(await download.evaluate(el=>el.matches(':active')),false,'hover alone does not latch pressed state');
   assert.equal(await download.evaluate(el=>getComputedStyle(el).transform),'none','hover does not visually press the voice download');
   if(process.env.CONVERSATION_DIR)await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'audio-corner-'+cfg.width+'.png')});
+  const event=page.waitForEvent('download');await download.click();const saved=await event;assert.deepEqual(fs.readFileSync(await saved.path()),wav);assert.ok(saved.suggestedFilename().includes(filename));assert.equal(await footer.locator('.chat-message-filename').count(),0);
+  await page.locator('#saveResultModal.open').waitFor({state:'visible'});
+  assert.match(await page.locator('#saveResultSummary').innerText(),/다운로드 요청 완료/);
   await page.evaluate(()=>FrommViewState.cancel());await page.mouse.wheel(0,-1200);await page.getByRole('button',{name:'최신 대화로 이동',exact:true}).waitFor();assert.equal(await page.locator('#conversationNew svg').count(),1);const shortcut=await page.locator('#conversationNew').boundingBox();assert.equal(shortcut.width,34);assert.equal(shortcut.height,34);
   const placement=await page.locator('#conversationNew').evaluate(el=>{
    const input=document.querySelector('.conversation-input-shell').getBoundingClientRect(),compose=document.querySelector('.conversation-compose').getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect(),r=el.getBoundingClientRect();

@@ -9956,7 +9956,8 @@ function filterChevronIcon(){
 function setSortButtonLabel(direction, loading=""){
   const button=$("#sortBtn");
   const text=loading || (direction==="asc" ? "과거순" : "최신순");
-  button.querySelector("[data-sort-label]").textContent=text;
+  const label=button.querySelector("[data-sort-label]");
+  if(label.textContent!==text)label.textContent=text;
   button.classList.toggle("sort-loading",!!loading);
 }
 
@@ -9965,19 +9966,28 @@ async function toggleSort(){
   const next = state.sortDirection === "desc" ? "asc" : "desc";
   const context=downloadSelectionContext(), generation=state.scanGeneration;
   const resetScroll=pcMediaPresentation();
-  if(resetScroll)window.scrollTo({top:0,behavior:"instant"});
+  if(resetScroll){
+    window.FrommViewState?.cancel();
+    window.scrollTo({top:0,behavior:"instant"});
+  }
 
   // We cannot know the true oldest item until all older API pages are loaded.
   if(next === "asc" && state.hasMoreMessages){
     $("#sortBtn").disabled = true;
     setSortButtonLabel(next,"불러오는 중…");
     try{await ensureAllHistory();}
+    catch(error){
+      if(context===downloadSelectionContext() && generation===state.scanGeneration)window.alert(safeErrorDetail(error.message));
+      return;
+    }
     finally{$("#sortBtn").disabled=false;setSortButtonLabel(state.sortDirection);}
     if(context!==downloadSelectionContext() || generation!==state.scanGeneration)return;
   }
 
   state.sortDirection = next;
   setSortButtonLabel(next);
+  // A sort changes which item belongs at the start of the gallery.
+  if(resetScroll)window.FrommViewState?.resume({y:0});
   render();
   if(resetScroll)window.scrollTo({top:0,behavior:"instant"});
 }

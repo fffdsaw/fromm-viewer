@@ -1,0 +1,129 @@
+/* Immediate CSS droplets for ordinary collection/media actions. No optical maps,
+   engine preferences, delayed decoration, content scaling or idle frame loop. */
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button),
+:root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock :is(#saveSelectedBtn,#selectAllBtn,#clearSelectionBtn,#sortBtn){
+ isolation:isolate;--droplet-tint:color-mix(in srgb,var(--theme-card) 34%,transparent);--droplet-rim:color-mix(in srgb,var(--theme-line) 70%,#fff 30%);
+ background:var(--droplet-tint)!important;background-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ border:1px solid var(--droplet-rim)!important;border-radius:999px;box-shadow:inset 0 1px 1px #ffffffe0,inset 0 -2px 3px #193e3412,0 2px 4px #142c2814!important;
+ transform:none!important;transition:background-color 120ms,border-color 120ms,color 120ms;
+}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button)::before{
+ content:'';position:absolute;inset:1px;border-radius:inherit;z-index:-1;pointer-events:none;background:radial-gradient(60px 30px at var(--clear-pointer-x,50%) var(--clear-pointer-y,0px),#ffffff38,transparent 80%),linear-gradient(180deg,#ffffff24,transparent 58%);
+}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.card-download,.replay-download,.replay-play,.small-player-button){--droplet-tint:#ffffff12!important;--droplet-rim:#ffffff99!important}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button):hover:not(:disabled){background-color:color-mix(in srgb,var(--theme-card) 46%,transparent)!important}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.card-download,.replay-download,.replay-play,.small-player-button):hover:not(:disabled){background-color:#ffffff24!important}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button)[aria-pressed='true']{border-color:var(--theme-accent)!important;color:var(--theme-accent)!important}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button):disabled{opacity:.45;cursor:default}
+:root[data-fromm-theme].glowme.glowme-phase3 :is([data-download-phase],.download-feedback-icon){--download-ring-color:var(--theme-accent);--download-check-color:var(--theme-accent)}
+.morph-menu-skin,.morph-menu-content{position:fixed;z-index:1200;box-sizing:border-box;border-radius:20px}
+.morph-menu-skin{pointer-events:none}.morph-menu-glass{position:absolute;inset:0;border-radius:inherit;border:1px solid var(--theme-line);background:color-mix(in srgb,var(--theme-card) 80%,transparent);background-color:color-mix(in srgb,var(--theme-card) 80%,transparent)!important;box-shadow:inset 0 1px 1px #ffffffad,0 5px 18px #0002;pointer-events:none}
+.morph-menu-content{z-index:1201;display:flex;gap:4px;align-items:center;padding:8px;opacity:0;pointer-events:none;transition:opacity 100ms;transform:none!important}
+.morph-menu-content.is-open{opacity:1;pointer-events:auto}
+.morph-menu-content button{flex:1;min-width:0;height:40px;border:0;border-radius:14px;background:transparent;color:var(--theme-text);font:inherit;font-weight:600;cursor:pointer}
+.morph-menu-content button[aria-checked='true']{background:var(--theme-selected);color:var(--theme-accent)}
+.morph-menu-content button:focus-visible{outline:2px solid var(--theme-accent);outline-offset:-2px}
+:root[data-fromm-theme].glowme.glowme-phase3 :is(#mediaActionDock,[data-channel-content-menu]).morph-source-open{color:transparent!important;box-shadow:none!important;background:transparent!important;border-color:transparent!important}
+.morph-source-open::before{opacity:0}
+@media(prefers-reduced-motion:reduce){.morph-menu-content{transition:none}:root[data-fromm-theme].glowme.glowme-phase3 button{transition:none!important}}
+@media(prefers-reduced-transparency:reduce){.morph-menu-glass{background:var(--theme-card)}:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button){--droplet-tint:var(--theme-soft)}}
+@media(forced-colors:active){.morph-menu-glass{background:Canvas;box-shadow:none;border-color:ButtonText}.morph-menu-content button{color:ButtonText}.morph-menu-content button[aria-checked='true']{background:Highlight;color:HighlightText}}
+/* One two-row collection header, with stationary controls and an overlaid
+   selection skin. No selection count can resize the row or move the sort. */
+.glowme.glowme-phase3.collection-list .collection-action-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;height:52px;min-height:52px;padding:0 14px;border-top:1px solid var(--theme-line)}
+.glowme.glowme-phase3.collection-list .collection-action-row #mediaActionDock{position:relative!important;inset:auto!important;display:flex;align-items:center;justify-content:flex-end;flex:none;margin-left:auto;min-height:44px;max-width:none;background:none!important;box-shadow:none!important}
+.glowme.glowme-phase3.collection-list #sortControls{display:flex!important;flex:none;margin:0!important}
+.glowme.glowme-phase3.collection-list #sortBtn{width:98px!important;min-width:98px!important;height:34px;min-height:34px;border-radius:999px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glowme.glowme-phase3.collection-list .media-selection-slot{position:absolute!important;right:110px;top:50%;margin:0!important;width:301px!important;max-width:none;height:42px;transform:translateY(-50%)!important;isolation:isolate;overflow:visible}
+.glowme.glowme-phase3.collection-list .media-selection-slot[hidden]{display:none!important}
+.glowme.glowme-phase3.collection-list .media-selection-slot:not([hidden]){display:flex;visibility:visible!important;opacity:1!important}
+.glowme.glowme-phase3.collection-list .media-selection-slot .batch-selection-tools{position:relative!important;display:flex;align-items:center;gap:7px;width:100%;height:42px;min-height:42px;padding:4px 7px;border:0!important;background:transparent!important;box-shadow:none!important;transform:none!important;animation:none!important;white-space:nowrap;flex-wrap:nowrap}
+.glowme.glowme-phase3.collection-list .batch-selection-tools[hidden]{display:none!important}
+.glowme.glowme-phase3.collection-list .media-selection-slot[aria-hidden='true'] .batch-selection-tools{opacity:0;pointer-events:none}
+.glowme.glowme-phase3.collection-list .batch-selection-tools #selectedCount{flex:0 0 88px;width:88px;min-width:0;max-width:88px;padding:0;border:0;background:transparent;box-shadow:none;font-size:12px;text-align:center}
+.glowme.glowme-phase3.collection-list .batch-selection-tools #selectAllBtn{flex:0 0 78px;width:78px;min-width:0;height:34px;padding:0 6px}
+.glowme.glowme-phase3.collection-list .capsule-save-control{flex:0 0 62px;width:62px;height:34px;background:transparent!important}
+.glowme.glowme-phase3.collection-list #saveSelectedBtn{width:100%;height:34px;min-height:34px;padding:0 5px}
+.glowme.glowme-phase3.collection-list #clearSelectionBtn{flex:0 0 30px;width:30px;min-width:30px;height:34px!important;min-height:34px!important;padding:4px}
+.capsule-horizontal-skin{display:block!important;position:absolute;inset:0;z-index:-1;border:1px solid var(--theme-line);border-radius:999px;background:color-mix(in srgb,var(--theme-card) 38%,transparent);box-shadow:inset 0 1px 2px #ffffffba,inset 0 -2px 3px #193e3410,0 3px 8px #193e3417;transform-origin:right center;pointer-events:none}
+.glowme.glowme-phase3.collection-list .pc-list-info{color:var(--theme-text);font-size:14px;font-weight:700;white-space:nowrap}
+.glowme.glowme-phase3.collection-list .channel-media-tabs{margin:0}
+.glowme.glowme-phase3.collection-list .channel-content-trigger{height:34px;min-height:34px;min-width:86px;padding:0 12px;white-space:nowrap}
+.glowme.glowme-phase3.collection-live-list .topbar{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;height:72px;min-height:72px;gap:10px;padding:8px 12px}
+.glowme.glowme-phase3.collection-live-list .title-line,.glowme.glowme-phase3.collection-live-list #tokenLifeWrap,.glowme.glowme-phase3.collection-live-list .header-live-btn{display:none!important}
+.glowme.glowme-phase3.collection-live-list .pc-mode-heading{display:flex;align-items:center;flex:none;gap:8px;height:34px}
+.glowme.glowme-phase3.collection-live-list .pc-mode-title{display:block;font-size:22px;margin:0;line-height:1.2}
+.glowme.glowme-phase3.collection-live-list .pc-mode-count{display:flex;align-items:center;font-size:12px;color:var(--theme-muted);white-space:nowrap}
+.glowme.glowme-phase3.collection-live-list .pc-list-host{display:block;flex:1;min-width:0}
+.glowme.glowme-phase3.collection-live-list .pc-list-host .replay-toolbar{display:flex;align-items:center;flex-wrap:nowrap;position:static;inset:auto;height:40px;min-height:40px;margin:0;padding:0;background:none;border:0;box-shadow:none}
+.glowme.glowme-phase3.collection-live-list .pc-list-host .replay-count{display:none!important}
+.glowme.glowme-phase3.collection-live-list .replay-filter-strip{display:flex;flex-wrap:nowrap;gap:6px;min-width:0;overflow-x:auto}
+.glowme.glowme-phase3.collection-live-list .top-auth-controls{align-self:center!important;flex:none}
+.glowme.glowme-phase3.collection-live-list .topbar::after{display:none!important}
+@media(max-width:1100px){.glowme.glowme-phase3.collection-list .media-selection-slot{width:272px!important}.glowme.glowme-phase3.collection-list .batch-selection-tools #selectedCount{flex-basis:72px;width:72px;max-width:72px}.glowme.glowme-phase3.collection-list .batch-selection-tools #selectAllBtn{flex-basis:68px;width:68px}.glowme.glowme-phase3.collection-list .capsule-save-control{flex-basis:56px;width:56px}}
+@media(max-width:700px){
+ .glowme.glowme-phase3.collection-live-list .topbar{height:64px;min-height:64px;gap:6px;padding:8px}
+ .glowme.glowme-phase3.collection-live-list .pc-mode-title{font-size:18px}.glowme.glowme-phase3.collection-live-list .pc-mode-count{font-size:11px}
+ .glowme.glowme-phase3.collection-list .collection-action-row{padding:0 10px;height:50px;min-height:50px}
+ .glowme.glowme-phase3.collection-live-list .pc-list-host .replay-filter{height:30px;min-height:30px;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+}
+
+:root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.replay-page-back,.replay-page-download,.small-player-button){position:relative}
+.glowme.glowme-phase3.collection-live-list .top-auth-controls{width:auto!important;max-width:80px;gap:4px!important;margin-left:0!important}
+.glowme.glowme-phase3.collection-live-list #tokenLifeWrap{display:none!important}
+.glowme.glowme-phase3.collection-live-list .pc-list-host .replay-filter-strip{flex:1 1 0;max-width:100%;min-width:0;scrollbar-width:none;padding:0}
+.glowme.glowme-phase3.collection-live-list .pc-mode-count{height:34px;overflow:hidden;text-overflow:ellipsis;flex:0 0 52px;width:52px}
+@media(max-width:700px){.glowme.glowme-phase3.collection-live-list .pc-mode-count{flex-basis:34px;width:34px}.glowme.glowme-phase3.collection-live-list .pc-mode-heading{gap:4px}}
+@media(prefers-reduced-transparency:reduce){
+ :root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,.card-download,.replay-download,.replay-play,.small-player-button){--droplet-tint:var(--theme-card)!important}
+ .capsule-horizontal-skin{background:var(--theme-card)}
+}
+@media(forced-colors:active){
+ :root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,.card-download,.replay-download,.replay-play,.small-player-button),
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock :is(#saveSelectedBtn,#selectAllBtn,#clearSelectionBtn,#sortBtn){background:Canvas!important;color:ButtonText!important;border-color:ButtonText!important;box-shadow:none!important}
+ .capsule-horizontal-skin{background:Canvas;border-color:ButtonText;box-shadow:none}
+}
+.glowme.glowme-phase3.collection-live-list.pc-has-list-refresh #scanBtn{display:none!important}
+@media(max-width:700px){
+ .glowme.glowme-phase3.collection-live-list .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:24px 30px;column-gap:8px;row-gap:2px;height:72px;min-height:72px;padding:6px 8px}
+ .glowme.glowme-phase3.collection-live-list .pc-mode-heading{grid-area:1/1;height:24px}
+ .glowme.glowme-phase3.collection-live-list .pc-mode-count{height:24px}
+ .glowme.glowme-phase3.collection-live-list .pc-list-host{grid-area:2/1}
+ .glowme.glowme-phase3.collection-live-list .pc-list-host .replay-toolbar{height:30px;min-height:30px}
+ .glowme.glowme-phase3.collection-live-list .top-auth-controls{grid-area:1/2/3/3;max-width:96px}
+ .glowme.glowme-phase3.collection-live-list .header-icon-cluster{display:flex;gap:4px}
+ .glowme.glowme-phase3.collection-live-list .header-icon-cluster :is(#scanBtn,#logoutMiniBtn,#channelRefresh){width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:8px!important}
+}
+/* Keep touch batch actions beside the fixed sort too; a selected batch takes
+   the lower row's filter/info space, never the first card's hit targets. */
+@media(max-width:700px){
+ .glowme.glowme-phase3.collection-list #sortBtn{width:80px!important;min-width:80px!important;font-size:12px}
+ .glowme.glowme-phase3.collection-list .media-selection-slot{right:90px;top:50%;transform:translateY(-50%)!important;width:min(301px,calc(100vw - var(--rail-width) - var(--rail-gutter) - 124px))!important;height:42px;z-index:20}
+ .glowme.glowme-phase3.collection-list .media-selection-slot .batch-selection-tools{padding:4px;gap:3px}
+ .glowme.glowme-phase3.collection-list .batch-selection-tools #selectedCount{flex-basis:48px;width:48px;max-width:48px;font-size:11px;overflow:hidden;text-overflow:ellipsis}
+ .glowme.glowme-phase3.collection-list .batch-selection-tools #selectAllBtn{flex-basis:52px;width:52px;font-size:11px;padding:0 3px}
+ .glowme.glowme-phase3.collection-list .capsule-save-control{flex-basis:44px;width:44px}
+ .glowme.glowme-phase3.collection-list #saveSelectedBtn{font-size:12px}
+ .glowme.glowme-phase3.collection-list #clearSelectionBtn{flex-basis:28px;width:28px;min-width:28px}
+ .collection-action-row:has(.media-selection-slot:not([hidden])) :is(.pc-list-info,.channel-media-tabs){visibility:hidden}
+}
+@media(max-width:360px){
+ .glowme.glowme-phase3.collection-list .media-selection-slot .batch-selection-tools{padding:3px;gap:2px}
+ .glowme.glowme-phase3.collection-list .batch-selection-tools #selectedCount{flex-basis:18px;width:18px;max-width:18px;font-size:0}
+ .glowme.glowme-phase3.collection-list #selectedCount::after{content:attr(data-selection-count);font-size:11px}
+ .glowme.glowme-phase3.collection-list .batch-selection-tools #selectAllBtn{flex-basis:40px;width:40px;font-size:10px;padding:0 1px}
+ .glowme.glowme-phase3.collection-list .capsule-save-control{flex-basis:36px;width:36px}
+ .glowme.glowme-phase3.collection-list #clearSelectionBtn{flex-basis:24px;width:24px;min-width:24px}
+}
+@media(max-width:700px){
+ .glowme.glowme-phase3.collection-list .viewer-header{position:sticky;top:8px;z-index:480;gap:0;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-header);box-shadow:0 2px 6px #244b3a08}
+ .glowme.glowme-phase3.collection-list .viewer-header>.topbar{border:0;border-radius:15px 15px 0 0;box-shadow:none}
+ .glowme.glowme-phase3.collection-list .viewer-header::before{content:'';position:absolute;inset:-8px -8px 0;z-index:-2;background:var(--theme-bg);pointer-events:none}
+}
+
+.glowme.glowme-phase3.collection-list #channelRefresh::after{content:none!important}
+.glowme.glowme-phase3.collection-list #channelRefresh svg{display:block;width:20px;height:20px;margin:auto}
+
+@media(prefers-reduced-transparency:reduce){.morph-menu-glass{background-color:var(--theme-card)!important}}
+@media(forced-colors:active){.morph-menu-glass{background-color:Canvas!important}}
+.morph-menu-glass[data-scheme='dark']{box-shadow:inset 0 1px 1px #ffffff70,0 5px 18px #0005}

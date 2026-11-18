@@ -1,0 +1,93 @@
+/* Pinned Meapri LiquidMenu drives only the decorative skin. Real menu buttons
+ * stay at their final, untransformed hit boxes; normal triggers are CSS only. */
+let engineModule;
+const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
+let LiquidGlass,pending=null;
+import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
+import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
+let owner=null,serial=0,builds=0,disposed=0;
+const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
+function release(o){if(o.glass){o.glass.destroy();o.glass=null;o.menu.glass=null;disposed++;}}
+function destroy(o,focus=false){
+ if(owner!==o)return;owner=null;clearTimeout(o.timer);o.menu.destroy();release(o);o.trigger.removeEventListener('click',o.sync);
+ o.trigger.classList.remove('morph-source-open');o.trigger.setAttribute('aria-expanded','false');o.content.remove();o.skin.remove();
+ if(focus&&o.trigger.isConnected)o.trigger.focus({preventScroll:true});
+}
+function close(focus=true,immediate=false){
+ pending=null;const o=owner;if(!o)return;o.focus=focus;o.menu.close();sync(o);
+ if(immediate)destroy(o,focus);
+}
+function optics(o,opening=false){
+ if(owner!==o||o.fallback||!opening&&!o.menu.isOpen)return;
+ if(!glassPreferences.value.enabled||opaque.matches||contrast.matches||motion.matches){if(o.glass)close(true,true);return;}
+ const settings={...materialOptions(glassPreferences.value),scheme:'adaptive'};
+ try{if(o.glass)o.glass.update(settings);else{o.glass=createGlass(LiquidGlass,o.face,{variant:'clear',profile:'control',preset:'balanced',radius:20,edges:false,applyRadius:false,fallbackFilter:'none',respectReducedMotion:true,...settings});o.menu.glass=o.glass;builds++;}}
+ catch{o.menu.destroy();release(o);o.fallback=true;o.content.dataset.optics='fallback';}
+}
+function sync(o){
+ if(owner!==o)return;clearTimeout(o.timer);
+ const open=o.menu.isOpen;o.trigger.setAttribute('aria-expanded',String(open));o.trigger.classList.toggle('morph-source-open',open);
+ o.content.inert=!open;o.content.setAttribute('aria-hidden',String(!open));o.content.classList.toggle('is-open',open);
+ if(open){
+  o.content.style.left=o.skin.style.left;o.content.style.top=o.skin.style.top;
+  optics(o);o.glass?.syncToBackdrop();
+ }else{
+  o.timer=setTimeout(()=>{if(owner===o&&!o.menu.isOpen)destroy(o,o.focus);},motion.matches?0:250);
+ }
+}
+async function open(trigger,{items,onSelect,label='필터 선택'}={}){
+ if(owner?.trigger===trigger){owner.focus=true;owner.menu.toggle();sync(owner);return;}
+ if(owner)close(false,true);
+ const request={trigger};pending=request;trigger.setAttribute('aria-busy','true');
+ let LiquidMenu,timer;
+ try{const sdk=await Promise.race([loadEngine(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);if(sdk)({LiquidMenu,LiquidGlass}=sdk);}catch{/* Native filtering stays usable if optional optics cannot load. */}finally{clearTimeout(timer);trigger.removeAttribute('aria-busy');}
+ if(pending!==request||!trigger.isConnected||!trigger.checkVisibility())return;pending=null;
+ const skin=document.createElement('div');skin.className='morph-menu-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;
+ const face=document.createElement('div');face.className='morph-menu-glass';skin.append(face);
+ const content=document.createElement('div');content.className='morph-menu-content';content.setAttribute('role','menu');content.setAttribute('aria-label',label);
+ for(const item of items){
+  const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitemradio');button.setAttribute('aria-checked',String(!!item.selected));button.textContent=item.label;button.dataset.morphValue=item.value;
+  button.onclick=()=>{if(owner!==o)return;close(true);void onSelect(item.value);};content.append(button);
+ }
+ document.body.append(skin,content);
+ const width=Math.min(280,innerWidth-20);skin.style.width=content.style.width=width+'px';skin.style.height=content.style.height='56px';
+ // The SDK positions/clips/scales only this inert surface, never native items.
+ const menu=LiquidMenu?new LiquidMenu(trigger,skin,{placement:'bottom-start',offset:-trigger.getBoundingClientRect().height,dismissOnOutside:false}):nativeMenu(trigger,skin);
+ if(!LiquidMenu)content.dataset.optics='fallback';
+ const o={serial:++serial,trigger,skin,face,content,menu,glass:null,timer:0,focus:true,sync:null,fallback:!LiquidMenu};owner=o;
+ o.sync=()=>sync(o);trigger.addEventListener('click',o.sync);optics(o,true);menu.open();sync(o);
+ queueMicrotask(()=>{if(owner===o)content.querySelector('[aria-checked="true"]')?.focus({preventScroll:true});});
+}
+// A plain accessible fallback, not an alternate optical engine or fake SVG.
+function nativeMenu(trigger,skin){
+ let isOpen=false;
+ const api={get isOpen(){return isOpen;},open(){isOpen=true;const r=trigger.getBoundingClientRect();skin.style.left=Math.max(8,Math.min(r.left,innerWidth-parseFloat(skin.style.width)-8))+'px';skin.style.top=Math.max(8,r.top)+'px';skin.style.visibility='visible';},close(){isOpen=false;skin.style.visibility='hidden';},toggle(){isOpen?api.close():api.open();},destroy(){api.close();}};
+ return api;
+}
+function openChannel(trigger){
+ if(!window.FrommChannelPhotos)return;
+ open(trigger,{label:'채널 콘텐츠 종류',items:[{value:'all',label:'전체'},{value:'video',label:'영상'},{value:'image',label:'사진'}].map(item=>({...item,selected:channelVideoState.mediaType===item.value})),onSelect:value=>selectChannelMediaType(value)});
+}
+document.addEventListener('click',event=>{const trigger=event.target.closest?.('[data-channel-content-menu]');if(trigger){event.preventDefault();if(owner?.trigger!==trigger)void openChannel(trigger);else if(owner.fallback){owner.menu.toggle();sync(owner);}}});
+document.addEventListener('pointerdown',event=>{
+ if(pending&&!pending.trigger.contains(event.target))pending=null;const o=owner;if(!o||o.content.contains(event.target)||o.trigger.contains(event.target))return;
+ close(false);if(event.target instanceof HTMLVideoElement){event.preventDefault();event.stopPropagation();}
+},{capture:true});
+document.addEventListener('keydown',event=>{
+ const o=owner;
+ if(o){
+  if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close(true);return;}
+  if(event.key==='Tab'){close(false);return;}
+  if(['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+   event.preventDefault();const buttons=[...o.content.querySelectorAll('button')],at=buttons.indexOf(document.activeElement),delta=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1;
+   const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(at+delta+buttons.length)%buttons.length;buttons[next].focus({preventScroll:true});
+  }
+ }else if(event.target.matches?.('[data-channel-content-menu]')&&['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openChannel(event.target);}
+},{capture:true});
+glassPreferences.subscribe(()=>{if(owner)optics(owner);});
+window.addEventListener('fromm-theme-change',()=>{if(owner){optics(owner);owner?.glass?.syncToBackdrop();}});
+for(const query of [motion,opaque,contrast])query.addEventListener('change',()=>{if(owner)close(true,true);});
+for(const name of ['resize','pagehide'])window.addEventListener(name,()=>close(false,true));
+window.addEventListener('scroll',()=>{if(owner)close(false,true);},{passive:true});
+new MutationObserver(()=>{if(owner&&(!owner.trigger.isConnected||!owner.trigger.checkVisibility()))close(false,true);}).observe(document.body,{childList:true,subtree:true});
+window.FrommMorphMenus=Object.freeze({open,close,openChannel,get snapshot(){return {open:!!owner?.menu.isOpen,live:owner?.glass?1:0,builds,disposed};}});

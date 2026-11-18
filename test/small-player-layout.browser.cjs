@@ -21,7 +21,7 @@ async function iconSurfaces(root){
  // complete painted button, including decorations beneath its icon.
  await root.page().waitForTimeout(160);
  const look=await root.locator('.small-player-button').evaluateAll(es=>es.map(el=>{const s=getComputedStyle(el);return{background:s.backgroundImage,color:s.backgroundColor,border:s.borderWidth,shadow:s.boxShadow,faces:el.querySelectorAll('.control-glass-surface,.fixed-glass-surface,.mobile-save-glass').length};}));
- assert.ok(look.every(s=>s.background==='none'&&s.color==='rgba(0, 0, 0, 0)'&&s.border==='0px'&&s.shadow==='none'&&s.faces===0),'icon-only buttons retain no circle or engine '+JSON.stringify(look));
+ assert.ok(look.every(s=>s.background==='none'&&s.color!=='rgba(0, 0, 0, 0)'&&s.border==='1px'&&s.shadow!=='none'&&s.faces===0),'CSS droplets retain one native rim and no engine '+JSON.stringify(look));
 }
 async function rowGeometry(root){
  await iconSurfaces(root);
@@ -67,7 +67,7 @@ async function volumeUI(p,root,media,{touch=false}={}){
    for(const [id,type] of [['small-video','video'],['small-audio','audio']]){
     const card=p.locator(`[data-message-id="${id}"]`),media=card.locator(type);await card.scrollIntoViewIfNeeded();
     const root=card.locator('.small-player');await root.waitFor();await rowGeometry(root);
-    await card.locator('.card-download .fixed-glass-surface').waitFor({state:'attached'});
+    assert.equal(await card.locator('.card-download .fixed-glass-surface').count(),0,'download is CSS-only');
     if(width===1440){
      const targets=()=>root.evaluate(el=>[...el.querySelectorAll('.small-player-button,.small-player-seek')].map(n=>n.getBoundingClientRect().toJSON()));
      const beforeHover=await targets();

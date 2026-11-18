@@ -9,7 +9,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(80);const gallery=await page.evaluate(()=>scrollY);
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(180);console.log('chat restore',original,await page.evaluate(()=>scrollY));assert.ok(Math.abs(await page.evaluate(()=>scrollY)-original)<5,'conversation position restored');
  await page.evaluate(()=>setFilter('image'));await page.waitForTimeout(180);console.log('gallery restore',gallery,await page.evaluate(()=>scrollY));assert.ok(Math.abs(await page.evaluate(()=>scrollY)-gallery)<5,'gallery position restored');
- assert.equal(await page.locator('#chatToolsBtn').isVisible(),false);assert.equal(await page.locator('#saveSelectedBtn').isVisible(),viewport.width>700);if(viewport.width>700)assert.equal(await page.locator('#saveSelectedBtn').isDisabled(),true);
+ assert.equal(await page.locator('#chatToolsBtn').isVisible(),false);assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false);if(viewport.width>700)assert.equal(await page.locator('#saveSelectedBtn').isDisabled(),true);
  const cardTop=await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top);
  await page.evaluate(()=>{state.selected.add('m0');updateSelectedCount();});
  assert.equal(await page.locator('.media-card').first().evaluate(e=>e.getBoundingClientRect().top),cardTop,'batch tools never move the sorting row or cards');assert.equal(await page.locator('#saveSelectedBtn').isVisible(),true);
@@ -22,7 +22,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');cons
  assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false,'no stale save button inside full conversation');
  assert.equal(await page.locator('.toolbar').evaluate(e=>e.classList.contains('has-download-selection')),false,'chat toolbar has no selection state');
  await page.evaluate(()=>setFilter('image'));await page.waitForTimeout(120);
- assert.equal(await page.locator('#saveSelectedBtn').isVisible(),viewport.width>700,'gallery toolbar stays available for new selections');
+ assert.equal(await page.locator('#saveSelectedBtn').isVisible(),false,'gallery toolbar stays available for new selections');
  if(viewport.width>700)assert.equal(await page.locator('#saveSelectedBtn').isDisabled(),true,'former selection is not restored');
  await page.evaluate(()=>setFilter('all'));await page.waitForTimeout(150);await page.locator('#chatToolsBtn').click();await page.locator('#chatSearchInput').fill('인용');await page.waitForTimeout(500);assert.equal(await page.locator('#chatSearchInput').inputValue(),'인용');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'chatToolsBtn');

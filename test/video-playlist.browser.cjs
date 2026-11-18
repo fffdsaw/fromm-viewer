@@ -48,7 +48,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
     await hitSurface();assert.equal(await video.evaluate(el=>el.paused),!paused,'a subsequent ordinary click still controls playback');
    }
    await video.evaluate(el=>el.pause());await toggle.click();await page.locator('[data-mvc="play"]').click();assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await video.evaluate(el=>el.paused),false,'explicit play button still works while closing the queue');await video.evaluate(el=>el.pause());
-   for(const button of [page.locator('.replay-page-back'),page.locator('.replay-page-download')]){assert.equal((await button.textContent()).trim(),'','header uses icons only');assert.ok(await button.getAttribute('aria-label'));assert.equal(await button.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');}
+   for(const button of [page.locator('.replay-page-back'),page.locator('.replay-page-download')]){assert.equal((await button.textContent()).trim(),'','header uses icons only');assert.ok(await button.getAttribute('aria-label'));await require('./helpers/clear-controls.cjs').plain(page,await button.getAttribute('class').then(c=>'.'+c.split(' ')[0]));}
    const before=await video.boundingBox();await toggle.click();await page.waitForTimeout(280);
    assert.deepEqual(await video.boundingBox(),before,'drawer never resizes the video');assert.equal(await toggle.textContent(),'','icon only');
    const drawer=page.locator('.video-playlist-drawer');assert.equal(await drawer.locator('[aria-current="true"]').count(),1);

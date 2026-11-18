@@ -22,7 +22,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    return route.fallback();
   });
   await p.evaluate(async()=>{state.filter='live';await setLiveCenterMode('channel');await selectChannelMediaType('image');});
-  await p.waitForFunction(()=>document.querySelector('.channel-photo-badge')?.textContent==='5장');
+  await p.waitForFunction(()=>document.querySelector('.channel-photo-count-badge')?.textContent==='5장');
   await p.waitForTimeout(200);assert.ok(counted.size<24,'offscreen albums must not all request detail metadata');assert.ok(peak<=2,'visible count lookups are bounded to two');
   await p.locator('[data-channel-photo-open="album-0"]').click();
   await p.waitForFunction(()=>FrommChannelPhotos.snapshot.readyPreviews>=2);
@@ -46,7 +46,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const final=await p.locator('.channel-photo-image img').evaluate(e=>({index:e.dataset.albumIndex,width:e.naturalWidth}));
   assert.deepEqual(final,{index:'2',width:660},'late original responses cannot replace the current photo with an older one');
   await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>FrommChannelPhotos.snapshot.cachedImages),0);
-  await p.locator('[data-channel-media-type="video"]').click();
+  await p.locator('[data-channel-content-menu]').click();await p.locator('[data-morph-value="video"]').click();
   await p.waitForFunction(()=>FrommChannelPhotos.snapshot.pendingCounts===0);
   assert.deepEqual(errors,[]);await context.close();console.log(width+': first-frame neighboring image, stable stage, bounded cache/count requests and stale-original rejection PASS');
  }

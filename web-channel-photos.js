@@ -3,7 +3,7 @@
 'use strict';
 async function selectChannelMediaType(type,{restoreHistory=false}={}) {
   const s=channelVideoState;
-  type=type==='image'?'image':'video';
+  type=['all','video','image'].includes(type)?type:'all';
   if(s.mediaType===type)return;
   flushDownloadClick();downloadClickGesture=null;
   window.FrommChannelPhotos.close();
@@ -19,19 +19,19 @@ async function selectChannelMediaType(type,{restoreHistory=false}={}) {
   await loadChannelVideos();
   if(generation!==s.playSeq||s.mediaType!==type||!channelVideosActive())return;
   scrollTo({top:s.mediaScrolls.get(JSON.stringify([s.channelId,type]))||0,behavior:'auto'});
-  document.querySelector(`[data-channel-media-type="${type}"]`)?.focus({preventScroll:true});
+  document.querySelector(`[data-channel-content-menu]`)?.focus({preventScroll:true});
 }
 function renderChannelPhotoCard(post) {
   const thumb=replayThumb(post),title=post.title||'채널 사진',count=channelPhotoCount(post);
-  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button><span class="channel-photo-badge">${count===null?'사진':count+'장'}</span></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta">${esc(replayDateLabel(post.displayStartAt))}</div></div></article>`;
+  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta">${esc(replayDateLabel(post.displayStartAt))}</div></div></article>`;
 }
 function channelPhotoCount(post) {
   if(Array.isArray(post?.urls)&&post.urls.length)return post.urls.length;
-  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType!=='image')return null;
+  if(post?._channelId!==channelVideoState.channelId||!['all','image'].includes(channelVideoState.mediaType))return null;
   return channelVideoPage()?.photoCounts?.get(String(post.id))??null;
 }
 function rememberChannelPhotoCount(post,count) {
-  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType!=='image')return;
+  if(post?._channelId!==channelVideoState.channelId||!['all','image'].includes(channelVideoState.mediaType))return;
   const page=channelVideoPage();if(!page)return;
   (page.photoCounts??=new Map()).set(String(post.id),count);
   window.FrommChannelPhotos?.refreshCounts();
@@ -50,7 +50,7 @@ function prepareAlbumImage(url,priority='low') {
 }
 function channelPhotoContext() {
   const sameSession=channelVideoSession(),channel=channelVideoState.channelId,generation=channelVideoState.playSeq;
-  return ()=>sameSession()&&generation===channelVideoState.playSeq&&channelVideosActive()&&channelVideoState.mediaType==='image'&&channelVideoState.channelId===channel;
+  return ()=>sameSession()&&generation===channelVideoState.playSeq&&channelVideosActive()&&['all','image'].includes(channelVideoState.mediaType)&&channelVideoState.channelId===channel;
 }
 async function fetchChannelPhotoDetail(post,{signal}={}) {
   const current=channelPhotoContext();
@@ -98,65 +98,54 @@ async function fetchChannelPhotoBlob(url,current) {
   }
   throw failure;
 }
-async function saveChannelPhotoPosts(posts,{button,index=null}={}) {
+async function saveChannelPhotoContents(post,{directory,current,index=null,onProgress}={}){
+  const detail=await fetchChannelPhotoDetail(post),indexes=index===null?detail.urls.map((_url,i)=>i):[index];
+  let ok=0,skipped=0,failed=0;
+  for(const i of indexes){
+    if(!current())break;
+    if(!detail.urls[i]){failed++;continue;}
+    onProgress?.(i+1,detail.urls.length);let writable;
+    try{
+      const {blob,contentType}=await fetchChannelPhotoBlob(detail.urls[i],current);if(!current())break;
+      const filename=channelPhotoFilename(detail,i,contentType);
+      if(directory){
+        let existing;try{existing=await directory.getFileHandle(filename);}catch(e){if(e.name!=='NotFoundError')throw e;}
+        if(!current())break;
+        if(existing&&(await existing.getFile()).size===blob.size){skipped++;continue;}
+        const handle=await directory.getFileHandle(filename,{create:true});if(!current())break;
+        writable=await handle.createWritable();if(!current())throw new Error('SESSION_CHANGED');
+        await writable.write(blob);if(!current())throw new Error('SESSION_CHANGED');await writable.close();writable=null;
+      }else{
+        const objectUrl=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=objectUrl;anchor.download=filename;anchor.hidden=true;document.body.append(anchor);anchor.click();anchor.remove();
+        setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);if(indexes.length>1)await sleep(450);
+      }
+      ok++;
+    }catch{try{await writable?.abort();}catch{}failed++;}
+  }
+  return {ok,skipped,failed,complete:current()&&ok+skipped===indexes.length&&failed===0};
+}
+async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
-  const current=channelPhotoContext(),oldHTML=button?.innerHTML;
-  if(!current())return;
-  state.postBulkSaving=true;channelVideoState.downloading=true;
-  if(button)button.disabled=true;
+  const current=channelPhotoContext(),oldHTML=button?.innerHTML;if(!current())return;
+  state.postBulkSaving=true;channelVideoState.downloading=true;if(button)button.disabled=true;
   let directory,ok=0,skipped=0,failed=0,status='';
   try{
-    // Ask while the original click still owns transient activation.
     if(supportsDirectorySave())directory=await window.showDirectoryPicker();
     for(const post of posts){
       if(!current())break;
-      let detail;
-      try{detail=await fetchChannelPhotoDetail(post);}catch{failed++;continue;}
-      const indexes=index===null?detail.urls.map((_url,i)=>i):[index];
-      let complete=true;
-      for(const i of indexes){
-        if(!current())break;
-        if(!detail.urls[i]){complete=false;failed++;continue;}
-        if(button)button.textContent=`저장 ${i+1}/${detail.urls.length}`;
-        let writable;
-        try{
-          const {blob,contentType}=await fetchChannelPhotoBlob(detail.urls[i],current);
-          if(!current())break;
-          const filename=channelPhotoFilename(detail,i,contentType);
-          if(directory){
-            let existing;
-            try{existing=await directory.getFileHandle(filename);}catch(e){if(e.name!=='NotFoundError')throw e;}
-            if(!current())break;
-            if(existing&&(await existing.getFile()).size===blob.size){skipped++;continue;}
-            const handle=await directory.getFileHandle(filename,{create:true});
-            if(!current())break;
-            writable=await handle.createWritable();
-            if(!current())throw new Error('SESSION_CHANGED');
-            await writable.write(blob);
-            if(!current())throw new Error('SESSION_CHANGED');
-            await writable.close();writable=null;
-          }else{
-            const objectUrl=URL.createObjectURL(blob),anchor=document.createElement('a');
-            anchor.href=objectUrl;anchor.download=filename;anchor.hidden=true;document.body.append(anchor);anchor.click();anchor.remove();
-            setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
-            if(indexes.length>1)await sleep(450);
-          }
-          ok++;
-        }catch{try{await writable?.abort();}catch{}complete=false;failed++;}
-      }
-      // Leave a partly failed album selected so a later save can retry it.
-      if(current()&&complete&&index===null)state.postSelected.delete(downloadSelectionKey('channel-image',post));
+      try{
+        const result=await saveChannelPhotoContents(post,{directory,current,index,onProgress:(done,total)=>{if(button)button.textContent=`저장 ${done}/${total}`;}});
+        ok+=result.ok;skipped+=result.skipped;failed+=result.failed;
+        if(current()&&result.complete&&index===null)state.postSelected.delete(downloadSelectionKey('channel-image',post));
+      }catch{failed++;}
     }
     status=`${directory?'저장':'다운로드 요청'} ${ok}장${skipped?` · 기존 파일 ${skipped}장 건너뜀`:''}${failed?` · 실패 ${failed}개 (선택 유지)`:''}`;
     if(current())window.alert(status);
   }catch(error){if(current()&&error.name!=='AbortError')window.alert('사진을 저장하지 못했습니다. 다시 시도해주세요.');}
-  finally{
-    state.postBulkSaving=false;channelVideoState.downloading=false;
-    if(button){button.disabled=false;button.innerHTML=oldHTML;}
-    syncDownloadSelection();void drainPostDownloads();
-  }
+  finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;button.innerHTML=oldHTML;}syncDownloadSelection();void drainPostDownloads();}
   return status;
 }
+
 function saveSelectedChannelPhotos() {
   const scope=downloadSelectionScope();
   return saveChannelPhotoPosts(scope.items.filter(post=>state.postSelected.has(downloadSelectionKey('channel-image',post))),{button:document.querySelector('#saveSelectedBtn')});
@@ -253,8 +242,8 @@ window.FrommChannelPhotos=(()=>{
     const c=countOwner;if(!c)return;countOwner=null;c.observer?.disconnect();for(const controller of c.controllers)controller.abort();c.queue.clear();
   }
   function countLabel(card,post){
-    const label=card.querySelector('.channel-photo-badge'),count=channelPhotoCount(post);if(!label)return;
-    const text=count===null?'사진':count+'장';if(label.textContent!==text)label.textContent=text;
+    const label=card.querySelector('.channel-photo-count-badge'),count=channelPhotoCount(post);if(!label)return;
+    const text=count===null?'':count+'장';if(label.textContent!==text)label.textContent=text;label.hidden=count===null;
     label.setAttribute('aria-label',count===null?'사진 앨범':'사진 '+count+'장');
   }
   function refreshCounts(){if(countOwner?.valid())for(const [card,post]of countOwner.cards)countLabel(card,post);}
@@ -268,7 +257,7 @@ window.FrommChannelPhotos=(()=>{
     }
   }
   function bindCounts(){
-    if(!channelVideosActive()||channelVideoState.mediaType!=='image'||channelVideoState.selected){stopCounts();return;}
+    if(!channelVideosActive()||!['all','image'].includes(channelVideoState.mediaType)||channelVideoState.selected){stopCounts();return;}
     if(countOwner&&!countOwner.valid())stopCounts();
     if(!countOwner){
       const c={valid:channelPhotoContext(),cards:new Map(),queue:new Set(),requested:new WeakSet(),controllers:new Set(),active:0,observer:null};
@@ -286,7 +275,6 @@ window.FrommChannelPhotos=(()=>{
   }
   function bind(){
     bindCounts();
-    for(const button of document.querySelectorAll('[data-channel-media-type]'))button.onclick=()=>selectChannelMediaType(button.dataset.channelMediaType);
     for(const button of document.querySelectorAll('[data-channel-photo-open]'))button.onclick=()=>open(channelVideoPage().posts.find(p=>String(p.id)===button.dataset.channelPhotoOpen));
     for(const button of document.querySelectorAll('[data-channel-photo-download]'))button.onclick=()=>saveChannelPhotoPosts([channelVideoPage().posts.find(p=>String(p.id)===button.dataset.channelPhotoDownload)],{button});
   }

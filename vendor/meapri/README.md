@@ -5,6 +5,31 @@ Revision: 1613f8311dbc31bc2331afcfe51a143c56dd6308 (version 0.1.0), MIT ©2026 M
 
 Originally built using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution. The two app patches below are now applied to the ESM bundle; the pinned worker is unchanged.
 
+## Scoped Glow ME integration — 2026-11-18
+
+This supersedes the older global-control and always-visible selection policies
+below for the six collection list headers and their specified media actions.
+Ordinary header/selection/thumbnail download/play/compact-player buttons use
+immediate CSS droplets with no SDK instance or optical preference binding.
+Existing unrelated working rail/settings/native materials are preserved.
+
+The expanded Channel content menu uses the pinned `LiquidMenu` public
+open/close/toggle/destroy interface and actual shared `LiquidGlass` material.
+Only its decorative surface morphs; native menu items/hit boxes never scale.
+Its shared preference values and official `scheme:'adaptive'` use the SDK's
+three-point computed solid-background heuristic (`syncToBackdrop()` on app
+theme changes), not image/video pixel reads,
+screen capture or a new adaptive engine. Complex backdrop colors use the SDK
+neutral fallback plus app theme contrast. The SDK is loaded lazily and destroyed
+on close/navigation/lifecycle cleanup. The app adapter destroys the menu before
+releasing its attached glass, cancelling the SDK's pending lens ramp safely.
+
+The reused capsule adapter's `axis:'x'` path is independent CSS materialization
+of a decorative skin to the left of the stationary sort, hidden at zero. It
+builds no optics and never scales real text/hit boxes. See
+[implementation and verification](../../docs/development/reviews/GLOWME_INTEGRATION_20261118.md).
+Vendor JS, worker and license are unchanged for this work.
+
 ## Current full-strength control integration — 2026-11-16
 
 This supersedes the historical pane/balanced/budget descriptions below. Headers

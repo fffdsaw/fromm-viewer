@@ -5,7 +5,11 @@ async function plain(page,selector){
  const target=page.locator(selector).first();await target.waitFor({state:'visible'});
  assert.equal(await target.locator('.control-glass-surface,.mobile-save-glass').count(),0,selector+' has no refractive engine face');
  assert.equal(await target.getAttribute('data-control-optics'),null,selector+' is disconnected from adjustable optics');
+ const cssOnly=await target.evaluate(e=>e.matches('.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button'));
  const look=await target.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,backdrop:s.backdropFilter,shadow:s.boxShadow}});
+ if(cssOnly){
+  assert.equal(look.backdrop,'none',selector+' uses no optical backdrop');if(!await page.evaluate(()=>matchMedia('(forced-colors: active)').matches))assert.notEqual(look.shadow,'none',selector+' has an immediate CSS droplet rim');assert.equal(await target.locator('.fixed-glass-surface').count(),0,selector+' has no optical engine surface');return;
+ }
  assert.deepEqual(look,{fill:'rgba(0, 0, 0, 0)',backdrop:'none',shadow:'none'},selector+' is clear native styling');
  if(await target.evaluate(el=>el.matches('.small-player-button'))){
   assert.equal(await target.locator('.fixed-glass-surface').count(),0,selector+' compact icon has no fixed material either');

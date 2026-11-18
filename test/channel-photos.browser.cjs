@@ -33,10 +33,10 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
    return route.fallback();
   });
   await page.evaluate(async()=>{window.showDirectoryPicker=undefined;state.filter='live';await setLiveCenterMode('channel');});
-  await page.locator('[data-channel-media-type="image"]').click();
+  await page.locator('[data-channel-content-menu]').click();await page.locator('[data-morph-value="image"]').click();
   await page.locator('[data-channel-photo-open="p2"]').waitFor();
   assert.equal(await page.locator('.channel-photo-card').count(),2);
-  await page.waitForFunction(()=>[...document.querySelectorAll('.channel-photo-badge')].every(e=>e.textContent==='2장'));
+  await page.waitForFunction(()=>[...document.querySelectorAll('.channel-photo-count-badge')].every(e=>e.textContent==='2장'));
   assert.equal(await page.locator('[data-channel-video-play]').count(),0);
   assert.ok(requests.includes('raw-tail')&&requests.includes('empty-photo-page'),'cursor follows unfiltered raw tail through photo-empty page');
   await page.screenshot({path:`${output}/list-${width}.png`});
@@ -74,11 +74,11 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   assert.equal(await page.evaluate(()=>downloadSelectionScope().items.filter(p=>state.postSelected.has(downloadSelectionKey('channel-image',p))).length),2);
   await page.evaluate(()=>saveSelectedPosts());await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
   assert.equal(downloads.length,7);assert.match(alerts.at(-1),/4장/);
-  await page.locator('[data-channel-media-type="video"]').click();
+  await page.locator('[data-channel-content-menu]').click();await page.locator('[data-morph-value="video"]').click();
   assert.equal(await page.locator('.channel-photo-card').count(),0);
   assert.ok(await page.locator('[data-channel-video-play="v"]').count());
   assert.equal(await page.evaluate(()=>downloadSelectionScope().items.filter(p=>state.postSelected.has(downloadSelectionKey('channel',p))).length),0);
-  await page.locator('[data-channel-media-type="image"]').click();
+  await page.locator('[data-channel-content-menu]').click();await page.locator('[data-morph-value="image"]').click();
   deny=true;await page.locator('[data-channel-photo-open="p1"]').click();
   await page.locator('[data-photo-action="retry"]:not([hidden])').waitFor();assert.equal(await page.locator('[data-photo-action="save"]').isDisabled(),true);
   deny=false;await page.locator('[data-photo-action="retry"]').click();await page.getByText('1 / 2',{exact:true}).waitFor();

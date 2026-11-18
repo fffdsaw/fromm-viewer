@@ -39,7 +39,21 @@ const output=process.env.LOGIN_SCREENSHOT_DIR;
   if(['saved','legacy','network'].includes(mode)){
    await p.locator('#loginGate').waitFor({state:'hidden'});assert.equal(await p.evaluate(()=>loginPaints),0,'valid/network session never paints a login form');
    assert.equal(await p.locator('.app').evaluate(e=>e.inert),false);
-   if(mode==='saved'){await p.reload();await p.locator('#loginGate').waitFor({state:'hidden'});assert.equal(await p.evaluate(()=>loginPaints),0,'reload never paints login form');}
+   if(mode==='saved'){
+    await p.reload();await p.locator('#loginGate').waitFor({state:'hidden'});assert.equal(await p.evaluate(()=>loginPaints),0,'reload never paints login form');
+    await p.evaluate(()=>{FrommThemes.set('classic');forgetSavedAuth();});
+    await p.locator('.login-panel').waitFor();
+    assert.equal(await p.locator('#loginStatus').textContent(),'');
+    assert.equal(await p.locator('#loginStatus').isVisible(),false);
+    for(const theme of ['glow','classic']){
+     await p.evaluate(theme=>FrommThemes.set(theme),theme);
+     await p.keyboard.press('Tab');await p.keyboard.press('Shift+Tab');
+     assert.ok(await p.locator('#loginEmail').evaluate(el=>{
+      const probe=document.createElement('span');probe.style.color='var(--theme-accent)';document.body.append(probe);
+      const matches=el.matches(':focus-visible')&&getComputedStyle(el).outlineColor===getComputedStyle(probe).color;probe.remove();return matches;
+     }),'login keyboard focus uses the current theme accent');
+    }
+   }
   }else{
    await p.locator('.login-panel').waitFor({state:'visible'});assert.equal(await p.evaluate(()=>document.activeElement.id),'loginEmail');
    assert.equal(await p.locator('#loginGate').evaluate(e=>getComputedStyle(e).backgroundColor),mode==='fresh'?'rgb(237, 248, 240)':'rgb(240, 248, 243)');

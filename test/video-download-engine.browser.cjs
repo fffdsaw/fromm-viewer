@@ -94,6 +94,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     assert.deepEqual(await button.boundingBox(),geometry);
     assert.deepEqual(await page.locator('#sortBtn').boundingBox(),sort);
     assert.equal(alerts.length,alertCount,'Replay batch completion is inline');
+    assert.match(await page.locator('#saveResultModal.open #saveResultSummary').textContent(),/저장 2개/);
     if(out)await page.screenshot({path:path.join(out,`${cfg.width}-replay-bulk-complete.png`)});
     await page.waitForFunction(()=>FrommGlowME.capsule.phase==='hidden');
     assert.equal(await button.textContent(),'저장');

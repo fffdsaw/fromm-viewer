@@ -15,7 +15,7 @@ function fn(name, source = html) {
   return match[0];
 }
 function setup(overrides = {}) {
-  const calls = [], alerts = [];
+  const calls = [], alerts = [], notices = [];
   let auth = {token: 'synthetic-session', uuid: 'synthetic-device', accountKey: 'synthetic-account'};
   const state = {filter: 'live', room: null, live: {centerMode: 'channel', entry: {}, channels: [], channelsLoaded: false, replayPosts: [{id: 'existing-replay'}], replaySelected: {id: 'existing-player'}, replayPlaylistCache: new Map()}};
   const historyCalls = [];
@@ -31,7 +31,7 @@ function setup(overrides = {}) {
     },
     back() {historyCalls.push({back: true});},
   };
-  const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
+  const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},showSaveNotice:message=>notices.push(message),setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
     sleep: async () => {},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
@@ -49,7 +49,7 @@ function setup(overrides = {}) {
   for (const name of ['replayStreamUrl', 'replayAuthParams', 'replaySignedUrl', 'replayCanonicalStreamUrl', 'rewriteReplayMediaPlaylist', 'parseReplayDownloadPlaylist', 'replayDownloadIv']) vm.runInContext(fn(name), context);
   vm.runInContext(channelScript, context);
   const s = vm.runInContext('channelVideoState', context);
-  return {context, s, state, calls, alerts, history, historyCalls, setAuth: value => {auth = value;}};
+  return {context, s, state, calls, alerts, notices, history, historyCalls, setAuth: value => {auth = value;}};
 }
 const deferred = () => {let resolve; const promise = new Promise(r => {resolve = r;}); return {resolve, promise};};
 
@@ -368,7 +368,7 @@ test('cancelled save picker requests no signed URL; denied downloads abort witho
   h.context.frommApiRequest = async () => {throw new Error('HTTP 403');};
   h.context.downloadReplayStream = async () => {transfers++;};
   await h.context.downloadChannelVideo(h.s.pages.get('a').posts[0]);
-  assert.equal(aborted, true); assert.equal(transfers, 0); assert.match(h.alerts[0], /403/);
+  assert.equal(aborted, true); assert.equal(transfers, 0); assert.match(h.notices[0], /403/);assert.deepEqual(h.alerts,[]);
 });
 
 test('existing session request helper supplies authorization, stable UUID and channel-id', async () => {
@@ -430,7 +430,7 @@ test('album folder save keeps partial selection, skips identical retries, and pr
   const post={id:'album',_channelId:'a',title:'Album',displayStartAt:Date.parse('2026-09-07T15:00:00Z')},files=new Map(),notices=[];let failSecond=true,writes=0;
   Object.assign(h.context,{
     postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',
-    showChannelPhotoSaveNotice:message=>notices.push(message),
+    showSaveNotice:message=>notices.push(message),
     syncDownloadSelection(){},drainPostDownloads(){},downloadSelectionKey:(_kind,p)=>p.id,
     fetchChannelPhotoDetail:async item=>({...item,urls:['https://fixture.test/one','https://fixture.test/two']}),
     fetchChannelPhotoBlob:async url=>{if(failSecond&&url.endsWith('two'))throw new Error('offline');return {blob:new Blob(['synthetic image']),contentType:'image/jpeg'};}

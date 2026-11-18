@@ -1,3 +1,9 @@
+## Bottom save result sheet and login theme — 2026-11-19 (Asia/Seoul)
+
+The active PR #145 implementation and release request now includes a common nonblocking, themed result sheet for video, photos, media saves, folder/duplicate outcomes, and vote images. The sheet slides from the bottom like the supplied clip. It uses the top layer with the current native viewer as host when needed, allows interaction with the media list, and keeps failure details and retry where the prior result exposed them. The Replay option-A button still shows the spinning count and brief checkmark. Results and errors use the shared sheet, not browser alerts. Native directory permission and file pickers remain the platform controls.
+
+Login keyboard focus uses the current theme accent. An ordinary logout opens the form with a blank status area, which takes no layout space. Existing invalid and expired-session handling stays visible. Local synthetic suites verify media folder bytes, sheet positioning and animation, retry UI, Channel album, Replay option A, theme/keyboard focus, and saved-session behavior. Full unit result is 336 pass and one existing Agora skip. Receipts are `/tmp/fromm-save-sheet-*.log`. No actual Fromm account or physical macOS Safari was tested. Continue with exact-head GitHub checks on PR #145 and verify production Pages.
+
 ## Replay batch save option A — 2026-11-19 (Asia/Seoul)
 
 The user explicitly approved implementing Replay multi-video progress on PR #145, merging that PR, and deploying it to production Pages. The branch is `codex/pc-media-controls-20261118`, based on main `6de8fb7`. Exact-head checks and public Pages are the release verification points.

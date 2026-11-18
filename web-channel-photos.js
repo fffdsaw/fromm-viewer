@@ -150,18 +150,6 @@ async function saveChannelPhotoContents(post,{directory,current,index=null,onPro
   }
   return {ok,skipped,failed,complete:current()&&ok+skipped===indexes.length&&failed===0};
 }
-function showChannelPhotoSaveNotice(message){
-  let notice=document.querySelector('.channel-photo-save-notice');
-  if(!notice){
-    notice=document.createElement('div');notice.className='channel-photo-save-notice';
-    notice.setAttribute('role','status');
-  }
-  const host=document.querySelector('.channel-photo-dialog[open]')||document.body;
-  if(notice.parentElement!==host)host.append(notice);
-  notice.textContent=message;
-  clearTimeout(showChannelPhotoSaveNotice.timer);
-  showChannelPhotoSaveNotice.timer=setTimeout(()=>notice.remove(),4500);
-}
 async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
   const current=channelPhotoContext(),oldHTML=button?.innerHTML;if(!current())return;
@@ -192,13 +180,13 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
     if(current()){
       phase=failed?'error':directory?'done':'handed-off';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
-      showChannelPhotoSaveNotice(status);
+      showSaveNotice(status);
     }
   }catch(error){
     if(current()&&error.name!=='AbortError'){
       phase='error';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
-      showChannelPhotoSaveNotice('사진을 저장하지 못했습니다. 다시 시도해주세요.');
+      showSaveNotice('사진을 저장하지 못했습니다. 다시 시도해주세요.');
     }
   }
   finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;if(!iconOnly)button.innerHTML=oldHTML;}
@@ -218,9 +206,9 @@ window.FrommChannelPhotos=(()=>{
     if(!owner)return;
     const previous=owner;owner=null;previous.controller.abort();previous.observer.disconnect();
     for(const entry of previous.images.values()){entry.preview.dispose();entry.original?.dispose();}previous.images.clear();
-    const notice=dialog?.querySelector('.channel-photo-save-notice');
-    if(notice)document.body.append(notice);
-    if(dialog?.open)dialog.close();dialog?.remove();dialog=null;
+    if(dialog?.open)dialog.close();
+    restoreSaveResultHost(dialog);
+    dialog?.remove();dialog=null;
     if(previous.trigger?.isConnected)previous.trigger.focus({preventScroll:true});
   }
   function ensure(){

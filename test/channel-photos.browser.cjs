@@ -73,7 +73,7 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   await page.locator('[data-photo-action="save"]').click();
   await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
   assert.equal(downloads.length,1);assert.equal(downloads[0].name,'260908_앨범 p1_001.svg');assert.ok(downloads[0].bytes.includes(Buffer.from('<svg')));
-  const viewerNotice=page.locator('.channel-photo-dialog .channel-photo-save-notice');
+  const viewerNotice=page.locator('.channel-photo-dialog #saveResultModal.open #saveResultSummary');
   await viewerNotice.waitFor();
   assert.match(await viewerNotice.textContent(),/다운로드 요청 완료.*1장/);
   if(width===1440)await page.screenshot({path:`${output}/album-save-notice.png`});
@@ -93,7 +93,7 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   assert.equal(await page.evaluate(()=>downloadSelectionScope().kind),'channel-image');
   assert.equal(await page.evaluate(()=>downloadSelectionScope().items.filter(p=>state.postSelected.has(downloadSelectionKey('channel-image',p))).length),2);
   await page.evaluate(()=>saveSelectedPosts());await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
-  assert.equal(downloads.length,7);assert.match(await page.locator('body > .channel-photo-save-notice').textContent(),/다운로드 요청 완료.*4장/);
+  assert.equal(downloads.length,7);assert.match(await page.locator('body > #saveResultModal.open #saveResultSummary').textContent(),/다운로드 요청 완료.*4장/);
   assert.deepEqual(alerts,[],'single, album and selected photo downloads never show a browser alert');
   await page.locator('[data-channel-content-menu]').click();await page.locator('[data-morph-value="video"]').click();
   assert.equal(await page.locator('.channel-photo-card').count(),0);

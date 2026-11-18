@@ -81,9 +81,36 @@ function channelPhotoOriginal(url) {
   return parsed.href;
 }
 function channelPhotoFilename(post,index,contentType) {
-  const clean=value=>String(value||'').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').trim().slice(0,70);
-  const identity=clean(post._channelId)+'_'+clean(post.id);
-  return `${clean(post._channelName)||'Channel'}_${clean(post.title)||'사진'}_${identity}_${String(index+1).padStart(3,'0')}${contentTypeExt(contentType,'image')}`;
+  const date=replayDatePrefix(post.displayStartAt??'')||replayDatePrefix(post.createdAt??'')||'날짜없음';
+  const title=String(post.title||'').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').trim().slice(0,70).replace(/[\uD800-\uDBFF]$/,'').trim()||'사진';
+  return `${date}_${title}_${String(index+1).padStart(3,'0')}${contentTypeExt(contentType,'image')}`;
+}
+async function sameChannelPhotoFile(file,blob,current){
+  if(file.size!==blob.size)return false;
+  const chunkSize=1024*1024;
+  for(let offset=0;offset<blob.size;offset+=chunkSize){
+    if(!current())return false;
+    const [existing,incoming]=await Promise.all([file,blob].map(source=>source.slice(offset,offset+chunkSize).arrayBuffer()));
+    const bytes=new Uint8Array(incoming);
+    if(new Uint8Array(existing).some((byte,index)=>byte!==bytes[index]))return false;
+  }
+  return true;
+}
+async function channelPhotoSaveHandle(directory,filename,blob,current){
+  const sequence=filename.lastIndexOf('_');
+  for(let suffix=1;current();suffix++){
+    const name=suffix===1?filename:`${filename.slice(0,sequence)} (${suffix})${filename.slice(sequence)}`;
+    let handle;
+    try{handle=await directory.getFileHandle(name);}
+    catch(error){
+      if(error.name!=='NotFoundError')throw error;
+      return current()?directory.getFileHandle(name,{create:true}):null;
+    }
+    const file=await handle.getFile();
+    if(!file.size)return handle;
+    if(await sameChannelPhotoFile(file,blob,current))return null;
+  }
+  return null;
 }
 async function fetchChannelPhotoBlob(url,current) {
   let failure;
@@ -109,10 +136,9 @@ async function saveChannelPhotoContents(post,{directory,current,index=null,onPro
       const {blob,contentType}=await fetchChannelPhotoBlob(detail.urls[i],current);if(!current())break;
       const filename=channelPhotoFilename(detail,i,contentType);
       if(directory){
-        let existing;try{existing=await directory.getFileHandle(filename);}catch(e){if(e.name!=='NotFoundError')throw e;}
+        const handle=await channelPhotoSaveHandle(directory,filename,blob,current);
         if(!current())break;
-        if(existing&&(await existing.getFile()).size===blob.size){skipped++;continue;}
-        const handle=await directory.getFileHandle(filename,{create:true});if(!current())break;
+        if(!handle){skipped++;continue;}
         writable=await handle.createWritable();if(!current())throw new Error('SESSION_CHANGED');
         await writable.write(blob);if(!current())throw new Error('SESSION_CHANGED');await writable.close();writable=null;
       }else{
@@ -123,6 +149,18 @@ async function saveChannelPhotoContents(post,{directory,current,index=null,onPro
     }catch{try{await writable?.abort();}catch{}failed++;}
   }
   return {ok,skipped,failed,complete:current()&&ok+skipped===indexes.length&&failed===0};
+}
+function showChannelPhotoSaveNotice(message){
+  let notice=document.querySelector('.channel-photo-save-notice');
+  if(!notice){
+    notice=document.createElement('div');notice.className='channel-photo-save-notice';
+    notice.setAttribute('role','status');
+  }
+  const host=document.querySelector('.channel-photo-dialog[open]')||document.body;
+  if(notice.parentElement!==host)host.append(notice);
+  notice.textContent=message;
+  clearTimeout(showChannelPhotoSaveNotice.timer);
+  showChannelPhotoSaveNotice.timer=setTimeout(()=>notice.remove(),4500);
 }
 async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
@@ -149,17 +187,18 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
         if(current()&&result.complete&&index===null)state.postSelected.delete(downloadSelectionKey('channel-image',post));
       }catch{failed++;}
     }
-    status=`${directory?'저장':'다운로드 요청'} ${ok}장${skipped?` · 기존 파일 ${skipped}장 건너뜀`:''}${failed?` · 실패 ${failed}개 (선택 유지)`:''}`;
+    status=[ok?`${directory?'저장 완료':'다운로드 요청 완료'} · ${ok}장`:'',
+      skipped?`기존 파일 ${skipped}장 건너뜀`:'',failed?`저장 실패 ${failed}개`:''].filter(Boolean).join(' · ');
     if(current()){
       phase=failed?'error':directory?'done':'handed-off';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
-      else window.alert(status);
+      showChannelPhotoSaveNotice(status);
     }
   }catch(error){
     if(current()&&error.name!=='AbortError'){
       phase='error';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
-      else window.alert('사진을 저장하지 못했습니다. 다시 시도해주세요.');
+      showChannelPhotoSaveNotice('사진을 저장하지 못했습니다. 다시 시도해주세요.');
     }
   }
   finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;if(!iconOnly)button.innerHTML=oldHTML;}
@@ -179,6 +218,8 @@ window.FrommChannelPhotos=(()=>{
     if(!owner)return;
     const previous=owner;owner=null;previous.controller.abort();previous.observer.disconnect();
     for(const entry of previous.images.values()){entry.preview.dispose();entry.original?.dispose();}previous.images.clear();
+    const notice=dialog?.querySelector('.channel-photo-save-notice');
+    if(notice)document.body.append(notice);
     if(dialog?.open)dialog.close();dialog?.remove();dialog=null;
     if(previous.trigger?.isConnected)previous.trigger.focus({preventScroll:true});
   }
@@ -215,6 +256,7 @@ window.FrommChannelPhotos=(()=>{
     const index=o.index,url=o.detail.urls[index],version=++o.imageVersion,entry=cachedImage(o,index,'high');
     const current=()=>owner===o&&o.current()&&o.imageVersion===version;
     const stage=dialog.querySelector('.channel-photo-image'),status=dialog.querySelector('.channel-photo-status');
+    status.textContent='';
     dialog.querySelector('.channel-photo-count').textContent=`${index+1} / ${o.detail.urls.length}`;
     dialog.querySelector('[data-photo-action="prev"]').disabled=index===0;
     dialog.querySelector('[data-photo-action="next"]').disabled=index===o.detail.urls.length-1;
@@ -225,12 +267,11 @@ window.FrommChannelPhotos=(()=>{
     if(originalUrl!==url&&!entry.original)entry.original=prepareAlbumImage(originalUrl,'high');
     const update=()=>{
       if(!current())return;
-      if(entry.original?.ready){display(entry.original);status.textContent='';}
-      else if(entry.preview.ready){
-        display(entry.preview);status.textContent=entry.original?.failed?'원본 대신 제공된 사진을 표시합니다.':entry.original?'사진 표시 중 · 원본을 준비하고 있습니다.':'';
-      }else if(entry.preview.failed&&(!entry.original||entry.original.failed)){
+      if(entry.original?.ready)display(entry.original);
+      else if(entry.preview.ready)display(entry.preview);
+      else if(entry.preview.failed&&(!entry.original||entry.original.failed)){
         status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';dialog.querySelector('[data-photo-action="retry"]').hidden=false;
-      }else status.textContent='사진 불러오는 중…';
+      }
     };
     update();entry.preview.promise.then(update);entry.original?.promise.then(update);
     // Preview only: avoid speculative high-resolution downloads for the album.

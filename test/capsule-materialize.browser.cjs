@@ -12,10 +12,22 @@ async function rects(p){return p.evaluate(()=>['.media-card','.card-download','#
  const {page:p,context,errors}=await open(browser,server.url,{width:900,height:700});await start(p);
  assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);assert.equal(await p.locator('#selectAllBtn').isEnabled(),true);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.equal(await p.locator('#clearSelectionBtn').isDisabled(),true);await snap(p,'00-idle');
  const horizontal=await p.evaluate(async()=>{
-  chooseDownloadItem('media',state.infiniteList[0]);const animation=document.querySelector('.capsule-horizontal-skin').getAnimations()[0];animation.pause();animation.currentTime=80;
-  const skin=document.querySelector('.capsule-horizontal-skin'),m=new DOMMatrix(getComputedStyle(skin).transform),native=[...document.querySelectorAll('#mediaSelectionSlot button')].map(e=>getComputedStyle(e).transform);
-  const origin=getComputedStyle(skin).transformOrigin;clearDownloadSelection();animation.pause();animation.currentTime=60;chooseDownloadItem('media',state.infiniteList[0]);return {x:m.a,y:m.d,native,origin};
- });assert.ok(horizontal.x>0&&horizontal.x<1);assert.equal(horizontal.y,1);assert.ok(horizontal.native.every(x=>x==='none'));assert.ok(parseFloat(horizontal.origin)>250,'origin is the right edge next to sort');await settled(p,'shown');assert.ok(await p.evaluate(()=>FrommGlowME.capsule.reversals)>=2);await p.evaluate(()=>clearDownloadSelection());await settled(p,'hidden');
+  chooseDownloadItem('media',state.infiniteList[0]);const slot=document.querySelector('#mediaSelectionSlot'),animation=slot.getAnimations()[0];
+  animation.pause();animation.currentTime=80;
+  const paint=getComputedStyle(slot),native=[...slot.querySelectorAll('button')].map(e=>getComputedStyle(e).transform);
+  const opening={clip:paint.clipPath,alpha:Number(paint.opacity)};
+  clearDownloadSelection();animation.pause();animation.currentTime=60;
+  const closing={clip:paint.clipPath,alpha:Number(paint.opacity),controlsAlpha:getComputedStyle(slot.querySelector('.batch-selection-tools')).opacity,inert:slot.inert};
+  chooseDownloadItem('media',state.infiniteList[0]);return {opening,closing,native};
+ });
+ assert.match(horizontal.opening.clip,/^inset\(-4px -4px -4px /,'the left edge moves towards the fixed sort side');
+ assert.ok(horizontal.opening.alpha>0&&horizontal.opening.alpha<1);
+ assert.notEqual(horizontal.opening.clip,horizontal.closing.clip);
+ assert.ok(horizontal.closing.alpha>0&&horizontal.closing.alpha<horizontal.opening.alpha);
+ assert.equal(horizontal.closing.controlsAlpha,'1','controls fade with their parent instead of disappearing at the start');
+ assert.ok(horizontal.closing.inert,'closing controls stop accepting input immediately');
+ assert.ok(horizontal.native.every(x=>x==='none'));
+ await settled(p,'shown');assert.ok(await p.evaluate(()=>FrommGlowME.capsule.reversals)>=2);await p.evaluate(()=>clearDownloadSelection());await settled(p,'hidden');
  const before=await rects(p);await select(p);await settled(p,'shown');await plain(p,'#saveSelectedBtn');
  assert.deepEqual(await p.evaluate(()=>({builds:FrommGlowME.capsule.builds,live:FrommGlowME.capsule.live,mode:FrommGlowME.capsule.mode})),{builds:0,live:0,mode:'css-horizontal'},'selection never starts a save engine');
  assert.equal(await p.locator('.capsule-horizontal-skin').isVisible(),true);assert.deepEqual(await rects(p),before);await snap(p,'01-selected');

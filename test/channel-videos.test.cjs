@@ -423,14 +423,16 @@ test('photo detail validates permission/type/album URLs and original URLs only c
   await assert.rejects(()=>pending,/세션/);
 });
 
-test('album folder save preserves partial selection, retries without overwriting equal-sized files, and rejects stale writes',async()=>{
+test('album folder save keeps partial selection, skips identical retries, and preserves different files with the same name',async()=>{
   const h=setup();await h.context.loadChannelVideos();h.s.mediaType='image';
   vm.runInContext(fs.readFileSync(path.join(root,'web-channel-photos.js'),'utf8'),h.context);
-  const post={id:'album',_channelId:'a',title:'Album'},files=new Map();let failSecond=true,writes=0;
+  vm.runInContext(fn('replayDatePrefix'),h.context);
+  const post={id:'album',_channelId:'a',title:'Album',displayStartAt:Date.parse('2026-09-07T15:00:00Z')},files=new Map(),notices=[];let failSecond=true,writes=0;
   Object.assign(h.context,{
     postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',
+    showChannelPhotoSaveNotice:message=>notices.push(message),
     syncDownloadSelection(){},drainPostDownloads(){},downloadSelectionKey:(_kind,p)=>p.id,
-    fetchChannelPhotoDetail:async()=>({...post,urls:['https://fixture.test/one','https://fixture.test/two']}),
+    fetchChannelPhotoDetail:async item=>({...item,urls:['https://fixture.test/one','https://fixture.test/two']}),
     fetchChannelPhotoBlob:async url=>{if(failSecond&&url.endsWith('two'))throw new Error('offline');return {blob:new Blob(['synthetic image']),contentType:'image/jpeg'};}
   });
   h.state.postSelected=new Set(['album']);
@@ -439,8 +441,17 @@ test('album folder save preserves partial selection, retries without overwriting
     return {getFile:async()=>files.get(name),createWritable:async()=>({write:async blob=>{writes++;files.set(name,blob);},close:async()=>{},abort:async()=>{}})};
   }});
   await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,1);assert.equal(h.state.postSelected.has('album'),true);
-  failSecond=false;await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),false);assert.match(h.alerts.at(-1),/건너뜀/);
+  failSecond=false;await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),false);assert.match(notices.at(-1),/건너뜀/);
   h.state.postSelected.add('album');
   h.context.fetchChannelPhotoBlob=async()=>{h.s.playSeq++;return {blob:new Blob(['stale bytes']),contentType:'image/jpeg'};};
   await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),true);assert.equal(h.state.postBulkSaving,false);
+  const other={...post,id:'another-album'};
+  h.context.fetchChannelPhotoBlob=async()=>({blob:new Blob(['synthetic IMAGE']),contentType:'image/jpeg'});
+  await h.context.saveChannelPhotoPosts([other]);
+  assert.equal(writes,4);
+  assert.deepEqual([...files.keys()],['260908_Album_001.jpg','260908_Album_002.jpg','260908_Album (2)_001.jpg','260908_Album (2)_002.jpg']);
+  assert.equal(await files.get('260908_Album_001.jpg').text(),'synthetic image');
+  assert.equal(await files.get('260908_Album (2)_001.jpg').text(),'synthetic IMAGE');
+  await h.context.saveChannelPhotoPosts([other]);assert.equal(writes,4);
+  assert.match(notices.at(-1),/기존 파일 2장 건너뜀/);assert.deepEqual(h.alerts,[]);
 });

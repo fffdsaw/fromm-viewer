@@ -1111,8 +1111,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
 <link rel="stylesheet" href="themes.css?v=channel-header-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
-<link rel="stylesheet" href="channel-photos.css?v=album-focus-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=header-spacing-20261119">
+<link rel="stylesheet" href="channel-photos.css?v=album-download-20261119">
+<link rel="stylesheet" href="glowme-controls.css?v=capsule-exit-20261119">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -8298,6 +8298,8 @@ async function saveSelectedPosts(){
   const sameSession=channelVideoSession(), generation=state.scanGeneration;
   const current=()=>sameSession() && generation===state.scanGeneration && downloadSelectionScope().context===scope.context;
   const button=$("#saveSelectedBtn"), oldText=button.textContent;
+  const includesPhotos=scope.kind==="channel" && items.some(post=>post.type==="image");
+  if(includesPhotos && items.every(post=>post.type==="image"))return saveChannelPhotoPosts(items,{button});
   state.postBulkSaving=true;
   channelVideoState.downloading=true;
   state.live.replayDownloading=true;
@@ -8352,9 +8354,16 @@ async function saveSelectedPosts(){
         if(!current()) break;
       }
     }
-    if(current()) window.alert(`저장 ${ok}개${skipped ? ` · 기존 파일 ${skipped}개 건너뜀` : ""}${failures.length ? ` · 실패 ${failures.length}개 (선택 유지)` : ""}`);
+    if(current()){
+      const summary=`${includesPhotos?(directory?"저장 완료":"다운로드 요청 완료"):"저장"} ${ok}개${skipped ? ` · 기존 파일 ${skipped}개 건너뜀` : ""}${failures.length ? ` · 실패 ${failures.length}개 (선택 유지)` : ""}`;
+      if(includesPhotos)showChannelPhotoSaveNotice(summary);
+      else window.alert(summary);
+    }
   }catch(e){
-    if(current()) window.alert(`영상 저장 실패: ${safeErrorDetail(e?.message || e)}`);
+    if(current()){
+      if(includesPhotos)showChannelPhotoSaveNotice("선택한 미디어를 저장하지 못했습니다. 다시 시도해주세요.");
+      else window.alert(`영상 저장 실패: ${safeErrorDetail(e?.message || e)}`);
+    }
   }finally{
     state.postBulkSaving=false;
     channelVideoState.downloading=false;
@@ -11413,7 +11422,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=pc-media-controls-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=pc-media-controls-20261118"></script>
+<script src="web-channel-photos.js?v=album-download-20261119"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11426,6 +11435,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=pc-media-controls-20261118"></script>
+<script type="module" src="web-glass.js?v=capsule-exit-20261119"></script>
 </body>
 </html>

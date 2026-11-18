@@ -1,3 +1,13 @@
+## Channel photo filenames, floating download result, and shared capsule exit — 2026-11-19 (Asia/Seoul)
+
+Continued `codex/pc-media-controls-20261118` from production main `6de8fb7` (PR #144 merged and Pages verified). Channel photos use the displayed album title and Korean-time posting date in `YYMMDD_앨범제목_001.ext`, for single, album, and batch downloads. File contents and extensions follow the saved image response. Files with matching names are skipped only when their bytes match, and different files get a numeric suffix before the photo sequence. Date fallback uses the creation time, then `날짜없음`. Old saved names are left on disk.
+
+Channel photo completion and failures are displayed in a nonblocking floating status. It is visible inside the native album dialog and also works after the dialog closes. Photo-only batches, including selections from the All filter, reuse the individual photo save path. Mixed photo/video selections also report completion and partial failure through the floating status. Advancing a photo keeps decoded-preview and original fallback behavior and shows status text only when both sources fail.
+
+The horizontal selection capsule and its controls share a single clip/fade animation. Both enter and exit against the fixed right edge without scaling the text or moving layout. The exiting capsule becomes inert immediately. Reversal, reduced motion, navigation cleanup and CSS-only rendering are preserved. Updated the stylesheet and module URL versions.
+
+Synthetic validation passed: 335 Native and web unit tests with one pre-existing Agora skip, channel photo filenames and exact bytes, file collisions/duplicates/partial retries, album completion without alerts, slow-original first frames, mixed selection and partial failure, the capsule state and reversal suites, and stable scroll/card nodes on select-all. Local receipt logs are `/tmp/fromm-album-*.log`; screenshots in `/tmp/fromm-album-changes/` and `/tmp/fromm-album-capsule-review/`. Actual accounts and macOS Safari were not tested. Resume hosted checks with `gh pr view codex/pc-media-controls-20261118 --json url,headRefOid,statusCheckRollup`.
+
 ## Shared desktop collection-header spacing — 2026-11-19 (Asia/Seoul)
 
 Added to the existing album focus fix and PR #144 at https://github.com/fffdsaw/fromm-viewer/pull/144. One desktop spacing value governs the title separator in Replay/Channel and artist statistics in Media, Voice, Video, and Photo. The rendered gap from title to first filter or statistics is 21px on wide screens and 15px at desktop widths of 701–1100px. Channel's second-row count now uses its natural width and the same group's spacing. The 6px between artist filter buttons is preserved. Both CSS URLs were refreshed across the two changes.

@@ -94,7 +94,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume,options={}){
  return {sync,reset,get snapshot(){return{phase,mode,progress:x,velocity,builds,disposed,mapWidth:glass?.resolved.width||0,reason:motion.matches?'reduced-motion':opaque.matches?'reduced-transparency':contrast.matches?'forced-colors':!glassPreferences.value.enabled?'disabled':fallback?'unsupported-or-load-error':null,live:glass?1:0};}};
 }
 
-// A CSS-only materializing skin. Native text/hit boxes never scale. This branch
+// The horizontal mask reveals the skin and controls together at native size. This branch
 // is intentionally independent of optical preferences and builds no SVG maps.
 function createHorizontalCapsule(element,onHidden,onResume){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -102,21 +102,25 @@ function createHorizontalCapsule(element,onHidden,onResume){
  let animation=null,target=false,key='',phase='hidden',starts=0,reversals=0;
  function mark(){element.dataset.capsulePhase=phase;element.dataset.capsuleMode=reduced.matches?'reduced':'css-horizontal';}
  function finish(){
-  animation?.cancel();animation=null;skin.style.transform=target?'scaleX(1)':'scaleX(0.03)';skin.style.opacity=target?'1':'0';
+  animation?.cancel();animation=null;
   phase=target?'shown':'hidden';element.hidden=!target;mark();if(!target)onHidden?.();
  }
- function reset(){animation?.cancel();animation=null;target=false;phase='hidden';skin.style.transform='scaleX(0.03)';skin.style.opacity='0';element.hidden=true;element.inert=true;element.setAttribute('aria-hidden','true');mark();}
+ function reset(){animation?.cancel();animation=null;target=false;phase='hidden';element.hidden=true;element.inert=true;element.setAttribute('aria-hidden','true');mark();}
  function sync(show,scope,active){
   const next=!!(show&&active&&!document.hidden);
-  if(scope!==key||!active){animation?.cancel();animation=null;key=scope;target=next;phase=next?'shown':'hidden';element.hidden=!next;element.inert=!next;element.setAttribute('aria-hidden',String(!next));skin.style.transform=next?'scaleX(1)':'scaleX(0.03)';skin.style.opacity=next?'1':'0';mark();return;}
+  if(scope!==key||!active){animation?.cancel();animation=null;key=scope;target=next;phase=next?'shown':'hidden';element.hidden=!next;element.inert=!next;element.setAttribute('aria-hidden',String(!next));mark();return;}
   if(next===target)return;
   target=next;element.inert=!next;element.setAttribute('aria-hidden',String(!next));element.hidden=false;phase=next?'entering':'exiting';mark();
   if(reduced.matches){finish();return;}
   if(animation){animation.playbackRate=next?1:-1;animation.play();reversals++;return;}
   starts++;
-  animation=skin.animate([{transform:'scaleX(0.03)',opacity:0,filter:'blur(3px)'},{transform:'scaleX(1)',opacity:1,filter:'blur(0px)'}],{duration:300,easing:'cubic-bezier(.2,.85,.2,1)',fill:'both'});
+  const motion=element.animate([
+   {clipPath:'inset(-4px -4px -4px 97% round 23px)',opacity:0},
+   {clipPath:'inset(-4px -4px -4px -4px round 23px)',opacity:1}
+  ],{duration:300,easing:'cubic-bezier(.35,0,.25,1)',fill:'both'});
+  animation=motion;
   if(!next){animation.currentTime=300;animation.playbackRate=-1;}
-  animation.onfinish=finish;
+  motion.onfinish=()=>{if(animation===motion)finish();};
  }
  reduced.addEventListener('change',()=>{if(animation)finish();});
  window.addEventListener('pagehide',reset);

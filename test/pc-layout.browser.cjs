@@ -31,7 +31,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     await mode(p,name);const g=await geometry();
     for(const sel of Object.keys(g))for(const key of ['top','height'])assert.ok(Math.abs(g[sel][key]-baseline[sel][key])<1,`${width} ${name} stable ${sel} ${key}`);
     const h=await p.locator('.viewer-header').boundingBox();assert.ok(h.x>=g['#sidebar'].right+10,'header starts beside rail');
-    const bar=await p.locator('.topbar').boundingBox();assert.ok(name==='live'||['replay','channel'].includes(name)?bar.height>=56&&bar.height<=64:bar.height>=70&&bar.height<=74);
+    const bar=await p.locator('.topbar').boundingBox();assert.ok(name==='live'?bar.height>=56&&bar.height<=64:bar.height>=70&&bar.height<=74);
     if(!['live','replay','channel'].includes(name)){
      const artist=await p.locator('#artistTitle').boundingBox(),stats=await p.locator('#artistMediaStats').boundingBox(),auth=await p.locator('.top-auth-controls').boundingBox();
      assert.ok(stats.width>0 && stats.x>=artist.x+artist.width-1,`${width} ${name}: metadata follows artist name`);
@@ -68,14 +68,14 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
      assert.ok(sort.height<=38 && sort.y>=headerRow.y+4,`${width}: sorting has vertical breathing room`);
      assert.ok(headerRow.y+headerRow.height-sort.y-sort.height>=4,`${width}: sorting does not hug row bottom`);
     }
-    const row=await p.locator(name==='image'?'.pc-media-row':'.pc-list-host .replay-toolbar').boundingBox();
-    assert.ok(row.height<=48,'single tool row');
+    const row=await p.locator('.collection-action-row').boundingBox();
+    assert.ok(row.height===52,'one stationary 52px lower action row');
     await shot(p,`${width}-${name}-selected`);
     const buttonsBefore=await boxes(p,'#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn');
     await p.locator('#selectedCount').evaluate(e=>e.textContent='선택 1,000개');
     assert.deepEqual(await boxes(p,'#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn'),buttonsBefore,'count digits do not move buttons');
-    await p.locator('#clearSelectionBtn').click();assert.equal(await p.locator('.batch-selection-tools').evaluate(e=>e.inert),false);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.equal(await p.locator('#clearSelectionBtn').isDisabled(),true);
-    assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.notEqual(await p.evaluate(()=>document.activeElement.tagName),'BODY','X restores focus');
+    await p.locator('#clearSelectionBtn').click();await p.waitForFunction(()=>FrommGlowME.capsule.phase==='hidden');assert.equal(await p.locator('.batch-selection-tools').evaluate(e=>e.inert),false);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);assert.equal(await p.locator('#clearSelectionBtn').isDisabled(),true);
+    assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);assert.notEqual(await p.evaluate(()=>document.activeElement.tagName),'BODY','X restores focus');
     assert.deepEqual(await boxes(p,card+':first-child,'+card+':first-child '+download),before,'dismissal preserves list');assert.equal(await p.evaluate(()=>scrollY),position);
     await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items[0]);clearDownloadSelection();chooseDownloadItem(q.kind,q.items[0]);});await p.waitForTimeout(240);
     assert.equal(await p.locator('#saveSelectedBtn').isVisible(),true,'rapid reselect cancels delayed hide');
@@ -86,7 +86,7 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
     }
     await p.evaluate(()=>scrollTo(0,600));await p.waitForTimeout(100);assert.equal((await p.locator('.viewer-header').boundingBox()).y,12);
     await shot(p,`${width}-${name}-scrolled`);
-    await p.emulateMedia({reducedMotion:'reduce'});await p.evaluate(()=>clearDownloadSelection());assert.equal(await p.locator('.batch-selection-tools').isVisible(),true);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);await p.emulateMedia({reducedMotion:'no-preference'});
+    await p.emulateMedia({reducedMotion:'reduce'});await p.evaluate(()=>clearDownloadSelection());assert.equal(await p.locator('.batch-selection-tools').isVisible(),false);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);await p.emulateMedia({reducedMotion:'no-preference'});
    }
    // The same artist header geometry also serves the remaining four filters.
    for(const name of ['media','video','sound','vote']){

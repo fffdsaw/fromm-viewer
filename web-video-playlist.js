@@ -10,7 +10,7 @@
   const kind=player.kind,selected=kind==='channel'?channelVideoState.selected:state.live.replaySelected;
   if(player.owner!==window||!selected)return null;
   const channel=selected._channelId,key=postKey(selected);
-  const items=()=>kind==='channel'?(channelVideoPage()?.posts||[]):state.live.replayPosts.filter(p=>p._channelId===channel);
+  const items=()=>kind==='channel'?collectionOrderedPosts((channelVideoPage()?.posts||[]).filter(p=>p.type==='video'),'channel'):collectionOrderedPosts(state.live.replayPosts.filter(p=>p._channelId===channel),'replay');
   return{
    kind,key,items,
    valid:()=>player.current()&&state.filter==='live'&&state.live.centerMode===kind&&postKey((kind==='channel'?channelVideoState.selected:state.live.replaySelected)||{})===key,

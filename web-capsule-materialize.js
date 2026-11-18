@@ -3,7 +3,8 @@ import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
-export function createCapsuleMaterializer(element,onHidden,onResume){
+export function createCapsuleMaterializer(element,onHidden,onResume,options={}){
+ if(options.axis==='x')return createHorizontalCapsule(element,onHidden,onResume);
  // Header Save is now a native transparent control, with no optical entrance.
  const passive=element.classList.contains('capsule-save-control');
  const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -91,4 +92,35 @@ export function createCapsuleMaterializer(element,onHidden,onResume){
  for(const q of [motion,opaque,contrast])q.addEventListener('change',preference);
  const hide=()=>reset();window.addEventListener('pagehide',hide);document.addEventListener('visibilitychange',()=>{if(document.hidden){const exiting=phase==='exiting';reset();if(exiting)onHidden();}else onResume?.();});
  return {sync,reset,get snapshot(){return{phase,mode,progress:x,velocity,builds,disposed,mapWidth:glass?.resolved.width||0,reason:motion.matches?'reduced-motion':opaque.matches?'reduced-transparency':contrast.matches?'forced-colors':!glassPreferences.value.enabled?'disabled':fallback?'unsupported-or-load-error':null,live:glass?1:0};}};
+}
+
+// A CSS-only materializing skin. Native text/hit boxes never scale. This branch
+// is intentionally independent of optical preferences and builds no SVG maps.
+function createHorizontalCapsule(element,onHidden,onResume){
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+ const skin=document.createElement('span');skin.className='capsule-optics capsule-horizontal-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;element.prepend(skin);
+ let animation=null,target=false,key='',phase='hidden',starts=0,reversals=0;
+ function mark(){element.dataset.capsulePhase=phase;element.dataset.capsuleMode=reduced.matches?'reduced':'css-horizontal';}
+ function finish(){
+  animation?.cancel();animation=null;skin.style.transform=target?'scaleX(1)':'scaleX(0.03)';skin.style.opacity=target?'1':'0';
+  phase=target?'shown':'hidden';element.hidden=!target;mark();if(!target)onHidden?.();
+ }
+ function reset(){animation?.cancel();animation=null;target=false;phase='hidden';skin.style.transform='scaleX(0.03)';skin.style.opacity='0';element.hidden=true;element.inert=true;element.setAttribute('aria-hidden','true');mark();}
+ function sync(show,scope,active){
+  const next=!!(show&&active&&!document.hidden);
+  if(scope!==key||!active){animation?.cancel();animation=null;key=scope;target=next;phase=next?'shown':'hidden';element.hidden=!next;element.inert=!next;element.setAttribute('aria-hidden',String(!next));skin.style.transform=next?'scaleX(1)':'scaleX(0.03)';skin.style.opacity=next?'1':'0';mark();return;}
+  if(next===target)return;
+  target=next;element.inert=!next;element.setAttribute('aria-hidden',String(!next));element.hidden=false;phase=next?'entering':'exiting';mark();
+  if(reduced.matches){finish();return;}
+  if(animation){animation.playbackRate=next?1:-1;animation.play();reversals++;return;}
+  starts++;
+  animation=skin.animate([{transform:'scaleX(0.03)',opacity:0,filter:'blur(3px)'},{transform:'scaleX(1)',opacity:1,filter:'blur(0px)'}],{duration:300,easing:'cubic-bezier(.2,.85,.2,1)',fill:'both'});
+  if(!next){animation.currentTime=300;animation.playbackRate=-1;}
+  animation.onfinish=finish;
+ }
+ reduced.addEventListener('change',()=>{if(animation)finish();});
+ window.addEventListener('pagehide',reset);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();else onResume?.();});
+ window.addEventListener('pageshow',()=>onResume?.());reset();
+ return {sync,reset,get snapshot(){return {phase,mode:'css-horizontal',starts,reversals,builds:0,disposed:0,live:0,progress:animation?Math.max(0,Math.min(1,Number(animation.currentTime)/300)):target?1:0};}};
 }

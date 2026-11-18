@@ -131,7 +131,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       await page.locator('[data-channel-video-play="v3"]').waitFor();
       assert.equal(await page.locator('.channel-list-shell [role="alert"]').count(), 0);
       await page.locator('[data-channel-video-filter="b"]').click();
-      await page.getByText('이 페이지에 업로드된 비디오가 없습니다.').waitFor();
+      await page.getByText('이 페이지에 업로드된 미디어가 없습니다.').waitFor();
       await page.locator('[data-channel-video-filter="a"]').click();
       await page.locator('[data-channel-video-play="v1"]').click();
       await page.locator('#channelVideo').waitFor();
@@ -156,7 +156,7 @@ const upload = (id, title, timestamp = 1791534600000) => ({id, type: 'video', ti
       assert.equal(await page.evaluate(() => history.state.frommChannelList), true);
       // Forward restores the route even after choosing another tab/filter.
       await page.locator('[data-channel-video-filter="b"]').click();
-      await page.getByText('이 페이지에 업로드된 비디오가 없습니다.').waitFor();
+      await page.getByText('이 페이지에 업로드된 미디어가 없습니다.').waitFor();
       await require('./helpers/center-navigation.cjs')(page,'replay');
       await forward(page);
       await page.locator('#channelVideo').waitFor();

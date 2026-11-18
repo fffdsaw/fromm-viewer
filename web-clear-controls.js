@@ -1,10 +1,11 @@
 /* Native actions: fixed clear material + a cheap pointer light, never lensing. */
 import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
-export const clearControls='#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
-// Keep compact play/volume in the native policy (no refractive engine), but
-// exclude them from both fixed material and pointer glints: they are icons only.
-const fixedAction=el=>!el.matches('.small-player-button');
+export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
+// Ordinary collection/media controls are immediate CSS droplets. Existing
+// unrelated fixed actions retain their own material owner.
+export const cssDropletControls='.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button';
+const fixedAction=el=>!el.matches(cssDropletControls);
 const fixedPreset=Object.freeze({refraction:0,thickness:11,blur:.4,saturation:117,chromatic:0,opacity:51,specular:26});
 const opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 const surfaces=new Map(),watched=new Set(),near=new Set();
@@ -36,8 +37,8 @@ function syncMaterial(){
  }
  if(!visibility||document.hidden||motion.matches)return;
  if(!engine){if(!loading&&surfaces.size)loading=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116').then(m=>{engine=m.LiquidGlass;scheduleMaterial();}).catch(()=>{});return;}
- for(const el of near){const item=surfaces.get(el);if(!item||item.glass||!el.checkVisibility())continue;
-  try{item.glass=createGlass(engine,item.face,{variant:'clear',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...materialOptions(fixedPreset)});builds++;}catch{/* The immediate CSS rim remains usable. */}
+ for(const el of near){const item=surfaces.get(el);if(!item||item.glass||item.failed||!el.checkVisibility())continue;
+  try{item.glass=createGlass(engine,item.face,{variant:'clear',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...materialOptions(fixedPreset)});builds++;}catch{item.failed=true;/* Keep the immediate CSS rim; retry only with a new surface owner. */}
  }
 }
 new MutationObserver(records=>{
@@ -54,19 +55,22 @@ window.addEventListener('pageshow',()=>{leaving=false;dirty=true;scheduleMateria
 window.addEventListener('pagehide',()=>{leaving=true;cancelAnimationFrame(materialFrame);materialFrame=0;for(const [el,item]of surfaces)removeSurface(el,item);visibility?.disconnect();watched.clear();near.clear();dirty=true;});
 window.FrommFixedGlass=Object.freeze({preset:fixedPreset,get snapshot(){return {count:surfaces.size,live:[...surfaces.values()].filter(x=>x.glass).length,builds};}});
 const fine=matchMedia('(hover:hover) and (pointer:fine)'),motion=matchMedia('(prefers-reduced-motion: reduce)');
-let frame=0,point=null;
+let frame=0,point=null,lit=null;
+function clearLight(el){if(!el)return;el.style.removeProperty('--clear-pointer-x');el.style.removeProperty('--clear-pointer-y');if(lit===el)lit=null;}
 function paint(){
  frame=0;const {el,x,y}=point||{};point=null;
- if(!el?.isConnected||!fixedAction(el)||el.disabled||!fine.matches||motion.matches)return;
+ if(!el?.isConnected||el.disabled||!fine.matches||motion.matches)return;
+ if(lit&&lit!==el)clearLight(lit);lit=el;
  const rect=el.getBoundingClientRect();
  el.style.setProperty('--clear-pointer-x',(x-rect.left)+'px');el.style.setProperty('--clear-pointer-y',(y-rect.top)+'px');
 }
 document.addEventListener('pointermove',event=>{
  if(event.pointerType==='touch'||!fine.matches||motion.matches)return;
- const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el||!fixedAction(el))return;
+ const el=event.target instanceof Element?event.target.closest(clearControls):null;if(!el||el.matches('.small-player-button'))return;
  point={el,x:event.clientX,y:event.clientY};if(!frame)frame=requestAnimationFrame(paint);
 },{passive:true});
-function reset(){cancelAnimationFrame(frame);frame=0;point=null;}
+document.addEventListener('pointerout',event=>{const el=event.target instanceof Element?event.target.closest(clearControls):null;if(el&&!(event.relatedTarget instanceof Node&&el.contains(event.relatedTarget))){if(point?.el===el){cancelAnimationFrame(frame);frame=0;point=null;}clearLight(el);}},{passive:true});
+function reset(){cancelAnimationFrame(frame);frame=0;point=null;clearLight(lit);}
 window.addEventListener('pagehide',reset);window.addEventListener('blur',reset);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();scheduleMaterial();});
 motion.addEventListener('change',()=>{for(const item of surfaces.values()){item.glass?.destroy();item.glass=null;item.face.removeAttribute('style');delete item.face.dataset.fixedMaterial;}scheduleMaterial();});

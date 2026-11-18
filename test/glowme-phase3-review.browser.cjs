@@ -11,7 +11,7 @@ const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)
   else await page.waitForFunction(()=>window.FrommGlass&&window.FrommControlGlass);
   assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>e.classList.contains('meapri-control')),false,'native header never attaches a mobile engine');
   assert.equal(await page.locator('#logoutMiniBtn .control-glass-surface').count(),0,'native header has no PC engine face');
-  assert.equal(await page.locator('#logoutMiniBtn').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)','header action remains transparent');
+  await require('./helpers/clear-controls.cjs').plain(page,'#logoutMiniBtn');
   await page.evaluate(()=>scrollTo(0,1200));await page.waitForTimeout(100);
   if(await page.evaluate(()=>document.documentElement.classList.contains('pc-layout'))){
    assert.ok((await page.locator('.viewer-header').boundingBox()).y>=0,'PC header stays visible');

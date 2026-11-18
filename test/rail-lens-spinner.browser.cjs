@@ -48,7 +48,7 @@ async function queuedRing(p,label){
  const button=p.locator('.replay-download').first(),ring=button.locator('.download-feedback-ring');
  assert.equal(await ring.isVisible(),true);assert.equal(await button.getAttribute('aria-busy'),'true');assert.match(await button.getAttribute('aria-label'),/대기 중/);
  assert.equal(await button.evaluate(e=>getComputedStyle(e,'::after').content),'none','no queued text overlays');
- const before=await button.boundingBox();
+ await p.mouse.move(0,0);await p.waitForTimeout(180);const before=await button.boundingBox();
  if(out)await p.waitForTimeout(1100);
  const samples=await ring.evaluate(async e=>{const a=e.getAnimations()[0];if(!a)throw new Error('missing queued spinner animation');a.pause();await a.ready;return[0,250,500,750].map(t=>{a.currentTime=t;const m=e.getScreenCTM(),c=new DOMPoint(18,18).matrixTransform(m),tip=new DOMPoint(34,18).matrixTransform(m);return{x:tip.x-c.x,y:tip.y-c.y,cx:c.x,cy:c.y}})});
  assert.ok(samples[0].y<0&&samples[1].x>0&&samples[2].y>0&&samples[3].x<0,'queued ring visibly rotates clockwise');

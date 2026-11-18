@@ -1103,15 +1103,16 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css?v=glyph-refraction-20261117">
-<link rel="preload" as="script" href="web-glowme.js?v=continuous-lens-20261117">
+<link rel="preload" as="script" href="web-glowme.js?v=glowme-integration-20261118">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=clear-controls-20261117">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
-<link rel="stylesheet" href="themes.css?v=compact-icons-20261118">
+<link rel="stylesheet" href="themes.css?v=channel-header-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
-<link rel="stylesheet" href="channel-photos.css?v=albums-20261118">
+<link rel="stylesheet" href="channel-photos.css?v=glowme-integration-20261118">
+<link rel="stylesheet" href="glowme-controls.css?v=glowme-integration-20261118">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -1221,7 +1222,7 @@ body.download-marquee-active{user-select:none;cursor:default}
       <button class="pill" data-filter="vote">투표</button>
 
       <div class="sort-controls" id="sortControls" style="display:none">
-        <button class="btn sort-btn" id="sortBtn" title="정렬 방향 바꾸기">최신순 ↓</button>
+        <button class="btn sort-btn" id="sortBtn" title="정렬 방향 바꾸기">최근순 ⌄</button>
       </div>
 
       <div class="spacer"></div>
@@ -1457,7 +1458,7 @@ function videoListError(kind) {
 function bindVideoListAuto(kind, filter) {
   disconnectVideoListAuto();
   bindVideoListThumbnails();
-  const s = videoListAuto, scope = JSON.stringify(kind === "channel" && channelVideoState.mediaType === "image" ? [kind,filter,"image"] : [kind, filter]);
+  const s = videoListAuto, scope = JSON.stringify(kind === "channel" && channelVideoState.mediaType !== "video" ? [kind,filter,channelVideoState.mediaType] : [kind, filter]);
   if (s.scope !== scope) Object.assign(s, {scope, emptyPages:0, paused:false});
   const sameSession = channelVideoSession();
   const current = () => sameSession() && state.filter === "live" && state.live.centerMode === kind &&
@@ -1546,7 +1547,7 @@ async function replayListRequest(path, options, current) {
 // Uploaded channel videos use the Viewer's session and media helpers.
 // List, selection, playback and request generations are independent of Replay.
 const channelVideoState = {
-  channelId: "", mediaType: "video", mediaScrolls: new Map(), pages: new Map(), loading: false, error: "", requestSeq: 0,
+  channelId: "", mediaType: "all", mediaScrolls: new Map(), pages: new Map(), loading: false, error: "", requestSeq: 0,
   notice: "", loadingMessage: "", requestAbort: null,
   selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0, historyListId: "",
 };
@@ -1560,12 +1561,21 @@ function channelVideosActive() {
 }
 
 function channelVideoPage() {
-  return channelVideoState.pages.get(channelVideoPageKey());
+  return channelVideoState.pages.get(channelVideoPageKey()) || (channelVideoState.mediaType === "video" ? channelVideoState.pages.get(channelVideoState.channelId) : undefined);
 }
 
 function channelVideoPageKey() {
   const s=channelVideoState;
-  return s.mediaType === "image" ? JSON.stringify([s.channelId,"image"]) : s.channelId;
+  return s.mediaType === "all" ? s.channelId : JSON.stringify([s.channelId,s.mediaType]);
+}
+
+function collectionOrderedPosts(posts,kind){
+  const direction=state.collectionSort?.[kind] || "desc";
+  return [...posts].sort((a,b)=>(Number(a.displayStartAt||0)-Number(b.displayStartAt||0))*(direction==="asc"?1:-1));
+}
+function visibleChannelPosts(){
+  const type=channelVideoState.mediaType;
+  return collectionOrderedPosts((channelVideoPage()?.posts||[]).filter(p=>type==="all" ? p.type==="video"||p.type==="image" : p.type===type),"channel");
 }
 
 function channelVideoSession() {
@@ -1603,7 +1613,7 @@ function resetChannelVideos() {
   window.FrommChannelPhotos?.close();
   channelVideoState.mediaScrolls.clear();
   channelVideoState.pages.clear();
-  channelVideoState.mediaType = "video";
+  channelVideoState.mediaType = "all";
   channelVideoState.channelId = "";
   channelVideoState.listScrollY = 0;
   channelVideoState.loading = false;
@@ -1684,7 +1694,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
   s.loading = true;
   s.error = "";
   s.notice = "";
-  s.loadingMessage = s.mediaType === "image" ? "채널 사진을 불러오는 중..." : loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
+  s.loadingMessage = s.mediaType === "all" ? "채널 미디어를 불러오는 중..." : s.mediaType === "image" ? "채널 사진을 불러오는 중..." : loadMore ? "다음 업로드 영상을 확인하고 있습니다..." : "채널 영상을 불러오는 중...";
   if (channelVideosActive() && !s.selected) renderLiveView();
   try {
     const channels = await channelVideoChannels(current);
@@ -1728,7 +1738,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       const cursor = raw.at(-1);
       const posts = new Map(page.posts.map(p => [String(p.id), p]));
       for (const p of raw) {
-        if (p?.id != null && p.type === s.mediaType && p.isVisible !== false) {
+        if (p?.id != null && (s.mediaType === "all" ? p.type === "video" || p.type === "image" : p.type === s.mediaType) && p.isVisible !== false) {
           posts.set(String(p.id), {...p, _channelId: channel.id, _channelName: channel.channelName});
         }
       }
@@ -1743,7 +1753,7 @@ async function loadChannelVideos({loadMore = false, refresh = false} = {}) {
       if (page.posts.length > initialCount || page.isLast) break;
     }
     if (page.posts.length === initialCount) {
-      s.notice = s.mediaType === "image" ? (page.isLast ? "업로드된 사진을 모두 확인했습니다." : "아직 추가 사진이 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 다시 시도를 누르면 이어서 확인합니다.";
+      s.notice = s.mediaType === "all" ? (page.isLast ? "업로드된 미디어를 모두 확인했습니다." : "아직 추가 미디어가 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : s.mediaType === "image" ? (page.isLast ? "업로드된 사진을 모두 확인했습니다." : "아직 추가 사진이 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : page.isLast ? "업로드된 비디오를 모두 확인했습니다." : "아직 추가 영상이 없습니다. 다시 시도를 누르면 이어서 확인합니다.";
     }
   } catch (e) {
     if (current()) s.error = safeErrorDetail(e?.message || "채널 영상을 불러오지 못했습니다.");
@@ -1780,7 +1790,7 @@ async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
 function renderChannelVideosView() {
   const s = channelVideoState;
   if(!s.selected && (state.live.channelsLoaded || state.live.channels.length)) s.channelId=subscribedChannelSelection(s.channelId);
-  const posts = channelVideoPage()?.posts || [];
+  const posts = visibleChannelPosts();
   const filters = state.live.channels.map(c => `<button class="replay-filter ${s.channelId === c.id ? "active" : ""}" data-channel-video-filter="${esc(c.id)}" type="button" aria-pressed="${s.channelId === c.id}">${esc(c.channelName)}</button>`).join("");
   const selected = s.selected;
   let body;
@@ -1795,27 +1805,27 @@ function renderChannelVideosView() {
     </div>`;
   } else {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
-      if(s.mediaType === "image") return renderChannelPhotoCard(p);
+      if(p.type === "image") return renderChannelPhotoCard(p);
       const thumb = replayThumb(p);
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
         <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">Channel</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button><button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button></div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(replayDateLabel(p.displayStartAt))}</div></div>
       </article>`;
-    }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? (s.mediaType === "image" ? "채널 사진을 불러오는 중..." : "채널 영상을 불러오는 중...") : !state.live.channels.length ? "구독 중인 채널이 없습니다." : (s.mediaType === "image" ? "이 페이지에 업로드된 사진이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다.")}</div>`;
+    }).join("")}</div>` : `<div class="replay-empty" role="status">${s.loading ? (s.mediaType === "all" ? "채널 미디어를 불러오는 중..." : s.mediaType === "image" ? "채널 사진을 불러오는 중..." : "채널 영상을 불러오는 중...") : !state.live.channels.length ? "구독 중인 채널이 없습니다." : (s.mediaType === "all" ? "이 페이지에 업로드된 미디어가 없습니다." : s.mediaType === "image" ? "이 페이지에 업로드된 사진이 없습니다." : "이 페이지에 업로드된 비디오가 없습니다.")}</div>`;
     body = `<div class="video-list-content">${body}</div><div class="video-list-footer">`;
-    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice || (!s.error && channelVideoPage()?.loaded && channelVideoPage()?.isLast && posts.length) ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice || (s.mediaType === "image" ? "더 불러올 사진이 없습니다." : "더 불러올 영상이 없습니다."))}</p>`;
+    body += `<p id="channelLoadStatus" class="live-entry-note" role="status" ${s.loading || s.notice || (!s.error && channelVideoPage()?.loaded && channelVideoPage()?.isLast && posts.length) ? "" : "hidden"}>${esc(s.loading ? s.loadingMessage : s.notice || (s.mediaType === "all" ? "더 불러올 미디어가 없습니다." : s.mediaType === "image" ? "더 불러올 사진이 없습니다." : "더 불러올 영상이 없습니다."))}</p>`;
     if (s.loading || s.error || (s.channelId && (!channelVideoPage()?.loaded || !channelVideoPage()?.isLast))) {
       body += `<button id="channelLoadMore" class="btn replay-more" type="button" ${s.loading ? 'disabled aria-busy="true"' : ""}>${s.loading ? "불러오는 중..." : s.error ? "다시 시도" : "더 불러오기"}</button>`;
     }
   }
   if (!selected) body += `</div>`;
   const markup = `<div class="live-shell replay-list-shell channel-list-shell"><div class="live-card">${liveCenterTabsHtml()}<div class="replay-shell">
-    <div class="replay-toolbar"><div class="replay-filter-strip" aria-label="구독 채널 선택">${filters}</div><span class="replay-count">${s.mediaType === "image" ? "사진 게시물" : "업로드된 비디오"} ${posts.length}개</span><button id="channelRefresh" class="btn" type="button" ${s.loading ? "disabled" : ""}>새로고침</button></div>
-    ${selected ? "" : `<div class="channel-media-tabs" role="group" aria-label="채널 미디어 종류">${["video","image"].map(type=>`<button class="replay-filter ${s.mediaType===type ? "active" : ""}" type="button" data-channel-media-type="${type}" aria-pressed="${s.mediaType===type}">${type==="image" ? "사진" : "영상"}</button>`).join("")}</div>`}
+    <div class="replay-toolbar"><div class="replay-filter-strip" aria-label="구독 채널 선택">${filters}</div><span class="replay-count">${s.mediaType === "all" ? "미디어" : s.mediaType === "image" ? "사진 게시물" : "업로드된 비디오"} ${posts.length}개</span><button id="channelRefresh" class="btn" type="button" ${s.loading ? "disabled" : ""}>새로고침</button></div>
+    ${selected ? "" : `<div class="channel-media-tabs" role="group" aria-label="채널 미디어 종류"><button class="btn channel-content-trigger" type="button" data-channel-content-menu aria-haspopup="menu" aria-expanded="false">${({all:"전체",video:"영상",image:"사진"})[s.mediaType]} <span aria-hidden="true">⌄</span></button></div>`}
     <div class="video-list-feedback">${s.error ? `<p class="live-entry-note replay-error" role="alert">${esc(s.error)}</p>` : ""}</div>${body}
   </div></div></div>`;
   if (selected) $("#timeline").innerHTML = markup;
-  else renderVideoListMarkup(markup, JSON.stringify(s.mediaType === "image" ? ["channel",s.channelId,"image"] : ["channel", s.channelId]));
+  else renderVideoListMarkup(markup, JSON.stringify(s.mediaType !== "video" ? ["channel",s.channelId,s.mediaType] : ["channel", s.channelId]));
   bindLiveCenterTabs();
   window.FrommChannelPhotos?.bind();
   for (const card of document.querySelectorAll("[data-channel-video-card]")) {
@@ -1873,7 +1883,7 @@ function replaceChannelListHistory() {
   channelHistoryLists.add(listId);
   s.historyListId = listId;
   history.replaceState(
-    {frommChannelList: true, channelId: s.channelId, listScrollY: s.listScrollY, listId},
+    {frommChannelList: true, channelId: s.channelId, mediaType:s.mediaType, listScrollY: s.listScrollY, listId},
     "", channelHistoryUrl()
   );
 }
@@ -1905,7 +1915,8 @@ function returnToChannelList() {
 async function restoreChannelHistory(route) {
   const navigation = ++channelHistoryNavigation;
   const s = channelVideoState;
-  if(s.mediaType !== "video") await selectChannelMediaType("video",{restoreHistory:true});
+  const type=route.mediaType || (s.mediaType === "image" ? "all" : s.mediaType);
+  if(s.mediaType !== type) await selectChannelMediaType(type,{restoreHistory:true});
   stopChannelVideoPlayback();
   const current = () => {
     const now = history.state;
@@ -1952,7 +1963,7 @@ async function playChannelVideo(postId, {pushHistory = true} = {}) {
       replaceChannelListHistory();
     }
     const player = {frommChannel: true, postId: String(postId), channelId: String(post._channelId),
-      listId: s.historyListId, listScrollY: s.listScrollY};
+      listId: s.historyListId, mediaType:s.mediaType, listScrollY: s.listScrollY};
     if (replacePlayer) history.replaceState(player, "", channelHistoryUrl(postId, post._channelId));
     else history.pushState(player, "", channelHistoryUrl(postId, post._channelId));
   }
@@ -4325,7 +4336,7 @@ async function loadReplayCenter({loadMore=false,refresh=false}={}){
 
 function visibleReplayPosts(){
   const id=normalizeReplayChannelSelection();
-  return id ? state.live.replayPosts.filter(p=>p._channelId===id) : [];
+  return id ? collectionOrderedPosts(state.live.replayPosts.filter(p=>p._channelId===id),"replay") : [];
 }
 
 function replayHasMore(){
@@ -7245,7 +7256,7 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
 
   if(keepMediaTab){
     state.sortDirection = "desc";
-    $("#sortBtn").textContent = "최신순 ↓";
+    $("#sortBtn").textContent = "최근순 ⌄";
     $("#timeline").replaceChildren();
     window.scrollTo({top:0, behavior:"instant"});
   }
@@ -8055,14 +8066,14 @@ function downloadSelectionContext(){
 function downloadSelectionScope(){
   if(state.filter==="live"){
     const kind=state.live.centerMode;
-    const items=kind==="channel" ? (channelVideoPage()?.posts || []) : kind==="replay" ? visibleReplayPosts() : [];
+    const items=kind==="channel" ? visibleChannelPosts() : kind==="replay" ? visibleReplayPosts() : [];
     return {kind:kind==="channel" && channelVideoState.mediaType==="image" ? "channel-image" : kind,items,context:downloadSelectionContext()};
   }
   return {kind:"media",items:filteredMessages().filter(m=>isArtist(m) && hasUsableMedia(m)),context:downloadSelectionContext()};
 }
 
 function downloadSelectionKey(kind,item){
-  return kind==="media" ? String(item.messageId) : JSON.stringify([kind,String(item._channelId),String(item.id)]);
+  return kind==="media" ? String(item.messageId) : JSON.stringify([kind==="channel"&&item.type==="image"?"channel-image":kind,String(item._channelId),String(item.id)]);
 }
 
 function downloadSelectionSet(kind){
@@ -8138,7 +8149,7 @@ function downloadSelectionControl(event){
 }
 
 function openDownloadPreview(kind,item){
-  if(kind === "channel-image") { void openChannelPhotoAlbum(item); return; }
+  if(kind === "channel-image" || kind === "channel" && item.type === "image") { void openChannelPhotoAlbum(item); return; }
   if(kind==="channel"){playChannelVideo(item.id);return;}
   if(kind==="replay"){playReplay(item.id,item._channelId);return;}
   const type=normType(item.type), caption=`${baseName(item)} · ${dateKey(item)} ${timeLabel(item)}`;
@@ -8300,6 +8311,12 @@ async function saveSelectedPosts(){
       let sink;
       button.textContent=`저장 ${i+1}/${items.length}`;
       try{
+        if(scope.kind==="channel" && post.type==="image"){
+          const result=await saveChannelPhotoContents(post,{directory,current,onProgress:(done,total)=>{button.textContent=`저장 ${i+1}/${items.length} · ${done}/${total}장`;}});
+          if(!current())break;
+          if(result.complete){ok++;state.postSelected.delete(downloadSelectionKey(scope.kind,post));}else failures.push(post.title||"사진");
+          skipped+=result.skipped;syncDownloadSelection();continue;
+        }
         const names=postDownloadNames(post), filename=names.filename;
         const exists=directory && await existingPostDownload(directory,names);
         if(!current()) break;
@@ -9921,6 +9938,7 @@ async function setFilter(f, options={}){
   syncLoadingUI();
 }
 async function toggleSort(){
+  if(state.filter==="live" && ["channel","replay"].includes(state.live.centerMode)) return toggleCollectionSort();
   const next = state.sortDirection === "desc" ? "asc" : "desc";
 
   // We cannot know the true oldest item until all older API pages are loaded.
@@ -9933,8 +9951,36 @@ async function toggleSort(){
 
   state.sortDirection = next;
   $("#sortBtn").textContent =
-    state.sortDirection === "desc" ? "최신순 ↓" : "오래된순 ↑";
+    state.sortDirection === "desc" ? "최근순 ⌄" : "과거순 ⌄";
   render();
+}
+
+async function toggleCollectionSort(){
+  const kind=state.live.centerMode,context=downloadSelectionContext(),sameSession=channelVideoSession();
+  const current=()=>sameSession()&&downloadSelectionContext()===context;
+  const button=$("#sortBtn"),next=(state.collectionSort?.[kind]||"desc")==="desc"?"asc":"desc";
+  if(button.disabled)return;
+  button.disabled=true;
+  try{
+    if(next==="asc"){
+      const deadline=Date.now()+90000;
+      while(current() && (kind==="channel" ? !channelVideoPage()?.isLast : replayHasMore())){
+        if(Date.now()>deadline)throw new Error("남은 목록을 불러오지 못했습니다. 다시 시도해주세요.");
+        const loading=kind==="channel"?channelVideoState.loading:state.live.replayLoading;
+        if(loading){await sleep(50);continue;}
+        button.textContent="불러오는 중…";
+        const before=JSON.stringify(kind==="channel"?channelVideoPage()?.lastPost:replayPagingFor(state.live.replayFilter).lastPost);
+        if(kind==="channel")await loadChannelVideos({loadMore:true});else await loadReplayCenter({loadMore:true});
+        if(!current())return;
+        if(videoListError(kind))throw new Error("남은 목록을 불러오지 못했습니다. 다시 시도해주세요.");
+        const after=JSON.stringify(kind==="channel"?channelVideoPage()?.lastPost:replayPagingFor(state.live.replayFilter).lastPost);
+        if(before===after && (kind==="channel"?!channelVideoPage()?.isLast:replayHasMore()))throw new Error("다음 페이지를 확인하지 못했습니다. 다시 시도해주세요.");
+      }
+    }
+    if(!current())return;
+    (state.collectionSort??={})[kind]=next;renderLiveView();
+  }catch(error){if(current())window.alert(safeErrorDetail(error.message));}
+  finally{button.disabled=false;const direction=state.filter==="live"?state.collectionSort?.[state.live.centerMode]||"desc":state.sortDirection;button.textContent=direction==="asc"?"과거순 ⌄":"최근순 ⌄";}
 }
 
 function currentSelectableMedia(){
@@ -11318,16 +11364,16 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=continuous-lens-20261117" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=glowme-integration-20261118" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
 <script src="web-live-chat-probe.js?v=controls-live-20261116"></script>
 <script src="web-live-controls.js?v=stable-glass-glyph-20261115"></script>
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
-<script src="web-video-playlist.js?v=queue-recovery-20261117"></script>
+<script src="web-video-playlist.js?v=glowme-integration-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=albums-20261118"></script>
+<script src="web-channel-photos.js?v=glowme-integration-20261118"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11340,6 +11386,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=compact-icons-20261118"></script>
+<script type="module" src="web-glass.js?v=glowme-integration-20261118"></script>
 </body>
 </html>

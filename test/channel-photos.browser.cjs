@@ -48,6 +48,19 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   await page.getByText('원본 대신 제공된 사진을 표시합니다.',{exact:true}).waitFor();
   await page.screenshot({path:`${output}/album-${width}.png`});
   await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('.channel-photo-count').textContent(),'1 / 2');
+  if(width===1440){
+    const dialog=page.getByRole('dialog',{name:'채널 사진 앨범'});
+    for(const [key,count] of [['ArrowLeft','1 / 2'],['ArrowRight','2 / 2'],['ArrowRight','2 / 2'],['ArrowLeft','1 / 2']]){
+      await page.keyboard.press(key);
+      assert.equal(await dialog.locator('.channel-photo-count').textContent(),count);
+      assert.equal(await dialog.evaluate(el=>getComputedStyle(el).outlineStyle),'none','arrow navigation must not outline the whole album');
+    }
+    await page.keyboard.press('Tab');
+    assert.ok(await dialog.evaluate(el=>{
+      const button=document.activeElement;
+      return el.contains(button)&&button.matches('button:focus-visible')&&getComputedStyle(button).outlineStyle!=='none';
+    }),'Tab keeps a visible keyboard focus indicator on the active button');
+  }
   if(width===390){
     const image=page.locator('.channel-photo-image');
     await image.dispatchEvent('pointerdown',{clientX:220,clientY:300});

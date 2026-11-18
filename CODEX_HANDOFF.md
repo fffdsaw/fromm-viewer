@@ -1,3 +1,9 @@
+## Channel photo viewer keyboard outline — 2026-11-19 (Asia/Seoul)
+
+Continued `codex/pc-media-controls-20261118` by fast-forwarding to production main `228253a` (PR #143 merged and Pages verified). Arrow navigation intentionally focuses the album dialog, including at album boundaries. Desktop CSS suppresses the outline on the dialog itself and preserves the visible keyboard focus indicator on its buttons. The stylesheet URL was refreshed.
+
+Synthetic regression reproduced the browser's `outline-style: auto` before the CSS fix. Afterward, desktop Chromium checks pass at both album boundaries, and Tab keeps a visible button outline. The full album browser suite passed at 1440 and 390px, including downloads, Escape, and navigation. Native and web unit suite: 335 passed, one existing Agora skip. Node 24.22.1, Playwright 1.62.1, Chromium 151.0.7922.34. Real account and macOS Safari were not tested. Resume with `node test/channel-photos.browser.cjs` and `gh pr view codex/pc-media-controls-20261118 --json url,headRefOid,statusCheckRollup`. This report supplies implementation scope. A new production deployment requires explicit authorization.
+
 ## PC collection controls and player consistency — 2026-11-18 (Asia/Seoul)
 
 Branch `codex/pc-media-controls-20261118` starts at production main `e46b4ee` (PR142). The user explicitly approved the requested PC changes, main merge and GitHub Pages deployment. Check the exact feature head and hosted checks before merging. Use `gh pr view codex/pc-media-controls-20261118 --json url,headRefOid,statusCheckRollup`.

@@ -37,8 +37,8 @@ function syncMaterial(){
  }
  if(!visibility||document.hidden||motion.matches)return;
  if(!engine){if(!loading&&surfaces.size)loading=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116').then(m=>{engine=m.LiquidGlass;scheduleMaterial();}).catch(()=>{});return;}
- for(const el of near){const item=surfaces.get(el);if(!item||item.glass||!el.checkVisibility())continue;
-  try{item.glass=createGlass(engine,item.face,{variant:'clear',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...materialOptions(fixedPreset)});builds++;}catch{/* The immediate CSS rim remains usable. */}
+ for(const el of near){const item=surfaces.get(el);if(!item||item.glass||item.failed||!el.checkVisibility())continue;
+  try{item.glass=createGlass(engine,item.face,{variant:'clear',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...materialOptions(fixedPreset)});builds++;}catch{item.failed=true;/* Keep the immediate CSS rim; retry only with a new surface owner. */}
  }
 }
 new MutationObserver(records=>{

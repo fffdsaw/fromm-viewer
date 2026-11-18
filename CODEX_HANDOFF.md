@@ -1,3 +1,7 @@
+## PR142 merge/deploy authorized — 2026-11-18
+
+User explicitly approved merging and deploying PR https://github.com/fffdsaw/fromm-viewer/pull/142 in the next turn. Head at authorization: `ca81c4ab29563590540587b539edd91e633147de`; main still831ec88, clean tree. Hosted Channel browser exposed an outdated exact video-only exhaustion string after the approved new all-content wording. Updated only the two affected browser expectations to the exact media wording; video-only rendering remains unchanged. Added the four new presentation/photo assets to Pages verification path/hash lists. No bypass of failing checks or production logic change. Local affected tests and fresh hosted checks must pass before merge. Receipts: `/workspace/deploy-142-20261118/`.
+
 ## Glow ME scoped integration — 2026-11-18 (Asia/Seoul)
 
 Active branch: `codex/glowme-ui-integration-20261118`, based on latest main `831ec88ff0e334818931782d26ef258a3f325215` (PR141 already merged/deployed before this task). User explicitly requested a fresh branch and **PR review only; no new main merge or public deploy**. Prior uncommitted Channel/photo work was safely checkpointed on the old branch (`bc47494`) and cherry-picked here as `17ac2a3`. No history rewrite, cache deletion or actual account access.

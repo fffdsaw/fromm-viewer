@@ -119,7 +119,14 @@ async function shot(page, name) {
           const r = v.getBoundingClientRect(); return {bottom: r.bottom, top: r.top, height: innerHeight, fit: getComputedStyle(v).objectFit, controls: v.controls, width: v.videoWidth, videoHeight: v.videoHeight};
         });
         assert.ok(geometry.top >= 0 && geometry.bottom <= geometry.height);
-        assert.equal(geometry.fit, 'contain'); assert.equal(geometry.controls, true);
+        assert.equal(geometry.fit, 'contain');
+        assert.equal(geometry.controls, mobile, 'desktop preview uses the shared player and touch keeps native transport');
+        if (!mobile) {
+          const transport = page.locator('#lightboxVideoStage .modern-video-controls');
+          assert.equal(await transport.locator('.mvc-seek').isEnabled(), true);
+          assert.equal(await transport.locator('[data-mvc="full"]').isVisible(), true);
+          assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').count(), 0);
+        }
         assert.equal(geometry.width, id === 'portrait' ? 360 : 640);
         await shot(page, `video-preview-${id}-${mobile ? 'mobile' : 'desktop'}`);
         await page.locator('#lightboxVideo').evaluate(v => v.pause());

@@ -63,7 +63,10 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    // Push is only a hint; the authenticated REST response supplies canonical rows.
    const firstNew={messageId:'push-1',userType:'star',type:'text',content:'실시간 새 대화',createdAt:Date.now()-10};rows.push(firstNew);
    await page.evaluate(()=>fakePush({metadata:{fromCache:false},docChanges:()=>[{type:'added'}]}));
-   await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='push-1'));assert.equal(await page.locator('[data-message-id="push-1"]').count(),1);
+   await page.waitForFunction(()=>state.messages.some(m=>m.messageId==='push-1'));
+   // Canonical rows publish before the coalesced render frame; verify both boundaries.
+   await page.locator('[data-message-id="push-1"]').waitFor({state:'attached'});
+   assert.equal(await page.locator('[data-message-id="push-1"]').count(),1);
    await page.evaluate(()=>fakePush({metadata:{fromCache:false},docChanges:()=>[{type:'modified'}]}));await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>state.messages.filter(m=>m.messageId==='push-1').length),1);
    // Enter during Korean IME composition must not send.
    await page.locator('#conversationInput').fill('입력 중');await page.locator('#conversationInput').dispatchEvent('keydown',{key:'Enter',isComposing:true});await page.waitForTimeout(100);assert.equal(posts.length,0);

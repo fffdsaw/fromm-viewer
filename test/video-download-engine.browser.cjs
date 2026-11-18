@@ -70,6 +70,41 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    assert.equal(bulk.length,2);assert.equal(new Set(bulk.map(f=>f.name)).size,2);for(const f of bulk)assert.equal(hash(Buffer.from(f.bytes)),expected);
    const beforeSkip=requests.length;await page.evaluate(()=>{const scope=downloadSelectionScope();for(const p of scope.items)state.postSelected.add(downloadSelectionKey(scope.kind,p));syncDownloadSelection()});await page.locator('#saveSelectedBtn').click();await page.waitForFunction(()=>!state.postBulkSaving);assert.equal(requests.length,beforeSkip);
    await page.evaluate(()=>testShow('replay'));
+   if(cfg.width>700){
+    const button=page.locator('#saveSelectedBtn'),label=button.locator('.replay-bulk-save-label');
+    await page.evaluate(()=>{
+     window.showDirectoryPicker=async()=>{const root=await navigator.storage.getDirectory();return root.getDirectoryHandle('replay-bulk',{create:true})};
+     selectAllMedia();
+    });
+    await page.waitForFunction(()=>FrommGlowME.capsule?.phase==='shown');
+    const geometry=await button.boundingBox(),sort=await page.locator('#sortBtn').boundingBox(),alertCount=alerts.length;
+    gateSeen=false;gate=new Promise(r=>release=r);
+    await button.click();await page.waitForFunction(()=>document.querySelector('.replay-bulk-save-label')?.textContent==='1/2');
+    assert.equal(await button.isDisabled(),true);
+    assert.equal(await button.locator('.download-feedback-ring').evaluate(e=>getComputedStyle(e).animationName),'download-ring-spin');
+    assert.deepEqual(await button.boundingBox(),geometry);
+    assert.ok(await button.evaluate(e=>e.scrollWidth<=e.clientWidth),'bulk count fits the fixed button');
+    if(out)await page.screenshot({path:path.join(out,`${cfg.width}-replay-bulk-active.png`)});
+    release();gate=null;
+    await page.waitForFunction(()=>document.querySelector('.replay-bulk-save-label')?.textContent==='2/2');
+    await page.waitForFunction(()=>document.querySelector('#saveSelectedBtn').dataset.downloadPhase==='done');
+    assert.equal(await label.textContent(),'완료');
+    assert.ok(await button.locator('.download-feedback-check').isVisible());
+    assert.equal(await page.evaluate(()=>state.postSelected.size),0);
+    assert.deepEqual(await button.boundingBox(),geometry);
+    assert.deepEqual(await page.locator('#sortBtn').boundingBox(),sort);
+    assert.equal(alerts.length,alertCount,'Replay batch completion is inline');
+    assert.match(await page.locator('#saveResultModal.open #saveResultSummary').textContent(),/저장 2개/);
+    if(out)await page.screenshot({path:path.join(out,`${cfg.width}-replay-bulk-complete.png`)});
+    await page.waitForFunction(()=>FrommGlowME.capsule.phase==='hidden');
+    assert.equal(await button.textContent(),'저장');
+    const files=await page.evaluate(async()=>{
+     const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('replay-bulk');
+     const files=[];for await(const handle of dir.values())files.push(Array.from(new Uint8Array(await(await handle.getFile()).arrayBuffer())));
+     return files;
+    });
+    assert.equal(files.length,2);for(const bytes of files)assert.equal(hash(Buffer.from(bytes)),expected);
+   }
    // Real disk-backed browser handoff when the native picker is unavailable.
    await page.evaluate(()=>window.showSaveFilePicker=undefined);const before=downloads.length;
    await card('replay').click();await page.waitForFunction(()=>!postDownloadRunning);

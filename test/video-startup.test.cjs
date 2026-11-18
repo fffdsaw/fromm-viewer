@@ -81,7 +81,7 @@ test('Replay and Channel share progress and distinguish a confirmed file from br
   createReplayDownloadSink:async()=>sink, fetchChannelVideoDetail:async()=>post, fetchReplayPostDetail:async()=>post,
   downloadReplayStream:async(url,target,progress)=>{assert.equal(url,post._streamUrl);assert.equal(target,sink);progress(1,2);await write;},
   setDownloadButtonFeedback:(_button,phase='idle',ratio)=>transitions.push([phase,ratio]),
-  window:{alert:message=>alerts.push(message)},safeErrorDetail:String
+  window:{alert:message=>alerts.push(message)},showSaveNotice(){},safeErrorDetail:String
  });
  vm.runInContext('const postDownloadQueue=[],postDownloadKeys=new Set();let postDownloadRunning=false;',context);
  for(const name of ['queuePostDownload','drainPostDownloads','runReplayPostDownload','runChannelVideoDownload','downloadReplayPost','downloadChannelVideo']) vm.runInContext(fn(name),context);

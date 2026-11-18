@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const output=process.env.CHANNEL_PHOTO_DIR||'/tmp/fromm-channel-photos';
 const {chromium}=require('playwright'),fixture=require('./helpers/phase3-fixture.cjs');
-const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixture.test/photo.svg',displayStartAt:1791500000000,num:1});
+const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixture.test/photo.svg',displayStartAt:Date.parse('2026-09-07T15:00:00Z'),num:1});
 (async()=>{
  const server=await fixture.serve(),browser=await chromium.launch({headless:true});
  try{for(const width of [1440,390]){
@@ -42,10 +42,12 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   await page.screenshot({path:`${output}/list-${width}.png`});
   await page.locator('[data-channel-photo-open="p1"]').click();
   await page.getByText('1 / 2',{exact:true}).waitFor();
+  const missingOriginal=page.waitForResponse(response=>response.url().includes('/album/p.jpg')&&response.status()===404);
   await page.locator('[data-photo-action="next"]').click();
   assert.equal(await page.locator('.channel-photo-count').textContent(),'2 / 2');
   await page.waitForFunction(()=>document.querySelector('.channel-photo-image img').currentSrc.endsWith('.webp'));
-  await page.getByText('원본 대신 제공된 사진을 표시합니다.',{exact:true}).waitFor();
+  await missingOriginal;
+  assert.equal(await page.locator('.channel-photo-status').textContent(),'','successful fallback shows the photo without a status message');
   await page.screenshot({path:`${output}/album-${width}.png`});
   await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('.channel-photo-count').textContent(),'1 / 2');
   if(width===1440){
@@ -70,9 +72,14 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   }
   await page.locator('[data-photo-action="save"]').click();
   await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
-  assert.equal(downloads.length,1);assert.ok(downloads[0].name.endsWith('_001.svg'));assert.ok(downloads[0].bytes.includes(Buffer.from('<svg')));
+  assert.equal(downloads.length,1);assert.equal(downloads[0].name,'260908_앨범 p1_001.svg');assert.ok(downloads[0].bytes.includes(Buffer.from('<svg')));
+  const viewerNotice=page.locator('.channel-photo-dialog #saveResultModal.open #saveResultSummary');
+  await viewerNotice.waitFor();
+  assert.match(await viewerNotice.textContent(),/다운로드 요청 완료.*1장/);
+  if(width===1440)await page.screenshot({path:`${output}/album-save-notice.png`});
   await page.locator('[data-photo-action="all"]').click();await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
-  assert.equal(downloads.length,3);assert.ok(downloads[2].name.endsWith('_002.svg'));
+  assert.equal(downloads.length,3);assert.equal(downloads[2].name,'260908_앨범 p1_002.svg');
+  assert.match(await viewerNotice.textContent(),/다운로드 요청 완료.*2장/);
   await page.keyboard.press('Escape');assert.equal(await page.locator('.channel-photo-dialog').count(),0);
   await page.evaluate(()=>{const post=channelVideoPage().posts[0];state.postSelected.add(downloadSelectionKey('channel-image',post));syncDownloadSelection();});
   await page.locator('[data-channel-photo-open="p1"]').click();await page.getByText('1 / 2',{exact:true}).waitFor();
@@ -86,7 +93,8 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   assert.equal(await page.evaluate(()=>downloadSelectionScope().kind),'channel-image');
   assert.equal(await page.evaluate(()=>downloadSelectionScope().items.filter(p=>state.postSelected.has(downloadSelectionKey('channel-image',p))).length),2);
   await page.evaluate(()=>saveSelectedPosts());await page.waitForFunction(()=>!state.postBulkSaving);await page.waitForTimeout(100);
-  assert.equal(downloads.length,7);assert.match(alerts.at(-1),/4장/);
+  assert.equal(downloads.length,7);assert.match(await page.locator('body > #saveResultModal.open #saveResultSummary').textContent(),/다운로드 요청 완료.*4장/);
+  assert.deepEqual(alerts,[],'single, album and selected photo downloads never show a browser alert');
   await page.locator('[data-channel-content-menu]').click();await page.locator('[data-morph-value="video"]').click();
   assert.equal(await page.locator('.channel-photo-card').count(),0);
   assert.ok(await page.locator('[data-channel-video-play="v"]').count());

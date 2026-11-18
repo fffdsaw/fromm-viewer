@@ -75,7 +75,7 @@ function setup(options = {}) {
     messageId: String(index + 1), type, artist: true,
     createdAt: `2026-10-15T12:00:0${index}Z`, fixtureUrl: `/synthetic-media/${index + 1}`
   }));
-  const events = [], records = [], alerts = [], results = [], visual = [], progress = [], logs = [], downloads = [];
+  const events = [], records = [], notices = [], results = [], visual = [], progress = [], logs = [], downloads = [];
   const metrics = {fetches: 0, active: 0, maxActive: 0, readers: 0, cancels: 0, releases: 0,
     aborts: 0, blobCalls: 0, blobFetches: 0, objectUrls: 0, revokedUrls: 0,
     pendingWrites: 0, maxPendingWrites: 0, history: 0};
@@ -96,9 +96,9 @@ function setup(options = {}) {
     setTimeout: (callback, delay) => delay === 30000 ? setImmediate(callback) : setTimeout(callback, delay), clearTimeout,
     console: {warn: (...args) => logs.push(args), error: (...args) => logs.push(args)},
     $: () => button,
-    alert: message => alerts.push(String(message)),
+    showSaveNotice: message => notices.push(String(message)),
     window: {
-      alert: message => alerts.push(String(message)),
+      alert: () => assert.fail("save result must use the sheet"),
       showDirectoryPicker: pickerOptions => {
         events.push('picker');
         assert.equal(activation, true, 'picker is invoked during the original click');
@@ -190,7 +190,7 @@ function setup(options = {}) {
     vm.runInContext(source('acquireMediaBufferSlot'), context);
   }
   context.buildMediaSequences();
-  return {context, state, root, media, button, events, records, alerts, results, metrics, visual, progress, logs, downloads,
+  return {context, state, root, media, button, events, records, notices, results, metrics, visual, progress, logs, downloads,
     loseActivation: () => {activation = false;}, expire: () => {authenticated = false;}};
 }
 function unlocked(h) {
@@ -223,7 +223,7 @@ for (const name of ['AbortError', 'NotAllowedError', 'SecurityError']) {
     assert.equal(h.metrics.history, 0); assert.equal(h.metrics.fetches, 0);
     assert.equal(h.records.length, 0); assert.equal(h.results.length, 0);
     assert.equal(h.state.lastSaveRoot, null);
-    if (name === 'AbortError') assert.equal(h.alerts.length, 0);
+    if (name === 'AbortError') assert.equal(h.notices.length, 0);
     unlocked(h);
   });
 }
@@ -345,7 +345,7 @@ test('destination write permission denial avoids scanning and fetching media', a
   await h.context.saveSelectedToFolder();
   assert.equal(scans, 0); assert.equal(h.metrics.fetches, 0); assert.equal(h.records.length, 0);
   assert.equal(h.state.selected.size, 3); assert.equal(h.state.lastSaveRoot, null);
-  assert.equal(h.alerts.length, 1); unlocked(h);
+  assert.equal(h.notices.length, 1); unlocked(h);
 });
 
 test('incomplete history aborts before names or media requests can be committed', async () => {
@@ -353,7 +353,7 @@ test('incomplete history aborts before names or media requests can be committed'
   await h.context.saveSelectedToFolder();
   assert.equal(h.metrics.history, 1); assert.equal(h.metrics.fetches, 0); assert.equal(h.records.length, 0);
   assert.equal(h.state.selected.size, 3); assert.equal(h.results.length, 0);
-  assert.equal(h.alerts.length, 1); unlocked(h);
+  assert.equal(h.notices.length, 1); unlocked(h);
 });
 
 test('unreadable backup scan aborts before any media request or writable', async () => {
@@ -362,7 +362,7 @@ test('unreadable backup scan aborts before any media request or writable', async
   await h.context.saveSelectedToFolder();
   assert.equal(h.metrics.fetches, 0); assert.equal(h.records.length, 0); assert.equal(h.results.length, 0);
   assert.equal(h.state.selected.size, 3); assert.equal(h.state.lastSaveRoot, null);
-  assert.equal(h.alerts.length, 1); unlocked(h);
+  assert.equal(h.notices.length, 1); unlocked(h);
 });
 
 test('changing artist after a failed batch prevents retry using the previous room destination', async () => {
@@ -373,7 +373,7 @@ test('changing artist after a failed batch prevents retry using the previous roo
   h.state.room = {hostChatRoomId: 'another-fixture-room'};
   await h.context.retryFailedSaves();
   assert.equal(h.metrics.fetches, before); assert.equal(h.state.lastSaveFailures.length, 3);
-  assert.equal(h.results.length, 1); assert.equal(h.alerts.length, 1); unlocked(h);
+  assert.equal(h.results.length, 1); assert.equal(h.notices.length, 1); unlocked(h);
 });
 
 test('bounded batch overlaps at most three files and completion progress never moves backwards', async () => {
@@ -577,7 +577,7 @@ test('mobile incomplete history releases its batch lock and does not download', 
   const h = setup({mobile: true, history: true, historyComplete: false});
   await h.context.saveSelectedDirect();
   assert.equal(h.metrics.blobFetches, 0); assert.equal(h.downloads.length, 0);
-  assert.equal(h.alerts.length, 1); assert.equal(h.results.length, 0); unlocked(h);
+  assert.equal(h.notices.length, 1); assert.equal(h.results.length, 0); unlocked(h);
 });
 
 for (const reason of ['room', 'session']) {
@@ -591,7 +591,7 @@ for (const reason of ['room', 'session']) {
     blob.resolve(); await first;
     assert.equal(h.metrics.objectUrls, 0); assert.equal(h.downloads.length, 0);
     assert.equal(h.metrics.blobFetches, 1); assert.equal(h.results.length, 0);
-    assert.equal(h.alerts.length, 0); unlocked(h);
+    assert.equal(h.notices.length, 0); unlocked(h);
   });
   test(`mobile changed ${reason} during history prevents original batch from downloading`, async () => {
     const history = deferred(), h = setup({mobile: true, history: true, historyHook: () => history.promise});
@@ -600,7 +600,7 @@ for (const reason of ['room', 'session']) {
     else h.expire();
     history.resolve(); await first;
     assert.equal(h.metrics.blobFetches, 0); assert.equal(h.metrics.objectUrls, 0);
-    assert.equal(h.results.length, 0); assert.equal(h.alerts.length, 0); unlocked(h);
+    assert.equal(h.results.length, 0); assert.equal(h.notices.length, 0); unlocked(h);
   });
 }
 

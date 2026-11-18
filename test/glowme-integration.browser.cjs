@@ -46,7 +46,7 @@ async function menuReady(p){await p.waitForFunction(()=>FrommMorphMenus.snapshot
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await menuReady(p);await p.keyboard.press('End');assert.equal(await p.evaluate(()=>document.activeElement.dataset.morphValue),'image');await p.keyboard.press('Enter');await p.waitForFunction(()=>channelVideoState.mediaType==='image'&&!channelVideoState.loading);assert.equal(await p.locator('.replay-card').count(),1);assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'사진 ');
   await contentFilter(p,'video');assert.equal(await p.locator('.channel-photo-card').count(),0);assert.equal(await p.locator('[data-channel-video-play]').count(),1);await contentFilter(p,'all');assert.equal(await p.locator('.replay-card').count(),2);
   // The mixed all scope delegates album transfer to the existing real blob saver.
-  await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items.find(x=>x.type==='image'));});await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');await shot(p,width+'-selected-capsule');await p.locator('#saveSelectedBtn').click();await p.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===0);await p.waitForTimeout(100);assert.equal(saved.length,2);assert.ok(saved.every(x=>x.bytes.includes(Buffer.from('<svg'))));assert.match(alerts.at(-1),/저장/);
+  await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items.find(x=>x.type==='image'));});await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');await shot(p,width+'-selected-capsule');await p.locator('#saveSelectedBtn').click();await p.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===0);await p.waitForTimeout(100);assert.equal(saved.length,2);assert.ok(saved.every(x=>x.bytes.includes(Buffer.from('<svg'))));assert.match(await p.locator('#saveResultModal.open #saveResultSummary').textContent(),/다운로드 요청 완료.*2장/);assert.deepEqual(alerts,[]);
   if(width>700){
    assert.equal(await p.locator('.channel-photo-meta .channel-photo-count-badge').innerText(),'2장');
    const button=p.locator('[data-channel-photo-download="p"]');
@@ -57,6 +57,14 @@ async function menuReady(p){await p.waitForFunction(()=>FrommMorphMenus.snapshot
    assert.equal(feedback.animation,'download-ring-spin');assert.notEqual(feedback.display,'none');
    await p.waitForFunction(()=>document.querySelector('[data-channel-photo-download="p"]')?.dataset.downloadPhase==='handed-off');
    assert.equal(saved.length,4);
+   // A mixed selection still saves photos and reports a failed video without blocking.
+   await p.evaluate(()=>selectAllMedia());
+   await p.locator('#saveSelectedBtn').click();
+   await p.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===1);
+   assert.equal(saved.length,6);
+   assert.match(await p.locator('#saveResultModal.open #saveResultSummary').textContent(),/다운로드 요청 완료 1개.*실패 1개/);
+   assert.deepEqual(alerts,[]);
+   await p.evaluate(()=>clearDownloadSelection());
   }
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.mouse.click(width-5,850);await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.locator('.morph-menu-skin').count(),0);
   await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.setViewportSize({width:width-1,height:899});await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.locator('.morph-menu-content').count(),0);

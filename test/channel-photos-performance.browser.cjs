@@ -34,6 +34,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   });
   assert.deepEqual({ready:firstFrame.ready,width:firstFrame.width,index:firstFrame.index},{ready:true,width:650,index:'1'},'decoded neighboring preview is visible on the first frame, before the slow original');
   assert.match(firstFrame.source,/p_1_640x400.webp$/);
+  assert.equal(await p.locator('.channel-photo-status').textContent(),'','advancing with a slow original does not display preparation text');
   assert.equal(await p.locator('.channel-photo-stage').evaluate(e=>e.getBoundingClientRect().height),stageHeight,'image aspect changes do not resize/recenter the stage');
   await p.waitForFunction(()=>FrommChannelPhotos.snapshot.readyPreviews===3);
   for(let i=2;i<5;i++){

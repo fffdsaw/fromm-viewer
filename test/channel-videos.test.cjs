@@ -15,7 +15,7 @@ function fn(name, source = html) {
   return match[0];
 }
 function setup(overrides = {}) {
-  const calls = [], alerts = [];
+  const calls = [], alerts = [], notices = [];
   let auth = {token: 'synthetic-session', uuid: 'synthetic-device', accountKey: 'synthetic-account'};
   const state = {filter: 'live', room: null, live: {centerMode: 'channel', entry: {}, channels: [], channelsLoaded: false, replayPosts: [{id: 'existing-replay'}], replaySelected: {id: 'existing-player'}, replayPlaylistCache: new Map()}};
   const historyCalls = [];
@@ -31,7 +31,7 @@ function setup(overrides = {}) {
     },
     back() {historyCalls.push({back: true});},
   };
-  const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
+  const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},showSaveNotice:message=>notices.push(message),setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
     sleep: async () => {},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
@@ -49,7 +49,7 @@ function setup(overrides = {}) {
   for (const name of ['replayStreamUrl', 'replayAuthParams', 'replaySignedUrl', 'replayCanonicalStreamUrl', 'rewriteReplayMediaPlaylist', 'parseReplayDownloadPlaylist', 'replayDownloadIv']) vm.runInContext(fn(name), context);
   vm.runInContext(channelScript, context);
   const s = vm.runInContext('channelVideoState', context);
-  return {context, s, state, calls, alerts, history, historyCalls, setAuth: value => {auth = value;}};
+  return {context, s, state, calls, alerts, notices, history, historyCalls, setAuth: value => {auth = value;}};
 }
 const deferred = () => {let resolve; const promise = new Promise(r => {resolve = r;}); return {resolve, promise};};
 
@@ -368,7 +368,7 @@ test('cancelled save picker requests no signed URL; denied downloads abort witho
   h.context.frommApiRequest = async () => {throw new Error('HTTP 403');};
   h.context.downloadReplayStream = async () => {transfers++;};
   await h.context.downloadChannelVideo(h.s.pages.get('a').posts[0]);
-  assert.equal(aborted, true); assert.equal(transfers, 0); assert.match(h.alerts[0], /403/);
+  assert.equal(aborted, true); assert.equal(transfers, 0); assert.match(h.notices[0], /403/);assert.deepEqual(h.alerts,[]);
 });
 
 test('existing session request helper supplies authorization, stable UUID and channel-id', async () => {
@@ -423,14 +423,16 @@ test('photo detail validates permission/type/album URLs and original URLs only c
   await assert.rejects(()=>pending,/세션/);
 });
 
-test('album folder save preserves partial selection, retries without overwriting equal-sized files, and rejects stale writes',async()=>{
+test('album folder save keeps partial selection, skips identical retries, and preserves different files with the same name',async()=>{
   const h=setup();await h.context.loadChannelVideos();h.s.mediaType='image';
   vm.runInContext(fs.readFileSync(path.join(root,'web-channel-photos.js'),'utf8'),h.context);
-  const post={id:'album',_channelId:'a',title:'Album'},files=new Map();let failSecond=true,writes=0;
+  vm.runInContext(fn('replayDatePrefix'),h.context);
+  const post={id:'album',_channelId:'a',title:'Album',displayStartAt:Date.parse('2026-09-07T15:00:00Z')},files=new Map(),notices=[];let failSecond=true,writes=0;
   Object.assign(h.context,{
     postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',
+    showSaveNotice:message=>notices.push(message),
     syncDownloadSelection(){},drainPostDownloads(){},downloadSelectionKey:(_kind,p)=>p.id,
-    fetchChannelPhotoDetail:async()=>({...post,urls:['https://fixture.test/one','https://fixture.test/two']}),
+    fetchChannelPhotoDetail:async item=>({...item,urls:['https://fixture.test/one','https://fixture.test/two']}),
     fetchChannelPhotoBlob:async url=>{if(failSecond&&url.endsWith('two'))throw new Error('offline');return {blob:new Blob(['synthetic image']),contentType:'image/jpeg'};}
   });
   h.state.postSelected=new Set(['album']);
@@ -439,8 +441,17 @@ test('album folder save preserves partial selection, retries without overwriting
     return {getFile:async()=>files.get(name),createWritable:async()=>({write:async blob=>{writes++;files.set(name,blob);},close:async()=>{},abort:async()=>{}})};
   }});
   await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,1);assert.equal(h.state.postSelected.has('album'),true);
-  failSecond=false;await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),false);assert.match(h.alerts.at(-1),/건너뜀/);
+  failSecond=false;await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),false);assert.match(notices.at(-1),/건너뜀/);
   h.state.postSelected.add('album');
   h.context.fetchChannelPhotoBlob=async()=>{h.s.playSeq++;return {blob:new Blob(['stale bytes']),contentType:'image/jpeg'};};
   await h.context.saveChannelPhotoPosts([post]);assert.equal(writes,2);assert.equal(h.state.postSelected.has('album'),true);assert.equal(h.state.postBulkSaving,false);
+  const other={...post,id:'another-album'};
+  h.context.fetchChannelPhotoBlob=async()=>({blob:new Blob(['synthetic IMAGE']),contentType:'image/jpeg'});
+  await h.context.saveChannelPhotoPosts([other]);
+  assert.equal(writes,4);
+  assert.deepEqual([...files.keys()],['260908_Album_001.jpg','260908_Album_002.jpg','260908_Album (2)_001.jpg','260908_Album (2)_002.jpg']);
+  assert.equal(await files.get('260908_Album_001.jpg').text(),'synthetic image');
+  assert.equal(await files.get('260908_Album (2)_001.jpg').text(),'synthetic IMAGE');
+  await h.context.saveChannelPhotoPosts([other]);assert.equal(writes,4);
+  assert.match(notices.at(-1),/기존 파일 2장 건너뜀/);assert.deepEqual(h.alerts,[]);
 });

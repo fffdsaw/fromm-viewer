@@ -40,8 +40,9 @@ const shotDir = process.env.UI_ICON_SCREENSHOT_DIR;
       await centered('#lightboxClose'); await shot('lightbox');
       await page.locator('#lightboxClose').click();
       assert.equal(await page.locator('#imageLightbox').evaluate(e=>e.classList.contains('open')),false);
-      await page.evaluate(()=>document.querySelector('.save-result-modal').classList.add('open'));
+      await page.evaluate(()=>showSaveNotice('합성 저장 결과'));
       await centered('#saveResultClose'); await page.locator('#saveResultClose').click();
+      await page.locator('#saveResultModal').waitFor({state:'hidden'});
       await page.evaluate(()=>{document.querySelector('#scrollTopBtn').classList.add('visible');});
       await centered('#scrollTopBtn');
       await page.evaluate(()=>{

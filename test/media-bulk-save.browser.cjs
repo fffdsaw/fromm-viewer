@@ -212,11 +212,20 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
   await page.locator('#saveSelectedBtn').click();
   await page.waitForFunction(() => qa.clickFinished, null, {timeout: nativePicker ? nativeWaitMs : 60000});
   let result = await summary(page); record(result);
+  if(result.result){
+    const sheet=page.locator('#saveResultModal.open');
+    assert.equal(await sheet.isVisible(),true);
+    assert.ok(await sheet.evaluate(el=>el.getBoundingClientRect().top>innerHeight/2&&!el.querySelector('[aria-modal="true"]')));
+    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-enter');
+    assert.equal(result.alerts,0);
+  }
   if (options.firstWriteFault) {
     const firstAttempt = result;
     assert.equal(firstAttempt.result.failed, 1); assert.equal(firstAttempt.result.ok, 2);
     assert.equal(firstAttempt.files.filter(f => f.size === 0).length, 1, 'an aborted first write leaves a real empty OPFS entry');
+    assert.ok(await page.locator('#retryFailedBtn').isVisible());
     await page.locator('#saveResultOkBtn').click();
+    await page.locator('#saveResultModal').waitFor({state:'hidden'});
     await page.evaluate(() => {qa.progress = []; qa.result = null;});
     await page.locator('#saveSelectedBtn').click(); await page.waitForFunction(() => qa.clickFinished);
     result = await summary(page); result.firstAttempt = firstAttempt; record(result);

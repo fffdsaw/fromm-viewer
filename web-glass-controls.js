@@ -1,7 +1,7 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {clearControls} from './web-clear-controls.js?v=glowme-integration-20261118';
+import {clearControls} from './web-clear-controls.js?v=pc-media-controls-20261118';
 import {updateRailCrossing} from './web-rail-lens.js?v=continuous-lens-20261117';
 import {glassPC,glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';

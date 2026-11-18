@@ -2,6 +2,16 @@
 // Real MP4 endings and the existing authenticated detail/history paths, all synthetic.
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{execFileSync}=require('node:child_process');
 const {serve,open}=require('./helpers/phase3-fixture.cjs');
+async function checkPlainTransport(controls){
+ await controls.locator('[data-mvc="play"]').hover();
+ const buttons=await controls.locator('.mvc-row .mvc-button:not([hidden])').evaluateAll(elements=>elements.map(button=>{
+  const paint=getComputedStyle(button);
+  return [paint.backgroundColor,paint.backgroundImage,paint.borderWidth,paint.boxShadow,paint.backdropFilter,
+   button.querySelectorAll('.fixed-glass-surface,.control-glass-surface').length];
+ }));
+ assert.ok(buttons.length>=4);
+ for(const paint of buttons)assert.deepEqual(paint,['rgba(0, 0, 0, 0)','none','0px','none','none',0]);
+}
 (async()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fromm-queue-')),file=path.join(temp,'video.mp4');
  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=320x180:rate=12','-t','8','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',file]);
@@ -32,6 +42,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    await page.evaluate(({kind,prefix})=>kind==='replay'?playReplay(prefix+'0','fixture-channel'):playChannelVideo(prefix+'0'),{kind,prefix});
    const video=page.locator(kind==='replay'?'#replayVideo':'#channelVideo'),toggle=page.getByRole('button',{name:'재생목록',exact:true});
    await video.evaluate(async el=>{if(el.readyState<2)await new Promise(r=>el.addEventListener('loadeddata',r,{once:true}));el.pause();});
+   if(await page.evaluate(()=>pcMediaPresentation()))await checkPlainTransport(page.locator('.modern-video-controls'));
    // The icon shares the existing fade carrier and idle clock. A real pointer
    // move reveals both; pausing also makes both available without another timer.
    await video.evaluate(el=>{el.muted=true;el.currentTime=0;void el.play();});await page.mouse.move(1,1);
@@ -134,18 +145,30 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    await page.getByRole('button',{name:'재생목록',exact:true}).click();await page.getByRole('button',{name:'재생목록 닫기'}).click();
    await page.evaluate(()=>stopChannelVideoPlayback());
   }
-  // Enlarged conversation/gallery videos use the same drawer, not the compact reset.
+  // Desktop uses the common transport; touch keeps the existing drawer.
   await page.evaluate(()=>{state.filter='video';state.messages=Array.from({length:2},(_,i)=>({messageId:'big-'+i,type:'video',userType:'star',content:new URL('queue-big'+i+'.mp4',location.href).href,createdAt:1791534600000+i*1000}));state.chatMessages=state.messages;state.chatHistoryComplete=true;buildMediaSequences();render();openVideoLightbox(proxyUrl(filteredMessages()[0],false));});
   await page.waitForFunction(()=>document.querySelector('#lightboxVideo').readyState>=2);
-  if(viewport.width===1440){
-   const video=page.locator('#lightboxVideo'),toggle=page.locator('#imageLightbox .video-playlist-toggle');
-   await video.evaluate(async el=>{el.muted=true;el.currentTime=0;await el.play();});await page.mouse.move(1,1);await toggle.waitFor({state:'hidden'});
-   assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','enlarged native player hides idle cursor');
-   await video.hover();await toggle.waitFor({state:'visible'});await video.evaluate(el=>el.pause());
-   for(const paused of [false,true]){await video.evaluate(async(el,paused)=>{el.currentTime=0;if(paused)el.pause();else await el.play();},paused);await toggle.click();await video.click({position:{x:25,y:25}});assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await video.evaluate(el=>el.paused),paused,'native enlarged-player dismissal also preserves playback');}
+  if(await page.evaluate(()=>pcMediaPresentation())){
+   const video=page.locator('#lightboxVideo'),controls=page.locator('#lightboxVideoStage .modern-video-controls');
+   assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').count(),0);
+   await video.evaluate(el=>el.pause());
+   await checkPlainTransport(controls);
+   await video.evaluate(async el=>{el.muted=true;el.currentTime=0;await el.play();});
+   await video.hover({position:{x:25,y:25}});
+   await controls.waitFor({state:'hidden'});
+   assert.equal(await video.evaluate(el=>getComputedStyle(el).cursor),'none','enlarged player hides idle cursor');
+   await video.hover();await controls.waitFor({state:'visible'});
+   for(const paused of [false,true]){
+    await video.evaluate(async(el,paused)=>{el.currentTime=0;if(paused)el.pause();else await el.play();},paused);
+    const settings=controls.locator('summary');
+    await settings.click();await video.click({position:{x:25,y:25}});
+    assert.equal(await settings.evaluate(el=>el.parentElement.open),false);
+    assert.equal(await video.evaluate(el=>el.paused),paused,'settings dismissal preserves playback');
+   }
+  }else{
+   await page.locator('#imageLightbox .video-playlist-toggle').click();await page.locator('#imageLightbox [data-queue="next"]').click();
+   await page.waitForFunction(()=>document.querySelector('#lightboxVideo').getAttribute('src').includes('queue-big0.mp4'));assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').getAttribute('aria-expanded'),'false','enlarged media also dismisses after choosing');
   }
-  await page.locator('#imageLightbox .video-playlist-toggle').click();await page.locator('#imageLightbox [data-queue="next"]').click();
-  await page.waitForFunction(()=>document.querySelector('#lightboxVideo').getAttribute('src').includes('queue-big0.mp4'));assert.equal(await page.locator('#imageLightbox .video-playlist-toggle').getAttribute('aria-expanded'),'false','enlarged media also dismisses after choosing');
   await page.evaluate(()=>closeImageLightbox());assert.equal(await page.locator('#imageLightbox .video-playlist-drawer').count(),0);
   assert.deepEqual(errors,[]);await context.close();console.log(`${viewport.width}x${viewport.height}: Replay/Channel drawer, real end→next, manual/off/last, fresh detail, history, enlarged media and cleanup PASS`);
  }}finally{await browser.close();await host.close();fs.rmSync(temp,{recursive:true,force:true});}

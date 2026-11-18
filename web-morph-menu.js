@@ -9,7 +9,7 @@ let owner=null,serial=0,builds=0,disposed=0;
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 function release(o){if(o.glass){o.glass.destroy();o.glass=null;o.menu.glass=null;disposed++;}}
 function destroy(o,focus=false){
- if(owner!==o)return;owner=null;clearTimeout(o.timer);o.menu.destroy();release(o);o.trigger.removeEventListener('click',o.sync);
+ if(owner!==o)return;owner=null;clearTimeout(o.timer);o.reveal?.cancel();o.menu.destroy();release(o);o.trigger.removeEventListener('click',o.sync);
  o.trigger.classList.remove('morph-source-open');o.trigger.setAttribute('aria-expanded','false');o.content.remove();o.skin.remove();
  if(focus&&o.trigger.isConnected)o.trigger.focus({preventScroll:true});
 }
@@ -21,19 +21,33 @@ function optics(o,opening=false){
  if(owner!==o||o.fallback||!opening&&!o.menu.isOpen)return;
  if(!glassPreferences.value.enabled||opaque.matches||contrast.matches||motion.matches){if(o.glass)close(true,true);return;}
  const settings={...materialOptions(glassPreferences.value),scheme:'adaptive'};
- try{if(o.glass)o.glass.update(settings);else{o.glass=createGlass(LiquidGlass,o.face,{variant:'clear',profile:'control',preset:'balanced',radius:20,edges:false,applyRadius:false,fallbackFilter:'none',respectReducedMotion:true,...settings});o.menu.glass=o.glass;builds++;}}
+ try{if(o.glass)o.glass.update(settings);else{o.glass=createGlass(LiquidGlass,o.face,{variant:'clear',profile:o.vertical?'panel':'control',preset:'balanced',radius:20,edges:o.vertical,applyRadius:false,fallbackFilter:'none',respectReducedMotion:true,...settings});o.menu.glass=o.glass;builds++;}}
  catch{o.menu.destroy();release(o);o.fallback=true;o.content.dataset.optics='fallback';}
 }
 function sync(o){
  if(owner!==o)return;clearTimeout(o.timer);
- const open=o.menu.isOpen;o.trigger.setAttribute('aria-expanded',String(open));o.trigger.classList.toggle('morph-source-open',open);
+ const open=o.menu.isOpen;o.trigger.setAttribute('aria-expanded',String(open));o.trigger.classList.toggle('morph-source-open',open&&!o.vertical);
  o.content.inert=!open;o.content.setAttribute('aria-hidden',String(!open));o.content.classList.toggle('is-open',open);
  if(open){
   o.content.style.left=o.skin.style.left;o.content.style.top=o.skin.style.top;
   optics(o);o.glass?.syncToBackdrop();
- }else{
+ }
+ if(o.vertical) syncReveal(o);
+ if(!open){
   o.timer=setTimeout(()=>{if(owner===o&&!o.menu.isOpen)destroy(o,o.focus);},motion.matches?0:250);
  }
+}
+function syncReveal(owner){
+ const animation=owner.skin.getAnimations()[0];
+ owner.reveal?.cancel();
+ if(!animation || motion.matches)return;
+ const frames=animation.effect?.getKeyframes().map(({clipPath,opacity,offset})=>({clipPath,opacity,offset}));
+ if(!frames?.length)return;
+ const reveal=owner.content.animate(frames,animation.effect.getTiming());
+ owner.reveal=reveal;
+ animation.ready.then(()=>{
+  if(owner.reveal===reveal && animation.startTime!==null)reveal.startTime=animation.startTime;
+ }).catch(()=>{});
 }
 async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  if(owner?.trigger===trigger){owner.focus=true;owner.menu.toggle();sync(owner);return;}
@@ -42,26 +56,36 @@ async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  let LiquidMenu,timer;
  try{const sdk=await Promise.race([loadEngine(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);if(sdk)({LiquidMenu,LiquidGlass}=sdk);}catch{/* Native filtering stays usable if optional optics cannot load. */}finally{clearTimeout(timer);trigger.removeAttribute('aria-busy');}
  if(pending!==request||!trigger.isConnected||!trigger.checkVisibility())return;pending=null;
+ const vertical=!!window.pcMediaPresentation?.();
  const skin=document.createElement('div');skin.className='morph-menu-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;
- const face=document.createElement('div');face.className='morph-menu-glass';skin.append(face);
- const content=document.createElement('div');content.className='morph-menu-content';content.setAttribute('role','menu');content.setAttribute('aria-label',label);
+ // Put the optical filter on the animated surface itself on PC. An opacity
+ // or filter on a parent would restrict the backdrop a nested lens can sample.
+ const face=vertical?skin:document.createElement('div');
+ face.classList.add('morph-menu-glass');
+ if(vertical)skin.classList.add('morph-menu-vertical');
+ else skin.append(face);
+ const content=document.createElement('div');content.className='morph-menu-content';if(vertical)content.classList.add('morph-menu-vertical');content.setAttribute('role','menu');content.setAttribute('aria-label',label);
  for(const item of items){
   const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitemradio');button.setAttribute('aria-checked',String(!!item.selected));button.textContent=item.label;button.dataset.morphValue=item.value;
   button.onclick=()=>{if(owner!==o)return;close(true);void onSelect(item.value);};content.append(button);
  }
  document.body.append(skin,content);
- const width=Math.min(280,innerWidth-20);skin.style.width=content.style.width=width+'px';skin.style.height=content.style.height='56px';
+ const width=Math.min(vertical?196:280,innerWidth-20);
+ const height=vertical?16+items.length*38+Math.max(0,items.length-1)*4:56;
+ skin.style.width=content.style.width=width+'px';
+ skin.style.height=content.style.height=height+'px';
+ const offset=vertical?6:-trigger.getBoundingClientRect().height;
  // The SDK positions/clips/scales only this inert surface, never native items.
- const menu=LiquidMenu?new LiquidMenu(trigger,skin,{placement:'bottom-start',offset:-trigger.getBoundingClientRect().height,dismissOnOutside:false}):nativeMenu(trigger,skin);
+ const menu=LiquidMenu?new LiquidMenu(trigger,skin,{placement:'bottom-start',offset,dismissOnOutside:false}):nativeMenu(trigger,skin,offset);
  if(!LiquidMenu)content.dataset.optics='fallback';
- const o={serial:++serial,trigger,skin,face,content,menu,glass:null,timer:0,focus:true,sync:null,fallback:!LiquidMenu};owner=o;
+ const o={serial:++serial,trigger,skin,face,content,menu,glass:null,timer:0,focus:true,sync:null,vertical,reveal:null,fallback:!LiquidMenu};owner=o;
  o.sync=()=>sync(o);trigger.addEventListener('click',o.sync);optics(o,true);menu.open();sync(o);
  queueMicrotask(()=>{if(owner===o)content.querySelector('[aria-checked="true"]')?.focus({preventScroll:true});});
 }
 // A plain accessible fallback, not an alternate optical engine or fake SVG.
-function nativeMenu(trigger,skin){
+function nativeMenu(trigger,skin,offset){
  let isOpen=false;
- const api={get isOpen(){return isOpen;},open(){isOpen=true;const r=trigger.getBoundingClientRect();skin.style.left=Math.max(8,Math.min(r.left,innerWidth-parseFloat(skin.style.width)-8))+'px';skin.style.top=Math.max(8,r.top)+'px';skin.style.visibility='visible';},close(){isOpen=false;skin.style.visibility='hidden';},toggle(){isOpen?api.close():api.open();},destroy(){api.close();}};
+ const api={get isOpen(){return isOpen;},open(){isOpen=true;const r=trigger.getBoundingClientRect();skin.style.left=Math.max(8,Math.min(r.left,innerWidth-parseFloat(skin.style.width)-8))+'px';skin.style.top=Math.max(8,r.bottom+offset)+'px';skin.style.visibility='visible';},close(){isOpen=false;skin.style.visibility='hidden';},toggle(){isOpen?api.close():api.open();},destroy(){api.close();}};
  return api;
 }
 function openChannel(trigger){
@@ -75,7 +99,7 @@ document.addEventListener('pointerdown',event=>{
 },{capture:true});
 document.addEventListener('keydown',event=>{
  const o=owner;
- if(o){
+ if(o?.menu.isOpen){
   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close(true);return;}
   if(event.key==='Tab'){close(false);return;}
   if(['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(event.key)){

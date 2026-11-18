@@ -1,3 +1,11 @@
+## Replay batch save option A — 2026-11-19 (Asia/Seoul)
+
+The user explicitly approved implementing Replay multi-video progress on PR #145, merging that PR, and deploying it to production Pages. The branch is `codex/pc-media-controls-20261118`, based on main `6de8fb7`. Exact-head checks and public Pages are the release verification points.
+
+Desktop Replay batches display the existing themed download ring with the current file number and total in a fixed-width Save button. A check and `완료` stay visible briefly after the last selection clears, then the existing capsule exit runs. A failed item remains selected and the button reports partial or total failure without requiring a dialog. Browser handoff and confirmed directory write keep distinct accessible descriptions. The same video downloader, queue, existing-file check and file output paths are used. Touch and the separate Channel/photo flows retain their presentation and behavior.
+
+Targeted local evidence: `/tmp/fromm-replay-bulk-unit.log` (17 passed), `/tmp/fromm-replay-bulk-browser.log` and `/tmp/fromm-replay-bulk-status/` (real browser OPFS synthetic encrypted fixtures, fixed width and sort geometry through completion). Resume with `gh pr view 145 --json url,headRefOid,statusCheckRollup`. No signed-in Fromm account or physical macOS Safari device was used.
+
 ## Channel photo filenames, floating download result, and shared capsule exit — 2026-11-19 (Asia/Seoul)
 
 Continued `codex/pc-media-controls-20261118` from production main `6de8fb7` (PR #144 merged and Pages verified). Channel photos use the displayed album title and Korean-time posting date in `YYMMDD_앨범제목_001.ext`, for single, album, and batch downloads. File contents and extensions follow the saved image response. Files with matching names are skipped only when their bytes match, and different files get a numeric suffix before the photo sequence. Date fallback uses the creation time, then `날짜없음`. Old saved names are left on disk.

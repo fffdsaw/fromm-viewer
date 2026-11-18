@@ -72,6 +72,28 @@ test('denied destination preserves selections and releases controls', async () =
   assert.equal(h.state.postSelected.size, 3); assert.equal(h.details.length, 0);
   assert.match(h.alerts[0], /permission denied/); unlocked(h);
 });
+test('desktop Replay batches retain failed selections and report progress without browser alerts', async () => {
+  const h=setup('replay'),sync=[],timers=[];
+  h.c.window.pcMediaPresentation=()=>true;
+  h.c.window.FrommGlowME={syncReplaySaveProgress:()=>sync.push(h.state.replayBulkSaveProgress?.label)};
+  h.c.setTimeout=(callback,delay)=>timers.push({callback,delay});
+  const download=h.c.downloadReplayStream;
+  h.c.downloadReplayStream=async(url,...args)=>{
+    if(url==='two')throw new Error('synthetic failure');
+    return download(url,...args);
+  };
+  await h.c.saveSelectedPosts();
+  assert.deepEqual(sync,['0/3','1/3','2/3','3/3']);
+  assert.deepEqual(h.writes,['one','three']);
+  assert.deepEqual([...h.state.postSelected],[JSON.stringify(['replay','artist-a','two'])]);
+  assert.equal(h.state.replayBulkSaveProgress.phase,'error');
+  assert.match(h.state.replayBulkSaveProgress.detail,/실패 1개/);
+  assert.deepEqual(h.alerts,[]);
+  assert.equal(timers[0].delay,2400);
+  timers[0].callback();
+  assert.equal(h.state.replayBulkSaveProgress,null);
+  unlocked(h);
+});
 test('one forbidden detail retains that selection, successful files are deselected and retry works', async () => {
   const h = setup(), original = h.c.fetchChannelVideoDetail;
   h.c.fetchChannelVideoDetail = async p => {if (p.id === 'two') throw new Error('403'); return original(p);};

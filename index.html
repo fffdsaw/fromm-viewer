@@ -1103,7 +1103,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css?v=glyph-refraction-20261117">
-<link rel="preload" as="script" href="web-glowme.js?v=pc-media-controls-20261118">
+<link rel="preload" as="script" href="web-glowme.js?v=replay-bulk-status-20261119">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
@@ -1112,7 +1112,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="themes.css?v=channel-header-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <link rel="stylesheet" href="channel-photos.css?v=album-download-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=capsule-exit-20261119">
+<link rel="stylesheet" href="glowme-controls.css?v=replay-bulk-status-20261119">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -8300,10 +8300,14 @@ async function saveSelectedPosts(){
   const button=$("#saveSelectedBtn"), oldText=button.textContent;
   const includesPhotos=scope.kind==="channel" && items.some(post=>post.type==="image");
   if(includesPhotos && items.every(post=>post.type==="image"))return saveChannelPhotoPosts(items,{button});
+  const replayProgress=scope.kind==="replay" && items.length>1 && window.pcMediaPresentation?.()
+    ? {current,phase:"picker",label:"0/"+items.length,detail:"저장 위치 선택 중"} : null;
+  if(replayProgress)state.replayBulkSaveProgress=replayProgress;
   state.postBulkSaving=true;
   channelVideoState.downloading=true;
   state.live.replayDownloading=true;
   button.disabled=true;
+  if(replayProgress)window.FrommGlowME?.syncReplaySaveProgress?.();
   let directory,ok=0,skipped=0;
   const failures=[];
   try{
@@ -8315,7 +8319,12 @@ async function saveSelectedPosts(){
       if(!current()) break;
       const post=items[i];
       let sink;
-      button.textContent=`저장 ${i+1}/${items.length}`;
+      if(replayProgress){
+        replayProgress.phase="active";
+        replayProgress.label=`${i+1}/${items.length}`;
+        replayProgress.detail=`영상 저장 중 · ${replayProgress.label}`;
+        window.FrommGlowME?.syncReplaySaveProgress?.();
+      }else button.textContent=`저장 ${i+1}/${items.length}`;
       try{
         if(scope.kind==="channel" && post.type==="image"){
           const result=await saveChannelPhotoContents(post,{directory,current,onProgress:(done,total)=>{button.textContent=`저장 ${i+1}/${items.length} · ${done}/${total}장`;}});
@@ -8342,7 +8351,7 @@ async function saveSelectedPosts(){
         if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
         await downloadReplayStream(detail._streamUrl || replayStreamUrl(detail),sink,(done,total)=>{
           if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
-          button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(done/total*100)}%`;
+          if(!replayProgress)button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(done/total*100)}%`;
         },{current});
         ok++;
         state.postSelected.delete(downloadSelectionKey(scope.kind,post));
@@ -8356,13 +8365,19 @@ async function saveSelectedPosts(){
     }
     if(current()){
       const summary=`${includesPhotos?(directory?"저장 완료":"다운로드 요청 완료"):"저장"} ${ok}개${skipped ? ` · 기존 파일 ${skipped}개 건너뜀` : ""}${failures.length ? ` · 실패 ${failures.length}개 (선택 유지)` : ""}`;
-      if(includesPhotos)showChannelPhotoSaveNotice(summary);
+      if(replayProgress){
+        replayProgress.phase=failures.length?"error":directory?"done":"handed-off";
+        replayProgress.label=failures.length?(ok+skipped?"부분 완료":"실패"):"완료";
+        replayProgress.detail=directory||failures.length?summary:`다운로드 요청 완료 · ${ok}개`;
+      }else if(includesPhotos)showChannelPhotoSaveNotice(summary);
       else window.alert(summary);
     }
   }catch(e){
     if(current()){
-      if(includesPhotos)showChannelPhotoSaveNotice("선택한 미디어를 저장하지 못했습니다. 다시 시도해주세요.");
-      else window.alert(`영상 저장 실패: ${safeErrorDetail(e?.message || e)}`);
+      const message=`영상 저장 실패: ${safeErrorDetail(e?.message || e)}`;
+      if(replayProgress)Object.assign(replayProgress,{phase:"error",label:"실패",detail:message});
+      else if(includesPhotos)showChannelPhotoSaveNotice("선택한 미디어를 저장하지 못했습니다. 다시 시도해주세요.");
+      else window.alert(message);
     }
   }finally{
     state.postBulkSaving=false;
@@ -8370,7 +8385,14 @@ async function saveSelectedPosts(){
     state.live.replayDownloading=false;
     void drainPostDownloads();
     button.disabled=false;
-    button.textContent=oldText;
+    if(replayProgress){
+      if(!current()||["picker","active"].includes(replayProgress.phase))state.replayBulkSaveProgress=null;
+      else setTimeout(()=>{
+        if(state.replayBulkSaveProgress!==replayProgress)return;
+        state.replayBulkSaveProgress=null;
+        window.FrommGlowME?.syncReplaySaveProgress?.();
+      },replayProgress.phase==="error"?2400:1500);
+    }else button.textContent=oldText;
     syncDownloadSelection();
   }
 }
@@ -10337,7 +10359,7 @@ function downloadFeedbackIcon(){
 }
 
 const downloadFeedbackState=new WeakMap();
-function setDownloadButtonFeedback(button,phase="idle",ratio=null){
+function setDownloadButtonFeedback(button,phase="idle",ratio=null,{retain=false}={}){
   if(!button) return;
   const previous=downloadFeedbackState.get(button);
   if(previous?.timer) clearTimeout(previous.timer);
@@ -10379,7 +10401,7 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null){
   if(active || phase==="picker" || phase==="queued") button.setAttribute("aria-busy","true");
   else{
     button.removeAttribute("aria-busy");
-    feedback.timer=setTimeout(()=>setDownloadButtonFeedback(button),phase==="error" ? 2200 : 1400);
+    if(!retain)feedback.timer=setTimeout(()=>setDownloadButtonFeedback(button),phase==="error" ? 2200 : 1400);
   }
 }
 
@@ -11413,7 +11435,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=pc-media-controls-20261118" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=replay-bulk-status-20261119" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>

@@ -24,4 +24,5 @@
 .channel-photo-image img{display:block;max-width:100%;max-height:100%;object-fit:contain}
 .channel-photo-status{min-height:1.5em;margin:8px 16px;color:var(--theme-muted);font-size:13px}
 .channel-photo-dialog footer{justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--theme-line)}
+.channel-photo-dialog footer[hidden],.channel-photo-dialog footer button[hidden]{display:none}
 @media(max-width:700px){.channel-photo-dialog{border-radius:16px}.channel-photo-stage{grid-template-columns:36px minmax(0,1fr) 36px;gap:2px;padding:0 4px}.channel-photo-stage .btn{min-width:36px;padding:4px}.channel-photo-dialog header,.channel-photo-dialog footer{padding:10px}.channel-photo-dialog footer{gap:6px}}

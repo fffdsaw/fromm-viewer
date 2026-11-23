@@ -1,8 +1,70 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs');
+const {execFileSync}=require('node:child_process');
 const output=process.env.CHANNEL_PHOTO_DIR||'/tmp/fromm-channel-photos';
 const {chromium}=require('playwright'),fixture=require('./helpers/phase3-fixture.cjs');
+const {contentFilter}=require('./helpers/collection-fixture.cjs');
 const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixture.test/photo.svg',displayStartAt:Date.parse('2026-09-07T15:00:00Z'),num:1});
+
+async function checkArtistMedia(page) {
+  const thumbnailUrl='https://fixture.test/photo.svg';
+  const album={id:'p1',isVisible:true,createdAt:'2026-09-08T12:00:00+09:00',author:{name:'합성 아티스트'},content:'Artist 앨범\n두 번째 줄',mediaType:'image',media:[1,2].map(i=>({mediaType:'image',url:thumbnailUrl+'?artist='+i,thumbnailUrl}))};
+  const video={id:'v',isVisible:true,createdAt:'2026-09-07T12:00:00+09:00',content:'Artist 영상',mediaType:'video',mediaUrl:'https://fixture.test/artist.mp4',thumbnailUrl};
+  const bytes=execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=160x90:rate=12','-t','2','-c:v','libx264','-pix_fmt','yuv420p','-movflags','frag_keyframe+empty_moov','-f','mp4','pipe:1']);
+  const requests=[];
+  let allowAlbum=false;
+  await page.route('**/artist.mp4',route=>route.fulfill({contentType:'video/mp4',body:bytes}));
+  await page.route('**/*',route=>{
+    const request=route.request();
+    let url=new URL(request.url());
+    if(url.pathname==='/__fromm_proxy')url=new URL(url.searchParams.get('url'));
+    if(url.hostname!=='channel-api.frommyarti.com'||!/^\/posts(?:\/|$)/.test(url.pathname))return route.fallback();
+    const {pathname,searchParams}=url;
+    const cursor=searchParams.get('postId');
+    requests.push({pathname,cursor,first:searchParams.get('includeId'),channel:request.headers()['channel-id'],method:request.method()});
+    let data;
+    if(pathname==='/posts'){
+      if(request.headers()['channel-id']==='other-channel')data={posts:[],isLast:true};
+      else if(cursor==='text-tail')data={posts:[album,video],isLast:true};
+      else data={posts:[{...album,id:'restricted',isVisible:false},{...album,id:'official',isOfficialPost:true},{id:'text-tail',isVisible:true,mediaType:'text'}],isLast:false};
+    }else if(pathname==='/posts/p1')data={post:{...album,isVisible:allowAlbum}};
+    else if(pathname==='/posts/v')data={post:video};
+    return route.fulfill({headers:{'access-control-allow-origin':'*'},json:{success:true,data}});
+  });
+  await page.locator('#saveResultOkBtn').click();
+  await page.locator('#saveResultModal').waitFor({state:'hidden'});
+  await contentFilter(page,'artist');
+  assert.equal(await page.locator('[data-channel-content-menu]').innerText(),'Artist');
+  assert.deepEqual(await page.locator('.replay-card .replay-title').allTextContents(),['Artist 앨범','Artist 영상']);
+  assert.deepEqual(requests.map(({cursor,first})=>[cursor,first]),[[null,'yes'],['text-tail',null]]);
+  assert.match(await page.locator('.channel-photo-date').innerText(),/합성 아티스트/);
+  assert.equal(await page.locator('.channel-photo-count-badge').innerText(),'2장');
+  await page.screenshot({path:`${output}/artist-1440.png`});
+  await page.getByRole('button',{name:'Artist 앨범 앨범 열기'}).click();
+  await page.getByRole('button',{name:'다시 불러오기',exact:true}).waitFor();
+  assert.equal(await page.locator('.channel-photo-image img').getAttribute('src'),null,'a denied detail never opens cached list media');
+  allowAlbum=true;
+  await page.getByRole('button',{name:'다시 불러오기',exact:true}).click();
+  await page.getByText('1 / 2',{exact:true}).waitFor();
+  assert.equal(await page.locator('.channel-photo-dialog footer').isVisible(),false);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(()=>document.querySelector('.channel-photo-image img')?.currentSrc.endsWith('?artist=2'));
+  assert.equal(await page.locator('.channel-photo-count').textContent(),'2 / 2');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'Artist 영상 재생'}).click();
+  await page.waitForFunction(()=>document.querySelector('#channelVideo')?.videoWidth===160);
+  await page.locator('#channelBackToList').click();
+  await page.getByRole('button',{name:'Artist 영상 재생'}).waitFor();
+  await page.evaluate(()=>{state.live.channels.push({id:'other-channel',channelName:'다른 채널'});renderLiveView();});
+  await page.getByRole('button',{name:'다른 채널',exact:true}).click();
+  await page.getByText('불러온 아티스트 게시물에 볼 수 있는 사진이나 영상이 없습니다.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'테스트 채널',exact:true}).click();
+  await contentFilter(page,'image');
+  assert.equal(await page.locator('[data-channel-photo-open="p1"]').count(),1,'official media remains separate even when the post IDs match');
+  assert.deepEqual([...new Set(requests.map(r=>r.channel))],['fixture-channel','other-channel']);
+  assert.ok(requests.every(r=>r.method==='GET'));
+}
+
 (async()=>{
  const server=await fixture.serve(),browser=await chromium.launch({headless:true});
  try{for(const width of [1440,390]){
@@ -110,6 +172,7 @@ const photo=(id)=>({id,type:'image',title:'앨범 '+id,thumbnail:'https://fixtur
   await page.evaluate(()=>selectChannelMediaType('video'));await switching;
   assert.equal(await page.evaluate(()=>channelVideoState.mediaType),'video');
   assert.equal(await page.locator('.channel-photo-card').count(),0);
+  if(width===1440)await checkArtistMedia(page);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.deepEqual(errors,[]);
   await context.close();console.log('Channel photo albums passed',width);

@@ -1,4 +1,4 @@
-import './web-morph-menu.js?v=pc-media-controls-20261118';
+import './web-morph-menu.js?v=channel-artist-20261119';
 import './web-clear-controls.js?v=pc-media-controls-20261118';
 import './web-glass-controls.js?v=pc-media-controls-20261118';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=fixed-actions-20261117';

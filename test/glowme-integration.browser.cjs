@@ -22,7 +22,8 @@ async function menuReady(p){await p.waitForFunction(()=>FrommMorphMenus.snapshot
   if(width>700){
    const origin=await p.locator('[data-channel-content-menu]').boundingBox();
    const rows=await p.getByRole('menuitemradio').all();
-   const first=await rows[0].boundingBox(),last=await rows[2].boundingBox();
+   assert.deepEqual(await p.getByRole('menuitemradio').allTextContents(),['전체','영상','사진','Artist']);
+   const first=await rows[0].boundingBox(),last=await rows[3].boundingBox();
    assert.ok(first.y>origin.y+origin.height&&last.y>first.y&&first.x===last.x,'the PC menu opens below the trigger in a single column');
    assert.ok(await p.locator('.morph-menu-glass').evaluate(e=>e.matches('.morph-menu-skin') && e.getAnimations().length>0),'the animated pane itself samples the background');
   }
@@ -43,7 +44,11 @@ async function menuReady(p){await p.waitForFunction(()=>FrommMorphMenus.snapshot
   await shot(p,width+'-channel-menu');await p.keyboard.press('Escape');await p.waitForFunction(()=>FrommMorphMenus.snapshot.live===0);assert.equal(await p.evaluate(()=>document.activeElement.matches('[data-channel-content-menu]')),true);
   assert.equal(await p.locator('.morph-menu-skin,.morph-menu-content').count(),0);
   // SDK trigger toggle must reverse once, not double-toggle in document delegation.
-  await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await menuReady(p);await p.keyboard.press('End');assert.equal(await p.evaluate(()=>document.activeElement.dataset.morphValue),'image');await p.keyboard.press('Enter');await p.waitForFunction(()=>channelVideoState.mediaType==='image'&&!channelVideoState.loading);assert.equal(await p.locator('.replay-card').count(),1);assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'사진 ');
+  await p.locator('[data-channel-content-menu]').click();await menuReady(p);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await p.waitForFunction(()=>!FrommMorphMenus.snapshot.open);await p.locator('[data-channel-content-menu]').dispatchEvent('click');await menuReady(p);
+  await p.keyboard.press('End');
+  assert.equal(await p.evaluate(()=>document.activeElement.dataset.morphValue),width>700?'artist':'image');
+  if(width>700)await p.keyboard.press('ArrowUp');
+  await p.keyboard.press('Enter');await p.waitForFunction(()=>channelVideoState.mediaType==='image'&&!channelVideoState.loading);assert.equal(await p.locator('.replay-card').count(),1);assert.equal(await p.locator('[data-channel-content-menu]').textContent(),'사진 ');
   await contentFilter(p,'video');assert.equal(await p.locator('.channel-photo-card').count(),0);assert.equal(await p.locator('[data-channel-video-play]').count(),1);await contentFilter(p,'all');assert.equal(await p.locator('.replay-card').count(),2);
   // The mixed all scope delegates album transfer to the existing real blob saver.
   await p.evaluate(()=>{const q=downloadSelectionScope();chooseDownloadItem(q.kind,q.items.find(x=>x.type==='image'));});await p.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');await shot(p,width+'-selected-capsule');await p.locator('#saveSelectedBtn').click();await p.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===0);await p.waitForTimeout(100);assert.equal(saved.length,2);assert.ok(saved.every(x=>x.bytes.includes(Buffer.from('<svg'))));assert.match(await p.locator('#saveResultModal.open #saveResultSummary').textContent(),/다운로드 요청 완료.*2장/);assert.deepEqual(alerts,[]);

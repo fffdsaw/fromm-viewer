@@ -89,6 +89,30 @@
   $('.topbar').prepend(pcHeading);$('.topbar').insertBefore(pcListHost,$('.top-auth-controls'));
   const pcMediaRow=document.createElement('div');pcMediaRow.className='pc-media-row collection-action-row';pcMediaRow.hidden=true;
   const pcListInfo=document.createElement('span');pcListInfo.className='pc-list-info';pcMediaRow.append(pcListInfo);$('.viewer-header').append(pcMediaRow);
+  const memberSlot=document.createElement('div');memberSlot.className='channel-member-capsule';memberSlot.hidden=true;
+  const memberSelect=document.createElement('select');memberSelect.setAttribute('aria-label','멤버 선택');
+  memberSelect.onchange=()=>selectChannelArtistMember(memberSelect.value);
+  memberSlot.append(memberSelect);memberSlot.insertAdjacentHTML('beforeend',filterChevronIcon());pcMediaRow.append(memberSlot);
+  let memberMotion=null;
+  function syncArtistMemberFilter(active){
+    const show=active&&channelVideoState.mediaType==='artist';
+    if(show){
+      const members=[...channelArtistMembers()].sort(([,a],[,b])=>a.localeCompare(b,'ko'));
+      const choices=[['','멤버 전체'],...members];
+      if(choices.length!==memberSelect.length||choices.some(([value,label],i)=>memberSelect.options[i].value!==value||memberSelect.options[i].text!==label)){
+        memberSelect.replaceChildren(...choices.map(([value,label])=>new Option(label,value)));
+      }
+      const selected=channelVideoState.artistMember;
+      memberSelect.value=selected?.channelId===channelVideoState.channelId?selected.key:'';
+    }
+    if(show&&!memberMotion&&window.FrommCapsuleMaterializer){
+      memberMotion=window.FrommCapsuleMaterializer(memberSlot,null,syncPCLayout,{axis:'x',from:'left'});
+      memberMotion.sync(false,'artist-members',active);
+    }
+    if(memberMotion)memberMotion.sync(show,'artist-members',active);
+    else memberSlot.hidden=!show;
+  }
+  window.addEventListener('fromm-capsule-ready',syncPCLayout,{once:true});
   let pcToolbar=null,pcToolbarHome=null,pcRenderDepth=0,pcRefresh=null,pcRefreshHome=null,pcChannelTabs=null,pcChannelTabsHome=null;
   const pcFilterScroll=new WeakMap();
   function restoreChannelTabs(){
@@ -148,7 +172,9 @@
       if(pcChannelTabs&&pcChannelTabs.parentElement!==pcMediaRow){
         if(pc&&list)pcModeCount.after(pcChannelTabs);else pcMediaRow.prepend(pcChannelTabs);
       }
+      if(pcChannelTabs&&pcChannelTabs.nextElementSibling!==memberSlot)pcChannelTabs.after(memberSlot);
     }else restoreChannelTabs();
+    syncArtistMemberFilter(pc&&channelList);
     if(active){
       if(!list){const text=`${labels[state.filter]} ${state.infiniteList.length.toLocaleString()}`;if(pcListInfo.textContent!==text)pcListInfo.textContent=text;}
       if(mediaDock.parentElement!==pcMediaRow)pcMediaRow.append(mediaDock);

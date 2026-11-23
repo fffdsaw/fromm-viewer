@@ -1124,7 +1124,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css?v=save-sheet-20261119">
-<link rel="preload" as="script" href="web-glowme.js?v=replay-bulk-status-20261119">
+<link rel="preload" as="script" href="web-glowme.js?v=artist-members-v1">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
@@ -1133,7 +1133,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="themes.css?v=channel-header-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=replay-bulk-status-20261119">
+<link rel="stylesheet" href="glowme-controls.css?v=artist-members-v1">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -1483,14 +1483,17 @@ function bindVideoListAuto(kind, filter) {
   disconnectVideoListAuto();
   bindVideoListThumbnails();
   const s = videoListAuto, scope = JSON.stringify(kind === "channel" && channelVideoState.mediaType !== "video" ? [kind,filter,channelVideoState.mediaType] : [kind, filter]);
+  const artistList = kind === "channel" && channelVideoState.mediaType === "artist";
+  const member = artistList ? channelVideoState.artistMember : null;
   if (s.scope !== scope) Object.assign(s, {scope, emptyPages:0, paused:false});
   const sameSession = channelVideoSession();
   const current = () => sameSession() && state.filter === "live" && state.live.centerMode === kind &&
+    (!artistList || channelVideoState.artistMember === member) &&
     (kind === "channel" ? channelVideoState.channelId === filter && !channelVideoState.selected : state.live.replayFilter === filter && !state.live.replaySelected) &&
     document.querySelector("#timeline > [data-video-list-scope]")?.dataset.videoListScope === scope;
   const target = document.querySelector(kind === "channel" ? "#channelLoadMore" : "#replayLoadMore");
   const more = () => kind === "channel" ? !!channelVideoPage()?.loaded && !channelVideoPage().isLast : replayHasMore();
-  const count = () => kind === "channel" ? channelVideoPage()?.posts.length || 0 : visibleReplayPosts().length;
+  const count = () => artistList ? visibleChannelPosts().length : kind === "channel" ? channelVideoPage()?.posts.length || 0 : visibleReplayPosts().length;
   if (!target || !current()) return;
   const load = async () => {
     if (!current() || document.hidden || s.running || !more() || target.disabled) return;
@@ -1573,6 +1576,7 @@ async function replayListRequest(path, options, current) {
 const CHANNEL_MEDIA_LABELS = Object.freeze({all:"전체",video:"영상",image:"사진",artist:"Artist"});
 const channelVideoState = {
   channelId: "", mediaType: "all", mediaScrolls: new Map(), pages: new Map(), loading: false, error: "", requestSeq: 0,
+  artistMember: null,
   notice: "", loadingMessage: "", requestAbort: null,
   selected: null, playerError: "", playSeq: 0, hls: null, blobUrls: [], downloading: false, listScrollY: 0, historyListId: "",
 };
@@ -1599,8 +1603,36 @@ function collectionOrderedPosts(posts,kind){
   return [...posts].sort((a,b)=>(Number(a.displayStartAt||0)-Number(b.displayStartAt||0))*(direction==="asc"?1:-1));
 }
 function visibleChannelPosts(){
-  const type=channelVideoState.mediaType;
-  return collectionOrderedPosts((channelVideoPage()?.posts||[]).filter(p=>type==="all"||type==="artist" ? p.type==="video"||p.type==="image" : p.type===type),"channel");
+  const {mediaType,artistMember,channelId}=channelVideoState;
+  const posts=channelVideoPage()?.posts||[];
+  if(mediaType==="artist"){
+    const key=artistMember?.channelId===channelId?artistMember.key:"";
+    return collectionOrderedPosts(key?posts.filter(post=>post._artistMemberKey===key):posts,"channel");
+  }
+  return collectionOrderedPosts(posts.filter(post=>mediaType==="all" ? post.type==="video"||post.type==="image" : post.type===mediaType),"channel");
+}
+
+function channelArtistMembers(){
+  const members=new Map();
+  if(channelVideoState.mediaType!=="artist")return members;
+  const selected=channelVideoState.artistMember;
+  if(selected?.channelId===channelVideoState.channelId)members.set(selected.key,selected.name);
+  for(const post of channelVideoPage()?.posts||[]){
+    if(post._artistMemberKey && post._artistAuthor)members.set(post._artistMemberKey,post._artistAuthor);
+  }
+  return members;
+}
+
+function selectChannelArtistMember(key){
+  if(!channelVideosActive()||channelVideoState.mediaType!=="artist"||channelVideoState.selected)return;
+  const {channelId}=channelVideoState;
+  const name=channelArtistMembers().get(key);
+  if(key&&!name)return;
+  channelVideoState.artistMember=name?{key,name,channelId}:null;
+  videoListAuto.paused=false;
+  videoListAuto.emptyPages=0;
+  scrollTo({top:0,behavior:"instant"});
+  renderLiveView();
 }
 
 function channelArtistMedia(post) {
@@ -1624,10 +1656,12 @@ function channelArtistCards(post,channel) {
   if (!media.length) return [];
   const authorName = post.author?.name || post.author?.nickname;
   const author = typeof authorName === "string" ? authorName.trim() : "";
+  const id = post.author?.id;
+  const memberKey = id != null && String(id).trim() ? `id:${id}` : author ? `name:${author}` : "";
   const title = typeof post.content === "string" ? post.content.trim().split(/\r?\n/,1)[0].slice(0,120) : "";
   const number = Number(post.createdAt);
   const displayStartAt = number > 0 && Number.isFinite(number) ? (number < 10_000_000_000 ? number * 1000 : number) : Date.parse(post.createdAt) || null;
-  const base = {displayStartAt, _artistAuthor:author, _artistPostId:String(post.id), _channelId:channel.id, _channelName:channel.channelName};
+  const base = {displayStartAt,_artistAuthor:author,_artistMemberKey:memberKey,_artistPostId:String(post.id),_channelId:channel.id,_channelName:channel.channelName};
   const photos = media.filter(item=>item.type === "image");
   const cards = photos.length ? [{...base,id:`artist:${post.id}:image`,type:"image",title:title||"아티스트 사진",thumbnail:photos[0].thumbnail,_artistPhotoCount:photos.length}] : [];
   const videos = media.filter(item=>item.type === "video");
@@ -1684,6 +1718,7 @@ function resetChannelVideos() {
   window.FrommChannelPhotos?.close();
   channelVideoState.mediaScrolls.clear();
   channelVideoState.pages.clear();
+  channelVideoState.artistMember = null;
   channelVideoState.mediaType = "all";
   channelVideoState.channelId = "";
   channelVideoState.listScrollY = 0;
@@ -1892,6 +1927,7 @@ async function selectChannelVideos(channelId, {restoreHistory = false} = {}) {
   s.loading = false;
   s.error = "";
   s.notice = "";
+  if(s.channelId!==id)s.artistMember=null;
   s.channelId = id;
   renderLiveView();
   await loadChannelVideos();
@@ -11614,7 +11650,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=replay-bulk-status-20261119" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=artist-members-v1" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
@@ -11636,6 +11672,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=channel-artist-20261119"></script>
+<script type="module" src="web-glass.js?v=artist-members-v1"></script>
 </body>
 </html>

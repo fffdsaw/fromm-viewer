@@ -9234,13 +9234,31 @@ function renderGalleryList(tl, shown){
 
 function openImageLightbox(src, caption="", preview=""){
   closeImageLightbox();
-  const box = $("#imageLightbox");
-  const image=$("#lightboxImage"), placeholder=$("#lightboxPlaceholder"), version=lightboxPreviewGeneration;
-  if(preview && !imageUrlSame(preview,src)){placeholder.src=preview;box.classList.add("preview-loading");}
-  image.onload=()=>{if(version===lightboxPreviewGeneration){box.classList.remove("preview-loading");placeholder.removeAttribute("src");}};
-  image.onerror=()=>{if(version===lightboxPreviewGeneration&&box.classList.contains("preview-loading"))$("#lightboxCaption").textContent=caption+" · 원본 이미지를 불러오지 못했습니다.";};
-  image.src = src;
-  $("#lightboxCaption").textContent = caption;
+  const box=$("#imageLightbox"), image=$("#lightboxImage"), placeholder=$("#lightboxPlaceholder"), label=$("#lightboxCaption");
+  const version=lightboxPreviewGeneration, originalFirst=pcMediaPresentation();
+  const showPreview=()=>{
+    if(preview && !imageUrlSame(preview,src)){
+      placeholder.src=preview;
+      box.classList.add("preview-loading");
+    }
+  };
+  image.hidden=originalFirst;
+  if(!originalFirst)showPreview();
+  label.textContent=originalFirst ? "원본 사진 불러오는 중…" : caption;
+  image.onload=async()=>{
+    if(originalFirst){try{await image.decode();}catch{}}
+    if(version!==lightboxPreviewGeneration)return;
+    image.hidden=false;
+    box.classList.remove("preview-loading");
+    placeholder.removeAttribute("src");
+    label.textContent=caption;
+  };
+  image.onerror=()=>{
+    if(version!==lightboxPreviewGeneration)return;
+    if(originalFirst)showPreview();
+    if(originalFirst||box.classList.contains("preview-loading"))label.textContent=[caption,"원본 이미지를 불러오지 못했습니다."].filter(Boolean).join(" · ");
+  };
+  image.src=src;
   box.classList.add("open");
   box.setAttribute("aria-hidden","false");
   document.documentElement.classList.add("image-lightbox-open");

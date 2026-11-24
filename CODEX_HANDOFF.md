@@ -1,3 +1,9 @@
+## Original-first desktop photo detail in PR #153
+
+The desktop media lightbox opens on click and displays the original after decoding, with the original aspect ratio on the first visible frame. Its cached thumbnail is used only if loading the original fails. The touch preview, Channel album navigation and video poster paths retain their existing behavior. The supplied screen recording was inspected locally and was excluded from the repository.
+
+Local Node 22.23.5 units passed 337 with one existing Agora skip. Playwright 1.62.1 Chromium tested a delayed portrait original with a landscape thumbnail, identical first and settled image geometry, desktop error fallback and the existing 390px touch preview. Receipts are under `/tmp/fromm-original-first-*.log`. The user approved merging and deploying these changes with the earlier PR #153 work after verification.
+
 ## Media saves, header controls and 24-hour timestamps
 
 Branch `codex/media-save-and-artist-menu-20261124` continues from deployed merge `97b7ff6` for PR #152. Desktop selection actions share the existing capsule skin, with fixed hit boxes and a theme-colored progress line. The close button is inset from the right edge and the glyph is centered in its hit box throughout progress. The pending count stays visible without adding per-file percentage text. Completed folder saves and completed browser handoffs clear the matching selections, as do existing-file skips; failed items remain available. A direct external browser link cannot confirm completion. Artist album selection clears once the selected album is saved, while a single image in a multi-image album leaves the album selected.

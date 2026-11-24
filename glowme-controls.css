@@ -17,7 +17,7 @@
 :root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button):disabled{opacity:.45;cursor:default}
 :root[data-fromm-theme].glowme.glowme-phase3 :is([data-download-phase],.download-feedback-icon){--download-ring-color:var(--theme-accent);--download-check-color:var(--theme-accent)}
 .morph-menu-skin,.morph-menu-content{position:fixed;z-index:1200;box-sizing:border-box;border-radius:20px}
-.morph-menu-skin{pointer-events:none}.morph-menu-glass{position:absolute;inset:0;border-radius:inherit;border:1px solid var(--theme-line);background:color-mix(in srgb,var(--theme-card) 80%,transparent);background-color:color-mix(in srgb,var(--theme-card) 80%,transparent)!important;box-shadow:inset 0 1px 1px #ffffffad,0 5px 18px #0002;pointer-events:none}
+.morph-menu-glass{border:1px solid var(--theme-line);background-color:color-mix(in srgb,var(--theme-card) 80%,transparent)!important;box-shadow:inset 0 1px 1px #ffffffad,0 5px 18px #0002;pointer-events:none;filter:none!important}
 .morph-menu-content{z-index:1201;display:flex;gap:4px;align-items:center;padding:8px;opacity:0;pointer-events:none;transition:opacity 100ms;transform:none!important}
 .morph-menu-content.is-open{opacity:1;pointer-events:auto}
 .morph-menu-content button{flex:1;min-width:0;height:40px;border:0;border-radius:14px;background:transparent;color:var(--theme-text);font:inherit;font-weight:600;cursor:pointer}
@@ -232,7 +232,7 @@
 
 /* The desktop menu stays under its trigger and samples the cards below it. */
 .morph-menu-skin.morph-menu-vertical{
- position:fixed;inset:auto;border-radius:18px;filter:none!important;
+ border-radius:18px;
  background-color:rgba(244,252,250,.30)!important;
  border-color:#ffffff85;
  box-shadow:inset 0 1px 1px #fff9,0 8px 22px #0003;
@@ -255,6 +255,18 @@
 .morph-menu-content.morph-menu-vertical button:hover{background:#ffffff38}
 .morph-menu-content.morph-menu-vertical button[aria-checked='true']{
  background:color-mix(in srgb,var(--theme-selected) 54%,transparent);
+}
+.morph-menu-skin.morph-menu-glass[data-glass-material='convex']{
+ background-color:rgb(255 255 255/.22)!important;
+ border-color:#fff6;
+ box-shadow:0 6px 18px #0003;
+}
+.morph-menu-skin.morph-menu-glass[data-glass-material='convex'][data-scheme='dark']{
+ background-color:rgb(22 24 28/.32)!important;
+}
+@media(forced-colors:none){
+ .morph-menu-glass[data-glass-material='convex']+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#142c29;text-shadow:0 0 5px #fff}
+ .morph-menu-glass[data-glass-material='convex'][data-scheme='dark']+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#fbfdfd;text-shadow:0 0 5px #000}
 }
 @media(prefers-reduced-transparency:reduce){
  .morph-menu-skin.morph-menu-vertical{background-color:var(--theme-card)!important}

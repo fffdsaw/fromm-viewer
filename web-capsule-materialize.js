@@ -1,8 +1,8 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
-import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
-import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
+import {glassPreferences} from './web-glass-settings.js?v=convex-edge-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=convex-edge-20261124';
 let engineModule;
-const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
+const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
 export function createCapsuleMaterializer(element,onHidden,onResume,options={}){
  if(options.axis==='x')return createHorizontalCapsule(element,onHidden,onResume,options.from);
  // Header Save is now a native transparent control, with no optical entrance.

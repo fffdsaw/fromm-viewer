@@ -76,6 +76,7 @@ jobs:
           MATERIALIZE_SCREENSHOT_DIR=screenshots/materialize node test/capsule-materialize.browser.cjs
           GLASS_SETTINGS_DIR=screenshots/glass-settings node test/glass-settings.browser.cjs
           node test/live-optics-settings.browser.cjs
+          CONVEX_GLASS_DIR=screenshots/liquid-glass/convex node test/liquid-glass-convex.browser.cjs
           node test/glass-settings-startup.browser.cjs
           node test/menu-settings-queue.browser.cjs
           RAIL_LENS_DIR=screenshots/rail-lens node test/rail-lens-spinner.browser.cjs

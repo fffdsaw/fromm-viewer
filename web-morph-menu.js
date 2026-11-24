@@ -1,10 +1,10 @@
 /* Pinned Meapri LiquidMenu drives only the decorative skin. Real menu buttons
  * stay at their final, untransformed hit boxes; normal triggers are CSS only. */
 let engineModule;
-const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
+const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
 let LiquidGlass,pending=null;
-import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
-import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
+import {glassPreferences} from './web-glass-settings.js?v=convex-edge-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=convex-edge-20261124';
 let owner=null,serial=0,builds=0,disposed=0;
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 function release(o){if(o.glass){o.glass.destroy();o.glass=null;o.menu.glass=null;disposed++;}}
@@ -21,7 +21,7 @@ function optics(o,opening=false){
  if(owner!==o||o.fallback||!opening&&!o.menu.isOpen)return;
  if(!glassPreferences.value.enabled||opaque.matches||contrast.matches||motion.matches){if(o.glass)close(true,true);return;}
  const settings={...materialOptions(glassPreferences.value),scheme:'adaptive'};
- try{if(o.glass)o.glass.update(settings);else{o.glass=createGlass(LiquidGlass,o.face,{variant:'clear',profile:o.vertical?'panel':'control',preset:'balanced',radius:20,edges:o.vertical,applyRadius:false,fallbackFilter:'none',respectReducedMotion:true,...settings});o.menu.glass=o.glass;builds++;}}
+ try{if(o.glass)o.glass.update(settings);else{o.glass=createGlass(LiquidGlass,o.skin,{variant:'clear',profile:o.vertical?'panel':'control',preset:'balanced',radius:'auto',edges:false,applyRadius:false,fallbackFilter:'none',respectReducedMotion:true,...settings});o.menu.glass=o.glass;builds++;}}
  catch{o.menu.destroy();release(o);o.fallback=true;o.content.dataset.optics='fallback';}
 }
 function sync(o){
@@ -57,13 +57,10 @@ async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  try{const sdk=await Promise.race([loadEngine(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);if(sdk)({LiquidMenu,LiquidGlass}=sdk);}catch{/* Native filtering stays usable if optional optics cannot load. */}finally{clearTimeout(timer);trigger.removeAttribute('aria-busy');}
  if(pending!==request||!trigger.isConnected||!trigger.checkVisibility())return;pending=null;
  const vertical=!!window.pcMediaPresentation?.();
- const skin=document.createElement('div');skin.className='morph-menu-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;
- // Put the optical filter on the animated surface itself on PC. An opacity
- // or filter on a parent would restrict the backdrop a nested lens can sample.
- const face=vertical?skin:document.createElement('div');
- face.classList.add('morph-menu-glass');
+ // Sample the backdrop from the animated surface itself. A nested lens would
+ // be confined to the skin's own backdrop root during the morph.
+ const skin=document.createElement('div');skin.className='morph-menu-skin morph-menu-glass';skin.setAttribute('aria-hidden','true');skin.inert=true;
  if(vertical)skin.classList.add('morph-menu-vertical');
- else skin.append(face);
  const content=document.createElement('div');content.className='morph-menu-content';if(vertical)content.classList.add('morph-menu-vertical');content.setAttribute('role','menu');content.setAttribute('aria-label',label);
  for(const item of items){
   const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitemradio');button.setAttribute('aria-checked',String(!!item.selected));button.textContent=item.label;button.dataset.morphValue=item.value;
@@ -78,7 +75,7 @@ async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  // The SDK positions/clips/scales only this inert surface, never native items.
  const menu=LiquidMenu?new LiquidMenu(trigger,skin,{placement:'bottom-start',offset,dismissOnOutside:false}):nativeMenu(trigger,skin,offset);
  if(!LiquidMenu)content.dataset.optics='fallback';
- const o={serial:++serial,trigger,skin,face,content,menu,glass:null,timer:0,focus:true,sync:null,vertical,reveal:null,fallback:!LiquidMenu};owner=o;
+ const o={serial:++serial,trigger,skin,content,menu,glass:null,timer:0,focus:true,sync:null,vertical,reveal:null,fallback:!LiquidMenu};owner=o;
  o.sync=()=>sync(o);trigger.addEventListener('click',o.sync);optics(o,true);menu.open();sync(o);
  queueMicrotask(()=>{if(owner===o)content.querySelector('[aria-checked="true"]')?.focus({preventScroll:true});});
 }

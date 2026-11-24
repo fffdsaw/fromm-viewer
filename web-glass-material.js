@@ -19,9 +19,11 @@ export function createGlass(Engine,element,options){
  if(!FullGlass){
   FullGlass=class extends Engine {
    get fixedSurface(){return this.element.classList.contains('fixed-glass-surface');}
+   get convexEdge(){return !this.fixedSurface&&!this.element.classList.contains('rail-lens-surface');}
    // Fixed action chrome needs the SDK's specular material, but no displacement
    // map, RGB topology, GPU scene copy or scroll-safe filter swapping.
    shouldFallback(){return this.fixedSurface?false:super.shouldFallback();}
+   fallbackEnhanced(){return !this.convexEdge&&super.fallbackEnhanced();}
    shouldUseScrollSafe(){return !this.fixedSurface&&super.shouldUseScrollSafe();}
    async installFixedMaterial(){
     if(this.suspended||this.destroyed)return;
@@ -33,20 +35,36 @@ export function createGlass(Engine,element,options){
     this.element.style.backdropFilter=filter;this.element.style.webkitBackdropFilter=filter;
     this.element.dataset.fixedMaterial='ready';
    }
-   async installFilter(){if(this.fixedSurface)return this.installFixedMaterial();await super.installFilter();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
-   async regenerateAfterResize(){if(this.fixedSurface)return this.installFixedMaterial();await super.regenerateAfterResize();if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);}
+   async installFilter(){
+    if(this.fixedSurface)return this.installFixedMaterial();
+    const build=super.installFilter(),generation=this.buildGeneration;
+    try{await build;}catch{this.fallbackAfterBuild(generation);return;}
+    if(!this.isBuildCurrent(generation)||!this.filter)return;
+    if(this.convexEdge)this.element.dataset.glassMaterial='convex';
+    else if(this.element.classList.contains('rail-lens-surface'))applyRailLens(this);
+   }
+   async regenerateAfterResize(){
+    if(this.fixedSurface)return this.installFixedMaterial();
+    const build=super.regenerateAfterResize(),generation=this.buildGeneration;
+    try{await build;}catch{this.fallbackAfterBuild(generation);return;}
+    if(this.isBuildCurrent(generation)&&this.element.classList.contains('rail-lens-surface'))applyRailLens(this);
+   }
+   fallbackAfterBuild(generation){
+    if(!this.isBuildCurrent(generation))return;
+    this.filter?.destroy();this.filter=null;delete this.element.dataset.glassMaterial;this.applyFallback();
+   }
    effectiveRefraction(){return this.options.refraction;}
    profiledRefraction(){return this.options.refraction;}
    computedThickness(){return this.options.thickness;}
    effectiveBlur(){return this.options.blur;}
    profiledSpecularIntensity(){return this.options.specularIntensity;}
    displacementDpr(){return this.options.mapPixelRatio;}
-   specularDpr(){return this.options.mapPixelRatio;}
+   specularDpr(){return this.options.mapPixelRatio*(this.convexEdge?2:1);}
    scheduleRegen(){
     cancelAnimationFrame(regenerating.get(this));
     regenerating.set(this,requestAnimationFrame(()=>{regenerating.delete(this);if(!this.destroyed&&!this.suspended){if(this.filter||this.usesFallback)this.regenerateAfterResize();else this.scheduleBuild(()=>this.installFilter());}}));
    }
-   destroy(){cancelAnimationFrame(regenerating.get(this));regenerating.delete(this);super.destroy();}
+   destroy(){cancelAnimationFrame(regenerating.get(this));regenerating.delete(this);delete this.element.dataset.glassMaterial;super.destroy();}
    scheduleBuild(build){
     this.cancelPendingBuild();const generation=this.buildGeneration;
     queueMicrotask(()=>{

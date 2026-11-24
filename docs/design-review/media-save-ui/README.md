@@ -19,7 +19,7 @@
 - `glowme-controls.css`: PC 선택 바·전환 애니메이션·공통 헤더
 - `.github/workflows/media-bulk-save.yml`: 새 브라우저 회귀 검증 실행
 - `test/selection-save-ui.browser.cjs`: 실제 쓰기와 UI 상태 회귀 검증
-- `test/capsule-materialize.browser.cjs`, `test/capsule-states.browser.cjs`, `test/channel-photos.browser.cjs`, `test/collection-header.browser.cjs`, `test/direct-selection.browser.cjs`, `test/video-download-engine.browser.cjs`, `test/pc-layout.browser.cjs`: 변경된 PC 디자인 기대값 갱신
+- `test/capsule-materialize.browser.cjs`, `test/capsule-states.browser.cjs`, `test/channel-photos.browser.cjs`, `test/collection-header.browser.cjs`, `test/direct-selection.browser.cjs`, `test/video-download-engine.browser.cjs`, `test/pc-layout.browser.cjs`, `test/glass-controls-clear.browser.cjs`: 변경된 PC 디자인 기대값 갱신
 - `CODEX_HANDOFF.md`, 이 보고서 및 같은 폴더의 PNG/GIF: 검증 기록과 시각 자료
 
 ## 저장 방식과 폴더 조사
@@ -48,7 +48,7 @@
 
 기존 브라우저 회귀 검증: 미디어 일괄 저장, 폴더 재사용·IndexedDB 권한 복구, 선택 캡슐, 캡슐 등장/퇴장, 공통 collection 헤더, 직접 선택·일괄 저장, Channel 앨범/Artist 저장, PC 레이아웃, 테마 설정. 이 중 기존 모바일 시나리오도 통과했으며 새 디자인은 적용하지 않는다. 기존 선택 개수 문구와 진행 바 요소를 검사하던 테스트는 새 PC 표시 구조에 맞게 갱신하고 모바일의 원래 기대값을 유지했다.
 
-새 브라우저 검증은 Media bulk save CI에도 추가했다. 첫 원격 실행에서는 영상 저장 검증이 이전의 숨겨진 체크 아이콘을 검사해 실패했다. 실제 표시되는 고정 아이콘의 Morph 경로와 진행 바를 검사하도록 바꿨고, 기존 실제 영상 바이트 해시 검증은 유지했다. 전체 탭 비교를 추가하면서 LIVE의 기존 헤더 높이 차이도 공통 규칙으로 정리했다. 후속 원격 Media UI 검사에서는 CI 글꼴의 세 자리 숫자 폭이 더 넓은 것을 확인했다. 외곽 크기를 유지하면서 기존 내부 여유 12px를 선택 개수 슬롯에 배분했고, 슬롯 안에 들어가는지 검사하는 단언은 유지했다. 최신 원격 검사 및 병합·배포 상태는 PR #154에서 확인한다.
+새 브라우저 검증은 Media bulk save CI에도 추가했다. 첫 원격 실행에서는 영상 저장 검증이 이전의 숨겨진 체크 아이콘을 검사해 실패했다. 실제 표시되는 고정 아이콘의 Morph 경로와 진행 바를 검사하도록 바꿨고, 기존 실제 영상 바이트 해시 검증은 유지했다. 전체 탭 비교를 추가하면서 LIVE의 기존 헤더 높이 차이도 공통 규칙으로 정리했다. 후속 원격 Media UI 검사에서는 CI 글꼴의 세 자리 숫자 폭이 더 넓은 것을 확인했다. 외곽 크기를 유지하면서 기존 내부 여유 12px를 선택 개수 슬롯에 배분했고, 슬롯 안에 들어가는지 검사하는 단언은 유지했다. 또한 전체선택의 가상 요소를 독립 포인터 광택으로 검사하던 기존 검증은 새 체크박스 모양을 확인하도록 바꾸고, 기존 포인터 광택의 이동 검증은 변경하지 않은 정렬 버튼에서 유지했다. 최신 원격 검사 및 병합·배포 상태는 PR #154에서 확인한다.
 
 ```sh
 gh pr view codex/media-save-ui-header-20261125 --repo fffdsaw/fromm-viewer --json url,headRefOid,statusCheckRollup,mergedAt

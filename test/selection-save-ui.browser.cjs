@@ -73,6 +73,7 @@ async function header(page){return page.evaluate(()=>{
   const files=await page.evaluate(async()=>{const files=[];async function walk(dir,prefix=''){for await(const[name,handle]of dir.entries())if(handle.kind==='directory')await walk(handle,prefix+name+'/');else files.push({name:prefix+name,size:(await handle.getFile()).size});}await walk(saveQA.root);return files;});
   assert.equal(files.length,9);assert.ok(files.every(f=>f.size===2048));assert.equal(files.filter(f=>f.name.startsWith('audio/')).length,3,'preserve existing lowercase audio folder');assert.ok(files.filter(f=>/\.(jpg|mp4)$/.test(f.name)).every(f=>!f.name.includes('/')));
   await page.waitForFunction(()=>document.querySelector('.capsule-save-control').dataset.saveState==='idle');
+  assert.equal(await page.locator('.selection-save-track>span').evaluate(e=>getComputedStyle(e).width),'0px','idle clears the preceding batch fill before another save');
   // Same production saver, same folder: existing-file skips, no additional write.
   await page.evaluate(()=>{state.selected=new Set(state.messages.slice(0,9).map(m=>m.messageId));updateSelectedCount();});await page.waitForTimeout(330);
   await page.locator('#saveSelectedBtn').click();await page.waitForFunction(()=>!state.mediaBulkSaving&&saveQA.results?.skipped===9);assert.equal(await page.evaluate(()=>saveQA.closed),9);

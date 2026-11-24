@@ -329,6 +329,7 @@
 .selection-save-number{position:absolute;right:0;top:3px;opacity:0;transform:translateY(3px);font-size:11px;font-variant-numeric:tabular-nums;transition:opacity 200ms ease-out,transform 200ms ease-out}
 .selection-save-track{position:absolute;left:0;right:0;bottom:4px;height:2.5px;border-radius:999px;background:color-mix(in srgb,var(--theme-accent) 16%,transparent);opacity:0;transition:opacity 180ms ease-out}
 .selection-save-track>span{display:block;height:100%;width:var(--selection-save-progress,0%);border-radius:inherit;background:var(--theme-accent);transition:width 220ms ease-out}
+[data-save-state='idle'] .selection-save-track>span{width:0;transition:none}
 .selection-save-complete{opacity:0;transition:opacity 240ms ease-out,transform 240ms ease-out;transform:translate(-50%,3px)}
 .save-icon-stem,.save-icon-tray,.save-icon-check,.save-icon-morph{transition:opacity 240ms ease-out}
 .save-icon-check{opacity:0}

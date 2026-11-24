@@ -1,3 +1,9 @@
+## Remembered desktop save folders and Meapri
+
+Branch `codex/remember-save-folder-meapri-20261124` continues from deployed merge `57db4d4` for PR #151. Desktop folder-based saves remember one browser directory handle per active Fromm account in a separate IndexedDB store. The app restores handles before Save and requests read/write permission directly from the user's click. A denied request stops the save. Settings → General lets the user replace the folder. Chrome owns permission persistence and native prompts. Existing direct-to-file saves and touch picker behavior use their prior paths.
+
+The production viewer uses Meapri and its existing settings again, including profiles with a previously saved ybouane selection. The renderer, toggle, assets and obsolete comparison test were removed from production. The saved-folder regression uses an actual browser IndexedDB and OPFS, with fixture picker and permission UI. It passed folder reuse, reload, denial before media requests, replacement, account scope and Meapri migration. Node 22.23.5 units passed 336 with one existing Agora skip. Local Chromium also passed the video download matrix, glass settings, theme and convex optics suites. Receipts are `/tmp/fromm-remember-*.log`. Resume with `gh pr view codex/remember-save-folder-meapri-20261124 --json url,headRefOid,statusCheckRollup`.
+
 ## Bottom-centered Viewer notices
 
 Branch `codex/restore-bottom-notice-20261124` continues from deployed merge `8917104` for PR #150. The user clarified that the desktop result should be centered horizontally near the bottom. The shared sheet uses its bottom-up animation and reserves space for album and conversation controls on desktop and touch. Chrome owns the directory permission prompt.

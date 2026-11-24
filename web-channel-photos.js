@@ -169,7 +169,7 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   try{
     if(supportsDirectorySave()){
       if(iconOnly)setDownloadButtonFeedback(button,"picker");
-      directory=await window.showDirectoryPicker(viewerDesktop.matches?{mode:'readwrite'}:undefined);
+      directory=await openViewerSaveFolder();
     }
     if(iconOnly)setDownloadButtonFeedback(button,"active");
     for(const post of posts){
@@ -196,7 +196,7 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
     if(current()&&error.name!=='AbortError'){
       phase='error';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
-      showSaveNotice('사진을 저장하지 못했습니다. 다시 시도해주세요.');
+      showSaveNotice(viewerDesktop.matches&&error.name==='NotAllowedError'?'저장 폴더 쓰기 권한을 허용하거나 설정에서 폴더를 다시 선택해주세요.':'사진을 저장하지 못했습니다. 다시 시도해주세요.');
     }
   }
   finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;if(!iconOnly)button.innerHTML=oldHTML;}

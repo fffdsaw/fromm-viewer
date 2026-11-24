@@ -1,10 +1,10 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {clearControls} from './web-clear-controls.js?v=glass-engines-20261124';
+import {clearControls} from './web-clear-controls.js?v=meapri-folder-20261124';
 import {updateRailCrossing} from './web-rail-lens.js?v=continuous-lens-20261117';
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=glass-engines-20261124';
-import {createGlass,materialOptions} from './web-glass-material.js?v=glass-engines-20261124';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=meapri-folder-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb,.glass-preview-lens';
 const selected='.sidebar-open #rooms .room.active';
 const sidebarPreset=Object.freeze({refraction:80,thickness:60,blur:0,saturation:80,chromatic:88,opacity:60,specular:28});

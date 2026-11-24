@@ -1,6 +1,6 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
-import {glassPreferences} from './web-glass-settings.js?v=glass-engines-20261124';
-import {createGlass,materialOptions} from './web-glass-material.js?v=glass-engines-20261124';
+import {glassPreferences} from './web-glass-settings.js?v=meapri-folder-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
 export function createCapsuleMaterializer(element,onHidden,onResume,options={}){

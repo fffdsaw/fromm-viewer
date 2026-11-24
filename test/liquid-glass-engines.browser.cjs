@@ -22,7 +22,7 @@ async function regionPixels(canvas){
 async function native(page){
  await page.waitForFunction(()=>document.querySelector('.glass-preview-lens')?.matches('[data-glass-material="convex"]')||!!document.querySelector('.glass-preview-lens [data-glass-material="convex"]'));
 }
-async function centred(sheet){
+async function bottomCentred(sheet){
  await sheet.evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished));});
  const offset=await sheet.evaluate(el=>{
   const reference=document.createElement('div');
@@ -30,9 +30,9 @@ async function centred(sheet){
   document.body.append(reference);
   const r=el.getBoundingClientRect(),viewport=reference.getBoundingClientRect();
   reference.remove();
-  return {x:r.left+r.width/2-viewport.left-viewport.width/2,y:r.top+r.height/2-viewport.top-viewport.height/2};
+  return {x:r.left+r.width/2-viewport.left-viewport.width/2,bottom:viewport.bottom-r.bottom};
  });
- assert.ok(Math.abs(offset.x)<2&&Math.abs(offset.y)<2,JSON.stringify(offset));
+ assert.ok(Math.abs(offset.x)<2&&Math.abs(offset.bottom-20)<2,JSON.stringify(offset));
 }
 
 (async()=>{
@@ -112,18 +112,18 @@ async function centred(sheet){
    await page.evaluate(()=>{for(const item of window.fixtureGlass){item.destroy();item.element.remove();}delete window.fixtureGlass;});
    await page.evaluate(async()=>{
     const video=document.createElement('video');video.id='glass-backdrop-video';video.src='glass-live.mp4';video.muted=true;video.loop=true;
-    Object.assign(video.style,{position:'fixed',left:'0',top:'18vh',width:'100vw',height:'64vh',objectFit:'cover',zIndex:1700});
-    document.body.append(video);await video.play();showSaveNotice('저장 완료 · 2개');
+    Object.assign(video.style,{position:'fixed',left:'0',top:'14vh',width:'100vw',height:'86vh',objectFit:'cover',zIndex:1700});
+    document.body.append(video);await video.play();state.filter='media';showSaveNotice('저장 완료 · 2개');
    });
    const sheet=page.locator('#saveResultModal');
-   const canvas=sheet.locator('.webgl-glass-face');await canvas.waitFor();await centred(sheet);
+   const canvas=sheet.locator('.webgl-glass-face');await canvas.waitFor();await bottomCentred(sheet);
    await page.waitForFunction(()=>document.querySelector('.save-result-card').dataset.glassBackdrop==='media');
    const first=await canvas.evaluate(el=>el.toDataURL());
    await page.waitForFunction(()=>document.querySelector('#glass-backdrop-video').currentTime>0.64);
    await page.waitForFunction(before=>document.querySelector('#saveResultModal .webgl-glass-face')?.toDataURL()!==before,first);
    assert.equal(await canvas.count(),1,'decoded video continues to update the optical surface');
    assert.match(await sheet.locator('#saveResultSummary').textContent(),/저장 완료/);
-   await shot(page,`${width}-center-sheet`);
+   await shot(page,`${width}-bottom-sheet`);
    await sheet.getByRole('button',{name:'확인',exact:true}).click();await sheet.waitFor({state:'hidden'});
    await canvas.waitFor({state:'detached'});
    await page.evaluate(()=>{const video=document.querySelector('#glass-backdrop-video');video.pause();video.remove();});
@@ -133,7 +133,7 @@ async function centred(sheet){
    await page.setViewportSize({width,height:900});
    await choice.waitFor();await surface.waitFor();
    assert.equal(await choice.inputValue(),'ybouane');assert.deepEqual(errors,[]);
-   console.log(`${width}: WebGL edge pixels, engine switching, persistence, centred sheet and live video sampling PASS`);
+   console.log(`${width}: WebGL edge pixels, engine switching, persistence, bottom-centred sheet and live video sampling PASS`);
    await context.close();
   }
  }finally{await browser.close();await server.close();fs.rmSync(temp,{recursive:true,force:true});}

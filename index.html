@@ -315,8 +315,6 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-sheet.open :is(button,.save-failure-section){pointer-events:auto}
 @keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}
 @keyframes save-sheet-exit{from{transform:none;opacity:1}to{transform:translateY(calc(100% + 24px));opacity:0}}
-@keyframes save-sheet-center-enter{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
-@keyframes save-sheet-center-exit{from{transform:none;opacity:1}to{transform:translateY(12px);opacity:0}}
 .save-result-card{
  max-height:min(490px,calc(100dvh - var(--save-sheet-bottom,20px) - 16px));display:flex;flex-direction:column;overflow:hidden;
  border:1px solid var(--theme-line,var(--line));border-radius:22px;
@@ -330,13 +328,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) .save-result-summary{color:var(--theme-text,var(--text))}
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
-@media(min-width:701px) and (hover:hover) and (pointer:fine){
- .save-result-sheet{inset:50% auto auto 50%;translate:-50% -50%;margin:0}
- .save-result-sheet.open{animation-name:save-sheet-center-enter}
- .save-result-sheet.closing{animation-name:save-sheet-center-exit}
- .save-result-card{max-height:min(490px,calc(100dvh - 32px))}
- .save-result-card[data-glass-engine='ybouane']{border-color:transparent}
-}
+.save-result-card[data-glass-engine='ybouane']{border-color:transparent}
 .save-result-card::before{content:"";align-self:center;width:30px;height:3px;margin-top:8px;border-radius:3px;background:var(--theme-line,var(--line));flex:none}
 .save-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:9px 16px 4px}
 .save-result-title{font-size:16px;font-weight:750}
@@ -10813,18 +10805,17 @@ async function downloadSingleMedia(m,button=null){
 
 function positionSaveResultSheet(){
   const sheet=$("#saveResultModal");
-  if(viewerDesktop.matches||!sheet?.classList.contains("open"))return;
+  if(!sheet?.classList.contains("open"))return;
   const albumFooter=sheet.closest(".channel-photo-dialog")?.querySelector("footer");
   const dock=state.filter==="all"?$("#conversationDock"):null;
   const controls=albumFooter||dock;
   const top=controls?.getBoundingClientRect().top;
-  // Keep the touch viewer's original clearance above its bottom controls.
+  // Keep the sheet clear of the album footer and the conversation dock.
   const clearance=controls===dock?48:12;
   const bottom=controls?.checkVisibility()&&Number.isFinite(top)?Math.max(20,Math.min(innerHeight*.55,innerHeight-top+clearance)):20;
   sheet.style.setProperty("--save-sheet-bottom",`${bottom}px`);
 }
 window.addEventListener("resize",positionSaveResultSheet);
-viewerDesktop.addEventListener("change",positionSaveResultSheet);
 
 function openSaveResultSheet(){
   const sheet=$("#saveResultModal");

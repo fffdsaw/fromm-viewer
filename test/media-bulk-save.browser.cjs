@@ -224,11 +224,11 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
       reference.style.cssText='position:fixed;inset:0;visibility:hidden;pointer-events:none';
       document.body.append(reference);
       const viewport=reference.getBoundingClientRect();reference.remove();
-      return {horizontalOffset:sheet.left+sheet.width/2-viewport.left-viewport.width/2,verticalOffset:sheet.top+sheet.height/2-viewport.top-viewport.height/2,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName,desktop:viewerDesktop.matches};
+      return {horizontalOffset:sheet.left+sheet.width/2-viewport.left-viewport.width/2,bottomGap:viewport.bottom-sheet.bottom,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName};
     });
     assert.equal(position.modal,false);
-    assert.ok(Math.abs(position.horizontalOffset)<2 && Math.abs(position.verticalOffset)<2,`expected a centered save result: ${JSON.stringify(position)}`);
-    assert.equal(position.animation,'save-sheet-center-enter');
+    assert.ok(Math.abs(position.horizontalOffset)<2 && Math.abs(position.bottomGap-20)<2,`expected a bottom-centered save result: ${JSON.stringify(position)}`);
+    assert.equal(position.animation,'save-sheet-enter');
     assert.equal(result.alerts,0);
   }
   if (options.firstWriteFault) {

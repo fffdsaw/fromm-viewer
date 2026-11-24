@@ -1,4 +1,10 @@
-## Centered notices and live glass engine selection
+## Bottom-centered Viewer notices
+
+Branch `codex/restore-bottom-notice-20261124` continues from deployed merge `8917104` for PR #150. The user clarified that the desktop result should be centered horizontally near the bottom. The shared sheet uses its bottom-up animation and reserves space for album and conversation controls on desktop and touch. Chrome owns the directory permission prompt.
+
+Node 22.23.5 and Playwright 1.62.1 Chromium passed 336 unit tests with one existing Agora skip. Browser coverage includes OPFS media saves, the desktop bottom gap and horizontal midpoint, ybouane video rendering on the open sheet, mobile settings and placement, Channel albums, calendar and conversation actions. The published Channel fixture confirmed identical CSS on photo download/open, sort and filter triggers between Meapri and ybouane, and verified different renderers in Settings. Local receipts are `/tmp/fromm-bottom-notice-*.log`. Resume with `gh pr view codex/restore-bottom-notice-20261124 --json url,headRefOid,statusCheckRollup`.
+
+## Centered notices and live glass engine selection in PR #150
 
 PR #150 uses branch `codex/main-glass-and-save-sheets-20261124` from deployed merge `6bfe846` for PR #149. Desktop save results and other Viewer notices use the existing sheet at the viewport centre. Desktop album, Artist video, and post selection request a read/write folder at the picker gesture. Chrome owns the layout and display of its permission prompts. The desktop selection Save button exposes progress in its accessible description or label. The touch layout retains its original sheet position, picker, tooltip, and Meapri settings.
 

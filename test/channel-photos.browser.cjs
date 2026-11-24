@@ -127,10 +127,13 @@ async function checkArtistMedia(page) {
   });
   await videoCard.locator('.replay-title').click();
   await page.waitForFunction(()=>state.postSelected.size===2);
+  for(const width of [701,851,900,901,950,951,1100]){
+    await page.setViewportSize({width,height:900});
+    await page.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');
+    const memberBox=await capsule.boundingBox(),saveBox=await page.locator('#mediaSelectionSlot').boundingBox();
+    assert.ok(memberBox.x+memberBox.width<=saveBox.x||memberBox.y+memberBox.height<=saveBox.y,`member and save capsules do not overlap at ${width}px: ${JSON.stringify({memberBox,saveBox})}`);
+  }
   await page.setViewportSize({width:701,height:900});
-  await page.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');
-  const memberBox=await capsule.boundingBox(),saveBox=await page.locator('#mediaSelectionSlot').boundingBox();
-  assert.ok(memberBox.x+memberBox.width<=saveBox.x||memberBox.y+memberBox.height<=saveBox.y,`member and save capsules do not overlap at 701px: ${JSON.stringify({memberBox,saveBox})}`);
   const saveButton=page.locator('#saveSelectedBtn');
   assert.equal(await saveButton.getAttribute('title'),null);
   await saveButton.click();

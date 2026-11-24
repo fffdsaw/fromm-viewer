@@ -358,7 +358,7 @@
 }
 /* Reserve this row before selection on narrow Artist lists. The member filter
    keeps its normal hit target and long progress counts keep their full width. */
-@media(max-width:850px){
+@media(max-width:950px){
  .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) .collection-action-row{height:98px;min-height:98px;align-items:flex-start;padding-top:9px}
  .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock{position:static!important;min-height:34px}
  .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .media-selection-slot{top:48px;transform:none!important}

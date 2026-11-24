@@ -6,6 +6,8 @@ Desktop settings offers Meapri by default and pinned ybouane LiquidGlass 1.0.3. 
 
 Local Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34. Units passed 336 with one existing Agora skip. The browser engine test covers edge displacement, clear centre, live video pixels, persisted engine choice, centred desktop sheet, 12 surfaces through scrolling, and preservation of the 390px touch layout even with a stored ybouane preference. The user approved production merge and deployment after checks. Receipts are `/tmp/fromm-main-*.log`. Resume with `gh pr view 150 --json url,headRefOid,statusCheckRollup`.
 
+The hosted media save test reported a 5px horizontal offset and zero vertical offset using `innerWidth`, which includes the 10px scrollbar on the runner. The geometry tests compare against the CSS layout viewport via `document.documentElement.clientWidth` and `clientHeight`. A local browser fixture also verified the Meapri fallback for an origin-isolated image, return to ybouane with a readable image, and the settings fallback with WebGL unavailable.
+
 ## Shared floating notification sheet
 
 Branch `codex/central-notification-sheets-20261124` starts at deployed merge `306c2aa` for PR #148. Date navigation, quote lookup and gallery/collection sort messages now use the original non-blocking save-result sheet at the bottom centre. A save result retains its failure list and retry action, and pending general notices are shown in order. Logout clears the queue. Inline loading, permission prompts and optional OS notifications keep their existing paths.

@@ -219,7 +219,9 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
       await new Promise(requestAnimationFrame);
       await Promise.all(el.getAnimations().map(animation=>animation.finished));
       const {left,top,width,height}=el.getBoundingClientRect();
-      return {horizontalOffset:left+width/2-innerWidth/2,verticalOffset:top+height/2-innerHeight/2,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName,desktop:viewerDesktop.matches};
+      // Fixed positioning is centered in the layout viewport, which excludes scrollbars.
+      const {clientWidth,clientHeight}=document.documentElement;
+      return {horizontalOffset:left+width/2-clientWidth/2,verticalOffset:top+height/2-clientHeight/2,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName,desktop:viewerDesktop.matches};
     });
     assert.equal(position.modal,false);
     assert.ok(Math.abs(position.horizontalOffset)<2 && Math.abs(position.verticalOffset)<2,`expected a centered save result: ${JSON.stringify(position)}`);

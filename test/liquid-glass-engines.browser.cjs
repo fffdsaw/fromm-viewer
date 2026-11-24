@@ -25,7 +25,8 @@ async function native(page){
 async function centred(sheet){
  await sheet.evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished));});
  const offset=await sheet.evaluate(el=>{
-  const r=el.getBoundingClientRect();return {x:r.left+r.width/2-innerWidth/2,y:r.top+r.height/2-innerHeight/2};
+  const r=el.getBoundingClientRect(),viewport=document.documentElement;
+  return {x:r.left+r.width/2-viewport.clientWidth/2,y:r.top+r.height/2-viewport.clientHeight/2};
  });
  assert.ok(Math.abs(offset.x)<2&&Math.abs(offset.y)<2,JSON.stringify(offset));
 }

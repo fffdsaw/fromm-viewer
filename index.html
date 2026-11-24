@@ -749,8 +749,8 @@ html.image-lightbox-open { overflow-y:hidden; }
   bottom: 0;
   width: var(--bulk-save-progress, 0%);
   height: 3px;
-  background: rgb(59, 130, 246);
-  box-shadow:0 0 8px rgba(59,130,246,.45);
+  background: var(--theme-accent, var(--accent));
+  border-radius: 999px;
   transition: width .2s ease;
 }
 
@@ -1130,8 +1130,8 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(max-width:600px){.mvc-popover label.mvc-mobile-volume{display:flex;margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
-<link rel="stylesheet" href="glowme.css?v=save-sheet-20261119">
-<link rel="preload" as="script" href="web-glowme.js?v=glass-engines-20261124">
+<link rel="stylesheet" href="glowme.css?v=media-save-20261124">
+<link rel="preload" as="script" href="web-glowme.js?v=media-save-20261124">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
@@ -1141,7 +1141,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
 <link rel="stylesheet" href="settings-panel.css?v=meapri-folder-20261124">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=meapri-folder-20261124">
+<link rel="stylesheet" href="glowme-controls.css?v=media-save-20261124">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -2259,6 +2259,7 @@ async function runChannelVideoDownload(post, button, preparedSink, artistCurrent
       const skipped=await saveArtistVideo(post,sink.directory,current,ratio=>feedback("active",ratio));
       if(!current()){feedback("idle");return;}
       feedback(writesFile?"done":"handed-off");
+      confirmDownloadSelection("channel",post);
       showSaveNotice(skipped?"기존 영상 파일 1개 건너뜀":writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
       return;
     }
@@ -2269,7 +2270,10 @@ async function runChannelVideoDownload(post, button, preparedSink, artistCurrent
       if (button) feedback("active", total > 0 ? done / total : null);
     },{current:sameSession});
     if (button) feedback(writesFile ? "done" : "handed-off");
-    if(sameSession())showSaveNotice(writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
+    if(sameSession()){
+      confirmDownloadSelection("channel",post);
+      showSaveNotice(writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
+    }
   } catch (e) {
     try { await sink?.writable?.abort?.(); } catch {}
     if (button) feedback(current()?"error":"idle");
@@ -3364,7 +3368,7 @@ function voteStatusLabel(vote){
 function voteDateLabel(value){
   if(!value || !["string","number"].includes(typeof value)) return "종료일 미제공";
   const date=new Date(value);
-  return Number.isFinite(date.getTime()) ? `${date.toLocaleString("ko-KR")} 종료` : "종료일 미제공";
+  return Number.isFinite(date.getTime()) ? `${date.toLocaleString("ko-KR",{year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"})} 종료` : "종료일 미제공";
 }
 function votePercent(value){ return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : null; }
 function voteResultsVisible(vote){ return vote?.status === "ended" || (vote?.status === "ongoing" && voteOptionId(vote.myPickOptionId) !== ""); }
@@ -3973,7 +3977,7 @@ function liveStartedLabel(){
   if(typeof raw === "number") d=new Date(raw < 10_000_000_000 ? raw*1000 : raw);
   else d=new Date(raw);
   if(Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
 }
 
 function liveStatusText(text,isError=false){
@@ -4198,7 +4202,7 @@ function replayDateLabel(value){
   const n=Number(value);
   const d=new Date(Number.isFinite(n) && n>0 ? (n<10_000_000_000?n*1000:n) : value);
   if(Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("ko-KR",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleString("ko-KR",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
 }
 
 function replayChannelName(channel){
@@ -5472,6 +5476,17 @@ function replayDownloadFilename(post){
   return `${date ? `${date} ` : ""}${title}.ts`;
 }
 
+function fitVideoFilename(stem,suffix){
+  const encoder=new TextEncoder(),limit=255-encoder.encode(suffix).length;
+  let bytes=0,result="";
+  for(const char of stem){
+    bytes+=encoder.encode(char).length;
+    if(bytes>limit) break;
+    result+=char;
+  }
+  return result.trimEnd()+suffix;
+}
+
 function postDownloadNames(post,extension=".ts"){
   const transportName=replayDownloadFilename(post), stem=transportName.slice(0,-3), base=stem+extension, key=replayPostKey(post);
   // Keep the name chosen for this post stable when another list later reveals
@@ -5489,10 +5504,10 @@ function postDownloadNames(post,extension=".ts"){
   // saves consult the same loaded posts, including when a player is open.
   let filename=base;
   const reserved=[...names.values()].some(entry=>entry.key!==key&&entry.value.filename.toLowerCase()===base.toLowerCase());
-  if(identities.size>1 || reserved){
+  if(identities.size>1 || reserved || fitVideoFilename(stem,extension)!==base){
     let hash=0xcbf29ce484222325n;
     for(const char of key) hash=BigInt.asUintN(64,(hash ^ BigInt(char.codePointAt(0)))*0x100000001b3n);
-    filename=stem+' - '+hash.toString(16).padStart(16,'0')+extension;
+    filename=fitVideoFilename(stem,' - '+hash.toString(16).padStart(16,'0')+extension);
   }
   const legacy=stem+' ('+String(post._channelId).replace(/[^\w-]/g,'_')+'-'+String(post.id).replace(/[^\w-]/g,'_')+')'+extension;
   const value={filename,legacy};names.set(reservation,{key,value});
@@ -5502,6 +5517,8 @@ function postDownloadNames(post,extension=".ts"){
 
 async function existingPostDownload(directory,names){
   for(const name of new Set([names.filename,names.legacy])){
+    // The native folder lookup rejects overlong historical names before it can report a missing file.
+    if(new TextEncoder().encode(name).length>255)continue;
     try{
       const handle=await directory.getFileHandle(name);
       // A failed/cancelled first write can leave an empty file. Retry it.
@@ -5772,7 +5789,10 @@ async function runReplayPostDownload(post,button,preparedSink){
       if(button) feedback("active",total>0 ? done/total : null);
     },{current:sameSession});
     if(button) feedback(writesFile ? "done" : "handed-off");
-    if(sameSession())showSaveNotice(writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
+    if(sameSession()){
+      confirmDownloadSelection("replay",post);
+      showSaveNotice(writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
+    }
   }catch(e){
     try{await sink?.writable?.abort?.();}catch{}
     if(button) feedback("error");
@@ -8375,6 +8395,10 @@ function downloadSelectionSet(kind){
   return kind==="media" ? state.selected : state.postSelected;
 }
 
+function confirmDownloadSelection(kind,item){
+  if(downloadSelectionSet(kind).delete(downloadSelectionKey(kind,item)))syncDownloadSelection();
+}
+
 function pcChatDownloadsOnly(){
   return state.filter==="all" && !!window.matchMedia?.("(min-width:701px) and (hover:hover) and (pointer:fine)").matches;
 }
@@ -8580,6 +8604,18 @@ function initDownloadMarqueeSelection(){
   document.addEventListener("keydown",e=>{if(drag && e.key==="Escape"){e.preventDefault();finish(true);}});
 }
 
+async function fetchBatchVideoDetail(post,kind,current){
+  const load=()=>kind==="channel" ? fetchChannelVideoDetail(post) : fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
+  try{return await load();}
+  catch(error){
+    const delay=error?.status===429 ? error.retryAfterMs ?? 1000 : 750;
+    if(![429,500,502,503,504].includes(error?.status)||delay>30000||!current())throw error;
+    await sleep(delay);
+    if(!current())throw error;
+    return load();
+  }
+}
+
 async function saveSelectedPosts(){
   if(downloadSelectionScope().kind === "channel-image") return saveSelectedChannelPhotos();
   if(state.postBulkSaving || state.live.replayDownloading || channelVideoState.downloading || postDownloadRunning) return;
@@ -8598,6 +8634,7 @@ async function saveSelectedPosts(){
   channelVideoState.downloading=true;
   state.live.replayDownloading=true;
   button.disabled=true;
+  setBulkSaveButtonProgress(button,0);
   if(replayProgress)window.FrommGlowME?.syncReplaySaveProgress?.();
   let directory,ok=0,skipped=0;
   const failures=[];
@@ -8616,16 +8653,17 @@ async function saveSelectedPosts(){
         replayProgress.detail=`영상 저장 중 · ${replayProgress.label}`;
         window.FrommGlowME?.syncReplaySaveProgress?.();
       }else button.textContent=`저장 ${i+1}/${items.length}`;
+      setBulkSaveButtonProgress(button,i/items.length);
       try{
         if(scope.kind==="channel" && post.type==="image"){
-          const result=await saveChannelPhotoContents(post,{directory,current,onProgress:(done,total)=>{button.textContent=`저장 ${i+1}/${items.length} · ${done}/${total}장`;}});
+          const result=await saveChannelPhotoContents(post,{directory,current,onProgress:(done,total)=>setBulkSaveButtonProgress(button,(i+(done-1)/total)/items.length)});
           if(!current())break;
           if(result.complete){ok++;state.postSelected.delete(downloadSelectionKey(scope.kind,post));}else failures.push(post.title||"사진");
           skipped+=result.skipped;syncDownloadSelection();continue;
         }
         if(scope.kind==="channel" && post._artistPostId!=null){
           const exists=await saveArtistVideo(post,directory,current,ratio=>{
-            if(ratio!==null)button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(ratio*100)}%`;
+            if(ratio!==null)setBulkSaveButtonProgress(button,(i+ratio)/items.length);
           });
           if(!current())break;
           if(exists)skipped++;else ok++;
@@ -8643,7 +8681,7 @@ async function saveSelectedPosts(){
           syncDownloadSelection();
           continue;
         }
-        const detail=scope.kind==="channel" ? await fetchChannelVideoDetail(post) : await fetchReplayPostDetail({...post,_streamUrl:""},{force:true});
+        const detail=await fetchBatchVideoDetail(post,scope.kind,current);
         if(!current()) break;
         sink={filename,writable:null,chunks:directory ? null : []};
         if(directory){
@@ -8653,7 +8691,7 @@ async function saveSelectedPosts(){
         if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
         await downloadReplayStream(detail._streamUrl || replayStreamUrl(detail),sink,(done,total)=>{
           if(!current()) throw new Error("채널 또는 로그인 세션이 변경되었습니다.");
-          if(!replayProgress)button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(done/total*100)}%`;
+          if(total>0)setBulkSaveButtonProgress(button,(i+done/total)/items.length);
         },{current});
         ok++;
         state.postSelected.delete(downloadSelectionKey(scope.kind,post));
@@ -8661,7 +8699,7 @@ async function saveSelectedPosts(){
         if(!directory && i+1<items.length) await sleep(450);
       }catch(e){
         try{await sink?.writable?.abort?.();}catch{}
-        failures.push(post.title || "영상");
+        failures.push(cleanFailureReason(e?.message || e));
         if(!current()) break;
       }
     }
@@ -8672,7 +8710,8 @@ async function saveSelectedPosts(){
         replayProgress.label=failures.length?(ok+skipped?"부분 완료":"실패"):"완료";
         replayProgress.detail=directory||failures.length?summary:`다운로드 요청 완료 · ${ok}개`;
       }
-      showSaveNotice(replayProgress?.detail||summary);
+      if(!failures.length&&!replayProgress)window.FrommGlowME?.showBulkSaveDone?.(!directory);
+      showSaveNotice((replayProgress?.detail||summary)+(failures.length ? "\n"+[...new Set(failures)].slice(0,3).join("\n") : ""));
     }
   }catch(e){
     if(current()){
@@ -8686,6 +8725,7 @@ async function saveSelectedPosts(){
     state.live.replayDownloading=false;
     void drainPostDownloads();
     button.disabled=false;
+    setBulkSaveButtonProgress(button,null);
     if(replayProgress){
       if(!current()||["picker","active"].includes(replayProgress.phase))state.replayBulkSaveProgress=null;
       else setTimeout(()=>{
@@ -9194,13 +9234,31 @@ function renderGalleryList(tl, shown){
 
 function openImageLightbox(src, caption="", preview=""){
   closeImageLightbox();
-  const box = $("#imageLightbox");
-  const image=$("#lightboxImage"), placeholder=$("#lightboxPlaceholder"), version=lightboxPreviewGeneration;
-  if(preview && !imageUrlSame(preview,src)){placeholder.src=preview;box.classList.add("preview-loading");}
-  image.onload=()=>{if(version===lightboxPreviewGeneration){box.classList.remove("preview-loading");placeholder.removeAttribute("src");}};
-  image.onerror=()=>{if(version===lightboxPreviewGeneration&&box.classList.contains("preview-loading"))$("#lightboxCaption").textContent=caption+" · 원본 이미지를 불러오지 못했습니다.";};
-  image.src = src;
-  $("#lightboxCaption").textContent = caption;
+  const box=$("#imageLightbox"), image=$("#lightboxImage"), placeholder=$("#lightboxPlaceholder"), label=$("#lightboxCaption");
+  const version=lightboxPreviewGeneration, originalFirst=pcMediaPresentation();
+  const showPreview=()=>{
+    if(preview && !imageUrlSame(preview,src)){
+      placeholder.src=preview;
+      box.classList.add("preview-loading");
+    }
+  };
+  image.hidden=originalFirst;
+  if(!originalFirst)showPreview();
+  label.textContent=originalFirst ? "원본 사진 불러오는 중…" : caption;
+  image.onload=async()=>{
+    if(originalFirst){try{await image.decode();}catch{}}
+    if(version!==lightboxPreviewGeneration)return;
+    image.hidden=false;
+    box.classList.remove("preview-loading");
+    placeholder.removeAttribute("src");
+    label.textContent=caption;
+  };
+  image.onerror=()=>{
+    if(version!==lightboxPreviewGeneration)return;
+    if(originalFirst)showPreview();
+    if(originalFirst||box.classList.contains("preview-loading"))label.textContent=[caption,"원본 이미지를 불러오지 못했습니다."].filter(Boolean).join(" · ");
+  };
+  image.src=src;
   box.classList.add("open");
   box.setAttribute("aria-hidden","false");
   document.documentElement.classList.add("image-lightbox-open");
@@ -10774,6 +10832,7 @@ function setBulkSaveButtonProgress(btn,progress=null){
 
 async function downloadSingleMedia(m,button=null){
   if(button?.getAttribute("aria-busy")==="true") return;
+  const current=mediaSaveSession();
   setDownloadButtonFeedback(button,"active");
   try{
     const {blob,contentType}=await fetchMediaBlob(m,ratio=>setDownloadButtonFeedback(button,"active",ratio));
@@ -10790,6 +10849,7 @@ async function downloadSingleMedia(m,button=null){
 
     setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
     setDownloadButtonFeedback(button,"handed-off");
+    if(current())confirmDownloadSelection("media",m);
     showSaveNotice("다운로드 요청 완료 · 1개");
   }catch(e){
     if(e?.code==="MEDIA_FETCH_NO_RESPONSE" && startDirectMediaDownload(m)){
@@ -11147,7 +11207,10 @@ async function runMediaSaveBatch(items,root,btn,current=()=>true){
           assertMediaSaveCurrent(current);
           setMediaDownloadVisual(m,"active",ratio);
         },current);
-        if(current()) setMediaDownloadVisual(m,"done",1);
+        if(current()){
+          setMediaDownloadVisual(m,"done",1);
+          confirmDownloadSelection("media",m);
+        }
         ok++;
       }catch(e){
         if(current()) setMediaDownloadVisual(m,"error");
@@ -11320,7 +11383,7 @@ async function saveSelectedToDownloads(items,current=()=>true){
       if(!current()) break;
       setBulkSaveButtonProgress(btn,(i+1)/items.length);
       const m = items[i];
-      if(btn) btn.textContent = `다운로드 ${i+1}/${items.length}`;
+      if(btn) btn.textContent = `저장 ${i+1}/${items.length}`;
 
       try{
         setMediaDownloadVisual(m,"active",null);
@@ -11343,6 +11406,7 @@ async function saveSelectedToDownloads(items,current=()=>true){
         a.remove();
         setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
         setMediaDownloadVisual(m,"handed-off");
+        confirmDownloadSelection("media",m);
         ok++;
         // Android browsers may throttle back-to-back downloads.
         if(i+1<items.length) await sleep(450);
@@ -11353,7 +11417,10 @@ async function saveSelectedToDownloads(items,current=()=>true){
       }
     }
 
-    if(current()) showSaveResult(ok,failures,items.length,0);
+    if(current()){
+      if(!failures.length)window.FrommGlowME?.showBulkSaveDone?.(true);
+      showSaveResult(ok,failures,items.length,0);
+    }
   }finally{
     if(btn){
       setBulkSaveButtonProgress(btn,null);
@@ -11472,7 +11539,7 @@ async function saveSelectedToFolder(){
     if(root.queryPermission && await root.queryPermission({mode:"readwrite"})!=="granted"){
       throw new Error("저장 폴더 쓰기 권한을 허용해주세요.");
     }
-    if(saveBtn) saveBtn.textContent="기록·폴더 준비 중...";
+    if(saveBtn) saveBtn.textContent="준비 중";
     const prepared=await Promise.allSettled([
       stableSelectedMediaForSave(selected,current),
       existingMediaNames(root,null,current)
@@ -11481,16 +11548,21 @@ async function saveSelectedToFolder(){
     for(const result of prepared) if(result.status==="rejected") throw result.reason;
     const items=prepared[0].value,existing=prepared[1].value;
     const {pending,skipped} = splitExistingItems(items,existing);
+    for(const m of skipped) confirmDownloadSelection("media",m);
     state.lastSaveRoot=root;
     state.lastSaveCurrent=current;
 
     if(!pending.length){
+      window.FrommGlowME?.showBulkSaveDone?.();
       showSaveResult(0,[],items.length,skipped.length);
       return;
     }
 
     const result=await runMediaSaveBatch(pending,root,saveBtn,current);
-    if(current()) showSaveResult(result.ok,result.failures,items.length,skipped.length);
+    if(current()){
+      if(!result.failures.length)window.FrommGlowME?.showBulkSaveDone?.();
+      showSaveResult(result.ok,result.failures,items.length,skipped.length);
+    }
   }catch(e){
     if(current()) showSaveNotice(`미디어 저장 중단: ${cleanFailureReason(e?.message || e)}`);
   }finally{
@@ -11832,7 +11904,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=glass-engines-20261124" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=media-save-20261124" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
@@ -11841,7 +11913,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=pc-media-controls-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=meapri-folder-20261124"></script>
+<script src="web-channel-photos.js?v=media-save-20261124"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11854,6 +11926,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=meapri-folder-20261124"></script>
+<script type="module" src="web-glass.js?v=media-save-20261124"></script>
 </body>
 </html>

@@ -23,13 +23,13 @@ function setup(kind = 'channel') {
     if (!options?.create && !files.has(name)) throw Object.assign(new Error('missing'), {name: 'NotFoundError'});
     return {async getFile() {return {size: files.has(name) ? 4 : 0};}, async createWritable() {return {async abort() {aborted.push(name);}};}};
   }};
-  const c = vm.createContext({setPostDownloadFeedback(){},state, channelVideoState, postDownloadRunning:false, Set, String, Math,
+  const c = vm.createContext({setPostDownloadFeedback(){},state, channelVideoState, postDownloadRunning:false, Set, String, Math, TextEncoder,
     viewerDesktop: {matches:true},
     window: {showDirectoryPicker: async () => directory, alert: message => alerts.push(message)},
     $: () => button, supportsDirectorySave: () => true, sleep: async () => {},
     channelVideoSession: () => () => session,
     downloadSelectionScope: () => ({kind, items, context: contextName}),
-    syncDownloadSelection() {}, drainPostDownloads() {}, safeErrorDetail: String, showSaveNotice: message=>notices.push(message),
+    syncDownloadSelection() {}, drainPostDownloads() {}, setBulkSaveButtonProgress(){}, cleanFailureReason: String, safeErrorDetail: String, showSaveNotice: message=>notices.push(message),
     replayDownloadFilename: post => `${post.title}.ts`, replayStreamUrl: post => post._streamUrl,
     fetchChannelVideoDetail: async post => {details.push(post.id); return {...post, _streamUrl: post.id};},
     fetchReplayPostDetail: async (post, options) => {
@@ -38,7 +38,7 @@ function setup(kind = 'channel') {
     },
     downloadReplayStream: async (url, sink, progress) => {progress(1, 1); writes.push(url); files.add(sink.filename); sink.writable = null;}
   });
-  for (const name of ['replayPostKey', 'postDownloadNames', 'existingPostDownload', 'downloadSelectionKey', 'openViewerSaveFolder', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
+  for (const name of ['replayPostKey', 'fitVideoFilename', 'postDownloadNames', 'existingPostDownload', 'downloadSelectionKey', 'openViewerSaveFolder', 'fetchBatchVideoDetail', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
   return {c, items, state, channelVideoState, button, alerts, notices, details, writes, aborted, files,
     expire: () => {session = false;}, changeScope: () => {contextName = 'another';}};
 }
@@ -103,6 +103,26 @@ test('one forbidden detail retains that selection, successful files are deselect
   assert.equal(h.state.postSelected.size, 1); assert.match(h.notices[0], /실패 1개/); unlocked(h);
   h.c.fetchChannelVideoDetail = original;
   await h.c.saveSelectedPosts(); assert.equal(h.state.postSelected.size, 0); unlocked(h);
+});
+test('a long second video filename and a transient detail response do not break a three-item save',async()=>{
+  const h=setup();h.items[1].title='긴 제목 🍀 '.repeat(24);
+  const originalPicker=h.c.window.showDirectoryPicker,originalDetail=h.c.fetchChannelVideoDetail;
+  h.c.window.showDirectoryPicker=async()=>{
+    const directory=await originalPicker(),lookup=directory.getFileHandle;
+    directory.getFileHandle=(name,options)=>{
+      assert.ok(new TextEncoder().encode(name).length<=255,'every directory lookup and write uses a valid filename');
+      return lookup.call(directory,name,options);
+    };
+    return directory;
+  };
+  let second=0;
+  h.c.fetchChannelVideoDetail=post=>{
+    if(post.id==='two'&&++second===1)throw Object.assign(new Error('HTTP 429'),{status:429,retryAfterMs:0});
+    return originalDetail(post);
+  };
+  await h.c.saveSelectedPosts();
+  assert.equal(second,2);assert.deepEqual(h.writes,['one','two','three']);
+  assert.equal(h.files.size,3);assert.equal(h.state.postSelected.size,0);unlocked(h);
 });
 test('partial write failure aborts its writable and retains failed file for retry', async () => {
   const h = setup(); h.c.downloadReplayStream = async (url, sink, progress) => {

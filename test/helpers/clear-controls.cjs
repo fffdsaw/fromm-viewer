@@ -8,7 +8,14 @@ async function plain(page,selector){
  const cssOnly=await target.evaluate(e=>e.matches('.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.card-download,.replay-download,.replay-play,.replay-page-back,.replay-page-download,.small-player-button'));
  const look=await target.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,backdrop:s.backdropFilter,shadow:s.boxShadow}});
  if(cssOnly){
-  assert.equal(look.backdrop,'none',selector+' uses no optical backdrop');if(!await page.evaluate(()=>matchMedia('(forced-colors: active)').matches))assert.notEqual(look.shadow,'none',selector+' has an immediate CSS droplet rim');assert.equal(await target.locator('.fixed-glass-surface').count(),0,selector+' has no optical engine surface');return;
+  assert.equal(look.backdrop,'none',selector+' uses no optical backdrop');
+  const insideBar=await target.evaluate(e=>matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)').matches&&e.matches('#mediaActionDock .batch-selection-tools :is(#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn)'));
+  if(insideBar){
+   assert.equal(look.shadow,'none',selector+' uses the shared bar rim');
+   assert.equal(await target.evaluate(e=>getComputedStyle(e).borderTopWidth),'0px');
+   assert.equal(await page.locator('#mediaSelectionSlot>.capsule-horizontal-skin').count(),1);
+  }else if(!await page.evaluate(()=>matchMedia('(forced-colors: active)').matches))assert.notEqual(look.shadow,'none',selector+' has an immediate CSS droplet rim');
+  assert.equal(await target.locator('.fixed-glass-surface').count(),0,selector+' has no optical engine surface');return;
  }
  assert.deepEqual(look,{fill:'rgba(0, 0, 0, 0)',backdrop:'none',shadow:'none'},selector+' is clear native styling');
  if(await target.evaluate(el=>el.matches('.small-player-button'))){

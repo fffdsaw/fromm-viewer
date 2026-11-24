@@ -91,6 +91,7 @@ test('Replay and Channel share progress and distinguish a confirmed file from br
   setPostDownloadFeedback:(_kind,_post,b,phase,ratio)=>context.setDownloadButtonFeedback(b,phase,ratio??undefined),state,channelVideoState,channelVideoSession:()=>()=>true,
   createReplayDownloadSink:async()=>sink, fetchChannelVideoDetail:async()=>post, fetchReplayPostDetail:async()=>post,
   downloadReplayStream:async(url,target,progress)=>{assert.equal(url,post._streamUrl);assert.equal(target,sink);progress(1,2);await write;},
+  confirmDownloadSelection(){},
   setDownloadButtonFeedback:(_button,phase='idle',ratio)=>transitions.push([phase,ratio]),
   window:{alert:message=>alerts.push(message)},showSaveNotice(){},safeErrorDetail:String
  });

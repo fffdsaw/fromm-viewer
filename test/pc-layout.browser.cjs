@@ -11,20 +11,30 @@ async function mode(p,name){
   if(['all','media','image','video','sound','vote'].includes(name)){setFilter(name);return;}
   state.filter='live';state.live.centerMode=name;state.live.replaySelected=null;channelVideoState.selected=null;
   state.live.channels=[{id:'c',channelName:'테스트 채널'},{id:'b',channelName:'두 번째 채널'}];state.live.replayFilter='all';
-  state.live.replayPosts=Array.from({length:24},(_,i)=>({id:'r'+i,title:'합성 Replay '+i,_channelId:'c',type:'live_record'}));
+  state.live.replayPosts=Array.from({length:24},(_,i)=>({id:'r'+i,title:'합성 Replay '+i,_channelId:'c',type:'live_record',displayStartAt:Date.parse('2026-11-15T15:52:00Z')}));
   state.live.replayPaging=new Map([['c',{isLast:true}]]);channelVideoState.channelId='c';
-  channelVideoState.pages.set('c',{loaded:true,isLast:true,posts:Array.from({length:24},(_,i)=>({id:'v'+i,title:'합성 Channel '+i,_channelId:'c',type:'video'}))});
+  channelVideoState.pages.set('c',{loaded:true,isLast:true,posts:Array.from({length:24},(_,i)=>({id:'v'+i,title:'합성 Channel '+i,_channelId:'c',type:'video',displayStartAt:Date.parse('2026-11-12T05:34:00Z')}))});
   renderLiveView();syncLoadingUI();
  },name);
  await p.evaluate(()=>scrollTo(0,0));await p.waitForTimeout(210);
 }
 async function boxes(p,selector){return p.locator(selector).evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>({id:e.id||e.classList[0],...e.getBoundingClientRect().toJSON()})));}
 function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1;}
+async function authTools(p,name,size){
+ assert.equal(await p.locator('#tokenLifeWrap').isVisible(),true,`${name} shows countdown`);
+ assert.match(await p.locator('#tokenLifeText').textContent(),/^325h \d+m$/);
+ const token=await p.locator('#tokenLifeWrap').boundingBox();
+ const logout=await p.locator('#logoutMiniBtn').boundingBox();
+ const refresh=await p.locator(name==='channel'?'#channelRefresh':'#scanBtn').boundingBox();
+ assert.ok(token.x+token.width<=logout.x&&logout.x+logout.width<=refresh.x,`${name} uses the existing auth order`);
+ for(const control of [logout,refresh])assert.deepEqual([control.width,control.height],[size,size]);
+}
 (async()=>{
  const server=await serve(),browser=await chromium.launch();
  try{
   for(const width of (process.env.PC_LAYOUT_WIDTHS||'1440,900,760').split(',').map(Number)){
    const {page:p,context,errors}=await open(browser,server.url,{width,height:900});
+   await p.evaluate(()=>{localStorage.setItem(AUTH_EXPIRY_KEY,String(Date.now()+(325*60+56)*60000));syncTokenCountdown();});
    const geometry=()=>p.evaluate(()=>Object.fromEntries(['#sidebar','.glowme-nav','#rooms'].map(s=>[s,document.querySelector(s).getBoundingClientRect().toJSON()])));
    const baseline=await geometry();assert.equal(baseline['#sidebar'].top,12);
    for(const name of ['all','image','replay','channel','live']){
@@ -49,7 +59,13 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
      assert.ok(Math.abs((artist.y+artist.height/2)-(auth.y+auth.height/2))<4,`${width} ${name}: header information and auth controls share a centerline`);
     }
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width} ${name} no overflow`);
-    if(['live','replay','channel'].includes(name)){assert.equal(await p.locator('.title-line').isVisible(),false);assert.equal(await p.locator('#tokenLifeWrap').isVisible(),false);assert.equal(await p.locator('#scanBtn').isVisible(),name!=='channel');if(name==='channel')assert.equal(await p.locator('#channelRefresh').isVisible(),true);}
+    await authTools(p,name,42);
+    if(name==='replay'||name==='channel'){
+     const time=await p.locator('.replay-card .replay-meta').first().textContent();
+     assert.match(time,name==='replay'?/00:52$/:/14:34$/);
+     assert.doesNotMatch(time,/오전|오후/);
+    }
+    if(['live','replay','channel'].includes(name)){assert.equal(await p.locator('.title-line').isVisible(),false);assert.equal(await p.locator('#scanBtn').isVisible(),name!=='channel');if(name==='channel')assert.equal(await p.locator('#channelRefresh').isVisible(),true);}
     await shot(p,`${width}-${name}-empty`);
     if(!['image','replay','channel'].includes(name))continue;
     const card=name==='image'?'.media-card':'.replay-card',download=name==='image'?'.card-download':'.replay-download';
@@ -119,7 +135,9 @@ function separate(a,b){return a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.
   }
   // Only two affected touch screens; no mobile redesign or broad device matrix.
   const {page:p,context,errors}=await open(browser,server.url,{width:390,height:844});
+  await p.evaluate(()=>{localStorage.setItem(AUTH_EXPIRY_KEY,String(Date.now()+(325*60+56)*60000));syncTokenCountdown();});
   for(const name of ['all','image']){await mode(p,name);assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('pc-layout')),false);assert.equal(await p.locator('.title-line').isVisible(),true);assert.equal(await p.locator('.header-live-btn').count(),0,'no mobile header LIVE button');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await shot(p,`390-${name}`);}
+  for(const name of ['live','channel','replay']){await mode(p,name);await authTools(p,name,44);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
   assert.deepEqual(errors,[]);await context.close();console.log('390 touch: existing artist header and media controls preserved; no overflow PASS');
  }finally{await browser.close();await server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -98,7 +98,11 @@ test('Replay download and Native transport/auth contracts remain protected aroun
   // automatic list pagination has its own browser coverage; stream fetching,
   // decryption and download wire paths remain unchanged. Playback/source selection
   // now has dedicated real HLS quality-switch and lifecycle tests.
-  for (const name of names.filter(name => !['downloadReplayStream','renderReplayView', 'visibleReplayPosts', 'replayHasMore', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) assert.equal(fn(name), fn(name, baseline), name);
+  for (const name of names.filter(name => !['downloadReplayStream','renderReplayView', 'visibleReplayPosts', 'replayHasMore', 'createReplayDownloadSink', 'downloadReplayPost', 'ensureReplayChannels', 'fetchReplayPage', 'prefetchReplayPage', 'prefetchReplayPages', 'scheduleReplayPrefetch', 'runReplayBatches', 'loadReplayCenter', 'setReplayFilter', 'renderReplayPlayerView', 'stopReplayPlayback', 'replayVariantFromMaster', 'resolveReplayMediaPlaylist', 'attachReplayVideo', 'fetchReplayPostDetail'].includes(name))) {
+    const previous=fn(name,baseline);
+    const expected=name==='replayDateLabel'?previous.replace('minute:"2-digit"','minute:"2-digit",hourCycle:"h23"'):previous;
+    assert.equal(fn(name),expected,name);
+  }
   const normalize=source=>source.replace(/\r\n/g,'\n');
   for(const file of ['native-live/src/native-wire.cjs','native-live/src/native-relay.cjs']){
     const bytes=execFileSync('git',['show',`5f47f97:${file}`],{cwd:root});
@@ -432,7 +436,7 @@ test('album folder save keeps partial selection, skips identical retries, and pr
   Object.assign(h.context,{
     postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',
     showSaveNotice:message=>notices.push(message),
-    syncDownloadSelection(){},drainPostDownloads(){},downloadSelectionKey:(_kind,p)=>p.id,
+    syncDownloadSelection(){},drainPostDownloads(){},confirmDownloadSelection:(_kind,p)=>h.state.postSelected.delete(p.id),downloadSelectionKey:(_kind,p)=>p.id,
     fetchChannelPhotoDetail:async item=>({...item,urls:['https://fixture.test/one','https://fixture.test/two']}),
     fetchChannelPhotoBlob:async url=>{if(failSecond&&url.endsWith('two'))throw new Error('offline');return {blob:new Blob(['synthetic image']),contentType:'image/jpeg'};}
   });

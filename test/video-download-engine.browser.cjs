@@ -14,12 +14,14 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
   for(let i=0;i<plain.length;i++){const iv=new Uint8Array(16);new DataView(iv.buffer).setUint32(12,100+i);encrypted.push(Buffer.from(await webcrypto.subtle.encrypt({name:'AES-CBC',iv},key,plain[i])));}
   const expected=hash(Buffer.concat(plain));
   for(const cfg of [{width:1440},{width:780,installed:true},{width:390,userAgent:'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36'}]){
-   const {page,context,errors}=await open(browser,url,cfg);let release,gate=null,gateSeen=false,fail=false;const downloads=[],requests=[],alerts=[];
+   const {page,context,errors}=await open(browser,url,cfg);let release,gate=null,gateSeen=false,fail=false,batchDetails=null;const downloads=[],requests=[],alerts=[];
    page.on('dialog',d=>{alerts.push(d.message());return d.accept()});page.on('download',d=>downloads.push(d));
    await page.route('**/*',async route=>{
     let u=new URL(route.request().url());if(u.pathname==='/__fromm_proxy')u=new URL(u.searchParams.get('url'));
     if(u.hostname.endsWith('frommyarti.com')&&u.pathname.startsWith('/media/posts/')){
-     const id=u.pathname.split('/').at(-1);return route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{post:{id,type:id.startsWith('r')?'live_record':'video',isVisible:true,title:'영상',url:'https://download.fixture.test/master.m3u8?Policy=signed'}}})});
+     const id=u.pathname.split('/').at(-1);
+     if(batchDetails){batchDetails.push(id);if(batchDetails.length===2)return route.fulfill({status:429,headers:{'Retry-After':'0'},body:'Synthetic detail rate limit'});}
+     return route.fulfill({contentType:'application/json',body:JSON.stringify({success:true,data:{post:{id,type:id.startsWith('r')?'live_record':'video',isVisible:true,title:'영상',url:'https://download.fixture.test/master.m3u8?Policy=signed'}}})});
     }
     if(u.hostname!=='download.fixture.test')return route.fallback();
     requests.push(u.pathname);assert.equal(u.searchParams.get('Policy'),'signed');
@@ -53,7 +55,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    }
    for(const kind of ['channel','replay']){
     const fileStart=await page.evaluate(()=>testFiles.length);
-    await page.evaluate(k=>testShow(k),kind);gateSeen=false;gate=new Promise(r=>release=r);
+    await page.evaluate(k=>{testShow(k);const scope=downloadSelectionScope();chooseDownloadItem(k,scope.items.find(post=>post.id===(k==='channel'?'v1':'r1')));},kind);gateSeen=false;gate=new Promise(r=>release=r);
     await card(kind).click();
     await page.waitForFunction(k=>{const b=document.querySelector(k==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]');return b?.dataset.downloadPhase==='active'&&Number(b.style.getPropertyValue('--download-remaining'))<100},kind).catch(async e=>{console.error({kind,errors,alerts,requests,phase:await card(kind).getAttribute('data-download-phase')});throw e});
     for(let n=0;!gateSeen&&n<1000;n++)await page.waitForTimeout(10);assert.ok(gateSeen,'slow segment reached');
@@ -66,6 +68,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     release();gate=null;
     await page.waitForFunction(k=>document.querySelector(k==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]')?.dataset.downloadPhase==='done',kind);
     await page.waitForFunction(()=>!postDownloadRunning&&!channelVideoState.downloading&&!state.live.replayDownloading);
+    assert.equal(await page.evaluate(()=>state.postSelected.size),0,'individual video completion deselects its card');
     const files=await page.evaluate(start=>Promise.all(testFiles.slice(start).map(async item=>{
      const file=await item.handle.getFile();return {name:item.name,bytes:Array.from(new Uint8Array(await file.arrayBuffer()))};
     })),fileStart);
@@ -76,7 +79,9 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    // The shared engine also saves a selected channel list to a real directory,
    // preserves each filename and skips existing files before requesting detail.
    await page.evaluate(()=>{window.showDirectoryPicker=async()=>{const root=await navigator.storage.getDirectory();return root.getDirectoryHandle('integration-bulk',{create:true})};testShow('channel');const scope=downloadSelectionScope();for(const p of scope.items)state.postSelected.add(downloadSelectionKey(scope.kind,p));syncDownloadSelection()});
+   batchDetails=[];
    await page.locator('#saveSelectedBtn').click();await page.waitForFunction(()=>!state.postBulkSaving);
+   assert.equal(batchDetails.length,3);assert.notEqual(batchDetails[0],batchDetails[1]);assert.equal(batchDetails[1],batchDetails[2]);batchDetails=null;
    const bulk=await page.evaluate(async()=>{const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('integration-bulk');const result=[];for await(const [name,h]of dir.entries())result.push({name,bytes:Array.from(new Uint8Array(await(await h.getFile()).arrayBuffer()))});return result});
    assert.equal(bulk.length,2);assert.equal(new Set(bulk.map(f=>f.name)).size,2);for(const f of bulk)assert.equal(hash(Buffer.from(f.bytes)),expected);
    const beforeSkip=requests.length;await page.evaluate(()=>{const scope=downloadSelectionScope();for(const p of scope.items)state.postSelected.add(downloadSelectionKey(scope.kind,p));syncDownloadSelection()});await page.locator('#saveSelectedBtn').click();await page.waitForFunction(()=>!state.postBulkSaving);assert.equal(requests.length,beforeSkip);
@@ -102,6 +107,8 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     assert.equal(await button.locator('.download-feedback-ring').evaluate(e=>getComputedStyle(e).animationName),'download-ring-spin');
     assert.deepEqual(await button.boundingBox(),geometry);
     assert.ok(await button.evaluate(e=>e.scrollWidth<=e.clientWidth),'bulk count fits the fixed button');
+    assert.equal(await button.evaluate(e=>getComputedStyle(e).borderTopWidth),'0px');
+    assert.ok(await button.evaluate(e=>getComputedStyle(e,'::after').height==='3px'),'batch progress uses an inline bar');
     if(out)await page.screenshot({path:path.join(out,`${cfg.width}-replay-bulk-active.png`)});
     release();gate=null;
     await page.waitForFunction(()=>document.querySelector('.replay-bulk-save-label')?.textContent==='2/2');

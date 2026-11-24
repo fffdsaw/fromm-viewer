@@ -1,3 +1,19 @@
+## Original-first desktop photo detail in PR #153
+
+The desktop media lightbox opens on click and displays the original after decoding, with the original aspect ratio on the first visible frame. Its cached thumbnail is used only if loading the original fails. The touch preview, Channel album navigation and video poster paths retain their existing behavior. The supplied screen recording was inspected locally and was excluded from the repository.
+
+Local Node 22.23.5 units passed 337 with one existing Agora skip. Playwright 1.62.1 Chromium tested a delayed portrait original with a landscape thumbnail, identical first and settled image geometry, desktop error fallback and the existing 390px touch preview. Receipts are under `/tmp/fromm-original-first-*.log`. The user approved merging and deploying these changes with the earlier PR #153 work after verification.
+
+## Media saves, header controls and 24-hour timestamps
+
+Branch `codex/media-save-and-artist-menu-20261124` continues from deployed merge `97b7ff6` for PR #152. Desktop selection actions share the existing capsule skin, with fixed hit boxes and a theme-colored progress line. The close button is inset from the right edge and the glyph is centered in its hit box throughout progress. The pending count stays visible without adding per-file percentage text. Completed folder saves and completed browser handoffs clear the matching selections, as do existing-file skips; failed items remain available. A direct external browser link cannot confirm completion. Artist album selection clears once the selected album is saved, while a single image in a multi-image album leaves the album selected.
+
+Channel/Replay batch video detail retries one temporary 429 or 5xx within the supported wait window, preserves the session guard and displays sanitized failure reasons. Video filenames are byte-bounded and oversized historical names are excluded from folder lookups. A synthetic second-item rate limit and a long multibyte filename were verified. The exact signed-in production item from the screenshot was not available to reproduce. Artist member choices use the existing keyboard-accessible Meapri morph menu. Login countdown is visible in LIVE, Channel and Replay. Existing logout and refresh targets use 42px on desktop and 44px at touch widths.
+
+Vote details use the original neutral dimming backdrop. Channel and Replay timestamps keep their Seoul time zone; Vote and LIVE retain device-local time, with all viewer clocks using the 00–23 hour cycle. The bundled Native LIVE snapshot remains pinned.
+
+Node 22.23.5 and Playwright 1.62.1 Chromium 151.0.7922.34 local verification includes 337 units and one existing Agora skip, desktop/touch header sizes and token text, real synthetic media bytes, per-item deselection, denied or failed selection retention, folder persistence, capsule geometry and theme fill, live member filtering, neutral Vote backdrop and midnight/afternoon timestamps. Receipts: `/tmp/fromm-media-polish-*.log`. Resume via `gh pr view codex/media-save-and-artist-menu-20261124 --json url,headRefOid,statusCheckRollup`.
+
 ## Remembered desktop save folders and Meapri
 
 Branch `codex/remember-save-folder-meapri-20261124` continues from deployed merge `57db4d4` for PR #151. Desktop folder-based saves remember one browser directory handle per active Fromm account in a separate IndexedDB store. The app restores handles before Save and requests read/write permission directly from the user's click. A denied request stops the save. Settings → General lets the user replace the folder. Chrome owns permission persistence and native prompts. Existing direct-to-file saves and touch picker behavior use their prior paths.

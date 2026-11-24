@@ -242,7 +242,7 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
     await page.evaluate(() => {qa.progress = []; qa.result = null;});
     await page.locator('#saveSelectedBtn').click(); await page.waitForFunction(() => qa.clickFinished);
     result = await summary(page); result.firstAttempt = firstAttempt; record(result);
-    assert.deepEqual(result.result, {ok: 1, failed: 0, total: 3, skipped: 2});
+    assert.deepEqual(result.result, {ok: 1, failed: 0, total: 1, skipped: 0});
     assert.equal(result.responseCalls, 4, 'fresh save fetches only the empty failed entry');
     assert.equal(result.files.filter(f => f.size === 0).length, 0); assert.equal(result.files.length, 3);
   }
@@ -300,10 +300,12 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
         assert.equal(r.trustedClick, true); assert.equal(r.pickerCalls, 1);
         assert.deepEqual(r.pickerActive, [true]);
         assert.deepEqual(r.permissionActive, options.firstWriteFault ? [{mode:'readwrite',active:true}] : []);
-        assert.equal(r.events[0], 'picker'); assert.equal(r.busy, false); assert.equal(r.disabled, false);
+        assert.equal(r.events[0], 'picker'); assert.equal(r.busy, false);
+        if(!r.selection)assert.equal(r.disabled,true,'the save action is disabled when no selection remains');
         if (options.cancel || options.pickerDenied) {assert.equal(r.historyCalls, 0); assert.equal(r.responseCalls, 0); assert.equal(r.selection, 3);}
         else {
-          assert.ok(r.result); assert.ok(r.maxActive <= 3); assert.ok(r.maxWriters <= 3);
+          assert.ok(r.result); assert.equal(r.selection,r.result.failed,'only failed media remain selected');
+          assert.ok(r.maxActive <= 3); assert.ok(r.maxWriters <= 3);
           assert.ok(r.maxOutstandingChunks <= 3, 'at most one read chunk per worker waits for its write');
           assert.ok(r.maxChunkOutstanding <= r.maxChunk * 3, 'held bytes are bounded by three observed browser chunks');
           assert.equal(r.outstandingChunks, 0, 'all read chunk references release after success or failure');

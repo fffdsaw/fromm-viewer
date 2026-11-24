@@ -158,13 +158,16 @@ async function saveChannelPhotoContents(post,{directory,current,index=null,onPro
       ok++;
     }catch{try{await writable?.abort();}catch{}failed++;}
   }
-  return {ok,skipped,failed,complete:current()&&ok+skipped===indexes.length&&failed===0};
+  const complete=current()&&ok+skipped===indexes.length&&failed===0;
+  return {ok,skipped,failed,complete,albumComplete:complete&&indexes.length===detail.urls.length};
 }
 async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   if(!posts.length||state.postBulkSaving||postDownloadRunning||channelVideoState.downloading||state.live.replayDownloading)return;
   const current=channelPhotoContext(),oldHTML=button?.innerHTML;if(!current())return;
   state.postBulkSaving=true;channelVideoState.downloading=true;if(button)button.disabled=true;
   const iconOnly=button?.matches?.('[data-channel-photo-download]')&&window.pcMediaPresentation?.();
+  const batchButton=button?.id==='saveSelectedBtn'?button:null;
+  if(batchButton)setBulkSaveButtonProgress(batchButton,0);
   let directory,ok=0,skipped=0,failed=0,status='',phase="idle";
   try{
     if(supportsDirectorySave()){
@@ -172,24 +175,28 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
       directory=await openViewerSaveFolder();
     }
     if(iconOnly)setDownloadButtonFeedback(button,"active");
-    for(const post of posts){
+    for(const [i,post] of posts.entries()){
       if(!current())break;
+      if(batchButton)batchButton.textContent=`저장 ${i+1}/${posts.length}`;
       try{
         const result=await saveChannelPhotoContents(post,{directory,current,index,onProgress:(done,total)=>{
           if(iconOnly){
             button.title=`다운로드 중 · ${done}/${total}장`;
             button.setAttribute('aria-label',button.title);
-          }else if(button)button.textContent=`저장 ${done}/${total}`;
+          }else if(batchButton)setBulkSaveButtonProgress(batchButton,(i+(done-1)/total)/posts.length);
+          else if(button)button.textContent=`저장 ${done}/${total}`;
         }});
         ok+=result.ok;skipped+=result.skipped;failed+=result.failed;
-        if(current()&&result.complete&&index===null)state.postSelected.delete(downloadSelectionKey('channel-image',post));
+        if(result.albumComplete)confirmDownloadSelection('channel-image',post);
       }catch{failed++;}
+      if(batchButton)setBulkSaveButtonProgress(batchButton,(i+1)/posts.length);
     }
     status=[ok?`${directory?'저장 완료':'다운로드 요청 완료'} · ${ok}장`:'',
       skipped?`기존 파일 ${skipped}장 건너뜀`:'',failed?`저장 실패 ${failed}개`:''].filter(Boolean).join(' · ');
     if(current()){
       phase=failed?'error':directory?'done':'handed-off';
       if(iconOnly)setDownloadButtonFeedback(button,phase);
+      if(batchButton&&!failed)window.FrommGlowME?.showBulkSaveDone?.(!directory);
       showSaveNotice(status);
     }
   }catch(error){
@@ -200,6 +207,7 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
     }
   }
   finally{state.postBulkSaving=false;channelVideoState.downloading=false;if(button){button.disabled=false;if(!iconOnly)button.innerHTML=oldHTML;}
+    if(batchButton)setBulkSaveButtonProgress(batchButton,null);
     if(iconOnly&&phase==="idle")setDownloadButtonFeedback(button);
     syncDownloadSelection();void drainPostDownloads();}
   return status;

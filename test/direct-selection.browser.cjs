@@ -127,11 +127,13 @@ async function selectionSize(page) {
         assert.equal(await page.locator('.card-footer-select,.chat-select-pill').count(), 0);
       }
       if(!mobile){await page.evaluate(()=>{state.filter='all';render();});assert.equal(await page.locator('#timeline [data-download-selection-key]').count(),0,'PC chat is individual-download only');}
-      // Inline download and shared playback controls do not toggle selection.
-      await page.evaluate(() => {state.filter = 'media'; state.selected.clear(); render(); downloadSingleMedia = async m => {window.singleDownloaded = m.messageId;};});
-      await page.locator('.card-download').first().click();
-      assert.equal(await page.evaluate(() => state.selected.size), 0);
-      assert.ok(await page.evaluate(() => window.singleDownloaded));
+      await page.evaluate(() => {state.filter = 'media'; state.selected.clear(); render(); scrollTo(0,0);});
+      const photo=page.locator('.media-card:has(img)').first();
+      await photo.locator('img').click();assert.equal(await selectionSize(page),1);
+      const [saved]=await Promise.all([page.waitForEvent('download'),photo.locator('.card-download').click()]);
+      assert.ok(fs.readFileSync(await saved.path(),'utf8').includes('<svg'));
+      await page.waitForFunction(()=>state.selected.size===0);
+      await page.locator('#saveResultOkBtn').click();await page.locator('#saveResultModal').waitFor({state:'hidden'});
       await page.evaluate(() => {state.filter = 'video'; render();});
       await page.locator('#timeline video').scrollIntoViewIfNeeded();
       const sound=page.locator('.mvc-compact-controls [data-compact="sound"]').first();

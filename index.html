@@ -331,7 +331,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .save-result-sheet{inset:16px;height:max-content;margin:auto}
+ .save-result-sheet{inset:50% auto auto 50%;translate:-50% -50%;margin:0}
  .save-result-sheet.open{animation-name:save-sheet-center-enter}
  .save-result-sheet.closing{animation-name:save-sheet-center-exit}
  .save-result-card{max-height:min(490px,calc(100dvh - 32px))}

@@ -215,12 +215,15 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
   if(result.result){
     const sheet=page.locator('#saveResultModal.open');
     assert.equal(await sheet.isVisible(),true);
-    assert.ok(await sheet.evaluate(async el=>{
+    const position=await sheet.evaluate(async el=>{
+      await new Promise(requestAnimationFrame);
       await Promise.all(el.getAnimations().map(animation=>animation.finished));
       const {left,top,width,height}=el.getBoundingClientRect();
-      return Math.abs(left+width/2-innerWidth/2)<2 && Math.abs(top+height/2-innerHeight/2)<2 && !el.querySelector('[aria-modal="true"]');
-    }),'the non-modal save result is centered in the viewport');
-    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-center-enter');
+      return {horizontalOffset:left+width/2-innerWidth/2,verticalOffset:top+height/2-innerHeight/2,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName,desktop:viewerDesktop.matches};
+    });
+    assert.equal(position.modal,false);
+    assert.ok(Math.abs(position.horizontalOffset)<2 && Math.abs(position.verticalOffset)<2,`expected a centered save result: ${JSON.stringify(position)}`);
+    assert.equal(position.animation,'save-sheet-center-enter');
     assert.equal(result.alerts,0);
   }
   if (options.firstWriteFault) {

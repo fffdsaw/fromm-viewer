@@ -10,7 +10,7 @@
 
 기존 코드가 버튼의 텍스트를 교체해도 애니메이션 노드가 사라지지 않도록 장식 콘텐츠를 동일한 버튼 경계 안에 겹친다. 장식은 접근성 트리에서 숨기고 기존 네이티브 버튼과 핸들러를 유지한다. 저장 시작 시 선택 키를 고정하고, 실제 쓰기 완료 또는 기존 파일 확인 지점의 선택 확인 콜백을 한 번씩 집계한다. 네트워크 수신 시작이나 임의 타이머로 진행 건수를 늘리지 않는다. 브라우저 다운로드 방식은 기존대로 `요청 완료`로 구분하며 부분 실패에 정상 완료 표시를 하지 않는다.
 
-상단 우측은 실제 미디어 탭에서 측정한 148×42px 시간 캡슐, 42px 버튼, 20px 아이콘, 6px 그룹 간격, 16px 구분선 안쪽 여백, 14px 헤더 끝 여백을 공통 CSS로 적용했다. 1440·900·760·701px에서 기존 미디어 헤더 좌표가 기준 버전과 동일했다. 같은 해상도·확대율에서 채팅·미디어·Channel·Replay의 좌표와 크기가 일치했다. 좁은 PC Artist 목록은 멤버 필터가 표시될 때 선택 행을 미리 확보해 필터와 저장 UI가 겹치지 않는다.
+상단 우측은 실제 미디어 탭에서 측정한 148×42px 시간 캡슐, 42px 버튼, 20px 아이콘, 6px 그룹 간격, 16px 구분선 안쪽 여백, 14px 헤더 끝 여백을 공통 CSS로 적용했다. 1440·900·760·701px에서 기존 미디어 헤더 좌표가 기준 버전과 동일했다. 같은 해상도·확대율에서 채팅·미디어·사진·영상·음성·투표·Channel·Replay·LIVE의 좌표와 크기가 일치했다. LIVE의 기존 60px 헤더도 미디어 기준 72px 공통 높이를 사용한다. 좁은 PC Artist 목록은 멤버 필터가 표시될 때 선택 행을 미리 확보해 필터와 저장 UI가 겹치지 않는다.
 
 ## 변경 파일
 
@@ -19,7 +19,7 @@
 - `glowme-controls.css`: PC 선택 바·전환 애니메이션·공통 헤더
 - `.github/workflows/media-bulk-save.yml`: 새 브라우저 회귀 검증 실행
 - `test/selection-save-ui.browser.cjs`: 실제 쓰기와 UI 상태 회귀 검증
-- `test/capsule-materialize.browser.cjs`, `test/capsule-states.browser.cjs`, `test/channel-photos.browser.cjs`, `test/collection-header.browser.cjs`, `test/direct-selection.browser.cjs`: 변경된 PC 디자인 기대값 갱신
+- `test/capsule-materialize.browser.cjs`, `test/capsule-states.browser.cjs`, `test/channel-photos.browser.cjs`, `test/collection-header.browser.cjs`, `test/direct-selection.browser.cjs`, `test/video-download-engine.browser.cjs`, `test/pc-layout.browser.cjs`: 변경된 PC 디자인 기대값 갱신
 - `CODEX_HANDOFF.md`, 이 보고서 및 같은 폴더의 PNG/GIF: 검증 기록과 시각 자료
 
 ## 저장 방식과 폴더 조사
@@ -48,7 +48,7 @@
 
 기존 브라우저 회귀 검증: 미디어 일괄 저장, 폴더 재사용·IndexedDB 권한 복구, 선택 캡슐, 캡슐 등장/퇴장, 공통 collection 헤더, 직접 선택·일괄 저장, Channel 앨범/Artist 저장, PC 레이아웃, 테마 설정. 이 중 기존 모바일 시나리오도 통과했으며 새 디자인은 적용하지 않는다. 기존 선택 개수 문구와 진행 바 요소를 검사하던 테스트는 새 PC 표시 구조에 맞게 갱신하고 모바일의 원래 기대값을 유지했다.
 
-새 브라우저 검증은 Media bulk save CI에도 추가했다. 원격 검사 및 병합·배포 상태는 작업 PR에서 확인한다.
+새 브라우저 검증은 Media bulk save CI에도 추가했다. 첫 원격 실행에서는 영상 저장 검증이 이전의 숨겨진 체크 아이콘을 검사해 실패했다. 실제 표시되는 고정 아이콘의 Morph 경로와 진행 바를 검사하도록 바꿨고, 기존 실제 영상 바이트 해시 검증은 유지했다. 전체 탭 비교를 추가하면서 LIVE의 기존 헤더 높이 차이도 공통 규칙으로 정리했다. 최신 원격 검사 및 병합·배포 상태는 PR #154에서 확인한다.
 
 ```sh
 gh pr view codex/media-save-ui-header-20261125 --repo fffdsaw/fromm-viewer --json url,headRefOid,statusCheckRollup,mergedAt

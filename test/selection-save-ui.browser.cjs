@@ -86,8 +86,8 @@ async function header(page){return page.evaluate(()=>{
   }
   // Header comparison uses the identical viewport, browser zoom, token text.
   let reference;
-  for(const tab of ['media','all','channel','replay']){
-   await page.evaluate(async tab=>{state.selected.clear();updateSelectedCount();if(['channel','replay'].includes(tab)){state.live.centerMode=tab;await setFilter('live');}else await setFilter(tab);document.querySelector('#tokenLifeText').textContent='194h 33m';},tab);
+  for(const tab of ['media','all','image','video','sound','vote','channel','replay','live']){
+   await page.evaluate(async tab=>{state.selected.clear();updateSelectedCount();if(['channel','replay','live'].includes(tab)){state.live.centerMode=tab;await setFilter('live');}else await setFilter(tab);document.querySelector('#tokenLifeText').textContent='194h 33m';},tab);
    await page.waitForTimeout(380);const value=await header(page);if(reference)stationary(reference,value);else reference=value;
    await shot(page,`${width}-${theme}-header-${tab}`);
   }

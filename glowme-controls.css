@@ -386,7 +386,7 @@
  height:42px!important;min-height:42px!important;max-height:42px!important;padding:0!important;align-self:center!important;
 }
 .glowme.glowme-phase3 .topbar .header-icon-cluster :is(svg,.reload-icon){width:20px!important;height:20px!important}
-.glowme.glowme-phase3.collection-live-list .topbar{padding-right:14px}
+.glowme.glowme-phase3.pc-layout .topbar{height:72px;min-height:72px;padding-right:14px}
 
 }
 

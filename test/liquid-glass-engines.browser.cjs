@@ -71,6 +71,11 @@ async function centred(sheet){
    await choice.selectOption('ybouane');
    const surface=page.locator(lens);await surface.waitFor();
    await page.waitForFunction(()=>document.querySelector('.glass-preview-caption')?.textContent.includes('ybouane'));
+   const edgeStyle=await surface.evaluate(canvas=>{
+    const face=canvas.parentElement,style=getComputedStyle(face);
+    return {border:style.borderTopColor,shadow:style.boxShadow,overlay:getComputedStyle(face,'::after').content};
+   });
+   assert.deepEqual(edgeStyle,{border:'rgba(0, 0, 0, 0)',shadow:'none',overlay:'none'},'the WebGL surface supplies the only optical rim');
    const bent=await regionPixels(surface);
    await page.locator('#ybouane-glass-refraction').fill('0');
    await page.waitForTimeout(180);

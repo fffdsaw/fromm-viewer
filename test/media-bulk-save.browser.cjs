@@ -85,7 +85,7 @@ async function configure(page, origin, options = {}) {
     window.qa = {events: [], historyCalls: 0, responseCalls: 0, responseHeaderMs: 0, scanMs: 0, writeMs: 0,
       reads: 0, writtenBytes: 0, maxChunk: 0, chunkOutstanding: 0, maxChunkOutstanding: 0, maxOutstandingChunks: 0,
       active: 0, maxActive: 0, activeWriters: 0, maxWriters: 0, fileWrites: 0, progress: [], result: null,
-      pickerCalls: 0, pickerActive: [], alerts: [], errors: [], startedAt: 0, finishedAt: 0, peakHeap: 0};
+      pickerCalls: 0, pickerActive: [], permissionActive: [], alerts: [], errors: [], startedAt: 0, finishedAt: 0, peakHeap: 0};
     const q = window.qa; q.failNextWrite = !!options.firstWriteFault;
     q.outstandingChunks = new Map();
     const releaseChunk = bytes => {
@@ -135,7 +135,8 @@ async function configure(page, origin, options = {}) {
     const opfs = await navigator.storage.getDirectory();
     q.root = await opfs.getDirectoryHandle(`bulk-${Date.now()}-${Math.random()}`, {create: true});
     const wrapDirectory = (dir, prefix = '') => ({kind: dir.kind, name: dir.name,
-      entries: dir.entries.bind(dir), queryPermission: async () => 'granted', requestPermission: async () => 'granted',
+      entries: dir.entries.bind(dir), queryPermission: async () => 'granted',
+      requestPermission: async ({mode}) => {q.permissionActive.push({mode,active:navigator.userActivation.isActive});return 'granted';},
       getDirectoryHandle: async (name, config) => wrapDirectory(await dir.getDirectoryHandle(name, config), `${prefix}${name}/`),
       getFileHandle: async (name, config) => {
         const fh = await dir.getFileHandle(name, config);
@@ -192,7 +193,7 @@ async function summary(page) {
       }
     }
     await walk(qa.root);
-    return {trustedClick: qa.trustedClick, pickerCalls: qa.pickerCalls, pickerActive: qa.pickerActive, events: qa.events,
+    return {trustedClick: qa.trustedClick, pickerCalls: qa.pickerCalls, pickerActive: qa.pickerActive, permissionActive: qa.permissionActive, events: qa.events,
       historyCalls: qa.historyCalls, responseCalls: qa.responseCalls, maxActive: qa.maxActive, maxWriters: qa.maxWriters,
       maxChunk: qa.maxChunk, maxChunkOutstanding: qa.maxChunkOutstanding, maxOutstandingChunks: qa.maxOutstandingChunks,
       outstandingChunks: qa.outstandingChunks.size, chunkOutstanding: qa.chunkOutstanding, writtenBytes: qa.writtenBytes,
@@ -296,8 +297,9 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
       for (const [name, options] of cases) {
         report.currentCase = name;
         const r = await runCase(browser, origin, name, options, value => {report.cases[name] = value;});
-        assert.equal(r.trustedClick, true); assert.equal(r.pickerCalls, options.firstWriteFault ? 2 : 1);
-        assert.deepEqual(r.pickerActive, options.firstWriteFault ? [true, true] : [true]);
+        assert.equal(r.trustedClick, true); assert.equal(r.pickerCalls, 1);
+        assert.deepEqual(r.pickerActive, [true]);
+        assert.deepEqual(r.permissionActive, options.firstWriteFault ? [{mode:'readwrite',active:true}] : []);
         assert.equal(r.events[0], 'picker'); assert.equal(r.busy, false); assert.equal(r.disabled, false);
         if (options.cancel || options.pickerDenied) {assert.equal(r.historyCalls, 0); assert.equal(r.responseCalls, 0); assert.equal(r.selection, 3);}
         else {

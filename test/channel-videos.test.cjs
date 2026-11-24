@@ -427,6 +427,7 @@ test('album folder save keeps partial selection, skips identical retries, and pr
   const h=setup();await h.context.loadChannelVideos();h.s.mediaType='image';
   vm.runInContext(fs.readFileSync(path.join(root,'web-channel-photos.js'),'utf8'),h.context);
   vm.runInContext(fn('replayDatePrefix'),h.context);
+  vm.runInContext(fn('openViewerSaveFolder'),h.context);
   const post={id:'album',_channelId:'a',title:'Album',displayStartAt:Date.parse('2026-09-07T15:00:00Z')},files=new Map(),notices=[];let failSecond=true,writes=0;
   Object.assign(h.context,{
     postDownloadRunning:false,supportsDirectorySave:()=>true,contentTypeExt:()=>'.jpg',

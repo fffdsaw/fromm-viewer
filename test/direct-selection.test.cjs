@@ -38,7 +38,7 @@ function setup(kind = 'channel') {
     },
     downloadReplayStream: async (url, sink, progress) => {progress(1, 1); writes.push(url); files.add(sink.filename); sink.writable = null;}
   });
-  for (const name of ['replayPostKey', 'postDownloadNames', 'existingPostDownload', 'downloadSelectionKey', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
+  for (const name of ['replayPostKey', 'postDownloadNames', 'existingPostDownload', 'downloadSelectionKey', 'openViewerSaveFolder', 'saveSelectedPosts']) vm.runInContext(fn(name), c);
   return {c, items, state, channelVideoState, button, alerts, notices, details, writes, aborted, files,
     expire: () => {session = false;}, changeScope: () => {contextName = 'another';}};
 }

@@ -1,8 +1,6 @@
-import {mountGlassEngineSettings} from './web-glass-engine-settings.js?v=glass-engines-20261124';
-import {glassPC} from './web-glass-engine.js?v=glass-engines-20261124';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
-export {glassPC};
+export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
 const controls=[
  ['refraction','굴절',0,80,1,34,''],
  ['thickness','유리 두께',4,60,1,28,''],
@@ -100,6 +98,29 @@ function placeInstall(){
  // action so settings remain reachable with the narrow rail collapsed.
  if(footer){if(glassPC.matches)document.querySelector('#sidebar .rail-head')?.append(footer);else document.querySelector('#sidebar')?.append(footer);}
 }
+function mountSaveFolderSettings(panel){
+ const folder=window.FrommSaveFolder;
+ if(!folder)return;
+ const section=document.createElement('section');
+ section.innerHTML='<h3>기본 저장 폴더</h3><p role="status"></p><button type="button" class="btn">폴더 선택</button>';
+ panel.append(section);
+ const status=section.querySelector('p'),button=section.querySelector('button');
+ function refresh(){
+  section.hidden=!glassPC.matches;
+  const name=folder.name(currentAccountScope());
+  status.textContent=name||'아직 선택한 폴더가 없습니다.';
+  button.textContent=name?'폴더 변경':'폴더 선택';
+ }
+ button.onclick=async()=>{
+  button.disabled=true;
+  try{await folder.open(currentAccountScope(),{change:true});refresh();}
+  catch(error){if(error.name!=='AbortError')status.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}
+  finally{button.disabled=false;}
+ };
+ window.addEventListener('fromm-save-folder-change',refresh);
+ glassPC.addEventListener('change',refresh);
+ return refresh;
+}
 export function mountGlassSettings(){
  if(trigger||!window.FrommGlowME)return;
  const sidebar=document.querySelector('#sidebar');footer=document.createElement('div');footer.className='glass-settings-footer';
@@ -119,8 +140,9 @@ export function mountGlassSettings(){
  <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset><p class="glass-settings-note" role="status"></p></section>
  <section role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" data-settings-panel="advanced" hidden><h3>효과 동작</h3><p>동시 효과 수와 저사양·영상 재생 중 자동 제한을 해제했습니다. 직접 끄기와 기기의 접근성 설정은 유지합니다.</p><button class="btn settings-position-reset" type="button">설정창 위치 초기화</button><p>기본값 복원은 화면 설정만 변경합니다. 저장된 대화는 유지됩니다.</p></section>
  </div></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
+ const refreshSaveFolder=mountSaveFolderSettings(dialog.querySelector('#settings-panel-general'));
  document.body.append(dialog);placeInstall();
- trigger.onclick=()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();renderThemes();if(!dialog.open){dialog.dataset.modal=String(!glassPC.matches);if(glassPC.matches)dialog.show();else dialog.showModal();selectCategory(category);placePanel();dialog.querySelector(`[data-settings-tab="${category}"]`).focus({preventScroll:true});}};
+ trigger.onclick=()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();renderThemes();refreshSaveFolder?.();if(!dialog.open){dialog.dataset.modal=String(!glassPC.matches);if(glassPC.matches)dialog.show();else dialog.showModal();selectCategory(category);placePanel();dialog.querySelector(`[data-settings-tab="${category}"]`).focus({preventScroll:true});}};
  const close=()=>dialog.close();dialog.querySelector('.glass-settings-close').onclick=close;dialog.querySelector('.glass-settings-done').onclick=close;
  dialog.querySelector('.glass-settings-reset').onclick=()=>{glassPreferences.reset();window.FrommThemes?.reset();position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
  dialog.querySelector('.settings-position-reset').onclick=()=>{position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
@@ -136,16 +158,10 @@ export function mountGlassSettings(){
  const endDrag=()=>{if(!drag)return;drag=null;const r=dialog.getBoundingClientRect();position={x:r.left,y:r.top};persistPosition();};
  for(const name of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(name,endDrag);
  dialog.addEventListener('close',()=>{endDrag();emit();const restore=()=>{if(document.querySelector('.app')?.inert||dialog.open)return;if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});if(trigger.checkVisibility())trigger.focus({preventScroll:true});};restore();requestAnimationFrame(restore);});
- dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input,select')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
+ dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
  document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);
- const mountDesktopEngine=()=>{
-  if(!glassPC.matches)return;
-  glassPC.removeEventListener('change',mountDesktopEngine);
-  mountGlassEngineSettings(dialog,glassPreferences);
- };
- glassPC.addEventListener('change',mountDesktopEngine);mountDesktopEngine();
  selectCategory(category);renderControls();renderThemes();
 }
 function viewport(){mountGlassSettings();placeInstall();placePanel();emit();}

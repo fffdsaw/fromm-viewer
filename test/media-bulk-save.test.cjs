@@ -91,6 +91,7 @@ function setup(options = {}) {
   let authenticated = true, activation = true;
   const auth = {token: 'fixture-only', uuid: 'fixture-only', accountKey: 'fixture-only'};
   const context = vm.createContext({
+    viewerDesktop: {matches:true},
     state, Set, Map, String, Number, Math, Date, Promise, Uint8Array, ArrayBuffer, Blob,
     TextDecoder, AbortController, DOMException,
     setTimeout: (callback, delay) => delay === 30000 ? setImmediate(callback) : setTimeout(callback, delay), clearTimeout,
@@ -181,7 +182,7 @@ function setup(options = {}) {
     'filenameStem', 'normalizeFrommBackupStem', 'backupTypeFromFilename', 'collectExistingMediaStems',
     'existingMediaNames', 'splitExistingItems', 'cleanFailureReason', 'responseErrorReason',
     'saveFailureRecord', 'mediaSaveSession', 'assertMediaSaveCurrent', 'saveOneMediaItem', 'runMediaSaveBatch', 'stableSelectedMediaForSave',
-    'selectedMediaForSave', 'saveSelectedToFolder', 'saveSelectedToDownloads', 'saveSelectedDirect', 'ensureSaveRootPermission',
+    'selectedMediaForSave', 'openViewerSaveFolder', 'saveSelectedToFolder', 'saveSelectedToDownloads', 'saveSelectedDirect', 'ensureSaveRootPermission',
     'retryFailedSaves'];
   for (const name of helperNames) vm.runInContext(source(name), context);
   // A buffer slot release is held until its associated file has been written.

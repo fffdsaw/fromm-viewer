@@ -65,7 +65,7 @@
 .glowme.glowme-phase3.collection-list .channel-media-tabs{margin:0}
 .glowme.glowme-phase3.collection-list .channel-content-trigger{height:34px;min-height:34px;min-width:86px;padding:0 12px;white-space:nowrap}
 .glowme.glowme-phase3.collection-live-list .topbar{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;height:72px;min-height:72px;gap:10px;padding:8px 12px}
-.glowme.glowme-phase3.collection-live-list .title-line,.glowme.glowme-phase3.collection-live-list #tokenLifeWrap,.glowme.glowme-phase3.collection-live-list .header-live-btn{display:none!important}
+.glowme.glowme-phase3.collection-live-list .title-line,.glowme.glowme-phase3.collection-live-list .header-live-btn{display:none!important}
 .glowme.glowme-phase3.collection-live-list .pc-mode-heading{display:flex;align-items:center;flex:none;gap:8px;height:34px}
 .glowme.glowme-phase3.collection-live-list .pc-mode-title{display:block;font-size:22px;margin:0;line-height:1.2}
 .glowme.glowme-phase3.collection-live-list .pc-mode-count{display:flex;align-items:center;font-size:12px;color:var(--theme-muted);white-space:nowrap}
@@ -85,8 +85,7 @@
 }
 
 :root[data-fromm-theme].glowme.glowme-phase3 :is(.viewer-header button,#mediaActionDock button,[data-channel-content-menu],.replay-page-back,.replay-page-download,.small-player-button){position:relative}
-.glowme.glowme-phase3.collection-live-list .top-auth-controls{width:auto!important;max-width:80px;gap:4px!important;margin-left:0!important}
-.glowme.glowme-phase3.collection-live-list #tokenLifeWrap{display:none!important}
+.glowme.glowme-phase3.collection-live-list .top-auth-controls{width:auto!important;gap:4px!important;margin-left:0!important}
 .glowme.glowme-phase3.collection-live-list .pc-list-host .replay-filter-strip{flex:1 1 0;max-width:100%;min-width:0;scrollbar-width:none;padding:0}
 .glowme.glowme-phase3.collection-live-list .pc-mode-count{height:34px;overflow:hidden;text-overflow:ellipsis;flex:0 0 52px;width:52px}
 @media(max-width:700px){.glowme.glowme-phase3.collection-live-list .pc-mode-count{flex-basis:34px;width:34px}.glowme.glowme-phase3.collection-live-list .pc-mode-heading{gap:4px}}
@@ -106,9 +105,8 @@
  .glowme.glowme-phase3.collection-live-list .pc-mode-count{height:24px}
  .glowme.glowme-phase3.collection-live-list .pc-list-host{grid-area:2/1}
  .glowme.glowme-phase3.collection-live-list .pc-list-host .replay-toolbar{height:30px;min-height:30px}
- .glowme.glowme-phase3.collection-live-list .top-auth-controls{grid-area:1/2/3/3;max-width:96px}
+ .glowme.glowme-phase3.collection-live-list .top-auth-controls{grid-area:1/2/3/3}
  .glowme.glowme-phase3.collection-live-list .header-icon-cluster{display:flex;gap:4px}
- .glowme.glowme-phase3.collection-live-list .header-icon-cluster :is(#scanBtn,#logoutMiniBtn,#channelRefresh){width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:8px!important}
 }
 /* Keep touch batch actions beside the fixed sort too; a selected batch takes
    the lower row's filter/info space, never the first card's hit targets. */
@@ -180,13 +178,12 @@
  .channel-member-capsule{position:relative;isolation:isolate;flex:none;width:120px;height:34px;border-radius:999px}
  .channel-member-capsule[hidden]{display:none}
  .channel-member-capsule:not(:has(.capsule-horizontal-skin)){border:1px solid var(--theme-line);background:#ffffff12}
- .channel-member-capsule select{
-  appearance:none;width:100%;height:100%;padding:0 27px 0 12px;border:0;border-radius:inherit;
-  background:transparent;color:var(--theme-text);font:inherit;font-size:13px;text-overflow:ellipsis;cursor:pointer;
+ :root[data-fromm-theme].glowme.glowme-phase3 .channel-member-capsule button{
+  width:100%;height:100%;padding:0 27px 0 12px;border:0!important;border-radius:inherit;
+  background:transparent!important;box-shadow:none!important;color:var(--theme-text);font:inherit;font-size:13px;text-align:left;cursor:pointer;
  }
- .channel-member-capsule select:focus-visible{outline:2px solid var(--theme-accent);outline-offset:-2px}
- .channel-member-capsule select:hover{background:#ffffff18}
- .channel-member-capsule select option{color:var(--theme-text);background:var(--theme-card)}
+ .channel-member-capsule button span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .channel-member-capsule button:focus-visible{outline:2px solid var(--theme-accent);outline-offset:-2px}
  .channel-member-capsule .filter-chevron{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--theme-text);pointer-events:none}
  .pc-layout.collection-live-list .video-list-end{
   margin-top:16px;margin-inline:var(--pc-media-inset,8px);
@@ -215,7 +212,7 @@
 }
 @media(min-width:701px) and (max-width:850px) and (hover:hover) and (pointer:fine){
  .pc-channel-list .channel-member-capsule{width:94px}
- .pc-channel-list .channel-member-capsule select{padding-left:9px;font-size:12px}
+ :root[data-fromm-theme].glowme.glowme-phase3 .pc-channel-list .channel-member-capsule button{padding-left:9px;font-size:12px}
  .glowme.glowme-phase3.collection-list.pc-channel-list:has(.channel-member-capsule:not([hidden])) .media-selection-slot{width:190px!important}
  .glowme.glowme-phase3.collection-list.pc-channel-list:has(.channel-member-capsule:not([hidden])) .batch-selection-tools{gap:4px;padding-inline:4px}
  .pc-channel-list:has(.channel-member-capsule:not([hidden])) .media-selection-slot .batch-selection-tools #selectedCount{flex:0 0 45px;width:45px;max-width:45px;font-size:11px;overflow:hidden;text-overflow:ellipsis}
@@ -275,4 +272,65 @@
  .morph-menu-skin.morph-menu-vertical{background-color:Canvas!important;border-color:ButtonText}
  .morph-menu-content.morph-menu-vertical button{color:ButtonText;text-shadow:none}
  .morph-menu-content.morph-menu-vertical button[aria-checked='true']{background:Highlight;color:HighlightText}
+}
+
+.morph-menu-content.morph-menu-vertical{overflow:auto;overscroll-behavior:contain}
+
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .glowme.glowme-phase3.collection-list #mediaActionDock .media-selection-slot .batch-selection-tools{
+  box-sizing:border-box;width:100%;padding-inline:7px;
+ }
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools :is(#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn){
+  border:0!important;box-shadow:none!important;background:transparent!important;
+ }
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools :is(#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn):hover:not(:disabled){
+  background:color-mix(in srgb,var(--theme-accent) 10%,transparent)!important;
+ }
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools :is(#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn)::before{content:none}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools #selectedCount{flex-basis:62px;min-width:0!important;max-width:62px}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools #selectAllBtn{flex-basis:66px;width:66px}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools .capsule-save-control{flex-basis:108px;width:108px}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools #clearSelectionBtn{
+  margin-inline-start:auto;padding:0;place-items:center;
+ }
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools :is(#selectedCount,#selectAllBtn)::after{
+  content:'';position:absolute;right:-4px;top:22%;bottom:22%;width:1px;background:var(--theme-line);pointer-events:none;
+ }
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools #saveSelectedBtn.bulk-saving{
+  padding-bottom:5px;font-variant-numeric:tabular-nums;opacity:1;color:var(--theme-text)!important;
+ }
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools #saveSelectedBtn.bulk-saving::before{
+  content:'';position:absolute;inset:auto 12% 4px;height:3px;border-radius:999px;z-index:0;
+  background:var(--theme-line);pointer-events:none;
+ }
+ #mediaActionDock #saveSelectedBtn.bulk-saving::after{left:12%;bottom:4px;width:calc(var(--bulk-save-progress,0%) * .76)}
+ #mediaActionDock #saveSelectedBtn[data-replay-bulk-save][data-download-phase='active'] .replay-bulk-save-label::before{content:'저장 '}
+ :root[data-fromm-theme].glowme.glowme-phase3 #mediaActionDock .batch-selection-tools #saveSelectedBtn[data-download-phase='done']{color:var(--theme-accent)!important;opacity:1}
+}
+@media(min-width:701px) and (max-width:1100px) and (hover:hover) and (pointer:fine){
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools #selectedCount{flex-basis:52px;max-width:52px}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools #selectAllBtn{flex-basis:59px;width:59px}
+ .glowme.glowme-phase3.collection-list #mediaActionDock .batch-selection-tools .capsule-save-control{flex-basis:90px;width:90px}
+}
+@media(min-width:701px) and (max-width:850px) and (hover:hover) and (pointer:fine){
+ .glowme.glowme-phase3.collection-list.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .media-selection-slot .batch-selection-tools{padding-inline:5px;column-gap:4px}
+ .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .batch-selection-tools #selectedCount{flex-basis:31px;max-width:31px;font-size:0}
+ .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .batch-selection-tools #selectedCount::before{content:attr(data-selection-count);font-size:11px}
+ .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .batch-selection-tools #selectAllBtn{flex-basis:45px;width:45px;font-size:11px}
+ .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .batch-selection-tools .capsule-save-control{flex-basis:66px;width:66px}
+ .glowme.glowme-phase3.pc-channel-list:has(.channel-member-capsule:not([hidden])) #mediaActionDock .batch-selection-tools #saveSelectedBtn{font-size:10px;padding-inline:1px}
+}
+
+.glowme.glowme-phase3 .topbar{--header-control-size:42px}
+.glowme.glowme-phase3 .topbar .header-icon-cluster :is(#logoutMiniBtn,#scanBtn,#channelRefresh){
+ flex:0 0 var(--header-control-size)!important;
+ width:var(--header-control-size)!important;min-width:var(--header-control-size)!important;max-width:var(--header-control-size)!important;
+ height:var(--header-control-size)!important;min-height:var(--header-control-size)!important;max-height:var(--header-control-size)!important;
+}
+@media(max-width:700px){
+ .glowme.glowme-phase3 .topbar{--header-control-size:44px}
+ .glowme.glowme-phase3.collection-live-list .topbar .pc-mode-heading{min-width:0;overflow:hidden}
+ .glowme.glowme-phase3.collection-live-list .pc-mode-title{min-width:0;overflow:hidden;text-overflow:ellipsis}
+ .glowme.glowme-phase3.collection-live-list #tokenLifeWrap{gap:4px!important;padding-inline:6px!important}
+ .glowme.glowme-phase3.collection-live-list #tokenLifeText{display:block;max-width:70px;overflow:hidden;text-overflow:ellipsis}
 }

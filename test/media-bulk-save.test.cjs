@@ -91,7 +91,7 @@ function setup(options = {}) {
   let authenticated = true, activation = true;
   const auth = {token: 'fixture-only', uuid: 'fixture-only', accountKey: 'fixture-only'};
   const context = vm.createContext({
-    viewerDesktop: {matches:true},
+    viewerDesktop: {matches:true}, syncDownloadSelection(){},
     state, Set, Map, String, Number, Math, Date, Promise, Uint8Array, ArrayBuffer, Blob,
     TextDecoder, AbortController, DOMException,
     setTimeout: (callback, delay) => delay === 30000 ? setImmediate(callback) : setTimeout(callback, delay), clearTimeout,
@@ -181,7 +181,7 @@ function setup(options = {}) {
     'legacyBaseName', 'typeLegacyBaseName', 'mediaFolder', 'contentTypeExt', 'buildMediaSequences',
     'filenameStem', 'normalizeFrommBackupStem', 'backupTypeFromFilename', 'collectExistingMediaStems',
     'existingMediaNames', 'splitExistingItems', 'cleanFailureReason', 'responseErrorReason',
-    'saveFailureRecord', 'mediaSaveSession', 'assertMediaSaveCurrent', 'saveOneMediaItem', 'runMediaSaveBatch', 'stableSelectedMediaForSave',
+    'downloadSelectionKey', 'downloadSelectionSet', 'confirmDownloadSelection', 'saveFailureRecord', 'mediaSaveSession', 'assertMediaSaveCurrent', 'saveOneMediaItem', 'runMediaSaveBatch', 'stableSelectedMediaForSave',
     'selectedMediaForSave', 'openViewerSaveFolder', 'saveSelectedToFolder', 'saveSelectedToDownloads', 'saveSelectedDirect', 'ensureSaveRootPermission',
     'retryFailedSaves'];
   for (const name of helperNames) vm.runInContext(source(name), context);
@@ -289,6 +289,8 @@ test('legacy same-number photo never suppresses a video and all existing items a
   await h.context.saveSelectedToFolder();
   assert.equal(h.metrics.fetches, 1); assert.equal(h.results[0].skipped, 1);
   assert.deepEqual(h.records.map(record => record.destination), ['backup/2026-10-15_2.mp4']);
+  assert.equal(h.state.selected.size,0);
+  h.state.selected=new Set(h.media.map(m=>String(m.messageId)));
   await h.context.saveSelectedToFolder();
   assert.equal(h.metrics.fetches, 1); assert.equal(h.results[1].skipped, 2); unlocked(h);
 });
@@ -320,7 +322,7 @@ test('normal save downloads an empty entry left by an aborted partial write whil
   failing = false;
   await h.context.saveSelectedToFolder();
   assert.equal(h.metrics.fetches, before + 1);
-  assert.equal(h.results[1].skipped, 2); assert.equal(h.results[1].ok, 1);
+  assert.equal(h.results[1].skipped, 0); assert.equal(h.results[1].ok, 1);
   assert.equal(h.results[1].failures.length, 0); assert.equal((await empty.getFile()).size, 2048);
   assert.equal(h.records.length, 3); unlocked(h);
 });

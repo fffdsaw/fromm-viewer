@@ -68,7 +68,7 @@ async function open(trigger,{items,onSelect,label='필터 선택'}={}){
  }
  document.body.append(skin,content);
  const width=Math.min(vertical?196:280,innerWidth-20);
- const height=vertical?16+items.length*38+Math.max(0,items.length-1)*4:56;
+ const height=vertical?Math.min(16+items.length*38+Math.max(0,items.length-1)*4,Math.max(90,innerHeight-24)):56;
  skin.style.width=content.style.width=width+'px';
  skin.style.height=content.style.height=height+'px';
  const offset=vertical?6:-trigger.getBoundingClientRect().height;
@@ -93,7 +93,18 @@ function openChannel(trigger){
   .map(([value,label])=>({value,label,selected:current===value}));
  open(trigger,{label:'채널 콘텐츠 종류',items,onSelect:value=>selectChannelMediaType(value)});
 }
-document.addEventListener('click',event=>{const trigger=event.target.closest?.('[data-channel-content-menu]');if(trigger){event.preventDefault();if(owner?.trigger!==trigger)void openChannel(trigger);else if(owner.fallback){owner.menu.toggle();sync(owner);}}});
+function openChannelMember(trigger){
+ const member=channelVideoState.artistMember;
+ const selected=member?.channelId===channelVideoState.channelId?member.key:'';
+ const entries=[['','멤버 전체'],...[...channelArtistMembers()].sort(([,a],[,b])=>a.localeCompare(b,'ko'))];
+ open(trigger,{label:'Artist 멤버',items:entries.map(([value,label])=>({value,label,selected:value===selected})),onSelect:selectChannelArtistMember});
+}
+const channelTriggers='[data-channel-content-menu],[data-channel-member-menu]';
+const openTrigger=trigger=>trigger.matches('[data-channel-member-menu]')?openChannelMember(trigger):openChannel(trigger);
+document.addEventListener('click',event=>{
+ if(owner?.trigger.matches('[data-channel-member-menu]')&&!owner.menu.isOpen&&owner.trigger.contains(event.target))close(false,true);
+},{capture:true});
+document.addEventListener('click',event=>{const trigger=event.target.closest?.(channelTriggers);if(trigger){event.preventDefault();if(owner?.trigger!==trigger)void openTrigger(trigger);else if(owner.fallback){owner.menu.toggle();sync(owner);}}});
 document.addEventListener('pointerdown',event=>{
  if(pending&&!pending.trigger.contains(event.target))pending=null;const o=owner;if(!o||o.content.contains(event.target)||o.trigger.contains(event.target))return;
  close(false);if(event.target instanceof HTMLVideoElement){event.preventDefault();event.stopPropagation();}
@@ -106,8 +117,11 @@ document.addEventListener('keydown',event=>{
   if(['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(event.key)){
    event.preventDefault();const buttons=[...o.content.querySelectorAll('button')],at=buttons.indexOf(document.activeElement),delta=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1;
    const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(at+delta+buttons.length)%buttons.length;buttons[next].focus({preventScroll:true});
+   const item=buttons[next].getBoundingClientRect(),menu=o.content.getBoundingClientRect();
+   if(item.top<menu.top)o.content.scrollTop+=item.top-menu.top;
+   else if(item.bottom>menu.bottom)o.content.scrollTop+=item.bottom-menu.bottom;
   }
- }else if(event.target.matches?.('[data-channel-content-menu]')&&['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openChannel(event.target);}
+ }else if(event.target.matches?.(channelTriggers)&&['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openTrigger(event.target);}
 },{capture:true});
 glassPreferences.subscribe(()=>{if(owner)optics(owner);});
 window.addEventListener('fromm-theme-change',()=>{if(owner){optics(owner);owner?.glass?.syncToBackdrop();}});

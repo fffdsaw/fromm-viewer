@@ -90,20 +90,17 @@
   const pcMediaRow=document.createElement('div');pcMediaRow.className='pc-media-row collection-action-row';pcMediaRow.hidden=true;
   const pcListInfo=document.createElement('span');pcListInfo.className='pc-list-info';pcMediaRow.append(pcListInfo);$('.viewer-header').append(pcMediaRow);
   const memberSlot=document.createElement('div');memberSlot.className='channel-member-capsule';memberSlot.hidden=true;
-  const memberSelect=document.createElement('select');memberSelect.setAttribute('aria-label','멤버 선택');
-  memberSelect.onchange=()=>selectChannelArtistMember(memberSelect.value);
-  memberSlot.append(memberSelect);memberSlot.insertAdjacentHTML('beforeend',filterChevronIcon());pcMediaRow.append(memberSlot);
+  const memberButton=document.createElement('button');memberButton.type='button';memberButton.dataset.channelMemberMenu='';
+  memberButton.setAttribute('aria-haspopup','menu');memberButton.setAttribute('aria-expanded','false');
+  const memberLabel=document.createElement('span');memberButton.append(memberLabel);memberButton.insertAdjacentHTML('beforeend',filterChevronIcon());
+  memberSlot.append(memberButton);pcMediaRow.append(memberSlot);
   let memberMotion=null;
   function syncArtistMemberFilter(active){
     const show=active&&channelVideoState.mediaType==='artist';
     if(show){
-      const members=[...channelArtistMembers()].sort(([,a],[,b])=>a.localeCompare(b,'ko'));
-      const choices=[['','멤버 전체'],...members];
-      if(choices.length!==memberSelect.length||choices.some(([value,label],i)=>memberSelect.options[i].value!==value||memberSelect.options[i].text!==label)){
-        memberSelect.replaceChildren(...choices.map(([value,label])=>new Option(label,value)));
-      }
       const selected=channelVideoState.artistMember;
-      memberSelect.value=selected?.channelId===channelVideoState.channelId?selected.key:'';
+      const label=selected?.channelId===channelVideoState.channelId?selected.name:'멤버 전체';
+      if(memberLabel.textContent!==label){memberLabel.textContent=label;memberButton.setAttribute('aria-label','멤버 선택 · '+label);}
     }
     if(show&&!memberMotion&&window.FrommCapsuleMaterializer){
       memberMotion=window.FrommCapsuleMaterializer(memberSlot,null,syncPCLayout,{axis:'x',from:'left'});
@@ -207,9 +204,17 @@
       const disabled=!selectionCount||busy||replayProgress;if(save.disabled!==disabled)save.disabled=disabled;saveDisabledForCount=!selectionCount&&!busy;
     }else if(saveDisabledForCount&&!busy){save.disabled=false;saveDisabledForCount=false;}
     clearSelection.disabled=active&&selectionCount===0;saveControl.classList.toggle('save-ready',selectionCount>0);
-    const show=active&&(selectionCount>0||replayProgress);selectionSlot.classList.toggle('expanded',show);
+    const show=active&&(selectionCount>0||replayProgress||(mediaPC.matches&&busy&&save.classList.contains('bulk-saving')));selectionSlot.classList.toggle('expanded',show);
     if(capsuleMotion)capsuleMotion.sync(show,capsuleScope(),active);
     else{selectionSlot.hidden=!show;selectionSlot.inert=!show;selectionSlot.setAttribute('aria-hidden',String(!show));}
+  }
+  function showBulkSaveDone(handedOff=false){
+    if(!mediaPC.matches||!mediaDockActive())return;
+    const scope=capsuleScope();
+    const progress={current:()=>capsuleScope()===scope,phase:handedOff?'handed-off':'done',label:handedOff?'요청 완료':'저장 완료',detail:handedOff?'선택 항목 다운로드 요청 완료':'선택 항목 저장 완료'};
+    state.replayBulkSaveProgress=progress;
+    queueMicrotask(syncMediaDock);
+    setTimeout(()=>{if(state.replayBulkSaveProgress===progress){state.replayBulkSaveProgress=null;syncMediaDock();}},1500);
   }
   function syncReplaySaveButton(button,active){
     const progress=state.replayBulkSaveProgress;
@@ -438,7 +443,7 @@
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();syncMediaDock();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get capsule(){return capsuleMotion?.snapshot||null;},get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection,syncReplaySaveProgress:syncMediaDock});
+  window.FrommGlowME=Object.freeze({get capsule(){return capsuleMotion?.snapshot||null;},get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection,showBulkSaveDone,syncReplaySaveProgress:syncMediaDock});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});

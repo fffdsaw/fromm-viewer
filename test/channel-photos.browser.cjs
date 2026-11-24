@@ -33,7 +33,13 @@ async function checkArtistMedia(page) {
   });
   await page.locator('#saveResultOkBtn').click();
   await page.locator('#saveResultModal').waitFor({state:'hidden'});
-  const member=page.getByRole('combobox',{name:'멤버 선택'});
+  const member=page.getByRole('button',{name:/^멤버 선택/});
+  const memberMenu=page.getByRole('menu',{name:'Artist 멤버'});
+  async function chooseMember(label){
+    await member.click();
+    await memberMenu.getByRole('menuitemradio',{name:label,exact:true}).click();
+    await memberMenu.waitFor({state:'hidden'});
+  }
   const capsule=page.locator('.channel-member-capsule');
   const positions=()=>page.evaluate(()=>['[data-channel-content-menu]','#sortBtn'].map(selector=>document.querySelector(selector).getBoundingClientRect().x));
   const start=await positions();
@@ -46,13 +52,17 @@ async function checkArtistMedia(page) {
   assert.equal(await page.locator('.channel-photo-count-badge').innerText(),'2장');
   await page.waitForFunction(()=>document.querySelector('.channel-member-capsule').dataset.capsulePhase==='shown');
   assert.deepEqual(await positions(),start,'Artist and sort anchors keep their positions when the member capsule opens');
-  assert.deepEqual(await member.locator('option').allTextContents(),['멤버 전체','영상 멤버','합성 아티스트']);
+  await member.press('ArrowDown');
+  await memberMenu.waitFor();
+  assert.deepEqual(await memberMenu.getByRole('menuitemradio').allTextContents(),['멤버 전체','영상 멤버','합성 아티스트']);
+  await page.locator('.morph-menu-vertical[data-glass-material="convex"]').waitFor();
+  await page.keyboard.press('Escape');await memberMenu.waitFor({state:'hidden'});
   assert.equal(await page.locator('.channel-media-tabs + .channel-member-capsule .capsule-horizontal-skin').count(),1);
-  await member.selectOption({label:'영상 멤버'});
+  await chooseMember('영상 멤버');
   assert.deepEqual(await page.locator('.replay-card .replay-title').allTextContents(),['Artist 영상']);
   assert.equal(await page.locator('.pc-mode-count').innerText(),'1개');
   assert.deepEqual(await positions(),start);
-  await member.selectOption('');
+  await chooseMember('멤버 전체');
   await page.evaluate(()=>{
     const page=channelVideoPage(),base=page.posts[1];
     page.posts.push(...Array.from({length:8},(_,i)=>({...base,id:'count-fixture-'+i})));
@@ -64,10 +74,19 @@ async function checkArtistMedia(page) {
   await page.screenshot({path:`${output}/artist-1440.png`});
   await page.setViewportSize({width:760,height:900});
   const narrow=await positions();
-  await member.selectOption({label:'합성 아티스트'});
+  await chooseMember('합성 아티스트');
   assert.deepEqual(await positions(),narrow,'narrow desktop keeps both controls anchored');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await member.selectOption('');
+  await page.locator('.channel-photo-card .replay-title').click();
+  await page.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');
+  const close=await page.locator('#clearSelectionBtn').evaluate(button=>{
+    const edge=button.closest('.media-selection-slot').getBoundingClientRect().right;
+    const hit=button.getBoundingClientRect(),icon=button.querySelector('svg').getBoundingClientRect();
+    return {inset:edge-hit.right,offset:icon.left+icon.width/2-hit.left-hit.width/2};
+  });
+  assert.deepEqual(close,{inset:5,offset:0},'the compact Artist capsule keeps its close icon inside its rim');
+  await page.locator('#clearSelectionBtn').click();
+  await chooseMember('멤버 전체');
   await page.setViewportSize({width:1440,height:900});
   const albumCard=page.locator('.channel-photo-card');
   const videoCard=page.locator('.channel-video-card').filter({hasText:'Artist 영상'});
@@ -149,13 +168,13 @@ async function checkArtistMedia(page) {
   await page.keyboard.press('Escape');await page.mouse.up();
   assert.equal(await page.evaluate(()=>state.postSelected.size),0,'Escape clears an Artist drag selection and restores its starting selection');
   await page.evaluate(()=>{const listing=channelVideoPage();listing.posts=listing.posts.filter(post=>!post.id.startsWith('scroll-fixture-'));renderLiveView();window.scrollTo(0,0);});
-  await member.selectOption({label:'영상 멤버'});
+  await chooseMember('영상 멤버');
   await page.evaluate(()=>{state.live.channels.push({id:'other-channel',channelName:'다른 채널'});renderLiveView();});
   await page.getByRole('button',{name:'다른 채널',exact:true}).click();
   await page.getByText('불러온 아티스트 게시물에 볼 수 있는 사진이나 영상이 없습니다.',{exact:true}).waitFor();
-  assert.deepEqual(await member.locator('option').allTextContents(),['멤버 전체']);
+  await member.click();await memberMenu.waitFor();assert.deepEqual(await memberMenu.getByRole('menuitemradio').allTextContents(),['멤버 전체']);await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'테스트 채널',exact:true}).click();
-  assert.equal(await member.inputValue(),'');
+  assert.equal(await member.innerText(),'멤버 전체');
   await contentFilter(page,'image');
   await capsule.waitFor({state:'hidden'});
   assert.equal(await page.locator('[data-channel-photo-open="p1"]').count(),1,'official media remains separate even when the post IDs match');

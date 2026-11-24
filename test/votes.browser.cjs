@@ -6,14 +6,14 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const originalBytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6ncAAAAASUVORK5CYII=','base64');
-const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2026-10-24T12:00:00Z',
+const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2026-10-24T15:17:00Z',
  isArtiPickExposed:true,hasArtiParticipated:true,artiPickOptionId:2,
  options:[{optionId:1,text:'선택 A',percentage:0,thumbnailImageUrl:'https://cdn.example/option.svg',originalImageUrl:'https://cdn.example/original.png'},{optionId:2,text:'선택 B',percentage:100},{optionId:3,text:'값 없음',percentage:null}],...patch});
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   for(const width of [1440,390]){
-   const context=await browser.newContext({viewport:{width,height:900}});
+   const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Asia/Seoul'});
    const page=await context.newPage(),errors=[],requests=[];
    let failPage=false,badCursor=false,listDelay=0,detailDelay=0,detailStatus=200,detailPatch={},brokenAvatar=false,failImage=false,imageDelay=0,downloadCount=0;
    page.on('pageerror',e=>errors.push(e.message));
@@ -76,8 +76,12 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    assert.equal(await page.locator('.chat-match-active').getAttribute('data-message-id'),'vote-message','search navigation reaches the matching vote');
    assert.equal(await page.locator('#chatSearchCount').textContent(),'1개');
    await page.evaluate(()=>{state.chatQuery='';render();});
+   await page.evaluate(()=>FrommThemes.set('classic'));
    const opener=page.locator('.vote-open');await opener.click();
    await page.getByRole('heading',{name:'합성 투표 1',exact:true}).waitFor();
+   assert.equal(await page.locator('#voteDetailDialog').evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor),'rgba(0, 0, 0, 0.667)');
+   assert.match(await page.locator('#voteDetailDialog .vote-date').textContent(),/00:17:00 종료$/);
+   assert.doesNotMatch(await page.locator('#voteDetailDialog .vote-date').textContent(),/오전|오후/);
    assert.equal(await page.locator('.vote-percentage').first().innerText(),'0%');
    assert.equal(await page.locator('.vote-percentage').last().innerText(),'미제공');
    assert.equal(await page.locator('.vote-artist-pick').count(),1);
@@ -109,6 +113,7 @@ const vote=(id,patch={})=>({id,topic:'합성 투표 '+id,status:'ended',endAt:'2
    assert.equal(await opener.evaluate(el=>document.activeElement===el),true,'Escape restores opener focus');
    await page.locator('[data-filter="vote"]').click();
    await page.locator('.vote-list-item').first().waitFor();
+   assert.match(await page.locator('.vote-list-item .vote-date').first().textContent(),/00:17:00 종료$/);
    for(const theme of ['glow','aqua','sky','lavender','neutral','classic']){
     await page.evaluate(theme=>FrommThemes.set(theme),theme);await page.locator('.vote-list-item').first().hover();
     const colors=await page.locator('.vote-list-item').first().evaluate(el=>{const probe=document.createElement('span');probe.style.backgroundColor='var(--theme-soft)';probe.style.borderColor='var(--theme-line)';document.body.append(probe);const result={background:getComputedStyle(el).backgroundColor,expected:getComputedStyle(probe).backgroundColor,line:getComputedStyle(el).borderBottomColor,expectedLine:getComputedStyle(probe).borderColor};probe.remove();return result;});

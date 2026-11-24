@@ -32,7 +32,7 @@ function setup(overrides = {}) {
     back() {historyCalls.push({back: true});},
   };
   const context = vm.createContext({FrommVideoDownload:require('../web-video-download.js'),bindPostDownloadFeedback(){},showSaveNotice:message=>notices.push(message),setPostDownloadFeedback:(kind,post,b,phase,ratio)=>context.setDownloadButtonFeedback?.(b,phase,ratio),state, history, location: {href: 'https://viewer.test/index.html?v=1.08'}, Map, URL, URLSearchParams, Blob, Uint8Array, DataView, Intl, AbortController,
-    sleep: async () => {},
+    sleep: async () => {}, viewerDesktop: {matches:true},
     setTimeout, clearTimeout, navigator: {userAgent: 'Windows'},
     document: {querySelector: () => null, body: {contains: () => true}},
     window: {addEventListener() {}, alert: message => alerts.push(message), crypto: webcrypto, scrollY: 172, scrollTo() {}},

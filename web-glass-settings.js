@@ -1,7 +1,8 @@
 import {mountGlassEngineSettings} from './web-glass-engine-settings.js?v=glass-engines-20261124';
+import {glassPC} from './web-glass-engine.js?v=glass-engines-20261124';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
-export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
+export {glassPC};
 const controls=[
  ['refraction','굴절',0,80,1,34,''],
  ['thickness','유리 두께',4,60,1,28,''],
@@ -139,7 +140,12 @@ export function mountGlassSettings(){
  document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);
- mountGlassEngineSettings(dialog,glassPreferences);
+ const mountDesktopEngine=()=>{
+  if(!glassPC.matches)return;
+  glassPC.removeEventListener('change',mountDesktopEngine);
+  mountGlassEngineSettings(dialog,glassPreferences);
+ };
+ glassPC.addEventListener('change',mountDesktopEngine);mountDesktopEngine();
  selectCategory(category);renderControls();renderThemes();
 }
 function viewport(){mountGlassSettings();placeInstall();placePanel();emit();}

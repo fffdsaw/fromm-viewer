@@ -1,7 +1,7 @@
 'use strict';
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{execFileSync}=require('node:child_process');
-const {serve,open}=require('./helpers/phase3-fixture.cjs');
+const {serve,seed,open}=require('./helpers/phase3-fixture.cjs');
 const output=process.env.GLASS_ENGINE_DIR;
 const lens='.glass-preview-lens .webgl-glass-face';
 
@@ -40,13 +40,32 @@ async function centred(sheet){
   const bytes=fs.readFileSync(clip);
   for(const width of [1440,390]){
    const {page,context,errors}=await open(browser,server.url,{width,height:900});
+   if(width===390){
+    await page.evaluate(()=>localStorage.setItem('fromm.glassEngine.v1',JSON.stringify({engine:'ybouane'})));
+    await page.reload();await seed(page);await settings(page);await native(page);
+    assert.equal(await page.getByLabel('광학 엔진').count(),0);
+    assert.equal(await page.locator('.glass-preview-caption').textContent(),'실제 엔진 미리보기');
+    assert.ok(await page.locator('#saveSelectedBtn').getAttribute('title'));
+    await page.locator('#glassSettingsDialog .glass-settings-done').click();
+    await page.evaluate(()=>showSaveNotice('저장 완료 · 2개'));
+    const sheet=page.locator('#saveResultModal');await sheet.waitFor();
+    await sheet.evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished));});
+    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-enter');
+    assert.ok((await sheet.boundingBox()).y>450,'the mobile sheet retains its bottom placement');
+    assert.equal(await page.locator('.webgl-glass-face').count(),0);
+    await sheet.getByRole('button',{name:'확인',exact:true}).click();await sheet.waitFor({state:'hidden'});
+    assert.deepEqual(errors,[]);
+    console.log(`${width}: original settings, Meapri preview, save tooltip and bottom sheet PASS`);
+    await context.close();
+    continue;
+   }
    await page.route('**/glass-live.mp4',route=>route.fulfill({contentType:'video/mp4',body:bytes}));
    await settings(page);await native(page);
    const choice=page.getByLabel('광학 엔진');assert.equal(await choice.inputValue(),'meapri');
    await shot(page,`${width}-meapri`);
    await choice.selectOption('ybouane');
    const surface=page.locator(lens);await surface.waitFor();
-   assert.match(await page.locator('.glass-preview-caption').textContent(),/ybouane/);
+   await page.waitForFunction(()=>document.querySelector('.glass-preview-caption')?.textContent.includes('ybouane'));
    const bent=await regionPixels(surface);
    await page.locator('#ybouane-glass-refraction').fill('0');
    await page.waitForTimeout(180);
@@ -62,27 +81,25 @@ async function centred(sheet){
    await settings(page);assert.equal(await choice.inputValue(),'ybouane');await surface.waitFor();
    await page.locator('#glassSettingsDialog .glass-settings-done').click();
 
-   if(width===1440){
-    await page.evaluate(async()=>{
-     const {LiquidGlass}=await import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124');
-     const {createGlass,materialOptions}=await import('./web-glass-material.js?v=glass-engines-20261124');
-     window.fixtureGlass=Array.from({length:12},(_,i)=>{
-      const el=document.createElement('div');el.className='fixture-unlimited-glass';
-      Object.assign(el.style,{position:'fixed',left:200+i*53+'px',top:'180px',width:'45px',height:'45px',borderRadius:'50%',zIndex:1700,pointerEvents:'none'});
-      document.body.append(el);
-      return createGlass(LiquidGlass,el,{radius:'pill',applyRadius:false,edges:false,...materialOptions(FrommGlassSettings.value)});
-     });
+   await page.evaluate(async()=>{
+    const {LiquidGlass}=await import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124');
+    const {createGlass,materialOptions}=await import('./web-glass-material.js?v=glass-engines-20261124');
+    window.fixtureGlass=Array.from({length:12},(_,i)=>{
+     const el=document.createElement('div');el.className='fixture-unlimited-glass';
+     Object.assign(el.style,{position:'fixed',left:200+i*53+'px',top:'180px',width:'45px',height:'45px',borderRadius:'50%',zIndex:1700,pointerEvents:'none'});
+     document.body.append(el);
+     return createGlass(LiquidGlass,el,{radius:'pill',applyRadius:false,edges:false,...materialOptions(FrommGlassSettings.value)});
     });
-    await page.waitForFunction(()=>document.querySelectorAll('.fixture-unlimited-glass[data-glass-engine="ybouane"]').length===12);
-    await page.evaluate(()=>{
-     return new Promise(resolve=>{
-      let count=0;const tick=()=>{window.dispatchEvent(new Event('scroll'));if(++count<8)requestAnimationFrame(tick);else resolve();};
-      requestAnimationFrame(tick);
-     });
+   });
+   await page.waitForFunction(()=>document.querySelectorAll('.fixture-unlimited-glass[data-glass-engine="ybouane"]').length===12);
+   await page.evaluate(()=>{
+    return new Promise(resolve=>{
+     let count=0;const tick=()=>{window.dispatchEvent(new Event('scroll'));if(++count<8)requestAnimationFrame(tick);else resolve();};
+     requestAnimationFrame(tick);
     });
-    assert.equal(await page.locator('.fixture-unlimited-glass[data-glass-engine="ybouane"]').count(),12,'scroll keeps every eligible surface rendered');
-    await page.evaluate(()=>{for(const item of window.fixtureGlass){item.destroy();item.element.remove();}delete window.fixtureGlass;});
-   }
+   });
+   assert.equal(await page.locator('.fixture-unlimited-glass[data-glass-engine="ybouane"]').count(),12,'scroll keeps every eligible surface rendered');
+   await page.evaluate(()=>{for(const item of window.fixtureGlass){item.destroy();item.element.remove();}delete window.fixtureGlass;});
    await page.evaluate(async()=>{
     const video=document.createElement('video');video.id='glass-backdrop-video';video.src='glass-live.mp4';video.muted=true;video.loop=true;
     Object.assign(video.style,{position:'fixed',left:'0',top:'18vh',width:'100vw',height:'64vh',objectFit:'cover',zIndex:1700});
@@ -98,7 +115,14 @@ async function centred(sheet){
    assert.match(await sheet.locator('#saveResultSummary').textContent(),/저장 완료/);
    await shot(page,`${width}-center-sheet`);
    await sheet.getByRole('button',{name:'확인',exact:true}).click();await sheet.waitFor({state:'hidden'});
-   await canvas.waitFor({state:'detached'});assert.deepEqual(errors,[]);
+   await canvas.waitFor({state:'detached'});
+   await page.evaluate(()=>{const video=document.querySelector('#glass-backdrop-video');video.pause();video.remove();});
+   await settings(page);await surface.waitFor();
+   await page.setViewportSize({width:690,height:900});
+   await choice.waitFor({state:'hidden'});await surface.waitFor({state:'detached'});await native(page);
+   await page.setViewportSize({width,height:900});
+   await choice.waitFor();await surface.waitFor();
+   assert.equal(await choice.inputValue(),'ybouane');assert.deepEqual(errors,[]);
    console.log(`${width}: WebGL edge pixels, engine switching, persistence, centred sheet and live video sampling PASS`);
    await context.close();
   }

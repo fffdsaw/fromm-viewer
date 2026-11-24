@@ -1,5 +1,6 @@
 import {backdropPlan, paintBackdrop} from './web-glass-backdrop.js?v=glass-engines-20261124';
 
+export const glassPC = matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
 const STORAGE_KEY = 'fromm.glassEngine.v1';
 const defaults = Object.freeze({refraction: 0.55, zRadius: 11, edgeHighlight: 0.11, blurAmount: 0, chromAberration: 0});
 const ranges = {refraction: [0, 1], zRadius: [3, 24], edgeHighlight: [0, .3], blurAmount: [0, .3], chromAberration: [0, .15]};
@@ -20,7 +21,7 @@ const restrictions = ['prefers-reduced-motion: reduce', 'prefers-reduced-transpa
 const source = document.createElement('canvas');
 const sample = source.getContext('2d');
 let modulePromise, rendererModule, renderer, observer, failed = false, frame = 0, sceneDirty = false;
-const active = () => selected.engine === 'ybouane' && !document.hidden && !document.documentElement.classList.contains('glass-disabled') && !restrictions.some(query => query.matches);
+const active = () => glassPC.matches && selected.engine === 'ybouane' && !document.hidden && !document.documentElement.classList.contains('glass-disabled') && !restrictions.some(query => query.matches);
 const announce = () => { for (const listener of subscribers) listener(); };
 
 export const glassEngine = {
@@ -246,6 +247,7 @@ export function createSwitchableGlass(element, options, makeNative) {
 
 for (const event of ['resize', 'scroll', 'load', 'loadeddata', 'playing', 'pause', 'seeked', 'transitionend', 'animationend', 'fromm-theme-change']) window.addEventListener(event, scheduleGlassPaint, {capture: true, passive: true});
 for (const query of restrictions) query.addEventListener('change', refreshSelection);
+glassPC.addEventListener('change', refreshSelection);
 window.addEventListener('fromm-glass-enabled', refreshSelection);
 document.addEventListener('visibilitychange', refreshSelection);
 window.addEventListener('pageshow', refreshSelection);

@@ -220,7 +220,7 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
       const {left,top,width,height}=el.getBoundingClientRect();
       return Math.abs(left+width/2-innerWidth/2)<2 && Math.abs(top+height/2-innerHeight/2)<2 && !el.querySelector('[aria-modal="true"]');
     }),'the non-modal save result is centered in the viewport');
-    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-enter');
+    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-center-enter');
     assert.equal(result.alerts,0);
   }
   if (options.firstWriteFault) {

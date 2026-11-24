@@ -303,20 +303,22 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .chat-select-pill.selected .card-select-text::after { content: "선택됨"; }
 .chat-select-pill.select-pop { animation: 0.22s ease-out 0s 1 normal none running select-pop; }
 .artist-select-prompt { padding-top: 92px; color: rgb(168, 176, 189); font-size: 15px; }
-/* Keep app notices centered without blocking the media view. */
+/* The save result rises from the bottom without blocking the media view. */
 .save-result-sheet{
- position:fixed;inset:16px;z-index:1800;
- width:min(480px,calc(100vw - 32px));height:max-content;max-width:none;margin:auto;padding:0;
+ position:fixed;inset:auto 16px max(var(--save-sheet-bottom,20px),env(safe-area-inset-bottom)) 16px;z-index:1800;
+ width:min(480px,calc(100vw - 32px));max-width:none;margin:0 auto;padding:0;
  border:0;background:transparent;color:var(--theme-text,var(--text));overflow:visible;pointer-events:none;
 }
 .save-result-sheet[hidden]{display:none}
 .save-result-sheet.open{animation:save-sheet-enter 260ms cubic-bezier(.2,.75,.25,1) backwards}
 .save-result-sheet.closing{animation:save-sheet-exit 180ms ease-in both}
 .save-result-sheet.open :is(button,.save-failure-section){pointer-events:auto}
-@keyframes save-sheet-enter{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
-@keyframes save-sheet-exit{from{transform:none;opacity:1}to{transform:translateY(12px);opacity:0}}
+@keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}
+@keyframes save-sheet-exit{from{transform:none;opacity:1}to{transform:translateY(calc(100% + 24px));opacity:0}}
+@keyframes save-sheet-center-enter{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes save-sheet-center-exit{from{transform:none;opacity:1}to{transform:translateY(12px);opacity:0}}
 .save-result-card{
- max-height:min(490px,calc(100dvh - 32px));display:flex;flex-direction:column;overflow:hidden;
+ max-height:min(490px,calc(100dvh - var(--save-sheet-bottom,20px) - 16px));display:flex;flex-direction:column;overflow:hidden;
  border:1px solid var(--theme-line,var(--line));border-radius:22px;
  background-color:color-mix(in srgb,var(--theme-card,var(--card)) 91%,transparent)!important;
  backdrop-filter:blur(16px);box-shadow:0 12px 32px #0004
@@ -328,7 +330,13 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) .save-result-summary{color:var(--theme-text,var(--text))}
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
 .save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
-.save-result-card[data-glass-engine='ybouane']{border-color:transparent}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .save-result-sheet{inset:16px;height:max-content;margin:auto}
+ .save-result-sheet.open{animation-name:save-sheet-center-enter}
+ .save-result-sheet.closing{animation-name:save-sheet-center-exit}
+ .save-result-card{max-height:min(490px,calc(100dvh - 32px))}
+ .save-result-card[data-glass-engine='ybouane']{border-color:transparent}
+}
 .save-result-card::before{content:"";align-self:center;width:30px;height:3px;margin-top:8px;border-radius:3px;background:var(--theme-line,var(--line));flex:none}
 .save-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:9px 16px 4px}
 .save-result-title{font-size:16px;font-weight:750}
@@ -1258,7 +1266,7 @@ body.download-marquee-active{user-select:none;cursor:default}
       <span class="stats" id="counts">0개</span>
       <span class="selected-count" id="selectedCount">선택 0개</span>
       <button class="btn" id="selectAllBtn">전체선택</button>
-      <button class="btn good" id="saveSelectedBtn" aria-description="폴더를 선택하면 기존 파일을 건너뛰고 선택 항목을 저장합니다.">저장</button>
+      <button class="btn good" id="saveSelectedBtn" title="폴더를 한 번 선택하면 기존 파일을 건너뛰고 선택 항목을 자동 저장">저장</button>
 
       <div id="chatMatchNav" class="chat-match-nav" aria-label="찾은 대화 이동" hidden>
         <button id="chatMatchPrev" class="btn" type="button" aria-label="이전 일치 대화" title="이전 일치 대화"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
@@ -2285,6 +2293,20 @@ window.addEventListener("pagehide", stopChannelVideoPlayback);
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
+const viewerDesktop=matchMedia("(min-width:701px) and (hover:hover) and (pointer:fine)");
+const selectionSaveButton=$("#saveSelectedBtn");
+const selectionSaveHint=selectionSaveButton.title;
+function syncSelectionSaveHint(){
+  if(viewerDesktop.matches){
+    selectionSaveButton.removeAttribute("title");
+    selectionSaveButton.setAttribute("aria-description",selectionSaveHint);
+  }else{
+    selectionSaveButton.removeAttribute("aria-description");
+    selectionSaveButton.title=selectionSaveHint;
+  }
+}
+viewerDesktop.addEventListener("change",syncSelectionSaveHint);
+syncSelectionSaveHint();
 const state = {
   rooms: [],
   room: null,
@@ -5515,7 +5537,7 @@ async function createReplayDownloadSink(post){
 
 async function createArtistVideoDownloadSink(){
   if(!supportsDirectorySave())return {};
-  try{return {directory:await window.showDirectoryPicker({mode:"readwrite"})};}
+  try{return {directory:await window.showDirectoryPicker(viewerDesktop.matches?{mode:"readwrite"}:undefined)};}
   catch(error){if(error?.name==="AbortError")return null;throw error;}
 }
 
@@ -7277,7 +7299,8 @@ function updateHistoryStatus(prefix=""){
   if(state.historyError) $("#scanState").textContent=`${loaded}개 · 기록 준비 일시 중지 · 새로고침으로 재시도`;
   const save=$("#saveSelectedBtn");
   if(save && !state.mediaBulkSaving && !state.postBulkSaving){
-    save.setAttribute("aria-description",state.hasMoreMessages ? `기록 ${loaded}개 준비됨. 나머지 기록을 준비 중입니다.` : "파일명을 준비했습니다. 기존 파일은 건너뜁니다.");
+    if(viewerDesktop.matches)save.setAttribute("aria-description",state.hasMoreMessages ? `기록 ${loaded}개 준비됨. 나머지 기록을 준비 중입니다.` : "파일명을 준비했습니다. 기존 파일은 건너뜁니다.");
+    else save.title=state.hasMoreMessages ? `저장 · 기록 ${loaded}개 준비됨 (나머지는 백그라운드 준비 중)` : "저장 · 파일명 준비 완료 · 기존 파일은 건너뜀";
   }
   syncLoadingUI();
 }
@@ -8588,7 +8611,7 @@ async function saveSelectedPosts(){
   const failures=[];
   try{
     if(supportsDirectorySave()){
-      try{directory=await window.showDirectoryPicker({mode:"readwrite"});}
+      try{directory=await window.showDirectoryPicker(viewerDesktop.matches?{mode:"readwrite"}:undefined);}
       catch(e){if(e?.name==="AbortError") return; throw e;}
     }
     for(let i=0;i<items.length;i++){
@@ -10682,7 +10705,7 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null,{retain=false}
   button.dataset.downloadPhase=phase;
   button.toggleAttribute("data-download-unknown",active && percent===null);
   button.style.setProperty("--download-remaining",String(100-(percent ?? 0)));
-  if(button.id!=="saveSelectedBtn")button.title=status;
+  if(button.id!=="saveSelectedBtn"||!viewerDesktop.matches)button.title=status;
   const label=feedback.attributes[1][1] || button.textContent.trim() || "다운로드";
   button.setAttribute("aria-label",`${label} · ${status}`);
   if(active || phase==="picker" || phase==="queued") button.setAttribute("aria-busy","true");
@@ -10788,6 +10811,21 @@ async function downloadSingleMedia(m,button=null){
   }
 }
 
+function positionSaveResultSheet(){
+  const sheet=$("#saveResultModal");
+  if(viewerDesktop.matches||!sheet?.classList.contains("open"))return;
+  const albumFooter=sheet.closest(".channel-photo-dialog")?.querySelector("footer");
+  const dock=state.filter==="all"?$("#conversationDock"):null;
+  const controls=albumFooter||dock;
+  const top=controls?.getBoundingClientRect().top;
+  // Keep the touch viewer's original clearance above its bottom controls.
+  const clearance=controls===dock?48:12;
+  const bottom=controls?.checkVisibility()&&Number.isFinite(top)?Math.max(20,Math.min(innerHeight*.55,innerHeight-top+clearance)):20;
+  sheet.style.setProperty("--save-sheet-bottom",`${bottom}px`);
+}
+window.addEventListener("resize",positionSaveResultSheet);
+viewerDesktop.addEventListener("change",positionSaveResultSheet);
+
 function openSaveResultSheet(){
   const sheet=$("#saveResultModal");
   if(!sheet)return;
@@ -10800,6 +10838,7 @@ function openSaveResultSheet(){
   sheet.hidden=false;sheet.inert=false;
   sheet.setAttribute("aria-hidden","false");
   sheet.classList.remove("closing");sheet.classList.add("open");
+  positionSaveResultSheet();
   if(typeof sheet.showPopover==="function"&&!sheet.matches(":popover-open")){
     sheet.setAttribute("popover","manual");
     try{sheet.showPopover();}catch{sheet.removeAttribute("popover");}

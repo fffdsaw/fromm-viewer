@@ -174,14 +174,14 @@ async function selectionSize(page) {
         await cards.nth(2).locator('img').click({modifiers: ['Shift']});
         await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
         assert.equal(await cards.count(), 3, 'only the active subscribed channel is selectable');
-        assert.equal(await page.locator('#selectedCount').textContent(), '선택 3개');
+        assert.equal(await page.locator('#selectedCount').textContent(), mobile ? '선택 3개' : '3개 선택');
         assert.equal(await page.locator('#saveSelectedBtn').isVisible(), true);
         await shot(page, `${kind}-selection-${mobile ? 'mobile' : 'desktop'}`);
         const detailBefore = details.length, downloadBefore = downloads.length;
         await page.locator('#saveSelectedBtn').click();
         await page.waitForFunction(() => !state.postBulkSaving);
         assert.ok(details.length >= detailBefore + 3, 'fresh authorized detail for each selected post');
-        assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개');
+        assert.equal(await page.locator('#selectedCount').textContent(), mobile ? '선택 0개' : '0개 선택');
         if (mobile) assert.equal(downloads.length - downloadBefore, 3);
         else {
           const writes = await page.evaluate(() => window.writes.splice(0));
@@ -198,7 +198,7 @@ async function selectionSize(page) {
           await page.waitForFunction(() => !state.postBulkSaving);
           assert.equal(details.length, beforeSkip, 'existing files skip before any authorized detail request');
           assert.equal(await page.evaluate(() => writes.length), 0, 'repeated folder save writes no duplicate bytes');
-          assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개');
+          assert.equal(await page.locator('#selectedCount').textContent(), mobile ? '선택 0개' : '0개 선택');
         }
         await cards.first().locator('button.replay-play').click();
         await page.locator(kind === 'channel' ? '#channelVideo' : '#replayVideo').waitFor();
@@ -209,10 +209,10 @@ async function selectionSize(page) {
       await require('./helpers/center-navigation.cjs')(page,'channel');
       await page.locator('[data-download-selection-kind="channel"]').first().locator('img').click();
       await page.locator('[data-channel-video-filter="b"]').click();
-      assert.equal(await page.locator('#selectedCount').textContent(), '선택 0개', 'channel IDs isolate same post IDs');
+      assert.equal(await page.locator('#selectedCount').textContent(), mobile ? '선택 0개' : '0개 선택', 'channel IDs isolate same post IDs');
       await page.locator('[data-download-selection-kind="channel"]').nth(2).locator('img').click({modifiers: ['Shift']});
       await page.waitForFunction(() => !downloadClickGesture || downloadClickGesture.applied);
-      assert.equal(await page.locator('#selectedCount').textContent(), '선택 1개', 'range anchor is scoped to channel');
+      assert.equal(await page.locator('#selectedCount').textContent(), mobile ? '선택 1개' : '1개 선택', 'range anchor is scoped to channel');
       await page.evaluate(() => forgetSavedAuth());
       assert.equal(await page.evaluate(() => state.postSelected.size), 0, 'logout clears selected posts');
       assert.equal(await page.evaluate(() => state.selectionAnchor), null);

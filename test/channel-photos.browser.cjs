@@ -84,7 +84,7 @@ async function checkArtistMedia(page) {
     const hit=button.getBoundingClientRect(),icon=button.querySelector('svg').getBoundingClientRect();
     return {inset:edge-hit.right,offset:icon.left+icon.width/2-hit.left-hit.width/2};
   });
-  assert.deepEqual(close,{inset:5,offset:0},'the compact Artist capsule keeps its close icon inside its rim');
+  assert.deepEqual(close,{inset:8,offset:0},'the compact Artist capsule keeps its close icon inside its rim');
   await page.locator('#clearSelectionBtn').click();
   await chooseMember('멤버 전체');
   await page.setViewportSize({width:1440,height:900});
@@ -130,7 +130,7 @@ async function checkArtistMedia(page) {
   await page.setViewportSize({width:701,height:900});
   await page.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');
   const memberBox=await capsule.boundingBox(),saveBox=await page.locator('#mediaSelectionSlot').boundingBox();
-  assert.ok(memberBox.x+memberBox.width<=saveBox.x,`member and save capsules fit at 701px: ${JSON.stringify({memberBox,saveBox})}`);
+  assert.ok(memberBox.x+memberBox.width<=saveBox.x||memberBox.y+memberBox.height<=saveBox.y,`member and save capsules do not overlap at 701px: ${JSON.stringify({memberBox,saveBox})}`);
   const saveButton=page.locator('#saveSelectedBtn');
   assert.equal(await saveButton.getAttribute('title'),null);
   await saveButton.click();

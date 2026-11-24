@@ -76,6 +76,61 @@
   const selectionSlot=document.createElement('div');selectionSlot.id='mediaSelectionSlot';selectionSlot.className='media-selection-slot';mediaDock.append(selectionSlot);document.body.append(mediaDock);
   let selectionCount=0,capsuleMotion=null,saveDisabledForCount=false;
   const saveControl=document.createElement('span');saveControl.className='capsule-save-control';$('#saveSelectedBtn').before(saveControl);saveControl.append($('#saveSelectedBtn'));
+  // Stable decorative content is a sibling of the native button: legacy savers
+  // may replace button.textContent without removing animated nodes or hit targets.
+  const saveVisual=document.createElement('span');saveVisual.className='selection-save-visual';saveVisual.setAttribute('aria-hidden','true');
+  saveVisual.innerHTML=`<svg class="selection-save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="save-icon-stem" d="M12 3v14"/><path class="save-icon-morph" d="M6 11 12 17 18 11"/><path class="save-icon-tray" d="M4 21h16"/><path class="save-icon-check" d="M6 12 10 16 18 7"/></svg><span class="selection-save-body"><span class="selection-save-label">저장</span><span class="selection-save-number"></span><span class="selection-save-complete"></span><span class="selection-save-track"><span></span></span></span>`;
+  saveControl.append(saveVisual);saveControl.dataset.saveState='idle';
+  const saveNumber=saveVisual.querySelector('.selection-save-number'),saveComplete=saveVisual.querySelector('.selection-save-complete');
+  let saveJob=null,terminalSaveProgress=null,saveFinishTimer=0;
+  function setBulkSaveProgress(progress){
+    if(!mediaPC.matches)return;
+    if(Number.isFinite(progress)){
+      if(!saveJob){
+        const scope=downloadSelectionScope(),selected=downloadSelectionSet(scope.kind);
+        const keys=scope.kind==='media'?new Set(selected):new Set(scope.items.map(item=>downloadSelectionKey(scope.kind,item)).filter(key=>selected.has(key)));
+        saveJob={scope:capsuleScope(),keys,total:keys.size,done:new Set()};
+        saveControl.dataset.saveState='saving';
+        paintSaveProgress();
+      }
+    }else{
+      saveJob=null;
+      if(saveControl.dataset.saveState==='saving')saveControl.dataset.saveState='idle';
+    }
+  }
+  function paintSaveProgress(){
+    if(!saveJob)return;
+    const done=saveJob.done.size,total=saveJob.total;
+    saveNumber.textContent=`${done}/${total}`;
+    saveControl.style.setProperty('--selection-save-progress',`${total?done/total*100:0}%`);
+    $('#saveSelectedBtn').setAttribute('aria-label',`저장 중 · 저장 또는 기존 파일 확인 ${done}/${total}`);
+  }
+  function confirmBulkSaveItem(kind,item){
+    if(!saveJob||saveJob.scope!==capsuleScope())return;
+    const key=downloadSelectionKey(kind,item);
+    if(saveJob.keys.has(key)){saveJob.done.add(key);paintSaveProgress();}
+  }
+  function syncSaveResult(progress){
+    if(!mediaPC.matches)return;
+    const valid=progress?.current();
+    const terminal=valid&&['done','handed-off','error'].includes(progress.phase);
+    if(terminal){
+      if(terminalSaveProgress===progress)return;
+      terminalSaveProgress=progress;clearTimeout(saveFinishTimer);
+      const next=progress.phase==='done'?'complete':progress.phase;
+      saveComplete.textContent=progress.phase==='done'?'저장 완료':progress.phase==='handed-off'?'요청 완료':progress.label;
+      if(progress.phase!=='error')saveControl.style.setProperty('--selection-save-progress','100%');
+      if(progress.phase==='done'&&saveControl.dataset.saveState==='saving'&&!reducedMotion.matches){
+        saveControl.dataset.saveState='finishing';
+        saveFinishTimer=setTimeout(()=>{if(terminalSaveProgress===progress&&progress.current())saveControl.dataset.saveState=next;},220);
+      }else saveControl.dataset.saveState=next;
+    }else if(saveJob&&saveJob.scope===capsuleScope())saveControl.dataset.saveState='saving';
+    else{
+      clearTimeout(saveFinishTimer);terminalSaveProgress=null;
+      saveControl.dataset.saveState='idle';
+      if(!saveJob)$('#saveSelectedBtn').setAttribute('aria-label','선택 항목 저장');
+    }
+  }
   const capsuleScope=()=>downloadSelectionContext()+':'+state.scanGeneration;
   function connectCapsule(){if(capsuleMotion||!window.FrommCapsuleMaterializer)return;capsuleMotion=window.FrommCapsuleMaterializer(selectionSlot,()=>{},()=>syncSelection(selectionCount),{axis:'x',optical:false});syncSelection(selectionCount);}
   window.addEventListener('fromm-capsule-ready',connectCapsule,{once:true});
@@ -204,7 +259,7 @@
       const disabled=!selectionCount||busy||replayProgress;if(save.disabled!==disabled)save.disabled=disabled;saveDisabledForCount=!selectionCount&&!busy;
     }else if(saveDisabledForCount&&!busy){save.disabled=false;saveDisabledForCount=false;}
     clearSelection.disabled=active&&selectionCount===0;saveControl.classList.toggle('save-ready',selectionCount>0);
-    const show=active&&(selectionCount>0||replayProgress||(mediaPC.matches&&busy&&save.classList.contains('bulk-saving')));selectionSlot.classList.toggle('expanded',show);
+    const show=active&&(selectionCount>0||replayProgress||(mediaPC.matches&&(['finishing','complete','handed-off','error'].includes(saveControl.dataset.saveState)||(busy&&save.classList.contains('bulk-saving')))));selectionSlot.classList.toggle('expanded',show);
     if(capsuleMotion)capsuleMotion.sync(show,capsuleScope(),active);
     else{selectionSlot.hidden=!show;selectionSlot.inert=!show;selectionSlot.setAttribute('aria-hidden',String(!show));}
   }
@@ -214,10 +269,11 @@
     const progress={current:()=>capsuleScope()===scope,phase:handedOff?'handed-off':'done',label:handedOff?'요청 완료':'저장 완료',detail:handedOff?'선택 항목 다운로드 요청 완료':'선택 항목 저장 완료'};
     state.replayBulkSaveProgress=progress;
     queueMicrotask(syncMediaDock);
-    setTimeout(()=>{if(state.replayBulkSaveProgress===progress){state.replayBulkSaveProgress=null;syncMediaDock();}},1500);
+    setTimeout(()=>{if(state.replayBulkSaveProgress===progress){state.replayBulkSaveProgress=null;syncMediaDock();}},1100);
   }
   function syncReplaySaveButton(button,active){
     const progress=state.replayBulkSaveProgress;
+    syncSaveResult(progress);
     let label=button.querySelector('.replay-bulk-save-label');
     if(!active||!mediaPC.matches||!progress?.current()){
       if(button.hasAttribute('data-replay-bulk-save')){
@@ -241,7 +297,7 @@
   }
   new MutationObserver(()=>syncMediaDock()).observe($('#saveSelectedBtn'),{attributes:true,attributeFilter:['disabled']});
   window.addEventListener('fromm-glass-enabled',syncMediaDock);
-  mediaPC.addEventListener('change',()=>{restorePCToolbar();if(state.filter==='all')render();syncDownloadSelection();syncMediaDock();fitPanel();});
+  mediaPC.addEventListener('change',()=>{if(!mediaPC.matches){saveJob=null;clearTimeout(saveFinishTimer);terminalSaveProgress=null;saveControl.dataset.saveState='idle';}restorePCToolbar();if(state.filter==='all')render();syncDownloadSelection();syncMediaDock();fitPanel();});
 
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');
@@ -421,7 +477,7 @@
     panel.style.setProperty('--glow-tools-top',`${top}px`);search.style.removeProperty('visibility');
   }
   function syncSelection(n){
-    selectionCount=n;$('#selectedCount').dataset.selectionCount=n.toLocaleString();$('#selectedCount').title=$('#selectedCount').textContent;batchTools.inert=!mediaDockActive()&&n===0;
+    selectionCount=n;if(mediaPC.matches)$('#selectedCount').innerHTML=`<strong>${n.toLocaleString()}</strong><span>개 선택</span>`;else $('#selectedCount').textContent=`선택 ${n.toLocaleString()}개`;$('#selectedCount').dataset.selectionCount=n.toLocaleString();$('#selectedCount').title=$('#selectedCount').textContent;batchTools.inert=!mediaDockActive()&&n===0;
     const hide=!mediaDockActive()&&n===0;
     const toolbar=$(".toolbar");toolbar.classList.toggle("has-download-selection",n>0);batchTools.hidden=hide;
     for(const id of ["selectedCount","selectAllBtn","saveSelectedBtn"]){const el=$("#"+id);el.hidden=hide;el.inert=!mediaDockActive()&&n===0;}
@@ -443,7 +499,7 @@
     if(searchWasOpen&&!panel.classList.contains('open')&&panel.contains(document.activeElement)&&all)search.focus({preventScroll:true});searchWasOpen=panel.classList.contains('open');
     syncHeader();syncMediaDock();fitPanel();syncMatchNav();window.FrommGlass?.sync();
   }
-  window.FrommGlowME=Object.freeze({get capsule(){return capsuleMotion?.snapshot||null;},get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection,showBulkSaveDone,syncReplaySaveProgress:syncMediaDock});
+  window.FrommGlowME=Object.freeze({get capsule(){return capsuleMotion?.snapshot||null;},get pinned(){return isSearchPinned();},get rail(){return true;},get railAnimating(){return performance.now()<railMotionUntil;},get calendarInline(){return true;},setRailOpen,fitPanel,syncNavigation,syncHeader,decorateRooms,syncSelection,showBulkSaveDone,setBulkSaveProgress,confirmBulkSaveItem,syncReplaySaveProgress:syncMediaDock});
   installed.addEventListener('change',()=>{if(installed.matches)appWindow=true;syncNavigation();});wide.addEventListener('change',syncNavigation);
   window.addEventListener('resize',fitPanel,{passive:true});let frame=0;
   window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fitPanel();});},{passive:true});

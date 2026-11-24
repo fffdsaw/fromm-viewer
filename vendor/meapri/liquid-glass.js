@@ -1,3 +1,5 @@
+import { convexEdgeMap } from './assets/convex-edge.js';
+
 function Dt(s) {
   const e = qt(s);
   if (e) return e;
@@ -37,6 +39,8 @@ class Ve {
   feSaturate;
   chromaticEnabled;
   chromaticAmount;
+  edgeTransfer = null;
+  edgePeakShift;
   constructor(e) {
     this.defs = Ut(e.root), this.id = `lg-filter-${++zt}`, this.chromaticAmount = e.chromaticAberration, this.chromaticEnabled = e.chromaticAberration > 0, this.filter = document.createElementNS(b, "filter"), this.filter.setAttribute("id", this.id);
     const t = e.displacementPadding / e.width * 100, i = e.displacementPadding / e.height * 100;
@@ -117,11 +121,25 @@ class Ve {
     } else
       this.feDispR = null, this.feDispB = null, this.feDispG = ae(b, "blurred", "dispMap", 2 * e.refraction, "distorted"), this.filter.appendChild(this.feDispG);
     this.feSaturate = document.createElementNS(b, "feColorMatrix"), this.feSaturate.setAttribute("in", "distorted"), this.feSaturate.setAttribute("type", "saturate"), this.feSaturate.setAttribute("values", String(e.saturation / 100)), this.feSaturate.setAttribute("result", "saturated"), this.filter.appendChild(this.feSaturate);
+    if (e.edgePeakShift !== void 0) {
+      this.edgePeakShift = e.edgePeakShift;
+      this.edgeTransfer = document.createElementNS(b, "feComponentTransfer");
+      this.edgeTransfer.setAttribute("in", "dispMap");
+      this.edgeTransfer.setAttribute("result", "edgeDispMap");
+      for (const channel of ["R", "G"]) {
+        const fn = document.createElementNS(b, `feFunc${channel}`);
+        fn.setAttribute("type", "linear");
+        this.edgeTransfer.appendChild(fn);
+      }
+      this.feImageDisp.after(this.edgeTransfer);
+      for (const node of [this.feDispR, this.feDispG, this.feDispB]) node?.setAttribute("in2", "edgeDispMap");
+      this.updateEdgeTransfer(e.refraction);
+    }
     const r = document.createElementNS(b, "feComponentTransfer");
     r.setAttribute("in", "saturated"), r.setAttribute("result", "brightened");
     for (const n of ["R", "G", "B"]) {
       const o = document.createElementNS(b, `feFunc${n}`);
-      o.setAttribute("type", "linear"), o.setAttribute("slope", "1.05"), o.setAttribute("intercept", "0"), r.appendChild(o);
+      o.setAttribute("type", "linear"), o.setAttribute("slope", this.edgeTransfer ? "1" : "1.05"), o.setAttribute("intercept", "0"), r.appendChild(o);
     }
     if (this.filter.appendChild(r), e.specularMapUrl) {
       this.feImageSpec = document.createElementNS(b, "feImage"), this.feImageSpec.setAttribute("href", e.specularMapUrl), this.feImageSpec.setAttribute("x", "0"), this.feImageSpec.setAttribute("y", "0"), this.feImageSpec.setAttribute("width", String(e.width)), this.feImageSpec.setAttribute("height", String(e.height)), this.feImageSpec.setAttribute("preserveAspectRatio", "none"), this.feImageSpec.setAttribute("result", "specMap"), this.filter.appendChild(this.feImageSpec);
@@ -134,7 +152,8 @@ class Ve {
   get url() {
     return `url(#${this.id})`;
   }
-  updateDisplacement(e, t, i, r) {
+  updateDisplacement(e, t, i, r, edgePeakShift) {
+    this.edgePeakShift = edgePeakShift;
     this.feImageDisp.setAttribute("href", e), this.feImageDisp.setAttribute("x", String(-r)), this.feImageDisp.setAttribute("y", String(-r)), this.feImageDisp.setAttribute("width", String(t + r * 2)), this.feImageDisp.setAttribute("height", String(i + r * 2));
     const n = r / t * 100, o = r / i * 100;
     this.filter.setAttribute("x", `${-n}%`), this.filter.setAttribute("y", `${-o}%`), this.filter.setAttribute("width", `${100 + n * 2}%`), this.filter.setAttribute("height", `${100 + o * 2}%`);
@@ -143,11 +162,23 @@ class Ve {
     !this.feImageSpec || !e || (this.feImageSpec.setAttribute("href", e), this.feImageSpec.setAttribute("width", String(t)), this.feImageSpec.setAttribute("height", String(i)));
   }
   updateRefraction(e) {
+    this.updateEdgeTransfer(e);
     if (this.chromaticEnabled && this.feDispR && this.feDispB) {
       const t = 2 * e, spread = 0.35 * this.chromaticAmount;
       this.feDispR.setAttribute("scale", String(t * (1 - spread))), this.feDispG.setAttribute("scale", String(t)), this.feDispB.setAttribute("scale", String(t * (1 + spread)));
     } else
       this.feDispG.setAttribute("scale", String(2 * e));
+  }
+  updateEdgeTransfer(refraction) {
+    if (!this.edgeTransfer) return;
+    // Normalize byte 128 to exactly 0.5 and keep the slider and morph strengths
+    // live. The curve reaches the map's safe peak shift at 80px of input.
+    const strength = Math.min(1, refraction / 80);
+    const slope = this.edgePeakShift * (2 - strength) / Math.max(80, refraction) * 255 / 254;
+    for (const fn of this.edgeTransfer.children) {
+      fn.setAttribute("slope", String(slope));
+      fn.setAttribute("intercept", String(0.5 - slope * 128 / 255));
+    }
   }
   updateBlur(e) {
     this.feBlur.setAttribute("stdDeviation", String(e));
@@ -183,7 +214,7 @@ function Gt() {
   try {
     k = new Worker(new URL(
       /* @vite-ignore */
-      "" + new URL("assets/MapWorker-tpM-Txsc.js", import.meta.url).href,
+      "" + new URL("assets/MapWorker-tpM-Txsc.js?v=convex-edge-20261124", import.meta.url).href,
       import.meta.url
     ), {
       type: "module",
@@ -351,10 +382,12 @@ function Mt(s, e, t, i) {
   return a.clearRect(0, 0, r, n), a.imageSmoothingEnabled = !0, a.imageSmoothingQuality = "high", a.drawImage(s, 0, 0, e, t, 0, 0, r, n), Oe(o);
 }
 function ci(s) {
-  return $t(s)?.catch(() => st(s)) ?? st(s);
+  const build = () => s.convexEdge ? convexEdgeMap(s) : st(s);
+  return $t(s)?.catch(build) ?? build();
 }
 function ui(s) {
-  return Ht(s)?.catch(() => rt(s)) ?? rt(s);
+  const build = () => s.convexEdge ? convexEdgeMap(s, true) : rt(s);
+  return Ht(s)?.catch(build) ?? build();
 }
 const hi = 64, V = /* @__PURE__ */ new Map(), j = /* @__PURE__ */ new Map();
 function Rt(s) {
@@ -374,12 +407,17 @@ function kt(s, e, t) {
   s.delete(e), s.set(e, t);
 }
 function di(s) {
+  if (s.convexEdge) return convexKey(s);
   const e = Rt(s.pixelRatio);
   return `d:${E(s.width, e)}x${E(s.height, e)}_r${E(s.radius, 2)}_t${E(s.thickness, 2)}_p${s.pixelRatio.toFixed(3)}_f${E(s.refraction, 2)}`;
 }
 function fi(s) {
+  if (s.convexEdge) return `${convexKey(s)}_i${s.intensity}`;
   const e = Rt(s.pixelRatio);
   return `s:${E(s.width, e)}x${E(s.height, e)}_r${E(s.radius, 2)}_t${E(s.thickness, 2)}_p${s.pixelRatio.toFixed(3)}_i${s.intensity.toFixed(2)}`;
+}
+function convexKey({width, height, radius, thickness, pixelRatio}) {
+  return `convex:${width}x${height}_r${radius}_t${thickness}_p${pixelRatio}`;
 }
 function le(s) {
   const e = di(s), t = V.get(e);
@@ -1544,6 +1582,20 @@ class S {
       { capture: !0 }
     ), window.removeEventListener("resize", this.onBackdropRefractSync), this.backdropSyncRaf && (cancelAnimationFrame(this.backdropSyncRaf), this.backdropSyncRaf = 0), this.refractClone = null, this.backdropSceneEl = null, this.backdropMode = null, this.fxLayer?.remove(), this.fxLayer = null;
   }
+  get convexEdge() {
+    return false;
+  }
+  nativeDisplacementMap() {
+    return le({
+      width: this.currentWidth,
+      height: this.currentHeight,
+      radius: this.computedRadius(),
+      thickness: this.computedThickness(),
+      pixelRatio: this.displacementDpr(),
+      refraction: this.profiledRefraction(),
+      convexEdge: this.convexEdge
+    });
+  }
   specularMapUrl() {
     return Ce({
       width: this.currentWidth,
@@ -1551,7 +1603,8 @@ class S {
       radius: this.computedRadius(),
       thickness: this.computedThickness(),
       pixelRatio: this.specularDpr(),
-      intensity: this.profiledSpecularIntensity()
+      intensity: this.profiledSpecularIntensity(),
+      convexEdge: this.convexEdge
     });
   }
   setupLazy() {
@@ -1621,22 +1674,8 @@ class S {
     if (this.suspended) return;
     this.cancelPendingBuild();
     const e = this.buildGeneration, [t, i] = await Promise.all([
-      le({
-        width: this.currentWidth,
-        height: this.currentHeight,
-        radius: this.computedRadius(),
-        thickness: this.computedThickness(),
-        pixelRatio: this.displacementDpr(),
-        refraction: this.profiledRefraction()
-      }),
-      this.options.specular ? Ce({
-        width: this.currentWidth,
-        height: this.currentHeight,
-        radius: this.computedRadius(),
-        thickness: this.computedThickness(),
-        pixelRatio: this.specularDpr(),
-        intensity: this.profiledSpecularIntensity()
-      }) : Promise.resolve(null)
+      this.nativeDisplacementMap(),
+      this.options.specular ? this.specularMapUrl() : Promise.resolve(null)
     ]);
     if (!this.isBuildCurrent(e)) return;
     this.filter?.destroy(), this.filter = new Ve({
@@ -1648,6 +1687,7 @@ class S {
       height: this.currentHeight,
       displacementMapUrl: t.url,
       displacementPadding: t.padding,
+      edgePeakShift: t.peakShift,
       specularMapUrl: i,
       root: this.root
     });
@@ -1682,24 +1722,10 @@ class S {
     }
     if (!this.filter) return;
     const e = ++this.buildGeneration, [t, i] = await Promise.all([
-      le({
-        width: this.currentWidth,
-        height: this.currentHeight,
-        radius: this.computedRadius(),
-        thickness: this.computedThickness(),
-        pixelRatio: this.displacementDpr(),
-        refraction: this.profiledRefraction()
-      }),
-      this.options.specular ? Ce({
-        width: this.currentWidth,
-        height: this.currentHeight,
-        radius: this.computedRadius(),
-        thickness: this.computedThickness(),
-        pixelRatio: this.specularDpr(),
-        intensity: this.profiledSpecularIntensity()
-      }) : Promise.resolve(null)
+      this.nativeDisplacementMap(),
+      this.options.specular ? this.specularMapUrl() : Promise.resolve(null)
     ]);
-    !this.isBuildCurrent(e) || !this.filter || (this.filter.updateDisplacement(t.url, this.currentWidth, this.currentHeight, t.padding), this.filter.updateBlur(this.effectiveBlur()), this.filter.updateRefraction(this.effectiveRefraction()), i && this.filter.updateSpecular(i, this.currentWidth, this.currentHeight), this.adaptToBackdrop(), this.refreshScrollSafeSubscription());
+    !this.isBuildCurrent(e) || !this.filter || (this.filter.updateDisplacement(t.url, this.currentWidth, this.currentHeight, t.padding, t.peakShift), this.filter.updateBlur(this.effectiveBlur()), this.filter.updateRefraction(this.effectiveRefraction()), i && this.filter.updateSpecular(i, this.currentWidth, this.currentHeight), this.adaptToBackdrop(), this.refreshScrollSafeSubscription());
   }
   applyTint() {
     const e = this.options.tint ?? this.variantTint();

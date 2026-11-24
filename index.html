@@ -310,7 +310,7 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
  border:0;background:transparent;color:var(--theme-text,var(--text));overflow:visible;pointer-events:none;
 }
 .save-result-sheet[hidden]{display:none}
-.save-result-sheet.open{animation:save-sheet-enter 260ms cubic-bezier(.2,.75,.25,1) both}
+.save-result-sheet.open{animation:save-sheet-enter 260ms cubic-bezier(.2,.75,.25,1) backwards}
 .save-result-sheet.closing{animation:save-sheet-exit 180ms ease-in both}
 .save-result-sheet.open :is(button,.save-failure-section){pointer-events:auto}
 @keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}
@@ -318,9 +318,16 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-card{
  max-height:min(490px,calc(100dvh - var(--save-sheet-bottom,20px) - 16px));display:flex;flex-direction:column;overflow:hidden;
  border:1px solid var(--theme-line,var(--line));border-radius:22px;
- background:color-mix(in srgb,var(--theme-card,var(--card)) 91%,transparent);
+ background-color:color-mix(in srgb,var(--theme-card,var(--card)) 91%,transparent)!important;
  backdrop-filter:blur(16px);box-shadow:0 12px 32px #0004
 }
+.save-result-card[data-glass-material='convex']{
+ background-color:rgb(255 255 255/.52)!important;border-color:#fff6;box-shadow:0 8px 24px #0003;
+}
+.save-result-card[data-glass-material='convex'][data-scheme='dark']{background-color:rgb(17 19 23/.60)!important}
+.save-result-card[data-glass-material='convex'] .save-result-summary{color:var(--theme-text,var(--text))}
+.save-result-card[data-glass-material='convex'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
+.save-result-card[data-glass-material='convex'][data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
 .save-result-card::before{content:"";align-self:center;width:30px;height:3px;margin-top:8px;border-radius:3px;background:var(--theme-line,var(--line));flex:none}
 .save-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:9px 16px 4px}
 .save-result-title{font-size:16px;font-weight:750}
@@ -336,8 +343,8 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:8px 16px 12px}
 .save-result-actions .btn{background:var(--theme-soft,var(--card));border-color:var(--theme-line,var(--line));color:var(--theme-text,var(--text))}
 @media(prefers-reduced-motion:reduce){.save-result-sheet.open,.save-result-sheet.closing{animation:none}}
-@media(prefers-reduced-transparency:reduce),(forced-colors:active){.save-result-card{background:var(--theme-card,var(--card));backdrop-filter:none}}
-@media(forced-colors:active){.save-result-card{background:Canvas;color:CanvasText;border-color:CanvasText}}
+@media(prefers-reduced-transparency:reduce),(forced-colors:active){.save-result-card{background-color:var(--theme-card,var(--card))!important;backdrop-filter:none}}
+@media(forced-colors:active){.save-result-card{background-color:Canvas!important;color:CanvasText;border-color:CanvasText}}
 #retryFailedBtn.retrying { opacity: 0.62; pointer-events: none; }
 .pages-bridge-note { margin-top: 8px; color: rgb(127, 138, 155); font-size: 11px; line-height: 1.5; }
 .login-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
@@ -1130,10 +1137,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=clear-controls-20261117">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
-<link rel="stylesheet" href="themes.css?v=channel-header-20261118">
+<link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=artist-downloads-v1">
+<link rel="stylesheet" href="glowme-controls.css?v=convex-edge-20261124">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -11789,6 +11796,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=artist-members-v1"></script>
+<script type="module" src="web-glass.js?v=convex-edge-20261124"></script>
 </body>
 </html>

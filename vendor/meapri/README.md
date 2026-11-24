@@ -3,7 +3,11 @@
 Upstream: https://github.com/Meapri/liquid-glass-web
 Revision: 1613f8311dbc31bc2331afcfe51a143c56dd6308 (version 0.1.0), MIT ©2026 Meapri.
 
-Originally built using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution. The two app patches below are now applied to the ESM bundle; the pinned worker is unchanged.
+Originally built using Node 22, `npm ci --ignore-scripts` and `npm run build:lib` (upstream package-lock.json). Copy ESM `dist/liquid-glass.js` and its `dist/assets/*.js` worker. Source-map comments omitted because debug maps are not shipped. Preserve LICENSE on redistribution.
+
+## Convex edge material — 2026-11-24
+
+The app wrapper opts existing optical controls, the Channel menu and the save result card into a rounded convex bevel. `assets/convex-edge.js` generates a lossless signed-distance map in the existing worker or its main-thread fallback. The ESM bundle normalizes the neutral vector, caps sampling shift to the bevel width and preserves the SDK's filter lifecycle, RGB paths and live morph strength. The same backdrop supplies the flat centre and the displaced edge. The optional specular map paints only the outer rim. Existing fixed-action and sidebar drag profiles still use their dedicated materials. Reapply the ESM and worker integration when updating the pinned vendor files.
 
 ## Scoped Glow ME integration — 2026-11-18
 

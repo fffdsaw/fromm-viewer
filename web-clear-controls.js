@@ -1,6 +1,6 @@
 /* Native actions: fixed clear material + a cheap pointer light, never lensing. */
-import {glassPreferences} from './web-glass-settings.js?v=fixed-actions-20261117';
-import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
+import {glassPreferences} from './web-glass-settings.js?v=convex-edge-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=convex-edge-20261124';
 export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
 // Ordinary collection/media controls are immediate CSS droplets. Existing
 // unrelated fixed actions retain their own material owner.
@@ -39,7 +39,7 @@ function syncMaterial(){
   if(relative)el.classList.add('fixed-glass-relative');el.classList.add('fixed-glass-control');el.prepend(face);surfaces.set(el,{face,glass:null});
  }
  if(!visibility||document.hidden||motion.matches)return;
- if(!engine){if(!loading&&surfaces.size)loading=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116').then(m=>{engine=m.LiquidGlass;scheduleMaterial();}).catch(()=>{});return;}
+ if(!engine){if(!loading&&surfaces.size)loading=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124').then(m=>{engine=m.LiquidGlass;scheduleMaterial();}).catch(()=>{});return;}
  for(const el of near){const item=surfaces.get(el);if(!item||item.glass||item.failed||!el.checkVisibility())continue;
   try{item.glass=createGlass(engine,item.face,{variant:'clear',profile:'control',preset:'balanced',radius:'auto',applyRadius:false,edges:false,fallbackFilter:'none',respectReducedMotion:true,...materialOptions(fixedPreset)});builds++;}catch{item.failed=true;/* Keep the immediate CSS rim; retry only with a new surface owner. */}
  }

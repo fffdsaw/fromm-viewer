@@ -90,7 +90,11 @@ function nativeMenu(trigger,skin,offset){
 }
 function openChannel(trigger){
  if(!window.FrommChannelPhotos)return;
- open(trigger,{label:'채널 콘텐츠 종류',items:[{value:'all',label:'전체'},{value:'video',label:'영상'},{value:'image',label:'사진'}].map(item=>({...item,selected:channelVideoState.mediaType===item.value})),onSelect:value=>selectChannelMediaType(value)});
+ const current=channelVideoState.mediaType;
+ const items=Object.entries(CHANNEL_MEDIA_LABELS)
+  .filter(([value])=>value!=='artist'||current==='artist'||window.pcMediaPresentation?.())
+  .map(([value,label])=>({value,label,selected:current===value}));
+ open(trigger,{label:'채널 콘텐츠 종류',items,onSelect:value=>selectChannelMediaType(value)});
 }
 document.addEventListener('click',event=>{const trigger=event.target.closest?.('[data-channel-content-menu]');if(trigger){event.preventDefault();if(owner?.trigger!==trigger)void openChannel(trigger);else if(owner.fallback){owner.menu.toggle();sync(owner);}}});
 document.addEventListener('pointerdown',event=>{

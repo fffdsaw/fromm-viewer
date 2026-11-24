@@ -1,10 +1,10 @@
-import './web-morph-menu.js?v=pc-media-controls-20261118';
+import './web-morph-menu.js?v=channel-artist-20261119';
 import './web-clear-controls.js?v=pc-media-controls-20261118';
 import './web-glass-controls.js?v=pc-media-controls-20261118';
 import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=fixed-actions-20261117';
 import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actions-20261117';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=capsule-exit-20261119').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=artist-members-v1').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while

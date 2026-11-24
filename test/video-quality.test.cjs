@@ -381,11 +381,19 @@ test('pagination state and requests remain equivalent apart from restarting thum
     if(name==='loadChannelVideos')expected=expected
       .replace('s.loadingMessage = loadMore ?', 's.loadingMessage = s.mediaType === "all" ? "채널 미디어를 불러오는 중..." : s.mediaType === "image" ? "채널 사진을 불러오는 중..." : loadMore ?')
       .replace('    if (refresh) s.pages.delete(channel.id);\n    let page = s.pages.get(channel.id);','    const pageKey=channelVideoPageKey();\n    if (refresh) s.pages.delete(pageKey);\n    let page = s.pages.get(pageKey);')
+      .replace('  if (channelVideosActive() && !s.selected) renderLiveView();\n  try {','  if (s.mediaType === "artist") s.loadingMessage = "아티스트 게시물을 불러오는 중...";\n  if (channelVideosActive() && !s.selected) renderLiveView();\n  try {')
+      .replace('    const initialCount = page.posts.length;', '    if (s.mediaType === "artist") return await loadChannelArtistPage(channel, page, current);\n    const initialCount = page.posts.length;')
       .replace('p.type === "video"','(s.mediaType === "all" ? p.type === "video" || p.type === "image" : p.type === s.mediaType)')
       .replace('s.pages.set(channel.id, page)','s.pages.set(pageKey, page)')
       .replace('s.notice = page.isLast ?', 's.notice = s.mediaType === "all" ? (page.isLast ? "업로드된 미디어를 모두 확인했습니다." : "아직 추가 미디어가 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : s.mediaType === "image" ? (page.isLast ? "업로드된 사진을 모두 확인했습니다." : "아직 추가 사진이 없습니다. 다시 시도를 누르면 이어서 확인합니다.") : page.isLast ?');
 
-    assert.equal(normalize(fn(name)).replace('  bindVideoListThumbnails();\n','').replace('JSON.stringify(kind === \"channel\" && channelVideoState.mediaType !== \"video\" ? [kind,filter,channelVideoState.mediaType] : [kind, filter])','JSON.stringify([kind, filter])'),expected,name);
+    const actual=normalize(fn(name))
+      .replace('  bindVideoListThumbnails();\n','')
+      .replace('JSON.stringify(kind === \"channel\" && channelVideoState.mediaType !== \"video\" ? [kind,filter,channelVideoState.mediaType] : [kind, filter])','JSON.stringify([kind, filter])')
+      .replace('  const artistList = kind === \"channel\" && channelVideoState.mediaType === \"artist\";\n  const member = artistList ? channelVideoState.artistMember : null;\n','')
+      .replace('    (!artistList || channelVideoState.artistMember === member) &&\n','')
+      .replace('const count = () => artistList ? visibleChannelPosts().length : kind','const count = () => kind');
+    assert.equal(actual,expected,name);
   }
   const declaration=source=>source.match(/^const videoListAuto = .*;$/m)?.[0];
   assert.ok(declaration(html)&&declaration(baseline),'pagination state declarations exist');

@@ -3,7 +3,7 @@
 'use strict';
 async function selectChannelMediaType(type,{restoreHistory=false}={}) {
   const s=channelVideoState;
-  type=['all','video','image'].includes(type)?type:'all';
+  type=Object.hasOwn(CHANNEL_MEDIA_LABELS,type)?type:'all';
   if(s.mediaType===type)return;
   flushDownloadClick();downloadClickGesture=null;
   window.FrommChannelPhotos.close();
@@ -23,15 +23,16 @@ async function selectChannelMediaType(type,{restoreHistory=false}={}) {
 }
 function renderChannelPhotoCard(post) {
   const thumb=replayThumb(post),title=post.title||'채널 사진',count=channelPhotoCount(post);
-  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button><button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button></div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta channel-photo-meta"><span class="channel-photo-date">${esc(replayDateLabel(post.displayStartAt))}</span><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div></div></article>`;
+  const download=post._artistPostId!=null?'':`<button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button>`;
+  return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button>${download}</div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta channel-photo-meta"><span class="channel-photo-date">${esc(channelPostMetadata(post))}</span><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div></div></article>`;
 }
 function channelPhotoCount(post) {
   if(Array.isArray(post?.urls)&&post.urls.length)return post.urls.length;
-  if(post?._channelId!==channelVideoState.channelId||!['all','image'].includes(channelVideoState.mediaType))return null;
-  return channelVideoPage()?.photoCounts?.get(String(post.id))??null;
+  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType==='video')return null;
+  return channelVideoPage()?.photoCounts?.get(String(post.id))??post._artistPhotoCount??null;
 }
 function rememberChannelPhotoCount(post,count) {
-  if(post?._channelId!==channelVideoState.channelId||!['all','image'].includes(channelVideoState.mediaType))return;
+  if(post?._channelId!==channelVideoState.channelId||channelVideoState.mediaType==='video')return;
   const page=channelVideoPage();if(!page)return;
   (page.photoCounts??=new Map()).set(String(post.id),count);
   window.FrommChannelPhotos?.refreshCounts();
@@ -49,8 +50,8 @@ function prepareAlbumImage(url,priority='low') {
   image.src=url;return entry;
 }
 function channelPhotoContext() {
-  const sameSession=channelVideoSession(),channel=channelVideoState.channelId,generation=channelVideoState.playSeq;
-  return ()=>sameSession()&&generation===channelVideoState.playSeq&&channelVideosActive()&&['all','image'].includes(channelVideoState.mediaType)&&channelVideoState.channelId===channel;
+  const sameSession=channelVideoSession(),{channelId,playSeq,mediaType}=channelVideoState;
+  return ()=>mediaType!=='video'&&sameSession()&&playSeq===channelVideoState.playSeq&&channelVideosActive()&&mediaType===channelVideoState.mediaType&&channelVideoState.channelId===channelId;
 }
 async function fetchChannelPhotoDetail(post,{signal}={}) {
   const current=channelPhotoContext();
@@ -65,9 +66,18 @@ async function fetchChannelPhotoDetail(post,{signal}={}) {
       const rejectAbort=()=>reject(new Error('사진 응답이 늦어지거나 요청이 취소되었습니다.'));
       if(controller.signal.aborted)rejectAbort();else controller.signal.addEventListener('abort',rejectAbort,{once:true});
     });
-    response=await Promise.race([frommApiRequest(`/media/posts/${encodeURIComponent(post.id)}`,{base:FROMM_CHANNEL_API_BASE,channelId:post._channelId,signal:controller.signal}),cancelled]);
+    const request=post._artistPostId!=null
+      ? fetchChannelArtistMedia(post,controller.signal)
+      : frommApiRequest(`/media/posts/${encodeURIComponent(post.id)}`,{base:FROMM_CHANNEL_API_BASE,channelId:post._channelId,signal:controller.signal});
+    response=await Promise.race([request,cancelled]);
   }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   if(!current()||signal?.aborted)throw new Error('채널 또는 로그인 세션이 변경되었습니다.');
+  if(post._artistPostId!=null){
+    const urls=response.filter(item=>item.type==='image').map(item=>item.url);
+    if(!urls.length)throw new Error('이 아티스트 사진을 볼 수 없습니다.');
+    rememberChannelPhotoCount(post,urls.length);
+    return {...post,urls};
+  }
   const detail=response?.data?.post||response?.result?.post||response?.post;
   if(!detail||String(detail.id)!==String(post.id)||detail.type!=='image'||detail.isVisible===false)throw new Error('이 사진을 볼 수 없습니다. 구독과 공개 상태를 확인해주세요.');
   if(!Array.isArray(detail.urls)||!detail.urls.length||!detail.urls.every(url=>typeof url==='string'&&isHttpMediaUrl(url)))throw new Error('사진 주소를 확인하지 못했습니다.');
@@ -244,6 +254,8 @@ window.FrommChannelPhotos=(()=>{
     const index=o.index,url=o.detail.urls[index],version=++o.imageVersion,entry=cachedImage(o,index,'high');
     const current=()=>owner===o&&o.current()&&o.imageVersion===version;
     const stage=dialog.querySelector('.channel-photo-image'),status=dialog.querySelector('.channel-photo-status');
+    const footer=dialog.querySelector('footer');
+    footer.hidden=o.post._artistPostId!=null;
     status.textContent='';
     dialog.querySelector('.channel-photo-count').textContent=`${index+1} / ${o.detail.urls.length}`;
     dialog.querySelector('[data-photo-action="prev"]').disabled=index===0;
@@ -258,7 +270,7 @@ window.FrommChannelPhotos=(()=>{
       if(entry.original?.ready)display(entry.original);
       else if(entry.preview.ready)display(entry.preview);
       else if(entry.preview.failed&&(!entry.original||entry.original.failed)){
-        status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';dialog.querySelector('[data-photo-action="retry"]').hidden=false;
+        status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';footer.hidden=false;dialog.querySelector('[data-photo-action="retry"]').hidden=false;
       }
     };
     update();entry.preview.promise.then(update);entry.original?.promise.then(update);
@@ -272,6 +284,9 @@ window.FrommChannelPhotos=(()=>{
     const controller=new AbortController(),o={post,current,controller,index:0,imageVersion:0,images:new Map(),trigger:document.activeElement};
     o.observer=new MutationObserver(()=>{if(owner===o&&!current())close();});
     owner=o;ensure();o.observer.observe(document.querySelector('#timeline'),{childList:true,subtree:true});
+    const artist=post._artistPostId!=null,footer=dialog.querySelector('footer');
+    footer.hidden=artist;
+    for(const button of footer.querySelectorAll('[data-photo-action="save"],[data-photo-action="all"]'))button.hidden=artist;
     dialog.querySelector('.channel-photo-title').textContent=post.title||'채널 사진';
     dialog.querySelector('.channel-photo-status').textContent='앨범 불러오는 중…';
     for(const button of dialog.querySelectorAll('footer button,[data-photo-action="prev"],[data-photo-action="next"]'))button.disabled=true;
@@ -285,6 +300,7 @@ window.FrommChannelPhotos=(()=>{
     }catch{
       if(owner===o&&current()){
         dialog.querySelector('.channel-photo-status').textContent='앨범을 불러오지 못했습니다. 구독과 연결 상태를 확인해주세요.';
+        footer.hidden=false;
         const retry=dialog.querySelector('[data-photo-action="retry"]');retry.hidden=false;retry.disabled=false;
       }
     }finally{clearTimeout(timer);}
@@ -308,7 +324,7 @@ window.FrommChannelPhotos=(()=>{
     }
   }
   function bindCounts(){
-    if(!channelVideosActive()||!['all','image'].includes(channelVideoState.mediaType)||channelVideoState.selected){stopCounts();return;}
+    if(!channelVideosActive()||channelVideoState.mediaType==='video'||channelVideoState.selected){stopCounts();return;}
     if(countOwner&&!countOwner.valid())stopCounts();
     if(!countOwner){
       const c={valid:channelPhotoContext(),cards:new Map(),queue:new Set(),requested:new WeakSet(),controllers:new Set(),active:0,observer:null};

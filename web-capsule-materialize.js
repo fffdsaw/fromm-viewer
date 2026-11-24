@@ -4,7 +4,7 @@ import {createGlass,materialOptions} from './web-glass-material.js?v=fixed-actio
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=live-optics-20261116'));
 export function createCapsuleMaterializer(element,onHidden,onResume,options={}){
- if(options.axis==='x')return createHorizontalCapsule(element,onHidden,onResume);
+ if(options.axis==='x')return createHorizontalCapsule(element,onHidden,onResume,options.from);
  // Header Save is now a native transparent control, with no optical entrance.
  const passive=element.classList.contains('capsule-save-control');
  const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
@@ -96,7 +96,7 @@ export function createCapsuleMaterializer(element,onHidden,onResume,options={}){
 
 // The horizontal mask reveals the skin and controls together at native size. This branch
 // is intentionally independent of optical preferences and builds no SVG maps.
-function createHorizontalCapsule(element,onHidden,onResume){
+function createHorizontalCapsule(element,onHidden,onResume,from){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const skin=document.createElement('span');skin.className='capsule-optics capsule-horizontal-skin';skin.setAttribute('aria-hidden','true');skin.inert=true;element.prepend(skin);
  let animation=null,target=false,key='',phase='hidden',starts=0,reversals=0;
@@ -115,7 +115,7 @@ function createHorizontalCapsule(element,onHidden,onResume){
   if(animation){animation.playbackRate=next?1:-1;animation.play();reversals++;return;}
   starts++;
   const motion=element.animate([
-   {clipPath:'inset(-4px -4px -4px 97% round 23px)',opacity:0},
+   {clipPath:from==='left'?'inset(-4px 97% -4px -4px round 23px)':'inset(-4px -4px -4px 97% round 23px)',opacity:0},
    {clipPath:'inset(-4px -4px -4px -4px round 23px)',opacity:1}
   ],{duration:300,easing:'cubic-bezier(.35,0,.25,1)',fill:'both'});
   animation=motion;

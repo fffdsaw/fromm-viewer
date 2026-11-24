@@ -256,17 +256,17 @@
 .morph-menu-content.morph-menu-vertical button[aria-checked='true']{
  background:color-mix(in srgb,var(--theme-selected) 54%,transparent);
 }
-.morph-menu-skin.morph-menu-glass[data-glass-material='convex']{
+.morph-menu-skin.morph-menu-glass:is([data-glass-material='convex'],[data-glass-engine='ybouane']){
  background-color:rgb(255 255 255/.22)!important;
  border-color:#fff6;
  box-shadow:0 6px 18px #0003;
 }
-.morph-menu-skin.morph-menu-glass[data-glass-material='convex'][data-scheme='dark']{
+.morph-menu-skin.morph-menu-glass:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark']{
  background-color:rgb(22 24 28/.32)!important;
 }
 @media(forced-colors:none){
- .morph-menu-glass[data-glass-material='convex']+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#142c29;text-shadow:0 0 5px #fff}
- .morph-menu-glass[data-glass-material='convex'][data-scheme='dark']+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#fbfdfd;text-shadow:0 0 5px #000}
+ .morph-menu-glass:is([data-glass-material='convex'],[data-glass-engine='ybouane'])+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#142c29;text-shadow:0 0 5px #fff}
+ .morph-menu-glass:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark']+.morph-menu-content:not(.morph-menu-vertical) button[aria-checked='false']{color:#fbfdfd;text-shadow:0 0 5px #000}
 }
 @media(prefers-reduced-transparency:reduce){
  .morph-menu-skin.morph-menu-vertical{background-color:var(--theme-card)!important}
@@ -276,3 +276,8 @@
  .morph-menu-content.morph-menu-vertical button{color:ButtonText;text-shadow:none}
  .morph-menu-content.morph-menu-vertical button[aria-checked='true']{background:Highlight;color:HighlightText}
 }
+
+.webgl-glass-face{display:block;position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;border-radius:inherit}
+[data-glass-engine='ybouane']{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+:root[data-fromm-theme] .fixed-glass-surface[data-glass-engine='ybouane']{background-image:none!important}
+@media(prefers-reduced-transparency:reduce),(forced-colors:active){.webgl-glass-face{display:none}}

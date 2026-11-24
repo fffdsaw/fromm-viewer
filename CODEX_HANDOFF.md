@@ -1,3 +1,11 @@
+## Centered notices and live glass engine selection
+
+Production feature branch `codex/main-glass-and-save-sheets-20261124` starts at deployed merge `6bfe846` for PR #149. Save results and other Viewer notices use the existing sheet at the viewport centre. Album, Artist video, and post selection request a read/write folder at the picker gesture. Chrome owns the layout and display of its permission prompts. The selection Save button exposes progress in its accessible description or label, with no native title tooltip.
+
+Settings offers Meapri by default and pinned ybouane LiquidGlass 1.0.3. Engine selection and WebGL material values persist separately from Meapri settings. The preview uses the same grid for each engine. ybouane uses the device pixel ratio and updates on scroll and decoded video frames, with no surface count ceiling, frame throttle, or playback cutoff. Browser-blocked media and unavailable WebGL fall back to the existing material. Sidebar pointer glyph refraction and the older capsule animation use their dedicated Meapri paths. Signed-in production media and hardware performance were not measured.
+
+Local Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34. Units passed 336 with one existing Agora skip. The engine browser test passed on 1440px and 390px, including edge displacement, clear center, live video pixels, persisted engine choice, and centered sheet. The desktop case kept all 12 fixture surfaces through scroll events. Settings, themes, convex glass, warm scroll, rail glyphs, Channel albums, conversation controls, Glow ME integration, calendar, media bulk save, and video download browser suites passed. Receipts are `/tmp/fromm-main-*.log`. Resume with `gh pr view codex/main-glass-and-save-sheets-20261124 --json url,headRefOid,statusCheckRollup`. Merge and Pages deployment require explicit approval.
+
 ## Shared floating notification sheet
 
 Branch `codex/central-notification-sheets-20261124` starts at deployed merge `306c2aa` for PR #148. Date navigation, quote lookup and gallery/collection sort messages now use the original non-blocking save-result sheet at the bottom centre. A save result retains its failure list and retry action, and pending general notices are shown in order. Logout clears the queue. Inline loading, permission prompts and optional OS notifications keep their existing paths.

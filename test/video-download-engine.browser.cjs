@@ -45,6 +45,12 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     window.testShow=kind=>{state.filter='live';state.live.centerMode=kind;channelVideoState.selected=null;state.live.replaySelected=null;syncLiveToolbarControls();render();};testShow('channel');
    });
    const card=kind=>page.locator(kind==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]');
+   const summary=page.locator('#saveResultModal.open #saveResultSummary');
+   async function acknowledge(pattern){
+    await summary.waitFor();assert.match(await summary.textContent(),pattern);
+    await page.locator('#saveResultOkBtn').click();
+    await page.locator('#saveResultModal').waitFor({state:'hidden'});
+   }
    for(const kind of ['channel','replay']){
     const fileStart=await page.evaluate(()=>testFiles.length);
     await page.evaluate(k=>testShow(k),kind);gateSeen=false;gate=new Promise(r=>release=r);
@@ -65,6 +71,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     })),fileStart);
     assert.equal(files.length,kind==='channel'?2:1);
     for(const file of files){assert.equal(hash(Buffer.from(file.bytes)),expected);assert.ok(file.name.endsWith('.ts'));}
+    await acknowledge(/저장 완료/);
    }
    // The shared engine also saves a selected channel list to a real directory,
    // preserves each filename and skips existing files before requesting detail.
@@ -73,6 +80,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    const bulk=await page.evaluate(async()=>{const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('integration-bulk');const result=[];for await(const [name,h]of dir.entries())result.push({name,bytes:Array.from(new Uint8Array(await(await h.getFile()).arrayBuffer()))});return result});
    assert.equal(bulk.length,2);assert.equal(new Set(bulk.map(f=>f.name)).size,2);for(const f of bulk)assert.equal(hash(Buffer.from(f.bytes)),expected);
    const beforeSkip=requests.length;await page.evaluate(()=>{const scope=downloadSelectionScope();for(const p of scope.items)state.postSelected.add(downloadSelectionKey(scope.kind,p));syncDownloadSelection()});await page.locator('#saveSelectedBtn').click();await page.waitForFunction(()=>!state.postBulkSaving);assert.equal(requests.length,beforeSkip);
+   await acknowledge(/건너뜀/);
    await page.evaluate(()=>testShow('replay'));
    if(cfg.width>700){
     const button=page.locator('#saveSelectedBtn'),label=button.locator('.replay-bulk-save-label');
@@ -108,6 +116,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
      return files;
     });
     assert.equal(files.length,2);for(const bytes of files)assert.equal(hash(Buffer.from(bytes)),expected);
+    await acknowledge(/저장 2개/);
    }
    // Real disk-backed browser handoff when the native picker is unavailable.
    await page.evaluate(()=>window.showSaveFilePicker=undefined);const before=downloads.length;
@@ -115,13 +124,16 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    assert.equal(downloads.length,before+1);assert.equal(await card('replay').getAttribute('data-download-phase'),'handed-off');
    const filePath=await downloads.at(-1).path();assert.equal(hash(fs.readFileSync(filePath)),expected);
    assert.equal(await page.evaluate(async()=>{const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('fromm-video-downloads-v1');let n=0;for await(const [,h]of dir.entries())if((await h.getFile()).size>0)n++;return n>0}),true);
+   await acknowledge(/다운로드 요청 완료/);
    // No-OPFS fallback still hands off exactly the same bytes.
    await page.evaluate(()=>prepareReplayDownloadStage=async()=>null);await page.waitForTimeout(1450);
    await card('replay').click();await page.waitForFunction(()=>!postDownloadRunning);assert.equal(hash(fs.readFileSync(await downloads.at(-1).path())),expected);
+   await acknowledge(/다운로드 요청 완료/);
    // Permission failure is never retried or displayed as a completed file.
    fail=true;await page.evaluate(()=>{window.showSaveFilePicker=async options=>{const dir=await navigator.storage.getDirectory();return dir.getFileHandle('failure.ts',{create:true})};testShow('channel')});
    const count=requests.filter(p=>p==='/0.ts').length;await card('channel').click();await page.waitForFunction(()=>!postDownloadRunning);
    assert.equal(requests.filter(p=>p==='/0.ts').length,count+1);assert.equal(await card('channel').getAttribute('data-download-phase'),'error');fail=false;
+   await acknowledge(/다운로드 실패/);
    // Session switch cancels pending readers/writes; no stale completion UI.
    gateSeen=false;gate=new Promise(r=>release=r);await page.waitForTimeout(2250);await card('channel').click();
    for(let n=0;!gateSeen&&n<1000;n++)await page.waitForTimeout(10);assert.ok(gateSeen,'slow segment reached');

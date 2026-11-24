@@ -169,7 +169,7 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   try{
     if(supportsDirectorySave()){
       if(iconOnly)setDownloadButtonFeedback(button,"picker");
-      directory=await window.showDirectoryPicker();
+      directory=await window.showDirectoryPicker({mode:'readwrite'});
     }
     if(iconOnly)setDownloadButtonFeedback(button,"active");
     for(const post of posts){

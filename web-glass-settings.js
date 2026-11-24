@@ -1,3 +1,4 @@
+import {mountGlassEngineSettings} from './web-glass-engine-settings.js?v=glass-engines-20261124';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
@@ -134,10 +135,11 @@ export function mountGlassSettings(){
  const endDrag=()=>{if(!drag)return;drag=null;const r=dialog.getBoundingClientRect();position={x:r.left,y:r.top};persistPosition();};
  for(const name of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(name,endDrag);
  dialog.addEventListener('close',()=>{endDrag();emit();const restore=()=>{if(document.querySelector('.app')?.inert||dialog.open)return;if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});if(trigger.checkVisibility())trigger.focus({preventScroll:true});};restore();requestAnimationFrame(restore);});
- dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
+ dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input,select')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
  document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);
+ mountGlassEngineSettings(dialog,glassPreferences);
  selectCategory(category);renderControls();renderThemes();
 }
 function viewport(){mountGlassSettings();placeInstall();placePanel();emit();}

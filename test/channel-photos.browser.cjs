@@ -99,15 +99,25 @@ async function checkArtistMedia(page) {
   assert.deepEqual(fs.readFileSync(await savedVideo.path()),bytes);
   await page.locator('#channelBackToList').click();
   await page.getByRole('button',{name:'Artist 영상 재생'}).waitFor();
-  await page.evaluate(()=>{window.artistFolder=undefined;window.showDirectoryPicker=async()=>window.artistFolder??=(await navigator.storage.getDirectory()).getDirectoryHandle('artist-fixture',{create:true});});
+  await page.evaluate(()=>{
+    window.artistFolder=undefined;window.artistPickerModes=[];
+    window.showDirectoryPicker=async options=>{
+      artistPickerModes.push(options?.mode);
+      return window.artistFolder??=(await navigator.storage.getDirectory()).getDirectoryHandle('artist-fixture',{create:true});
+    };
+  });
   await videoCard.locator('.replay-title').click();
   await page.waitForFunction(()=>state.postSelected.size===2);
   await page.setViewportSize({width:701,height:900});
   await page.waitForFunction(()=>FrommGlowME.capsule.phase==='shown');
   const memberBox=await capsule.boundingBox(),saveBox=await page.locator('#mediaSelectionSlot').boundingBox();
   assert.ok(memberBox.x+memberBox.width<=saveBox.x,`member and save capsules fit at 701px: ${JSON.stringify({memberBox,saveBox})}`);
-  await page.locator('#saveSelectedBtn').click();
+  const saveButton=page.locator('#saveSelectedBtn');
+  assert.equal(await saveButton.getAttribute('title'),null);
+  await saveButton.click();
   await page.waitForFunction(()=>!state.postBulkSaving&&state.postSelected.size===0);
+  assert.deepEqual(await page.evaluate(()=>artistPickerModes),['readwrite']);
+  assert.equal(await saveButton.getAttribute('title'),null);
   await page.setViewportSize({width:1440,height:900});
   const files=await page.evaluate(async()=>{
     const directory=await window.artistFolder,result={};

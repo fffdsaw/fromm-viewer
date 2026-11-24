@@ -215,7 +215,11 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
   if(result.result){
     const sheet=page.locator('#saveResultModal.open');
     assert.equal(await sheet.isVisible(),true);
-    assert.ok(await sheet.evaluate(el=>el.getBoundingClientRect().top>innerHeight/2&&!el.querySelector('[aria-modal="true"]')));
+    assert.ok(await sheet.evaluate(async el=>{
+      await Promise.all(el.getAnimations().map(animation=>animation.finished));
+      const {left,top,width,height}=el.getBoundingClientRect();
+      return Math.abs(left+width/2-innerWidth/2)<2 && Math.abs(top+height/2-innerHeight/2)<2 && !el.querySelector('[aria-modal="true"]');
+    }),'the non-modal save result is centered in the viewport');
     assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-enter');
     assert.equal(result.alerts,0);
   }

@@ -2,6 +2,7 @@
  * material model/worker and browser fallback remain; policy reductions do not.
  * Keep these overrides covered when upgrading vendor/meapri (MIT). */
 import {applyRailLens} from './web-rail-lens.js?v=continuous-lens-20261117';
+import {createSwitchableGlass} from './web-glass-engine.js?v=glass-engines-20261124';
 const classes=new WeakMap();
 const regenerating=new WeakMap();
 export function materialOptions(settings){
@@ -15,6 +16,9 @@ export function materialOptions(settings){
  };
 }
 export function createGlass(Engine,element,options){
+ return createSwitchableGlass(element,options,next=>createMeapriGlass(Engine,element,next));
+}
+function createMeapriGlass(Engine,element,options){
  let FullGlass=classes.get(Engine);
  if(!FullGlass){
   FullGlass=class extends Engine {

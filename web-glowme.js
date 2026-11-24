@@ -230,7 +230,6 @@
     }
     if(label.textContent!==progress.label)label.textContent=progress.label;
     label.toggleAttribute('data-compact-label',progress.label.length>4);
-    button.title=progress.detail;
     button.setAttribute('aria-label',progress.detail);
     return true;
   }

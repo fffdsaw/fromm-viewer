@@ -10072,20 +10072,21 @@ async function jumpToDate(targetDate){
   try{
     btn.textContent = "준비 중...";
     const historyComplete=await ensureFullChatHistory();
+    if(generation !== state.scanGeneration) return;
     if(!historyComplete||!state.chatHistoryComplete){
-      alert("전체 기록을 준비하지 못해 날짜 이동을 완료할 수 없습니다. 현재 표시된 최근 기록은 불완전합니다.");
+      showViewerNotice("전체 기록을 준비하지 못해 날짜 이동을 완료할 수 없습니다. 현재 표시된 최근 기록은 불완전합니다.","날짜 이동");
       return;
     }
     if(state.onlyMyReplies) await ensureReplyIdentity();
     if(generation !== state.scanGeneration) return;
     if(state.onlyMyReplies && !currentReplyUserId()){
-      alert("본인 정보를 확인하지 못해 답장 날짜로 이동할 수 없습니다. 검색·날짜 창에서 다시 확인해 주세요.");return;
+      showViewerNotice("본인 정보를 확인하지 못해 답장 날짜로 이동할 수 없습니다. 검색·날짜 창에서 다시 확인해 주세요.","날짜 이동");return;
     }
 
     const firstMessage = firstMessageOnDate(targetDate);
 
     if(!firstMessage){
-      alert(state.onlyMyReplies ? `${targetDate} 날짜에 확인된 내 답장이 없습니다.` : `${targetDate} 날짜의 대화를 찾지 못했습니다.`);
+      showViewerNotice(state.onlyMyReplies ? `${targetDate} 날짜에 확인된 내 답장이 없습니다.` : `${targetDate} 날짜의 대화를 찾지 못했습니다.`,"날짜 이동");
       return;
     }
 
@@ -10103,7 +10104,7 @@ async function jumpToDate(targetDate){
     const result = renderChatStartingAtDate(targetDate);
 
     if(!result?.dateAnchor){
-      alert(`${targetDate} 날짜의 시작 위치를 표시하지 못했습니다.`);
+      showViewerNotice(`${targetDate} 날짜의 시작 위치를 표시하지 못했습니다.`,"날짜 이동");
       return;
     }
 
@@ -10163,7 +10164,7 @@ async function scrollToOriginalMessage(messageId,replyMessageId=""){
   const historyComplete=await ensureFullChatHistory();
   if(generation !== state.scanGeneration) return;
   if(!historyComplete || !state.chatHistoryComplete){
-    alert("전체 기록을 불러오지 못해 인용 원문을 확인할 수 없습니다. 현재 대화 기록은 불완전합니다. 기록 수집 완료 후 다시 시도해 주세요.");
+    showViewerNotice("전체 기록을 불러오지 못해 인용 원문을 확인할 수 없습니다. 현재 대화 기록은 불완전합니다. 기록 수집 완료 후 다시 시도해 주세요.","인용 원문");
     return;
   }
 
@@ -10171,7 +10172,7 @@ async function scrollToOriginalMessage(messageId,replyMessageId=""){
   const targetIndex=list.findIndex(m=>String(m.messageId||m.id||"")===String(messageId));
   if(targetIndex<0){
     updateChatSearchCount();renderCountsOnly();
-    alert("불러온 대화에 원문이 없습니다. 서버에서 제공하지 않는 원문은 표시할 수 없습니다.");
+    showViewerNotice("불러온 대화에 원문이 없습니다. 서버에서 제공하지 않는 원문은 표시할 수 없습니다.","인용 원문");
     return;
   }
 
@@ -10180,10 +10181,10 @@ async function scrollToOriginalMessage(messageId,replyMessageId=""){
   // Jump directly to the source window. Appending every older row first can
   // create tens of thousands of DOM nodes and freeze the browser.
   const result=renderChatWindow(list,targetIndex);
-  if(!result){alert("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.");return;}
+  if(!result){showViewerNotice("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.","인용 원문");return;}
   const selector=`.msg[data-message-id="${CSS.escape(String(messageId))}"]`;
   const target=document.querySelector(selector);
-  if(!target){alert("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.");return;}
+  if(!target){showViewerNotice("인용 원문 위치를 표시하지 못했습니다. 다시 시도해 주세요.","인용 원문");return;}
   const version=result.version;
   requestAnimationFrame(()=>{
     if(generation!==state.scanGeneration||version!==state.infiniteVersion||!target.isConnected)return;
@@ -10293,7 +10294,7 @@ async function toggleSort(){
     setSortButtonLabel(next,"불러오는 중…");
     try{await ensureAllHistory();}
     catch(error){
-      if(context===downloadSelectionContext() && generation===state.scanGeneration)window.alert(safeErrorDetail(error.message));
+      if(context===downloadSelectionContext() && generation===state.scanGeneration)showViewerNotice(safeErrorDetail(error.message),"정렬");
       return;
     }
     finally{$("#sortBtn").disabled=false;setSortButtonLabel(state.sortDirection);}
@@ -10335,7 +10336,7 @@ async function toggleCollectionSort(){
     if(!current())return;
     (state.collectionSort??={})[kind]=next;renderLiveView();
     if(resetScroll)window.scrollTo({top:0,behavior:"instant"});
-  }catch(error){if(current())window.alert(safeErrorDetail(error.message));}
+  }catch(error){if(current())showViewerNotice(safeErrorDetail(error.message),"정렬");}
   finally{button.disabled=false;const direction=state.filter==="live"?state.collectionSort?.[state.live.centerMode]||"desc":state.sortDirection;setSortButtonLabel(direction);}
 }
 
@@ -10819,21 +10820,56 @@ function openSaveResultSheet(){
   }
 }
 
+const viewerNoticeQueue=[];
+let activeViewerNotice=null;
+
+function clearSaveFailureDetails(){
+  $("#saveFailureSection").style.display="none";
+  $("#retryFailedBtn").style.display="none";
+  $("#saveFailureList").replaceChildren();
+}
+
+function prepareSaveResultSheet(){
+  // A completed save can arrive while another notice is being read. Restore
+  // that notice after the save result and keep retry controls tied to the save.
+  if(activeViewerNotice) viewerNoticeQueue.unshift(activeViewerNotice);
+  activeViewerNotice=null;
+  $("#saveResultTitle").textContent="저장 결과";
+}
+
+function showNextViewerNotice(){
+  const notice=viewerNoticeQueue.shift();
+  if(!notice)return false;
+  activeViewerNotice=notice;
+  clearSaveFailureDetails();
+  $("#saveResultTitle").textContent=notice.title;
+  $("#saveResultSummary").textContent=notice.message;
+  openSaveResultSheet();
+  return true;
+}
+
+function showViewerNotice(message,title="안내"){
+  const sheet=$("#saveResultModal");
+  if(!sheet)return;
+  viewerNoticeQueue.push({message,title});
+  if(!sheet.classList.contains("open"))showNextViewerNotice();
+}
+
 function showSaveNotice(message,{keepFailures=false}={}){
   const summary=$("#saveResultSummary");
   if(!summary)return;
-  if(!keepFailures){
-    $("#saveFailureSection").style.display="none";
-    $("#retryFailedBtn").style.display="none";
-    $("#saveFailureList").replaceChildren();
-  }
+  prepareSaveResultSheet();
+  if(!keepFailures)clearSaveFailureDetails();
   summary.textContent=message;
   openSaveResultSheet();
 }
 
 function closeSaveResultModal({immediate=false}={}){
   const sheet=$("#saveResultModal");
+  if(immediate)viewerNoticeQueue.length=0;
+  activeViewerNotice=null;
   if(!sheet||sheet.hidden)return;
+  if(!immediate&&showNextViewerNotice())return;
   clearTimeout(closeSaveResultModal.timer);
   sheet.classList.remove("open");sheet.inert=true;sheet.setAttribute("aria-hidden","true");
   const hide=()=>{
@@ -11139,6 +11175,7 @@ function showSaveResult(ok, failures, total, skippedExisting=0){
   const retry = $("#retryFailedBtn");
 
   if(!modal || !summary || !section || !list || !retry) return;
+  prepareSaveResultSheet();
 
   const pieces = [];
 

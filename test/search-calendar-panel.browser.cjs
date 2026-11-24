@@ -56,6 +56,24 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#chatSearchInput').fill('합성 대화');await page.waitForFunction(()=>state.chatQuery==='합성 대화');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
   if(viewport.width===1440&&!viewport.installed){await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});const violations=await page.evaluate(async()=>{const r=await axe.run('#chatToolsPanel',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});return r.violations.map(v=>v.id);});assert.deepEqual(violations,[]);}
+  if([1440,390].includes(viewport.width)&&!viewport.installed){
+   const alerts=[];page.on('dialog',async dialog=>{alerts.push(dialog.message());await dialog.accept();});
+   await page.evaluate(()=>jumpToDate('2026-10-08'));
+   const sheet=page.locator('#saveResultModal');await sheet.waitFor({state:'visible'});
+   assert.equal(await sheet.locator('#saveResultTitle').textContent(),'날짜 이동');
+   assert.match(await sheet.locator('#saveResultSummary').textContent(),/대화를 찾지 못했습니다/);
+   await page.evaluate(async()=>{
+    await scrollToOriginalMessage('missing-fixture');
+    showSaveNotice('저장 완료 · 2개');
+   });
+   assert.equal(await sheet.locator('#saveResultTitle').textContent(),'저장 결과');
+   await sheet.getByRole('button',{name:'확인',exact:true}).click();
+   assert.equal(await sheet.locator('#saveResultTitle').textContent(),'날짜 이동');
+   await sheet.getByRole('button',{name:'닫기',exact:true}).click();
+   assert.equal(await sheet.locator('#saveResultTitle').textContent(),'인용 원문');
+   await page.keyboard.press('Escape');await sheet.waitFor({state:'hidden'});
+   assert.deepEqual(alerts,[]);assert.deepEqual(errors,[]);
+  }
   await context.close();console.log(`${viewport.width}${viewport.installed?'-PWA':''}: inline calendar, rounded native checkbox semantics, select/Move, panel layout PASS`);
  }
 }finally{await browser.close();await server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -41,7 +41,7 @@ async function authTools(p,name,size){
     await mode(p,name);const g=await geometry();
     for(const sel of Object.keys(g))for(const key of ['top','height'])assert.ok(Math.abs(g[sel][key]-baseline[sel][key])<1,`${width} ${name} stable ${sel} ${key}`);
     const h=await p.locator('.viewer-header').boundingBox();assert.ok(h.x>=g['#sidebar'].right+10,'header starts beside rail');
-    const bar=await p.locator('.topbar').boundingBox();assert.ok(name==='live'?bar.height>=56&&bar.height<=64:bar.height>=70&&bar.height<=74);
+    const bar=await p.locator('.topbar').boundingBox();assert.ok(bar.height>=70&&bar.height<=74,'all PC tabs use the media header height');
     if(!['live','replay','channel'].includes(name)){
      const artist=await p.locator('#artistTitle').boundingBox(),stats=await p.locator('#artistMediaStats').boundingBox(),auth=await p.locator('.top-auth-controls').boundingBox();
      assert.ok(stats.width>0 && stats.x>=artist.x+artist.width-1,`${width} ${name}: metadata follows artist name`);

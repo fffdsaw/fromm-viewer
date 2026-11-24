@@ -1131,7 +1131,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css?v=media-save-20261124">
-<link rel="preload" as="script" href="web-glowme.js?v=media-save-20261124">
+<link rel="preload" as="script" href="web-glowme.js?v=media-save-ui-20261125">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
@@ -1141,7 +1141,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
 <link rel="stylesheet" href="settings-panel.css?v=meapri-folder-20261124">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=media-save-20261124">
+<link rel="stylesheet" href="glowme-controls.css?v=media-save-ui-20261125">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -8396,6 +8396,7 @@ function downloadSelectionSet(kind){
 }
 
 function confirmDownloadSelection(kind,item){
+  window.FrommGlowME?.confirmBulkSaveItem?.(kind,item);
   if(downloadSelectionSet(kind).delete(downloadSelectionKey(kind,item)))syncDownloadSelection();
 }
 
@@ -8658,7 +8659,7 @@ async function saveSelectedPosts(){
         if(scope.kind==="channel" && post.type==="image"){
           const result=await saveChannelPhotoContents(post,{directory,current,onProgress:(done,total)=>setBulkSaveButtonProgress(button,(i+(done-1)/total)/items.length)});
           if(!current())break;
-          if(result.complete){ok++;state.postSelected.delete(downloadSelectionKey(scope.kind,post));}else failures.push(post.title||"사진");
+          if(result.complete){ok++;window.FrommGlowME?.confirmBulkSaveItem?.(scope.kind,post);state.postSelected.delete(downloadSelectionKey(scope.kind,post));}else failures.push(post.title||"사진");
           skipped+=result.skipped;syncDownloadSelection();continue;
         }
         if(scope.kind==="channel" && post._artistPostId!=null){
@@ -8667,6 +8668,7 @@ async function saveSelectedPosts(){
           });
           if(!current())break;
           if(exists)skipped++;else ok++;
+          window.FrommGlowME?.confirmBulkSaveItem?.(scope.kind,post);
           state.postSelected.delete(downloadSelectionKey(scope.kind,post));
           syncDownloadSelection();
           if(!exists&&!directory&&i+1<items.length)await sleep(450);
@@ -8677,6 +8679,7 @@ async function saveSelectedPosts(){
         if(!current()) break;
         if(exists){
           skipped++;
+          window.FrommGlowME?.confirmBulkSaveItem?.(scope.kind,post);
           state.postSelected.delete(downloadSelectionKey(scope.kind,post));
           syncDownloadSelection();
           continue;
@@ -8694,6 +8697,7 @@ async function saveSelectedPosts(){
           if(total>0)setBulkSaveButtonProgress(button,(i+done/total)/items.length);
         },{current});
         ok++;
+        window.FrommGlowME?.confirmBulkSaveItem?.(scope.kind,post);
         state.postSelected.delete(downloadSelectionKey(scope.kind,post));
         syncDownloadSelection();
         if(!directory && i+1<items.length) await sleep(450);
@@ -10820,6 +10824,7 @@ function setMediaDownloadVisual(m,phase,ratio=null){
 
 function setBulkSaveButtonProgress(btn,progress=null){
   if(!btn) return;
+  if(btn.id==="saveSelectedBtn")window.FrommGlowME?.setBulkSaveProgress?.(progress);
   if(Number.isFinite(progress)){
     const pct=Math.max(0,Math.min(100,progress*100));
     btn.classList.add("bulk-saving");
@@ -11904,7 +11909,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=media-save-20261124" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=media-save-ui-20261125" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>

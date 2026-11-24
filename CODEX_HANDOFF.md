@@ -1,3 +1,23 @@
+## PC selection save transitions and shared header — 2026-11-25 (Asia/Seoul)
+
+Target confirmed by the user: production `fffdsaw/fromm-viewer`, new branch `codex/media-save-ui-header-20261125` from `c29f6aa`. The user explicitly authorized review followed by merge and deployment. A follow-up excludes mobile improvements; existing touch CSS and behavior are retained. No preview repository was modified.
+
+The PC selection capsule now uses one existing surface, a fixed save hit target/icon, animated inline counts and a 2.5px progress line. Optional presentation callbacks observe verified item completion or existing-file skips; they do not change writes, filenames, conversions, folder permissions or result sheets. Browser handoffs retain their distinct requested status; failures do not show successful completion. Completion timing is display-only. Shared auth CSS matches the unchanged media header at 1440/900/760/701px, including a shared 72px height in LIVE; Artist lists through 950px reserve a selection row without overlapping the member filter; resize checks cover 701/851/900/901/950/951/1100px. See `docs/design-review/media-save-ui/README.md` and its synthetic screenshots/GIF for details and reproduction.
+
+The requested spelling `Audio` differs from the production rule: `mediaFolder()` has returned lowercase `audio` since commit `14a8b53` (2026-10-08, v61 upload). Blame and history do not show a recent change to this rule. Its exact spelling is preserved. Photos/videos still write at the chosen root and sounds under `audio/`. Actual user folders, authenticated account media and member-specific destination settings were not verified.
+
+Local Node 24.22.3 / Playwright 1.62.1 / Chromium 151.0.7922.34: 337 unit tests passed with one existing Agora skip. Browser verification covers actual synthetic OPFS writes gated before close, position/size stability, inline numbers and bar, 9/16/100/999 digits, repeated saves, skips, partial failure, permission cancellation/denial, result sheet and reduced motion; existing bulk-save, remembered-folder, selection/capsule, collection-header, direct-selection, Channel photos/Artist, themes and PC layout suites passed. Existing touch cases remain regressions only. Initial local runs exposed changed display expectations, a narrow Artist overlap and a test close-gate race; those were corrected and rerun. No user file was overwritten or removed. Receipts are in `/workspace/scratch/fromm-review/`. Native OS picker UI, physical devices and Safari were not exercised.
+
+PR #154: <https://github.com/fffdsaw/fromm-viewer/pull/154>. The first hosted Video download run on `21f5deb` failed because its batch assertion inspected the previous, now-hidden check node. The test now checks the visible morph path and real inline track while retaining byte hashes. The extended header comparison also covers LIVE and all ordinary media/vote tabs. The later hosted Media UI check on `d58ae55` found wider runner-font metrics at a three-digit selection count. The fixed outer capsule now assigns its 12px spare space to the count slot; the strict fit assertion is retained. The older clear-control browser assertion expected a pointer-light background on the select-all pseudo-element now used for the checkbox. It verifies that checkbox and keeps the unchanged pointer-light assertions on Sort instead. The final visual check also measures the fill at the start of the completion transition: the display result is synchronized before the saver clears its progress state, waiting for the actual CSS width transition to finish instead of guessing its first painted frame with a timer. Idle also resets the invisible progress fill without interpolation, so a subsequent save cannot briefly show the preceding batch's 100% fill. Hosted verification and deployment receipts are linked from the PR. Read current status instead of assuming local results establish hosted success:
+
+```sh
+gh pr view codex/media-save-ui-header-20261125 --repo fffdsaw/fromm-viewer --json url,headRefOid,statusCheckRollup,mergedAt
+git fetch origin
+git switch codex/media-save-ui-header-20261125
+node --test test/*.test.cjs native-live/test/*.test.cjs
+node test/selection-save-ui.browser.cjs
+```
+
 ## Original-first desktop photo detail in PR #153
 
 The desktop media lightbox opens on click and displays the original after decoding, with the original aspect ratio on the first visible frame. Its cached thumbnail is used only if loading the original fails. The touch preview, Channel album navigation and video poster paths retain their existing behavior. The supplied screen recording was inspected locally and was excluded from the repository.

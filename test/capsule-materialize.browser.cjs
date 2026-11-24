@@ -31,7 +31,7 @@ async function rects(p){return p.evaluate(()=>['.media-card','.card-download','#
  const before=await rects(p);await select(p);await settled(p,'shown');await plain(p,'#saveSelectedBtn');
  assert.deepEqual(await p.evaluate(()=>({builds:FrommGlowME.capsule.builds,live:FrommGlowME.capsule.live,mode:FrommGlowME.capsule.mode})),{builds:0,live:0,mode:'css-horizontal'},'selection never starts a save engine');
  assert.equal(await p.locator('.capsule-horizontal-skin').isVisible(),true);assert.deepEqual(await rects(p),before);await snap(p,'01-selected');
- await select(p,1);assert.equal(await p.locator('#selectedCount').textContent(),'선택 2개');assert.equal(await p.evaluate(()=>FrommGlowME.capsule.builds),0);
+ await select(p,1);assert.equal(await p.locator('#selectedCount').textContent(),'2개 선택');assert.equal(await p.evaluate(()=>FrommGlowME.capsule.builds),0);
  await p.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));delete document.hidden;});await settled(p,'shown');assert.equal(await p.evaluate(()=>FrommGlowME.capsule.builds),0);
  await p.locator('#clearSelectionBtn').click();await settled(p,'hidden');assert.equal(await p.evaluate(()=>state.selected.size),0);assert.equal(await p.locator('#saveSelectedBtn').isDisabled(),true);
  await select(p);await p.evaluate(()=>{clearDownloadSelection();chooseDownloadItem('media',state.infiniteList[0]);});await settled(p,'shown');assert.equal(await p.evaluate(()=>FrommGlowME.capsule.builds),0);assert.deepEqual(await rects(p),before,'rapid reselect never moves hit boxes');

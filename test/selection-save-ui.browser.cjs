@@ -82,6 +82,7 @@ async function header(page){return page.evaluate(()=>{
    await page.evaluate(total=>{state.selected=new Set(Array.from({length:total},(_,i)=>'digits-'+i));updateSelectedCount();FrommGlowME.setBulkSaveProgress(0);for(let i=0;i<total;i++)FrommGlowME.confirmBulkSaveItem('media',{messageId:'digits-'+i});},total);
    await page.waitForTimeout(270);
    const fits=await page.evaluate(()=>{const r=s=>document.querySelector(s).getBoundingClientRect(),l=r('.selection-save-label'),n=r('.selection-save-number'),b=r('#saveSelectedBtn');return l.right+2<n.x&&n.right<b.right&&document.documentElement.scrollWidth<=innerWidth;});
+   assert.ok(await page.locator('#selectedCount').evaluate(e=>{const r=e.getBoundingClientRect(),n=e.querySelector('strong').getBoundingClientRect(),t=e.querySelector('span').getBoundingClientRect();return n.left>=r.left-.5&&t.right<=r.right+.5;}),`${width}/${theme}/${total} selected count fits its slot`);
    assert.ok(fits,`${width}/${theme}/${total} digits fit`);await page.evaluate(()=>FrommGlowME.setBulkSaveProgress(null));
   }
   // Header comparison uses the identical viewport, browser zoom, token text.

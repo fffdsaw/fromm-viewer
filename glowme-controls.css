@@ -349,6 +349,8 @@
    on narrow desktop screens. */
 @media(max-width:1100px){
  .glowme.glowme-phase3 #mediaActionDock .batch-selection-tools #selectedCount{flex-basis:62px;width:62px;max-width:62px}
+ #mediaActionDock .batch-selection-tools #selectedCount strong{font-size:14px}
+ #mediaActionDock .batch-selection-tools #selectedCount span{font-size:11px}
  .glowme.glowme-phase3 #mediaActionDock .batch-selection-tools #selectAllBtn{flex-basis:76px;width:76px}
  .glowme.glowme-phase3.collection-list #mediaActionDock .media-selection-slot{width:368px!important}
  .collection-action-row:has(.media-selection-slot:not([hidden])) :is(.pc-list-info,.channel-media-tabs){visibility:hidden}

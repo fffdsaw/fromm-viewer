@@ -1,3 +1,13 @@
+## Centered notices and live glass engine selection
+
+PR #150 uses branch `codex/main-glass-and-save-sheets-20261124` from deployed merge `6bfe846` for PR #149. Desktop save results and other Viewer notices use the existing sheet at the viewport centre. Desktop album, Artist video, and post selection request a read/write folder at the picker gesture. Chrome owns the layout and display of its permission prompts. The desktop selection Save button exposes progress in its accessible description or label. The touch layout retains its original sheet position, picker, tooltip, and Meapri settings.
+
+Desktop settings offers Meapri by default and pinned ybouane LiquidGlass 1.0.3. Engine selection and WebGL material values persist separately from Meapri settings. The preview uses the same grid for each engine. ybouane uses the device pixel ratio and updates on scroll and decoded video frames, with no surface count ceiling, frame throttle, or playback cutoff. Browser-blocked media and unavailable WebGL fall back to the existing material. Sidebar pointer glyph refraction and the older capsule animation use their dedicated Meapri paths. Signed-in production media and hardware performance were not measured.
+
+Local Node 22.23.5, Playwright 1.62.1, Chromium 151.0.7922.34. Units passed 336 with one existing Agora skip. The browser engine test covers edge displacement, clear centre, live video pixels, persisted engine choice, centred desktop sheet, 12 surfaces through scrolling, and preservation of the 390px touch layout even with a stored ybouane preference. The user approved production merge and deployment after checks. Receipts are `/tmp/fromm-main-*.log`. Resume with `gh pr view 150 --json url,headRefOid,statusCheckRollup`.
+
+The hosted media save test reported a 5px horizontal offset and zero vertical offset using viewport dimensions that include the root's 10px reserved scrollbar gutter on the runner. The geometry tests now measure the CSS fixed-position viewport with a full-viewport reference box. A local browser fixture also verified the Meapri fallback for an origin-isolated image, return to ybouane with a readable image, and the settings fallback with WebGL unavailable.
+
 ## Shared floating notification sheet
 
 Branch `codex/central-notification-sheets-20261124` starts at deployed merge `306c2aa` for PR #148. Date navigation, quote lookup and gallery/collection sort messages now use the original non-blocking save-result sheet at the bottom centre. A save result retains its failure list and retry action, and pending general notices are shown in order. Logout clears the queue. Inline loading, permission prompts and optional OS notifications keep their existing paths.

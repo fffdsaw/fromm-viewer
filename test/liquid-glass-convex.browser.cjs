@@ -60,7 +60,7 @@ const removeGrid=page=>page.evaluate(()=>document.querySelector('#optical-grid')
    const clip={x:100,y:100,width:260,height:82};
    await page.evaluate(async()=>{
     const {LiquidGlass}=await import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124');
-    const {createGlass,materialOptions}=await import('./web-glass-material.js?v=convex-edge-20261124');
+    const {createGlass,materialOptions}=await import('./web-glass-material.js?v=glass-engines-20261124');
     const pane=document.createElement('div');pane.id='optical-pane';
     Object.assign(pane.style,{position:'fixed',left:'100px',top:'100px',width:'260px',height:'82px',borderRadius:'30px',zIndex:1701});
     document.body.append(pane);

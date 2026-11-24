@@ -3,8 +3,8 @@
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
 let LiquidGlass,pending=null;
-import {glassPreferences} from './web-glass-settings.js?v=convex-edge-20261124';
-import {createGlass,materialOptions} from './web-glass-material.js?v=convex-edge-20261124';
+import {glassPreferences} from './web-glass-settings.js?v=glass-engines-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=glass-engines-20261124';
 let owner=null,serial=0,builds=0,disposed=0;
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 function release(o){if(o.glass){o.glass.destroy();o.glass=null;o.menu.glass=null;disposed++;}}

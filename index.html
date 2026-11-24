@@ -315,19 +315,28 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-sheet.open :is(button,.save-failure-section){pointer-events:auto}
 @keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px));opacity:0}to{transform:none;opacity:1}}
 @keyframes save-sheet-exit{from{transform:none;opacity:1}to{transform:translateY(calc(100% + 24px));opacity:0}}
+@keyframes save-sheet-center-enter{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes save-sheet-center-exit{from{transform:none;opacity:1}to{transform:translateY(12px);opacity:0}}
 .save-result-card{
  max-height:min(490px,calc(100dvh - var(--save-sheet-bottom,20px) - 16px));display:flex;flex-direction:column;overflow:hidden;
  border:1px solid var(--theme-line,var(--line));border-radius:22px;
  background-color:color-mix(in srgb,var(--theme-card,var(--card)) 91%,transparent)!important;
  backdrop-filter:blur(16px);box-shadow:0 12px 32px #0004
 }
-.save-result-card[data-glass-material='convex']{
+.save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']){
  background-color:rgb(255 255 255/.52)!important;border-color:#fff6;box-shadow:0 8px 24px #0003;
 }
-.save-result-card[data-glass-material='convex'][data-scheme='dark']{background-color:rgb(17 19 23/.60)!important}
-.save-result-card[data-glass-material='convex'] .save-result-summary{color:var(--theme-text,var(--text))}
-.save-result-card[data-glass-material='convex'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
-.save-result-card[data-glass-material='convex'][data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
+.save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark']{background-color:rgb(17 19 23/.60)!important}
+.save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) .save-result-summary{color:var(--theme-text,var(--text))}
+.save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane']) :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #fffc}
+.save-result-card:is([data-glass-material='convex'],[data-glass-engine='ybouane'])[data-scheme='dark'] :is(.save-result-title,.save-result-summary){text-shadow:0 0 4px #000c}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .save-result-sheet{inset:50% auto auto 50%;translate:-50% -50%;margin:0}
+ .save-result-sheet.open{animation-name:save-sheet-center-enter}
+ .save-result-sheet.closing{animation-name:save-sheet-center-exit}
+ .save-result-card{max-height:min(490px,calc(100dvh - 32px))}
+ .save-result-card[data-glass-engine='ybouane']{border-color:transparent}
+}
 .save-result-card::before{content:"";align-self:center;width:30px;height:3px;margin-top:8px;border-radius:3px;background:var(--theme-line,var(--line));flex:none}
 .save-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:9px 16px 4px}
 .save-result-title{font-size:16px;font-weight:750}
@@ -1131,16 +1140,16 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.modern-video-controls,.modern-video-controls.mvc-hidden{transition:none}}
 </style>
 <link rel="stylesheet" href="glowme.css?v=save-sheet-20261119">
-<link rel="preload" as="script" href="web-glowme.js?v=artist-members-v1">
+<link rel="preload" as="script" href="web-glowme.js?v=glass-engines-20261124">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <link rel="stylesheet" href="conversation.css?v=clear-controls-20261117">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
-<link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
+<link rel="stylesheet" href="settings-panel.css?v=glass-engines-20261124">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=convex-edge-20261124">
+<link rel="stylesheet" href="glowme-controls.css?v=glass-engines-20261124">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -2284,6 +2293,20 @@ window.addEventListener("pagehide", stopChannelVideoPlayback);
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
+const viewerDesktop=matchMedia("(min-width:701px) and (hover:hover) and (pointer:fine)");
+const selectionSaveButton=$("#saveSelectedBtn");
+const selectionSaveHint=selectionSaveButton.title;
+function syncSelectionSaveHint(){
+  if(viewerDesktop.matches){
+    selectionSaveButton.removeAttribute("title");
+    selectionSaveButton.setAttribute("aria-description",selectionSaveHint);
+  }else{
+    selectionSaveButton.removeAttribute("aria-description");
+    selectionSaveButton.title=selectionSaveHint;
+  }
+}
+viewerDesktop.addEventListener("change",syncSelectionSaveHint);
+syncSelectionSaveHint();
 const state = {
   rooms: [],
   room: null,
@@ -5514,7 +5537,7 @@ async function createReplayDownloadSink(post){
 
 async function createArtistVideoDownloadSink(){
   if(!supportsDirectorySave())return {};
-  try{return {directory:await window.showDirectoryPicker()};}
+  try{return {directory:await window.showDirectoryPicker(viewerDesktop.matches?{mode:"readwrite"}:undefined)};}
   catch(error){if(error?.name==="AbortError")return null;throw error;}
 }
 
@@ -7276,7 +7299,8 @@ function updateHistoryStatus(prefix=""){
   if(state.historyError) $("#scanState").textContent=`${loaded}개 · 기록 준비 일시 중지 · 새로고침으로 재시도`;
   const save=$("#saveSelectedBtn");
   if(save && !state.mediaBulkSaving && !state.postBulkSaving){
-    save.title=state.hasMoreMessages ? `저장 · 기록 ${loaded}개 준비됨 (나머지는 백그라운드 준비 중)` : "저장 · 파일명 준비 완료 · 기존 파일은 건너뜀";
+    if(viewerDesktop.matches)save.setAttribute("aria-description",state.hasMoreMessages ? `기록 ${loaded}개 준비됨. 나머지 기록을 준비 중입니다.` : "파일명을 준비했습니다. 기존 파일은 건너뜁니다.");
+    else save.title=state.hasMoreMessages ? `저장 · 기록 ${loaded}개 준비됨 (나머지는 백그라운드 준비 중)` : "저장 · 파일명 준비 완료 · 기존 파일은 건너뜀";
   }
   syncLoadingUI();
 }
@@ -8587,7 +8611,7 @@ async function saveSelectedPosts(){
   const failures=[];
   try{
     if(supportsDirectorySave()){
-      try{directory=await window.showDirectoryPicker();}
+      try{directory=await window.showDirectoryPicker(viewerDesktop.matches?{mode:"readwrite"}:undefined);}
       catch(e){if(e?.name==="AbortError") return; throw e;}
     }
     for(let i=0;i<items.length;i++){
@@ -10681,7 +10705,7 @@ function setDownloadButtonFeedback(button,phase="idle",ratio=null,{retain=false}
   button.dataset.downloadPhase=phase;
   button.toggleAttribute("data-download-unknown",active && percent===null);
   button.style.setProperty("--download-remaining",String(100-(percent ?? 0)));
-  button.title=status;
+  if(button.id!=="saveSelectedBtn"||!viewerDesktop.matches)button.title=status;
   const label=feedback.attributes[1][1] || button.textContent.trim() || "다운로드";
   button.setAttribute("aria-label",`${label} · ${status}`);
   if(active || phase==="picker" || phase==="queued") button.setAttribute("aria-busy","true");
@@ -10789,17 +10813,18 @@ async function downloadSingleMedia(m,button=null){
 
 function positionSaveResultSheet(){
   const sheet=$("#saveResultModal");
-  if(!sheet?.classList.contains("open"))return;
+  if(viewerDesktop.matches||!sheet?.classList.contains("open"))return;
   const albumFooter=sheet.closest(".channel-photo-dialog")?.querySelector("footer");
   const dock=state.filter==="all"?$("#conversationDock"):null;
   const controls=albumFooter||dock;
   const top=controls?.getBoundingClientRect().top;
-  // The conversation's latest-message shortcut can float above its composer.
+  // Keep the touch viewer's original clearance above its bottom controls.
   const clearance=controls===dock?48:12;
   const bottom=controls?.checkVisibility()&&Number.isFinite(top)?Math.max(20,Math.min(innerHeight*.55,innerHeight-top+clearance)):20;
   sheet.style.setProperty("--save-sheet-bottom",`${bottom}px`);
 }
 window.addEventListener("resize",positionSaveResultSheet);
+viewerDesktop.addEventListener("change",positionSaveResultSheet);
 
 function openSaveResultSheet(){
   const sheet=$("#saveResultModal");
@@ -11811,7 +11836,7 @@ autoConnectSaved();
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
 <script src="web-view-state.js?v=live-optics-20261116"></script>
-<script src="web-glowme.js?v=artist-members-v1" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
+<script src="web-glowme.js?v=glass-engines-20261124" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
 <script src="web-live-pip.js?v=3"></script>
@@ -11820,7 +11845,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=pc-media-controls-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=artist-downloads-v1"></script>
+<script src="web-channel-photos.js?v=glass-engines-20261124"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11833,6 +11858,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=convex-edge-20261124"></script>
+<script type="module" src="web-glass.js?v=glass-engines-20261124"></script>
 </body>
 </html>

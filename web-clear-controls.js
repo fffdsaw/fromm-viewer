@@ -1,6 +1,6 @@
 /* Native actions: fixed clear material + a cheap pointer light, never lensing. */
-import {glassPreferences} from './web-glass-settings.js?v=convex-edge-20261124';
-import {createGlass,materialOptions} from './web-glass-material.js?v=convex-edge-20261124';
+import {glassPreferences} from './web-glass-settings.js?v=glass-engines-20261124';
+import {createGlass,materialOptions} from './web-glass-material.js?v=glass-engines-20261124';
 export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
 // Ordinary collection/media controls are immediate CSS droplets. Existing
 // unrelated fixed actions retain their own material owner.

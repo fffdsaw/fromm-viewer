@@ -24,6 +24,7 @@ function setup(kind = 'channel') {
     return {async getFile() {return {size: files.has(name) ? 4 : 0};}, async createWritable() {return {async abort() {aborted.push(name);}};}};
   }};
   const c = vm.createContext({setPostDownloadFeedback(){},state, channelVideoState, postDownloadRunning:false, Set, String, Math,
+    viewerDesktop: {matches:true},
     window: {showDirectoryPicker: async () => directory, alert: message => alerts.push(message)},
     $: () => button, supportsDirectorySave: () => true, sleep: async () => {},
     channelVideoSession: () => () => session,

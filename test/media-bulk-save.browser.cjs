@@ -215,8 +215,20 @@ async function runCase(browser, origin, name, options = {}, record = () => {}) {
   if(result.result){
     const sheet=page.locator('#saveResultModal.open');
     assert.equal(await sheet.isVisible(),true);
-    assert.ok(await sheet.evaluate(el=>el.getBoundingClientRect().top>innerHeight/2&&!el.querySelector('[aria-modal="true"]')));
-    assert.equal(await sheet.evaluate(el=>getComputedStyle(el).animationName),'save-sheet-enter');
+    const position=await sheet.evaluate(async el=>{
+      await new Promise(requestAnimationFrame);
+      await Promise.all(el.getAnimations().map(animation=>animation.finished));
+      const sheet=el.getBoundingClientRect();
+      // A fixed reference box excludes the root's reserved scrollbar gutter.
+      const reference=document.createElement('div');
+      reference.style.cssText='position:fixed;inset:0;visibility:hidden;pointer-events:none';
+      document.body.append(reference);
+      const viewport=reference.getBoundingClientRect();reference.remove();
+      return {horizontalOffset:sheet.left+sheet.width/2-viewport.left-viewport.width/2,verticalOffset:sheet.top+sheet.height/2-viewport.top-viewport.height/2,modal:!!el.querySelector('[aria-modal="true"]'),animation:getComputedStyle(el).animationName,desktop:viewerDesktop.matches};
+    });
+    assert.equal(position.modal,false);
+    assert.ok(Math.abs(position.horizontalOffset)<2 && Math.abs(position.verticalOffset)<2,`expected a centered save result: ${JSON.stringify(position)}`);
+    assert.equal(position.animation,'save-sheet-center-enter');
     assert.equal(result.alerts,0);
   }
   if (options.firstWriteFault) {

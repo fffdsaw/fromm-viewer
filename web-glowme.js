@@ -82,7 +82,7 @@
   saveVisual.innerHTML=`<svg class="selection-save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="save-icon-stem" d="M12 3v14"/><path class="save-icon-morph" d="M6 11 12 17 18 11"/><path class="save-icon-tray" d="M4 21h16"/><path class="save-icon-check" d="M6 12 10 16 18 7"/></svg><span class="selection-save-body"><span class="selection-save-label">저장</span><span class="selection-save-number"></span><span class="selection-save-complete"></span><span class="selection-save-track"><span></span></span></span>`;
   saveControl.append(saveVisual);saveControl.dataset.saveState='idle';
   const saveNumber=saveVisual.querySelector('.selection-save-number'),saveComplete=saveVisual.querySelector('.selection-save-complete');
-  let saveJob=null,terminalSaveProgress=null,saveFinishTimer=0;
+  let saveJob=null,terminalSaveProgress=null;
   function setBulkSaveProgress(progress){
     if(!mediaPC.matches)return;
     if(Number.isFinite(progress)){
@@ -94,6 +94,7 @@
         paintSaveProgress();
       }
     }else{
+      syncSaveResult(state.replayBulkSaveProgress);
       saveJob=null;
       if(saveControl.dataset.saveState==='saving')saveControl.dataset.saveState='idle';
     }
@@ -116,17 +117,20 @@
     const terminal=valid&&['done','handed-off','error'].includes(progress.phase);
     if(terminal){
       if(terminalSaveProgress===progress)return;
-      terminalSaveProgress=progress;clearTimeout(saveFinishTimer);
+      terminalSaveProgress=progress;
       const next=progress.phase==='done'?'complete':progress.phase;
       saveComplete.textContent=progress.phase==='done'?'저장 완료':progress.phase==='handed-off'?'요청 완료':progress.label;
       if(progress.phase!=='error')saveControl.style.setProperty('--selection-save-progress','100%');
       if(progress.phase==='done'&&saveControl.dataset.saveState==='saving'&&!reducedMotion.matches){
         saveControl.dataset.saveState='finishing';
-        saveFinishTimer=setTimeout(()=>{if(terminalSaveProgress===progress&&progress.current())saveControl.dataset.saveState=next;},220);
+        const finish=()=>{if(terminalSaveProgress===progress&&progress.current())saveControl.dataset.saveState=next;};
+        const fill=saveVisual.querySelector('.selection-save-track>span');
+        const transition=(fill.getAnimations?.()||[]).find(animation=>animation.transitionProperty==='width');
+        if(transition)transition.finished.then(finish,finish);else finish();
       }else saveControl.dataset.saveState=next;
     }else if(saveJob&&saveJob.scope===capsuleScope())saveControl.dataset.saveState='saving';
     else{
-      clearTimeout(saveFinishTimer);terminalSaveProgress=null;
+      terminalSaveProgress=null;
       saveControl.dataset.saveState='idle';
       if(!saveJob)$('#saveSelectedBtn').setAttribute('aria-label','선택 항목 저장');
     }
@@ -297,7 +301,7 @@
   }
   new MutationObserver(()=>syncMediaDock()).observe($('#saveSelectedBtn'),{attributes:true,attributeFilter:['disabled']});
   window.addEventListener('fromm-glass-enabled',syncMediaDock);
-  mediaPC.addEventListener('change',()=>{if(!mediaPC.matches){saveJob=null;clearTimeout(saveFinishTimer);terminalSaveProgress=null;saveControl.dataset.saveState='idle';}restorePCToolbar();if(state.filter==='all')render();syncDownloadSelection();syncMediaDock();fitPanel();});
+  mediaPC.addEventListener('change',()=>{if(!mediaPC.matches){saveJob=null;terminalSaveProgress=null;saveControl.dataset.saveState='idle';}restorePCToolbar();if(state.filter==='all')render();syncDownloadSelection();syncMediaDock();fitPanel();});
 
   const artists=sidebar.querySelector('.card');artists.classList.add('rail-artists');
   $('#rooms').setAttribute('aria-label','아티스트 목록');

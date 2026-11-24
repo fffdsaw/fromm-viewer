@@ -19,6 +19,14 @@ async function setupSave(page,{count=9,fail=-1,picker='granted'}={}){
   const root=await(await navigator.storage.getDirectory()).getDirectoryHandle('selection-ui-'+crypto.randomUUID(),{create:true});
   window.saveQA={root,closed:0,closeTickets:0,waiting:[],released:false,results:null,pickerCalls:0};
   const q=saveQA;
+  window.saveStateObserver?.disconnect();
+  window.saveStateObserver=new MutationObserver(()=>{
+   q.stateTrace??=[];q.stateTrace.push({state:document.querySelector('.capsule-save-control').dataset.saveState,time:performance.now()});
+   if(document.querySelector('.capsule-save-control').dataset.saveState!=='complete')return;
+   const fill=document.querySelector('.selection-save-track>span').getBoundingClientRect(),track=document.querySelector('.selection-save-track').getBoundingClientRect();
+   q.fillAtComplete=track.width?fill.width/track.width:0;
+  });
+  saveStateObserver.observe(document.querySelector('.capsule-save-control'),{attributes:true,attributeFilter:['data-save-state']});
   // Real writes happen before this gate; close() must resolve before counting.
   const wrap=directory=>({kind:'directory',name:directory.name,queryPermission:async()=> 'granted',
    entries:()=>directory.entries(),getDirectoryHandle:async(...args)=>wrap(await directory.getDirectoryHandle(...args)),
@@ -68,6 +76,8 @@ async function header(page){return page.evaluate(()=>{
   await page.waitForTimeout(270);stationary(idle,await geometry(page));await shot(page,`${width}-${theme}-complete`);
   videoEnd=Date.now();
   assert.equal(await page.locator('.selection-save-complete').textContent(),'저장 완료');
+  const completionFrame=await page.evaluate(()=>({fill:saveQA.fillAtComplete,trace:saveQA.stateTrace}));
+  assert.ok(completionFrame.fill>=.98,'progress reaches the end before the check transition starts: '+JSON.stringify(completionFrame));
   assert.equal(await page.locator('.save-icon-morph').evaluate(e=>getComputedStyle(e).d),'path("M 6 12 L 10 16 L 18 7")');
   assert.deepEqual(await page.evaluate(()=>saveQA.results),{ok:9,failures:0,total:9,skipped:0});
   const files=await page.evaluate(async()=>{const files=[];async function walk(dir,prefix=''){for await(const[name,handle]of dir.entries())if(handle.kind==='directory')await walk(handle,prefix+name+'/');else files.push({name:prefix+name,size:(await handle.getFile()).size});}await walk(saveQA.root);return files;});

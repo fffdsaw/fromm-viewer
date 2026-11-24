@@ -1133,7 +1133,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="themes.css?v=channel-header-20261118">
 <link rel="stylesheet" href="settings-panel.css?v=live-optics-20261116">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=artist-members-v1">
+<link rel="stylesheet" href="glowme-controls.css?v=artist-downloads-v1">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
 <script src="web-conversation.js?v=navigation-intent-20261117"></script>
@@ -1947,7 +1947,7 @@ function renderChannelVideosView() {
       <div class="replay-page-head">
         <button class="replay-page-back player-header-icon" id="channelBackToList" type="button" aria-label="Channel 목록으로 돌아가기">${playerBackIcon()}</button>
         <div class="replay-page-copy"><span class="replay-page-title">${esc(selected.title || "채널 영상")}</span><span class="replay-page-meta">${esc(channelPostMetadata(selected))}</span></div>
-        <div class="video-player-actions">${artist ? "" : `<button class="replay-page-download player-header-icon" id="channelDownloadCurrent" type="button" aria-label="다운로드">${downloadFeedbackIcon()}</button>`}</div>
+        <div class="video-player-actions"><button class="replay-page-download player-header-icon" id="channelDownloadCurrent" type="button" aria-label="다운로드">${downloadFeedbackIcon()}</button></div>
       </div>
       <div class="channel-player-stage">${s.playerError ? `<p class="replay-page-status replay-error" role="alert">${esc(s.playerError)}</p>` : selected._streamUrl ? `<video id="channelVideo" controls playsinline autoplay></video>` : videoLoadingIndicator()}</div>
     </div>`;
@@ -1955,7 +1955,7 @@ function renderChannelVideosView() {
     body = posts.length ? `<div class="replay-grid">${posts.map(p => {
       if(p.type === "image") return renderChannelPhotoCard(p);
       const thumb = replayThumb(p);
-      const download = artist ? "" : `<button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button>`;
+      const download = `<button class="replay-download" data-channel-video-download="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 다운로드">${downloadFeedbackIcon()}</button>`;
       return `<article class="replay-card channel-video-card" data-channel-video-card="${esc(p.id)}">
         <div class="replay-thumb">${thumb ? `<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">` : `<span class="replay-thumb-empty">${artist ? "영상" : "Channel"}</span>`}<button class="channel-video-play replay-play" data-channel-video-play="${esc(p.id)}" type="button" aria-label="${esc(p.title || "채널 영상")} 재생"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></button>${download}</div>
         <div class="replay-body"><div class="replay-title" title="${esc(p.title)}">${esc(p.title || "채널 영상")}</div><div class="replay-meta">${esc(channelPostMetadata(p))}</div></div>
@@ -1978,7 +1978,7 @@ function renderChannelVideosView() {
   bindLiveCenterTabs();
   window.FrommChannelPhotos?.bind();
   for (const card of document.querySelectorAll("[data-channel-video-card]")) {
-    if (artist || card.dataset.videoListBound) continue;
+    if (card.dataset.videoListBound) continue;
     bindDownloadSelection(card,s.mediaType === "image" ? "channel-image" : "channel",posts.find(p=>String(p.id)===card.dataset.channelVideoCard));
     card.dataset.videoListBound = "true";
   }
@@ -2167,7 +2167,7 @@ async function attachChannelVideo(url, video, seq) {
 
 const postDownloadQueue=[],postDownloadKeys=new Set();
 let postDownloadRunning=false;
-function queuePostDownload(kind,post,button,run){
+function queuePostDownload(kind,post,button,run,reserve=createReplayDownloadSink){
  if(!post)return Promise.resolve();
  const key=kind+":"+(post._channelId||post.channelId||"")+":"+post.id;
  if(postDownloadKeys.has(key))return Promise.resolve();
@@ -2176,7 +2176,7 @@ function queuePostDownload(kind,post,button,run){
  const feedback=(phase,ratio)=>setPostDownloadFeedback(kind,post,button,phase,ratio,current);
  if(button){button.disabled=true;feedback("picker");}
  // Reserve the destination in the original trusted click, before waiting.
- const reservation=createReplayDownloadSink(kind==="channel"?{...post,title:post.title||"Fromm_Channel"}:post).then(sink=>({sink}),error=>({error}));
+ const reservation=reserve(kind==="channel"?{...post,title:post.title||"Fromm_Channel"}:post).then(sink=>({sink}),error=>({error}));
  return new Promise(resolve=>{
   const job={button,kind,post,current,reservation,run,key,resolve,started:false};
   postDownloadQueue.push(job);
@@ -2218,14 +2218,20 @@ async function drainPostDownloads(){
  }
 }
 function downloadChannelVideo(post,button){
+ if(post?._artistPostId!=null){
+  const sameSession=channelVideoSession(),context=downloadSelectionContext(),generation=state.scanGeneration;
+  const current=()=>sameSession()&&generation===state.scanGeneration&&downloadSelectionContext()===context;
+  return queuePostDownload("channel",post,button,sink=>runChannelVideoDownload(post,button,sink,current),createArtistVideoDownloadSink);
+ }
  return queuePostDownload("channel",post,button,sink=>runChannelVideoDownload(post,button,sink));
 }
-async function runChannelVideoDownload(post, button, preparedSink) {
+async function runChannelVideoDownload(post, button, preparedSink, artistCurrent) {
   const s = channelVideoState;
   if (!post) return;
   s.downloading = true;
   const seq = s.requestSeq;
   const sameSession = channelVideoSession();
+  const current=artistCurrent||sameSession;
   const feedback=(phase,ratio)=>setPostDownloadFeedback("channel",post,button,phase,ratio,sameSession);
   let sink;
   if (button) {
@@ -2238,8 +2244,16 @@ async function runChannelVideoDownload(post, button, preparedSink) {
       if (button) feedback("idle");
       return;
     }
-    const writesFile = !!sink.writable;
+    if(artistCurrent&&!current()){feedback("idle");return;}
+    const writesFile = !!(sink.writable||sink.directory);
     if (button) feedback("active");
+    if(artistCurrent){
+      const skipped=await saveArtistVideo(post,sink.directory,current,ratio=>feedback("active",ratio));
+      if(!current()){feedback("idle");return;}
+      feedback(writesFile?"done":"handed-off");
+      showSaveNotice(skipped?"기존 영상 파일 1개 건너뜀":writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
+      return;
+    }
     const detail = await fetchChannelVideoDetail(post);
     if (!sameSession() || seq !== s.requestSeq) throw new Error("채널 또는 로그인 세션이 변경되었습니다. 다시 시도해주세요.");
     await downloadReplayStream(detail._streamUrl, sink, (done, total) => {
@@ -2250,8 +2264,8 @@ async function runChannelVideoDownload(post, button, preparedSink) {
     if(sameSession())showSaveNotice(writesFile?"저장 완료 · 1개":"다운로드 요청 완료 · 1개");
   } catch (e) {
     try { await sink?.writable?.abort?.(); } catch {}
-    if (button) feedback("error");
-    if (sameSession()) showSaveNotice(`채널 영상 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
+    if (button) feedback(current()?"error":"idle");
+    if (current()) showSaveNotice(`채널 영상 다운로드 실패: ${safeErrorDetail(e?.message || e)}`);
   } finally {
     s.downloading = false;
     if (button) button.disabled = false;
@@ -5436,8 +5450,8 @@ function replayDownloadFilename(post){
   return `${date ? `${date} ` : ""}${title}.ts`;
 }
 
-function postDownloadNames(post){
-  const base=replayDownloadFilename(post), key=replayPostKey(post);
+function postDownloadNames(post,extension=".ts"){
+  const transportName=replayDownloadFilename(post), stem=transportName.slice(0,-3), base=stem+extension, key=replayPostKey(post);
   // Keep the name chosen for this post stable when another list later reveals
   // a same-title peer. A different video still receives the existing suffix.
   if(!postDownloadNames.session?.()){
@@ -5448,7 +5462,7 @@ function postDownloadNames(post){
   const peers=[...(state.live.replayPosts || [])];
   for(const page of channelVideoState.pages.values()) peers.push(...(page.posts || []));
   peers.push(post);
-  const identities=new Set(peers.filter(p=>replayDownloadFilename(p).toLowerCase()===base.toLowerCase()).map(p=>replayPostKey(p)));
+  const identities=new Set(peers.filter(p=>replayDownloadFilename(p).toLowerCase()===transportName.toLowerCase()).map(p=>replayPostKey(p)));
   // Only real title collisions need a short, stable suffix. Individual and bulk
   // saves consult the same loaded posts, including when a player is open.
   let filename=base;
@@ -5456,9 +5470,9 @@ function postDownloadNames(post){
   if(identities.size>1 || reserved){
     let hash=0xcbf29ce484222325n;
     for(const char of key) hash=BigInt.asUintN(64,(hash ^ BigInt(char.codePointAt(0)))*0x100000001b3n);
-    filename=base.replace(/\.ts$/, ' - '+hash.toString(16).padStart(16,'0')+'.ts');
+    filename=stem+' - '+hash.toString(16).padStart(16,'0')+extension;
   }
-  const legacy=base.replace(/\.ts$/, ' ('+String(post._channelId).replace(/[^\w-]/g,'_')+'-'+String(post.id).replace(/[^\w-]/g,'_')+').ts');
+  const legacy=stem+' ('+String(post._channelId).replace(/[^\w-]/g,'_')+'-'+String(post.id).replace(/[^\w-]/g,'_')+')'+extension;
   const value={filename,legacy};names.set(reservation,{key,value});
   if(names.size>500) names.delete(names.keys().next().value);
   return value;
@@ -5489,6 +5503,94 @@ async function createReplayDownloadSink(post){
     }
   }
   return {filename,writable:null,chunks:[]};
+}
+
+async function createArtistVideoDownloadSink(){
+  if(!supportsDirectorySave())return {};
+  try{return {directory:await window.showDirectoryPicker()};}
+  catch(error){if(error?.name==="AbortError")return null;throw error;}
+}
+
+async function saveArtistVideo(post,directory,current,onProgress){
+  assertMediaSaveCurrent(current);
+  const {_streamUrl:url}=await fetchChannelArtistVideoDetail(post);
+  assertMediaSaveCurrent(current);
+  const pathname=new URL(url).pathname;
+  let response=null,stage=null,writable=null;
+  let hls=/\.m3u8$/i.test(pathname);
+  try{
+    let extension=".ts";
+    if(!hls){
+      response=await fetchMediaResponse(replayCanonicalStreamUrl(url));
+      assertMediaSaveCurrent(current);
+      if(!response.ok)throw new Error(await responseErrorReason(response));
+      const mime=(response.headers.get("content-type")||"").split(";")[0].trim().toLowerCase();
+      hls=mime.includes("mpegurl");
+      if(!hls){
+        if(mime&&!mime.startsWith("video/")&&!/^(application|binary)\/octet-stream$/.test(mime))throw new Error("아티스트 영상 형식을 확인하지 못했습니다.");
+        const knownMime={"video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov","video/x-m4v":".m4v","video/mp2t":".ts"};
+        extension=knownMime[mime]||pathname.match(/\.(mp4|webm|mov|m4v|ts)$/i)?.[0].toLowerCase()||".mp4";
+      }
+    }
+    const names=postDownloadNames(post,extension);
+    if(directory){
+      const exists=await existingPostDownload(directory,names);
+      assertMediaSaveCurrent(current);
+      if(exists)return true;
+      const handle=await directory.getFileHandle(names.filename,{create:true});
+      if((await handle.getFile()).size)throw new Error("같은 이름의 기존 파일이 있습니다.");
+      assertMediaSaveCurrent(current);
+      writable=await handle.createWritable();
+    }
+    assertMediaSaveCurrent(current);
+    if(hls){
+      await response?.body?.cancel();
+      response=null;
+      await downloadReplayStream(url,{filename:names.filename,writable,chunks:directory?null:[]},
+        (done,total)=>onProgress(total>0?done/total:null),{current});
+      writable=null;
+      return false;
+    }
+
+    if(!directory&&response.body){
+      stage=await prepareReplayDownloadStage(new AbortController().signal);
+      writable=stage?.writer||null;
+    }
+    const total=Number(response.headers.get("content-length"))||0;
+    let loaded=0,blob;
+    if(writable&&response.body){
+      await response.body.pipeThrough(new TransformStream({transform(chunk,controller){
+        assertMediaSaveCurrent(current);
+        loaded+=chunk.byteLength;
+        onProgress(total>0?loaded/total:null);
+        controller.enqueue(chunk);
+      }})).pipeTo(writable,{preventClose:true});
+    }else{
+      blob=await response.blob();
+      loaded=blob.size;
+      assertMediaSaveCurrent(current);
+      await writable?.write(blob);
+    }
+    if(!loaded)throw new Error("영상 응답이 비어 있습니다.");
+    assertMediaSaveCurrent(current);
+    await writable?.close();
+    writable=null;
+    if(!directory){
+      if(stage)blob=await stage.file();
+      assertMediaSaveCurrent(current);
+      const objectUrl=URL.createObjectURL(blob),anchor=document.createElement("a");
+      anchor.href=objectUrl;anchor.download=names.filename;anchor.hidden=true;
+      document.body.append(anchor);anchor.click();anchor.remove();
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),60_000);
+      if(stage){setTimeout(stage.discard,60_000);stage=null;}
+    }
+    onProgress(1);
+    return false;
+  }finally{
+    try{await response?.body?.cancel();}catch{}
+    try{await writable?.abort();}catch{}
+    await stage?.discard();
+  }
 }
 
 async function fetchReplayBuffer(url){
@@ -8225,6 +8327,10 @@ function filteredMessages(){
 }
 
 function downloadSelectionContext(){
+  if(state.filter==="live"&&state.live.centerMode==="channel"&&channelVideoState.mediaType==="artist"){
+    const {channelId,artistMember}=channelVideoState;
+    return JSON.stringify(["channel",channelId,"artist",artistMember?.channelId===channelId?artistMember.key:""]);
+  }
   if(state.filter==="live") return `${state.live.centerMode}:${state.live.centerMode==="channel" ? channelVideoState.channelId+":"+channelVideoState.mediaType : state.live.replayFilter}`;
   return `media:${state.room?.hostChatRoomId || state.room?.id}:${state.filter}:${state.sortDirection}:${state.chatQuery}:${state.selectedDate}`;
 }
@@ -8232,7 +8338,7 @@ function downloadSelectionContext(){
 function downloadSelectionScope(){
   if(state.filter==="live"){
     const kind=state.live.centerMode;
-    const items=kind==="channel" && channelVideoState.mediaType!=="artist" ? visibleChannelPosts() : kind==="replay" ? visibleReplayPosts() : [];
+    const items=kind==="channel" ? visibleChannelPosts() : kind==="replay" ? visibleReplayPosts() : [];
     return {kind:kind==="channel" && channelVideoState.mediaType==="image" ? "channel-image" : kind,items,context:downloadSelectionContext()};
   }
   return {kind:"media",items:filteredMessages().filter(m=>isArtist(m) && hasUsableMedia(m)),context:downloadSelectionContext()};
@@ -8493,6 +8599,17 @@ async function saveSelectedPosts(){
           if(!current())break;
           if(result.complete){ok++;state.postSelected.delete(downloadSelectionKey(scope.kind,post));}else failures.push(post.title||"사진");
           skipped+=result.skipped;syncDownloadSelection();continue;
+        }
+        if(scope.kind==="channel" && post._artistPostId!=null){
+          const exists=await saveArtistVideo(post,directory,current,ratio=>{
+            if(ratio!==null)button.textContent=`저장 ${i+1}/${items.length} · ${Math.round(ratio*100)}%`;
+          });
+          if(!current())break;
+          if(exists)skipped++;else ok++;
+          state.postSelected.delete(downloadSelectionKey(scope.kind,post));
+          syncDownloadSelection();
+          if(!exists&&!directory&&i+1<items.length)await sleep(450);
+          continue;
         }
         const names=postDownloadNames(post), filename=names.filename;
         const exists=directory && await existingPostDownload(directory,names);
@@ -11659,7 +11776,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=pc-media-controls-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=channel-artist-20261119"></script>
+<script src="web-channel-photos.js?v=artist-downloads-v1"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.

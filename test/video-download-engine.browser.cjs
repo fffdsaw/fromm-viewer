@@ -46,6 +46,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
    });
    const card=kind=>page.locator(kind==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]');
    for(const kind of ['channel','replay']){
+    const fileStart=await page.evaluate(()=>testFiles.length);
     await page.evaluate(k=>testShow(k),kind);gateSeen=false;gate=new Promise(r=>release=r);
     await card(kind).click();
     await page.waitForFunction(k=>{const b=document.querySelector(k==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]');return b?.dataset.downloadPhase==='active'&&Number(b.style.getPropertyValue('--download-remaining'))<100},kind).catch(async e=>{console.error({kind,errors,alerts,requests,phase:await card(kind).getAttribute('data-download-phase')});throw e});
@@ -57,10 +58,13 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
     assert.ok(Number(await card(kind).evaluate(b=>b.style.getPropertyValue('--download-remaining')))<100,'restores actual progress after tab remount');
     if(out){fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,`${cfg.width}-${kind}-restored.png`)});}
     release();gate=null;
+    await page.waitForFunction(k=>document.querySelector(k==='channel'?'[data-channel-video-download="v1"]':'[data-replay-download="r1"]')?.dataset.downloadPhase==='done',kind);
     await page.waitForFunction(()=>!postDownloadRunning&&!channelVideoState.downloading&&!state.live.replayDownloading);
-    assert.equal(await card(kind).getAttribute('data-download-phase'),'done');
-    const file=await page.evaluate(async()=>{const item=testFiles.at(-1),f=await item.handle.getFile();return{name:item.name,bytes:Array.from(new Uint8Array(await f.arrayBuffer()))}});
-    assert.equal(hash(Buffer.from(file.bytes)),expected);assert.ok(file.name.endsWith('.ts'));
+    const files=await page.evaluate(start=>Promise.all(testFiles.slice(start).map(async item=>{
+     const file=await item.handle.getFile();return {name:item.name,bytes:Array.from(new Uint8Array(await file.arrayBuffer()))};
+    })),fileStart);
+    assert.equal(files.length,kind==='channel'?2:1);
+    for(const file of files){assert.equal(hash(Buffer.from(file.bytes)),expected);assert.ok(file.name.endsWith('.ts'));}
    }
    // The shared engine also saves a selected channel list to a real directory,
    // preserves each filename and skips existing files before requesting detail.

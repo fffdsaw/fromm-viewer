@@ -23,7 +23,7 @@ async function selectChannelMediaType(type,{restoreHistory=false}={}) {
 }
 function renderChannelPhotoCard(post) {
   const thumb=replayThumb(post),title=post.title||'채널 사진',count=channelPhotoCount(post);
-  const download=post._artistPostId!=null?'':`<button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button>`;
+  const download=`<button class="replay-download" data-channel-photo-download="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 다운로드">${downloadFeedbackIcon()}</button>`;
   return `<article class="replay-card channel-video-card channel-photo-card" data-channel-video-card="${esc(post.id)}"><div class="replay-thumb">${thumb?`<img data-video-thumb="${esc(thumb)}" alt="" loading="lazy" decoding="async">`:'<span class="replay-thumb-empty">사진</span>'}<button class="replay-play" data-channel-photo-open="${esc(post.id)}" type="button" aria-label="${esc(title)} 앨범 열기"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 17 5-5 4 4 4-6 5 7"/><circle cx="8" cy="8" r="1"/></svg></button>${download}</div><div class="replay-body"><div class="replay-title">${esc(title)}</div><div class="replay-meta channel-photo-meta"><span class="channel-photo-date">${esc(channelPostMetadata(post))}</span><span class="channel-photo-count-badge" ${count===null?'hidden':''}>${count===null?'':count+'장'}</span></div></div></article>`;
 }
 function channelPhotoCount(post) {
@@ -50,8 +50,8 @@ function prepareAlbumImage(url,priority='low') {
   image.src=url;return entry;
 }
 function channelPhotoContext() {
-  const sameSession=channelVideoSession(),{channelId,playSeq,mediaType}=channelVideoState;
-  return ()=>mediaType!=='video'&&sameSession()&&playSeq===channelVideoState.playSeq&&channelVideosActive()&&mediaType===channelVideoState.mediaType&&channelVideoState.channelId===channelId;
+  const sameSession=channelVideoSession(),{channelId,playSeq,mediaType,artistMember}=channelVideoState;
+  return ()=>mediaType!=='video'&&sameSession()&&playSeq===channelVideoState.playSeq&&channelVideosActive()&&mediaType===channelVideoState.mediaType&&channelVideoState.channelId===channelId&&(mediaType!=='artist'||artistMember===channelVideoState.artistMember);
 }
 async function fetchChannelPhotoDetail(post,{signal}={}) {
   const current=channelPhotoContext();
@@ -254,8 +254,6 @@ window.FrommChannelPhotos=(()=>{
     const index=o.index,url=o.detail.urls[index],version=++o.imageVersion,entry=cachedImage(o,index,'high');
     const current=()=>owner===o&&o.current()&&o.imageVersion===version;
     const stage=dialog.querySelector('.channel-photo-image'),status=dialog.querySelector('.channel-photo-status');
-    const footer=dialog.querySelector('footer');
-    footer.hidden=o.post._artistPostId!=null;
     status.textContent='';
     dialog.querySelector('.channel-photo-count').textContent=`${index+1} / ${o.detail.urls.length}`;
     dialog.querySelector('[data-photo-action="prev"]').disabled=index===0;
@@ -270,7 +268,7 @@ window.FrommChannelPhotos=(()=>{
       if(entry.original?.ready)display(entry.original);
       else if(entry.preview.ready)display(entry.preview);
       else if(entry.preview.failed&&(!entry.original||entry.original.failed)){
-        status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';footer.hidden=false;dialog.querySelector('[data-photo-action="retry"]').hidden=false;
+        status.textContent='사진을 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';dialog.querySelector('[data-photo-action="retry"]').hidden=false;
       }
     };
     update();entry.preview.promise.then(update);entry.original?.promise.then(update);
@@ -284,9 +282,6 @@ window.FrommChannelPhotos=(()=>{
     const controller=new AbortController(),o={post,current,controller,index:0,imageVersion:0,images:new Map(),trigger:document.activeElement};
     o.observer=new MutationObserver(()=>{if(owner===o&&!current())close();});
     owner=o;ensure();o.observer.observe(document.querySelector('#timeline'),{childList:true,subtree:true});
-    const artist=post._artistPostId!=null,footer=dialog.querySelector('footer');
-    footer.hidden=artist;
-    for(const button of footer.querySelectorAll('[data-photo-action="save"],[data-photo-action="all"]'))button.hidden=artist;
     dialog.querySelector('.channel-photo-title').textContent=post.title||'채널 사진';
     dialog.querySelector('.channel-photo-status').textContent='앨범 불러오는 중…';
     for(const button of dialog.querySelectorAll('footer button,[data-photo-action="prev"],[data-photo-action="next"]'))button.disabled=true;
@@ -300,7 +295,6 @@ window.FrommChannelPhotos=(()=>{
     }catch{
       if(owner===o&&current()){
         dialog.querySelector('.channel-photo-status').textContent='앨범을 불러오지 못했습니다. 구독과 연결 상태를 확인해주세요.';
-        footer.hidden=false;
         const retry=dialog.querySelector('[data-photo-action="retry"]');retry.hidden=false;retry.disabled=false;
       }
     }finally{clearTimeout(timer);}

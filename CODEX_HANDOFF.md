@@ -1,3 +1,9 @@
+## Shared floating notification sheet
+
+Branch `codex/central-notification-sheets-20261124` starts at deployed merge `306c2aa` for PR #148. Date navigation, quote lookup and gallery/collection sort messages now use the original non-blocking save-result sheet at the bottom centre. A save result retains its failure list and retry action, and pending general notices are shown in order. Logout clears the queue. Inline loading, permission prompts and optional OS notifications keep their existing paths.
+
+Synthetic Chromium passed the search/calendar suite at five viewports, including missing date and quoted message, queued notices, intervening save, confirm, close and Escape. Native plus web units passed 336 with one existing Agora skip. Hosted Channel first timed out during Ubuntu package installation. The retry reached the old browser-alert expectation in the citation test. That test now verifies the real sheet, its dismissal, the unchanged 50,000-message rendering bound, and subsequent calendar actions. It passed locally at 1440px and 390px. Local receipts: `/tmp/fromm-central-notification-*.log`. Use `gh pr view 149 --json url,headRefOid,statusCheckRollup` to find hosted verification.
+
 ## Meapri convex edge material
 
 Production repository branch `codex/meapri-clear-edge-20261124` starts at `e9927b6`. The current request targets the main Viewer repository and keeps the pinned Meapri engine and its MIT notice. The pasted older two-engine experiment and the SVG supplied the optical reference. Production merge and Pages deployment require explicit approval.

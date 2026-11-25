@@ -254,4 +254,3 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
       },
     };
   }
-

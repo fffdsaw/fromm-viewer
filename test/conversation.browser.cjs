@@ -79,7 +79,10 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
    await page.locator('#conversationInput').fill('금지어 포함');await page.locator('#conversationSend').click();await page.waitForTimeout(100);assert.equal(posts.length,1);
    rejectSend=true;await page.locator('#conversationInput').fill('실패 후 유지할 글');await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationStatus').textContent.includes('전송 횟수 제한'));
    assert.equal(posts.length,2);assert.equal(await page.locator('#conversationInput').inputValue(),'실패 후 유지할 글');rejectSend=false;
-   await page.evaluate(()=>setFilter('image'));assert.equal(await page.locator('#conversationDock').isVisible(),false);assert.ok(await page.evaluate(()=>pushClosed>=1));
+   const closedBeforeGallery=await page.evaluate(()=>pushClosed);
+   await page.evaluate(()=>setFilter('image'));assert.equal(await page.locator('#conversationDock').isVisible(),false);
+   if(cfg.width>=701)assert.equal(await page.evaluate(()=>pushClosed),closedBeforeGallery,'PC galleries retain their active reader');
+   else assert.ok(await page.evaluate(()=>pushClosed)>closedBeforeGallery,'touch galleries keep their existing reader lifecycle');
    await page.evaluate(()=>setFilter('all'));await page.waitForFunction(()=>FrommConversation.status.phase==='connected');
    assert.equal(await page.locator('#conversationInput').inputValue(),'실패 후 유지할 글');
    // A reader away from the newest message gets a badge instead of a jump.

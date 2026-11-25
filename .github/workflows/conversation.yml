@@ -44,6 +44,7 @@ jobs:
           node test/conversation.browser.cjs
           node test/scroll-top-motion.browser.cjs
           node test/conversation-image-scroll.browser.cjs
+          node test/conversation-rich-media-live.browser.cjs
           node test/desktop-member-latest.browser.cjs
           node test/startup-parallel.browser.cjs
           node test/conversation-state.browser.cjs

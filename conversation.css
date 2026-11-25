@@ -222,3 +222,10 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
  @keyframes conversationLatestDrop{0%{transform:translateY(-3px)}45%{transform:translateY(4px)}100%{transform:translateY(0)}}
 }
 @media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.is-returning-latest>svg{animation:none}}
+
+/* Chat media already has bounded windows. Do not substitute an 80px row while
+   a photo, sticker, video or audio card is outside the viewport. */
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ #timeline.timeline>.chat-rich-message{content-visibility:visible;contain-intrinsic-size:none}
+ #timeline.timeline:has(>.chat-rich-message){overflow-anchor:none}
+}

@@ -1,7 +1,7 @@
 /* Ephemeral view positions only: no messages, credentials or account data persisted. */
 (() => {
  'use strict';
- const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false,prependTracking=false;
+ const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false,mediaAnchor=null,mediaAligning=false;
  // Our message anchors own reload/navigation restoration, never raw browser Y.
  if('scrollRestoration' in history)history.scrollRestoration='manual';
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
@@ -30,12 +30,11 @@
  }
  function navigate(filter,options){capture();return enter(filter,options);}
  function beforeRender(){
-  if(motionCleanup || latestCleanup || (anchorCleanup&&!prependTracking) || chatWaiting())return;
-  // Late media may still be settling, but a real render needs a new bookmark.
-  const watchMedia=prependTracking;if(watchMedia){anchorCleanup?.();anchorCleanup=null;}
-  if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial,watchMedia};}
+  mediaAnchor=null;
+  if(motionCleanup || latestCleanup || anchorCleanup || chatWaiting())return;
+  if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
  }
- function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;latestFollowing=false;pending=null;serial++;}
+ function cancel({keepMedia=false}={}){if(!keepMedia)mediaAnchor=null;anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;latestFollowing=false;pending=null;serial++;}
  async function restore(){
   if(restoring||!pending||pending.key!==key()||state.filter==='live')return;
   if(state.filter==='all'&&(state.chatHistoryLoading||!state.chatHistoryComplete)&&!state.chatMessages.length&&!window.FrommConversation?.canShowCached())return;
@@ -63,16 +62,17 @@
    }else if(el){
     scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
     pending=null;
-    settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all',job.watchMedia?12000:4000,!!job.watchMedia);
+    const anchor=mediaPoint(el);
+    settleRestoredMessage(anchor,anchor===el?pos.offset:anchor.getBoundingClientRect().top,()=>job.key===key()&&state.filter==='all');
    }else{
     scrollTo({top:pos.y,behavior:'instant'});
     pending=null;
    }
   }finally{restoring=false;}
  }
- // After rebuilding a virtual message window, images can gain height later.
+ // After rebuilding a virtual message window, media can gain height later.
  // Keep the same message at its prior viewport offset for a bounded period.
- function settleRestoredMessage(el,offset,valid,watchMs=4000,immediateResize=false){
+ function settleRestoredMessage(el,offset,valid){
   anchorCleanup?.();const ticket=serial,tl=document.querySelector('#timeline');
   let closed=false,queued=0,observer=null,timer=0,frames=0;
   const cleanup=()=>{
@@ -80,7 +80,7 @@
    observer?.disconnect();clearTimeout(timer);tl?.removeEventListener('load',schedule,true);
    document.fonts?.removeEventListener('loadingdone',schedule);
    document.fonts?.removeEventListener('loadingerror',schedule);
-   if(anchorCleanup===cleanup){anchorCleanup=null;prependTracking=false;}
+   if(anchorCleanup===cleanup)anchorCleanup=null;
   };
   const align=()=>{
    queued=0;
@@ -90,25 +90,31 @@
    if(++frames<15)schedule();
   };
   function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
-  anchorCleanup=cleanup;prependTracking=immediateResize;
+  anchorCleanup=cleanup;
   if(typeof ResizeObserver==='function'&&tl){
-   observer=new ResizeObserver(()=>{if(immediateResize){cancelAnimationFrame(queued);align();}else schedule();});observer.observe(tl);
+   observer=new ResizeObserver(()=>{
+    // The bookmark owns this interval. Correct PC media reflow before paint
+    // rather than letting the continuous tracker wait on a deferred frame.
+    if(viewerDesktop.matches&&tl.querySelector(':scope > .chat-rich-message')){cancelAnimationFrame(queued);align();}
+    else schedule();
+   });observer.observe(tl);
   }
   tl?.addEventListener('load',schedule,true);
   document.fonts?.addEventListener('loadingdone',schedule);
   document.fonts?.addEventListener('loadingerror',schedule);
-  timer=setTimeout(()=>{align();cleanup();},watchMs);
+  timer=setTimeout(()=>{align();cleanup();},4000);
   align();
  }
  function beforePrepend(start=0,end=0){
   if(!viewerDesktop.matches||state.filter!=='all'||motionCleanup||latestCleanup||pending||restoring)return null;
-  const incoming=(state.infiniteList||[]).slice(start,end).some(message=>normType(message.type)==='image');
-  const unresolved=[...document.querySelectorAll('#timeline .media-wrap img')].some(image=>!image.complete||image.dataset.blobRecoveryBusy==='1');
-  // Text-only prepends retain their existing scroll and completion behavior.
-  if(!incoming&&!unresolved)return null;
+  const incoming=(state.infiniteList||[]).slice(start,end).some(message=>['image','video','sound'].includes(normType(message.type))||resolveEmoticonUrl(message));
+  if(!incoming&&!document.querySelector('#timeline .chat-rich-message'))return null;
   const element=row();if(!element)return null;
-  const offset=element.getBoundingClientRect().top,view=key(),account=currentAccountScope(),version=state.infiniteVersion;
-  return{element,settle(){settleRestoredMessage(element,offset,()=>viewerDesktop.matches&&state.filter==='all'&&view===key()&&account===currentAccountScope()&&version===state.infiniteVersion,12000,true);}};
+  const offset=element.getBoundingClientRect().top,view=key(),version=state.infiniteVersion;
+  return{element,settle(){
+   if(element.isConnected&&view===key()&&version===state.infiniteVersion){const delta=element.getBoundingClientRect().top-offset;if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});}
+   rebaseMediaAnchor();
+  }};
  }
  function settleAnchor(el,inset,valid=()=>true,watchMs=0){
   cancel();watchMs=Math.max(0,Math.min(2000,Number(watchMs)||0));const ticket=serial;let count=0,queued=false,closed=false,observer=null,timer=0;
@@ -139,7 +145,7 @@
    if(list?.length)renderChatWindow(list,latest?list.length-1:0);
    if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}return;
   }
-  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector(latest?'#conversationNew':'#scrollTopBtn'),motionClass=latest?'is-returning-latest':'is-returning';
+  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector(latest?'#conversationNew':'#scrollTopBtn'),motionClass=latest?'is-returning-latest':'is-returning',pcLatest=latest&&viewerDesktop.matches;
   let animation=0,finished=false,version=null,prefix=[];
   const cleanup=()=>{
    cancelAnimationFrame(animation);button?.classList.remove(motionClass);button?.style.removeProperty('--top-return-duration');
@@ -168,7 +174,10 @@
   button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add(motionClass);
   const animate=now=>{
    if(!valid()||ticket!==serial||view!==key()||document.hidden||version!==null&&version!==state.infiniteVersion){cleanup();return;}
-   const t=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-t,3),target=latest?Math.max(origin,document.documentElement.scrollHeight-innerHeight):0;scrollTo({top:origin+(target-origin)*ease,behavior:'instant'});
+   // A frame timestamp can precede setup, and settled content can bring the
+   // destination closer. Neither should reverse a PC trip toward latest.
+   const progress=(now-started)/duration,t=Math.min(1,pcLatest?Math.max(0,progress):progress),ease=1-Math.pow(1-t,3),target=latest?Math.max(origin,document.documentElement.scrollHeight-innerHeight):0;
+   const position=origin+(target-origin)*ease;scrollTo({top:pcLatest?Math.max(scrollY,position):position,behavior:'instant'});
    if(t<1)animation=requestAnimationFrame(animate);
    else{finished=true;cleanup();if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}}
   };
@@ -200,25 +209,67 @@
   timer=setTimeout(()=>{align();cleanup();},4000);
   align();
  }
+ // Track the current reader continuously, independently of navigation/bookmark
+ // timers. Manual scroll changes the reader; only document-layout movement is
+ // compensated, so a wheel/scrollbar action never returns to an old bookmark.
+ const timeline=document.querySelector('#timeline');
+ const mediaScope=()=>JSON.stringify([currentAccountScope(),key(),state.scanGeneration,state.infiniteVersion]);
+ const mediaReady=()=>viewerDesktop.matches&&state.filter==='all'&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)')&&!!timeline.querySelector(':scope > .chat-rich-message');
+ function mediaPoint(element){
+  if(!element||!viewerDesktop.matches)return element;
+  // If a partially visible card gains intrinsic height, anchor its visible
+  // footer. Anchoring only the row's top would still push the following text.
+  const foot=element.classList.contains('chat-rich-message')?element.querySelector('.chat-message-foot'):null;
+  const top=foot?.getBoundingClientRect().top;
+  return foot&&top>=chatHeaderInset()&&top<innerHeight?foot:element;
+ }
+ function mediaRow(){return mediaPoint(row());}
+ function readMediaAnchor(){
+  if(!mediaReady())return null;
+  const element=mediaRow();return element?{element,scope:mediaScope(),docTop:element.getBoundingClientRect().top+scrollY,y:scrollY,max:Math.max(0,document.documentElement.scrollHeight-innerHeight)}:null;
+ }
+ function rebaseMediaAnchor(){mediaAnchor=readMediaAnchor();}
+ function alignMediaLayout(){
+  if(mediaAligning)return;mediaAligning=true;
+  try{
+   if(!mediaReady()){mediaAnchor=null;return;}
+   if(pending||restoring||motionCleanup||anchorCleanup||latestCleanup||chatWaiting()){rebaseMediaAnchor();return;}
+   if(latestFollowing&&state.infiniteRendered>=state.infiniteList.length){scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});rebaseMediaAnchor();return;}
+   const previous=mediaAnchor;
+   if(previous?.element.isConnected&&previous.scope===mediaScope()){
+    const top=previous.element.getBoundingClientRect().top+scrollY,max=Math.max(0,document.documentElement.scrollHeight-innerHeight);
+    const clamped=scrollY>=max-.5&&previous.y>max?previous.y-max:0;
+    const delta=top-previous.docTop+clamped;
+    if(Math.abs(delta)>.5)scrollBy({top:delta,behavior:'instant'});
+   }
+   rebaseMediaAnchor();
+  }finally{mediaAligning=false;}
+ }
+ new ResizeObserver(alignMediaLayout).observe(timeline);
+ new MutationObserver(rebaseMediaAnchor).observe(timeline,{childList:true});
+ window.addEventListener('scroll',alignMediaLayout,{passive:true});
+ window.addEventListener('resize',alignMediaLayout,{passive:true});
+ document.addEventListener('visibilitychange',()=>{mediaAnchor=null;});
  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;void restore();});}
  new MutationObserver(schedule).observe(document.querySelector('#timeline'),{childList:true,subtree:true});
  // User-directed movement always wins over an asynchronous restore.
- for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
- document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
+ for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel({keepMedia:true});},{passive:true});
+ document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel({keepMedia:true});});
  function resume(position){cancel();active=key();positions.set(active,position);pending={key:active,position,serial};}
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,beforePrepend,toStart,toLatest,clear(){cancel();positions.clear();active='';window.FrommChatLayout?.clear();},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,beforePrepend,rebaseMediaAnchor,resetMediaAnchor(){mediaAnchor=null;},toStart,toLatest,clear(){cancel();positions.clear();active='';window.FrommChatLayout?.clear();},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
 })();
 
-/* PC chat images: reuse overlapping rows within one synchronous render and
+/* PC chat media: reuse overlapping rows within one synchronous render and
  * keep a bounded geometry/working-HTTP-URL cache, without binary image data. */
 (() => {
  'use strict';
  const geometry=new Map();let scope='',pool=new Map(),ticket=0,records=new WeakMap(),images=new WeakMap();
  const enabled=()=>viewerDesktop.matches&&state.filter==='all';
+ const rich=m=>['image','video','sound'].includes(normType(m.type))||!!resolveEmoticonUrl(m);
  const current=()=>JSON.stringify([currentAccountScope(),currentReplyUserId(),String(state.room?.hostChatRoomId||state.room?.id||'')]);
  function retire(node){
   if(node.isConnected)return;
-  for(const img of node.querySelectorAll('.media-wrap img')){
+  for(const img of node.querySelectorAll('.media-wrap img,.emoticon-img')){
    img.dataset.chatImageRetired='1';img.onload=img.onerror=null;cleanupImageBlobUrl(img);img.removeAttribute('src');
   }
  }
@@ -247,20 +298,29 @@
  window.FrommChatLayout=Object.freeze({
   begin(timeline){
    if(!enabled())return;
-   own();
+   own();window.FrommViewState?.resetMediaAnchor();
    const rows=timeline.querySelectorAll(':scope > .msg');
-   if(rows.length){release();pool=new Map([...rows].filter(node=>node.querySelector('.media-wrap img')).map(node=>[node.dataset.messageId,node]));}
+   if(rows.length){release();pool=new Map([...rows].filter(node=>node.classList.contains('chat-rich-message')).map(node=>[node.dataset.messageId,node]));}
    const job=++ticket;queueMicrotask(()=>{if(job===ticket)release();});
   },
+  commit(timeline,nodes){
+   // Remove obsolete rows first, then insert only new rows around retained
+   // media. Unchanged audio/video nodes never leave the document.
+   const wanted=new Set(nodes);
+   for(const node of [...timeline.childNodes])if(!wanted.has(node))node.remove();
+   let position=timeline.firstChild;
+   for(const node of nodes){if(node!==position)timeline.insertBefore(node,position);position=node.nextSibling;}
+   window.FrommViewState?.rebaseMediaAnchor();
+  },
   take(m){
-   if(!enabled()||normType(m.type)!=='image')return null;
+   if(!enabled()||!rich(m))return null;
    const owner=own(),id=messageStableKey(m),node=pool.get(id),record=node&&records.get(node);
    if(!record||record.owner!==owner||record.fingerprint!==fingerprint(m))return null;
    pool.delete(id);node.classList.toggle('chat-match-active',id===state.chatMatchKey);
-   const link=node.querySelector('.dl');if(link){link.href=proxyUrl(m,true);link.setAttribute('aria-label',`${baseName(m)} 다운로드`);link.title='다운로드';}
+   const link=node.querySelector('.dl');if(link&&!link.dataset.downloadPhase){link.href=proxyUrl(m,true);link.setAttribute('aria-label',`${baseName(m)} 다운로드`);link.title='다운로드';}
    return node;
   },
-  remember(node,m){if(enabled()&&normType(m.type)==='image'){const owner=own();records.set(node,{owner,fingerprint:fingerprint(m)});}},
+  remember(node,m){if(enabled()&&rich(m)){const owner=own();records.set(node,{owner,fingerprint:fingerprint(m)});}},
   source(m){if(!enabled())return '';own();return geometry.get(imageKey(m))?.url||'';},
   prepareImage(img,m){
    if(!enabled())return;

@@ -8,7 +8,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
  const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
   const {page,context,errors}=await open(browser,server.url,{login:true});
-  let feedCalls=0,historyRequests=[],serverNew=null,galleryNew=null,partialBase=0;
+  let feedCalls=0,historyRequests=[],serverNew=null,galleryNew=null,partialBase=0,pendingLatest='',failLatest=false;
  let releasePartial;const partialHistoryGate=new Promise(resolve=>releasePartial=resolve);
   const answer=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)}).catch(()=>{});
   await page.route('**/*',async route=>{
@@ -22,9 +22,11 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    if(start>946684800001){
     if(host==='refresh-complete-host'){
      feedCalls++;
-     if(feedCalls===2){serverNew={messageId:'server-new',hostChatRoomId:host,userType:'star',type:'text',content:'synthetic latest refresh row',createdAt:end-1};return answer(route,{success:true,data:{messages:[serverNew]}});}
-     if(feedCalls===4){galleryNew={messageId:'gallery-new',hostChatRoomId:host,userType:'star',type:'image',content:'https://fixture.test/refresh-image.svg',createdAt:end-1};return answer(route,{success:true,data:{messages:[galleryNew]}});}
-     if(feedCalls>=6)return answer(route,{success:false,message:'synthetic offline response'},503);
+     // Automatic gallery checks share this reader. Queue a server change at
+     // the tested action rather than relying on a timing-dependent call ordinal.
+     if(failLatest)return answer(route,{success:false,message:'synthetic offline response'},503);
+     if(pendingLatest==='text'){pendingLatest='';serverNew={messageId:'server-new',hostChatRoomId:host,userType:'star',type:'text',content:'synthetic latest refresh row',createdAt:end-1};return answer(route,{success:true,data:{messages:[serverNew]}});}
+     if(pendingLatest==='image'){pendingLatest='';galleryNew={messageId:'gallery-new',hostChatRoomId:host,userType:'star',type:'image',content:'https://fixture.test/refresh-image.svg',createdAt:end-1};return answer(route,{success:true,data:{messages:[galleryNew]}});}
     }
     return answer(route,{success:true,data:{messages:[]}});
    }
@@ -51,6 +53,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.waitForFunction(()=>state.room?.hostChatRoomId==='refresh-complete-host'&&state.chatHistoryComplete&&state.messages.length===40&&FrommConversation.status.phase==='connected',null,{timeout:5000});
   assert.equal(feedCalls,1,'opening a complete cache performs only the normal incremental latest check');
   const before=await page.locator('[data-message-id="cached-12"]').evaluate(node=>{node.scrollIntoView({block:'center'});FrommViewState.cancel();return node.getBoundingClientRect().top;});
+  pendingLatest='text';
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>document.querySelector('[data-message-id="server-new"]')&&state.chatHistoryComplete&&FrommConversation.status.phase==='connected',null,{timeout:5000});
   const after=await page.locator('[data-message-id="cached-12"]').evaluate(node=>node.getBoundingClientRect().top);
@@ -68,6 +71,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.evaluate(()=>setFilter('image'));
   await page.waitForFunction(()=>state.filter==='image'&&document.querySelector('[data-message-id="cached-4"]'));
   const galleryBefore=await page.locator('[data-message-id="cached-4"]').evaluate(node=>{node.scrollIntoView({block:'center'});FrommViewState.cancel();return node.getBoundingClientRect().top;});
+  pendingLatest='image';
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>document.querySelector('[data-message-id="gallery-new"]')&&FrommConversation.status.phase==='connected',null,{timeout:5000});
   await page.waitForTimeout(250);
@@ -76,6 +80,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.evaluate(()=>FrommConversation.flush());
   const gallerySnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read('user:synthetic-refresh-user','refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='gallery-new')}}finally{await store.close()}});
   assert.deepEqual(gallerySnapshot,{count:42,complete:true,hasNew:true},'refresh in a media tab merges latest items without clearing complete history');
+  failLatest=true;
   await page.locator('#scanBtn').click();
   await page.waitForFunction(()=>FrommConversation.status.phase==='retry',null,{timeout:5000});
   const failedRefreshSnapshot=await page.evaluate(async()=>{const store=FrommConversationCore.createStore();try{const value=await store.read('user:synthetic-refresh-user','refresh-complete-host');return{count:value.messages.length,complete:value.meta.complete,hasNew:value.messages.some(row=>row.messageId==='server-new')}}finally{await store.close()}});

@@ -83,7 +83,8 @@
  #glassSettingsDialog .artist-folder-path svg{width:16px;height:16px;flex:none}
  #glassSettingsDialog .artist-folder-path span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
  #glassSettingsDialog .artist-folder-choose{min-height:32px;padding:4px 12px;border-radius:999px;background:transparent}
- #glassSettingsDialog .artist-folder-more{border:0;background:transparent;color:var(--theme-muted);font:inherit;cursor:pointer;min-height:32px;width:28px;padding:0}
+ #glassSettingsDialog .artist-folder-more{display:grid;place-items:center;border:0;background:transparent;color:var(--theme-muted);font:inherit;cursor:pointer;height:32px;width:28px;padding:0}
+ #glassSettingsDialog .artist-folder-more svg{display:block;width:16px;height:16px}
  #glassSettingsDialog .artist-folder-menu-wrap{position:relative}
  #glassSettingsDialog .artist-folder-menu{position:fixed;inset:auto;margin:0;z-index:1401;min-width:140px;border:1px solid var(--theme-line);border-radius:12px;padding:4px;background:var(--theme-card);box-shadow:0 4px 16px #0002}
  #glassSettingsDialog .artist-folder-menu button{display:block;width:100%;padding:10px;border:0;background:transparent;color:var(--theme-text);font:inherit;font-size:12px;cursor:pointer;border-radius:8px}
@@ -97,7 +98,7 @@
   position: relative;
   display: block;
   flex: 0 0 auto;
-  --fromm-switch-control-width: 128px;
+  --fromm-switch-control-width: 84px;
   width: var(--fromm-switch-control-width);
   height: calc(var(--fromm-switch-control-width) * 96 / 164);
   border: 0;

@@ -1,10 +1,10 @@
-import './web-morph-menu.js?v=artist-folders-20261126';
-import './web-clear-controls.js?v=artist-folders-20261126';
-import './web-glass-controls.js?v=artist-folders-20261126';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=artist-folders-20261126';
+import './web-morph-menu.js?v=artist-folder-layout-20261126';
+import './web-clear-controls.js?v=artist-folder-layout-20261126';
+import './web-glass-controls.js?v=artist-folder-layout-20261126';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=artist-folder-layout-20261126';
 import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=artist-folders-20261126').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=artist-folder-layout-20261126').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while

@@ -10,7 +10,7 @@ try{
   FileSystemHandle.prototype.requestPermission=async()=>denyFolder?'denied':'granted';
  });return c;}};
  const {page,context,errors}=await open(wrapper,server.url,{width:1440});
- const rooms=[['j','박지원'],['c','이채영'],['h','송하영'],['n','이나경'],['b','백지헌'],['oh','효정']].map(([id,nick])=>({id:'fixture-'+id,hostChatRoomId:'host-'+id,host:{nick}}));
+ const rooms=[['j','박지원'],['c','이채영'],['h','송하영'],['n','이나경'],['b','헌이'],['oh','쩡이 💙'],['y','😗️'],['s','승희클라미'],['m','친절한 곰돌씨'],['u','유빈'],['a','아린']].map(([id,nick])=>({id:'fixture-'+id,hostChatRoomId:'host-'+id,host:{nick}}));
  const roster=()=>page.evaluate(rooms=>{state.rooms=rooms;state.room=rooms.find(r=>r.hostChatRoomId==='host-h');},rooms);
  const show=async()=>{await page.evaluate(()=>FrommGlowME.setRailOpen(true));await page.locator('#glassSettingsBtn').click();await page.locator('[data-settings-tab="general"]').click();};
  const close=()=>page.locator('#glassSettingsDialog .glass-settings-done').click();
@@ -18,10 +18,17 @@ try{
  const hayoung=page.locator('[data-artist-folder="host-h"]'),fromis=page.locator('[data-folder-group="fromis_9"]'),toggle=page.getByRole('switch',{name:'아티스트별 저장 폴더',exact:true});
  assert.deepEqual(await fromis.locator('h4').allTextContents(),['송하영','박지원','이채영','이나경','백지헌']);
  assert.equal(await fromis.locator('.artist-folder-count').innerText(),'0/5 지정');
+ const ohMyGirl=page.locator('[data-folder-group="OH MY GIRL"]');assert.deepEqual(await ohMyGirl.locator('h4').allTextContents(),['효정','미미','유아','승희','유빈','아린']);
+ assert.equal(await page.locator('[data-folder-group="기타 아티스트"]').count(),0);
+ assert.deepEqual(await page.evaluate(()=>[
+  ['YOOA','OH MY GIRL'],['SEUNGHEE','OH MY GIRL'],['HYOJUNG','OH MY GIRL'],['MIMI','OH MY GIRL'],['BAEK JI HEON','fromis_9']
+ ].map(([author,group])=>saveArtistForPost({_artistAuthor:author,_channelName:group}))),['host-y','host-s','host-oh','host-m','host-b'],'canonical authors retain their subscribed folder keys');
  await page.evaluate(()=>folderPath=['Pictures','fromis_9','송하영']);await hayoung.locator('.artist-folder-choose').click();
  await page.waitForFunction(()=>document.querySelector('[data-artist-folder="host-h"] .artist-folder-path').title==='Pictures / fromis_9 / 송하영');
  assert.equal(await fromis.locator('.artist-folder-count').innerText(),'1/5 지정');
  assert.equal(await hayoung.locator('.artist-folder-choose').innerText(),'변경');
+ const changeBox=await hayoung.locator('.artist-folder-choose').boundingBox(),dotsBox=await hayoung.locator('.artist-folder-more svg').boundingBox();
+ assert.ok(Math.abs(changeBox.y+changeBox.height/2-dotsBox.y-dotsBox.height/2)<1,'ellipsis icon aligns with the change button center');
  assert.equal(await page.locator('[data-artist-folder="host-c"] [data-folder-value]').innerText(),'Pictures · 기본 폴더');
  // Long unrelated names remain truthful: no invented absolute parent path.
  const long='별도-'+ '긴폴더이름'.repeat(12);
@@ -29,11 +36,11 @@ try{
  await page.waitForFunction(name=>document.querySelector('[data-artist-folder="host-j"] .artist-folder-path').title===name,long);
  const overflow=await page.locator('[data-artist-folder="host-j"] [data-folder-value]').evaluate(e=>({scroll:e.scrollWidth,width:e.clientWidth,mode:getComputedStyle(e).textOverflow}));assert.ok(overflow.scroll>overflow.width);assert.equal(overflow.mode,'ellipsis');await page.locator('[data-artist-folder="host-j"] .artist-folder-path').focus();assert.equal(await page.locator('[data-artist-folder="host-j"] [data-folder-value]').evaluate(e=>getComputedStyle(e).whiteSpace),'normal','keyboard focus reveals the full path');await toggle.focus();
  assert.equal(await fromis.locator('.artist-folder-count').innerText(),'2/5 지정');
- const box=await toggle.boundingBox();assert.ok(Math.abs(box.width-128)<1&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
+ const box=await toggle.boundingBox();assert.ok(Math.abs(box.width-84)<1&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
  const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*40/164),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await page.waitForTimeout(250);const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min-3,'approved capsule swells above the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await page.waitForTimeout(250);const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min-2,'approved capsule swells above the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);

@@ -64,4 +64,85 @@
 
 .theme-swatch-classic{background:linear-gradient(135deg,#171a21 50%,#ff5b73 50%)}
 
-@media(min-width:701px){.artist-save-folders{margin-top:18px}.artist-save-folders section{padding:10px 0;border-top:1px solid var(--line)}.artist-save-folders h4{margin:4px 0}.artist-save-folders p{overflow-wrap:anywhere}.artist-save-folders .btn{margin:0 6px 6px 0}}
+@media(min-width:701px){
+ #glassSettingsDialog .artist-save-folders{margin-top:22px;padding-top:22px;border-top:1px solid var(--theme-line)}
+ #glassSettingsDialog .artist-folders-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+ #glassSettingsDialog .artist-folders-heading h3{margin:0}
+ #glassSettingsDialog .artist-folder-group{margin-top:12px;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-soft);overflow:clip}
+ #glassSettingsDialog .artist-folder-group summary{display:flex;align-items:center;gap:12px;min-height:56px;padding:12px 14px;cursor:pointer;list-style:none;font-size:14px;font-weight:650}
+ #glassSettingsDialog .artist-folder-group summary::-webkit-details-marker{display:none}
+ #glassSettingsDialog .artist-folder-group summary::after{content:'';width:7px;height:7px;border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;transform:rotate(45deg);flex:none;transition:transform 200ms}
+ #glassSettingsDialog .artist-folder-group[open] summary::after{transform:rotate(225deg)}
+ #glassSettingsDialog .artist-folder-group-name{display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow-wrap:anywhere}
+ #glassSettingsDialog .artist-folder-count{font-weight:400;font-size:12px;color:var(--theme-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+ #glassSettingsDialog .artist-folder-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:16px 12px;border-top:1px solid var(--theme-line)}
+ #glassSettingsDialog .artist-folder-copy{min-width:0}
+ #glassSettingsDialog .artist-folder-row h4{margin:0 0 6px;font-size:14px}
+ #glassSettingsDialog .artist-folder-path{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;min-width:0;color:var(--theme-muted)}
+ #glassSettingsDialog .artist-folder-path[data-assigned="true"]{color:var(--theme-accent)}
+ #glassSettingsDialog .artist-folder-path svg{width:16px;height:16px;flex:none}
+ #glassSettingsDialog .artist-folder-path span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+ #glassSettingsDialog .artist-folder-choose{min-height:32px;padding:4px 12px;border-radius:999px;background:transparent}
+ #glassSettingsDialog .artist-folder-more{border:0;background:transparent;color:var(--theme-muted);font:inherit;cursor:pointer;min-height:32px;width:28px;padding:0}
+ #glassSettingsDialog .artist-folder-menu-wrap{position:relative}
+ #glassSettingsDialog .artist-folder-menu{position:fixed;inset:auto;margin:0;z-index:1401;min-width:140px;border:1px solid var(--theme-line);border-radius:12px;padding:4px;background:var(--theme-card);box-shadow:0 4px 16px #0002}
+ #glassSettingsDialog .artist-folder-menu button{display:block;width:100%;padding:10px;border:0;background:transparent;color:var(--theme-text);font:inherit;font-size:12px;cursor:pointer;border-radius:8px}
+ #glassSettingsDialog .artist-folder-menu button:hover{background:var(--theme-selected)}
+}
+
+/* User-approved 124:55 rail and 520ms local Canvas transition. */
+#glassSettingsDialog .artist-folder-switch{--fromm-switch-track-on:var(--theme-accent);--fromm-switch-track-off:var(--theme-line);--fromm-switch-thumb:color-mix(in srgb,var(--theme-accent) 8%,white);--fromm-switch-glint:#fff}
+/* The outer button includes space for the expanded glass silhouette. */
+#glassSettingsDialog .artist-folder-switch {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  --fromm-switch-control-width: 128px;
+  width: var(--fromm-switch-control-width);
+  height: calc(var(--fromm-switch-control-width) * 96 / 164);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 100px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#glassSettingsDialog .artist-folder-switch canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready]) canvas { visibility: hidden; }
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])::before,
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])::after {
+  content: "";
+  position: absolute;
+  border-radius: 100px;
+}
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])::before {
+  left: 12.2%;
+  top: 21.35%;
+  width: 75.6%;
+  height: 57.3%;
+  background: var(--fromm-switch-track-off);
+}
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])[aria-checked="true"]::before { background: var(--fromm-switch-track-on); }
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])::after {
+  left: 14.63%;
+  top: 25%;
+  width: 44.51%;
+  height: 50%;
+  background: var(--fromm-switch-thumb);
+}
+#glassSettingsDialog .artist-folder-switch:not([data-glass-ready])[aria-checked="true"]::after { left: 40.85%; }
+#glassSettingsDialog .artist-folder-switch:disabled { cursor: default; opacity: .5; }
+
+@supports(interpolate-size:allow-keywords){
+ #glassSettingsDialog .artist-folder-group{interpolate-size:allow-keywords}
+ #glassSettingsDialog .artist-folder-group::details-content{block-size:0;overflow:clip;content-visibility:hidden;transition:block-size 200ms ease-out,content-visibility 200ms allow-discrete}
+ #glassSettingsDialog .artist-folder-group[open]::details-content{block-size:auto;content-visibility:visible}
+}
+@media(forced-colors:active){#glassSettingsDialog .artist-folder-switch canvas{visibility:hidden}#glassSettingsDialog .artist-folder-switch{outline:1px solid ButtonText}#glassSettingsDialog .artist-folder-switch::before{content:'OFF';color:ButtonText}#glassSettingsDialog .artist-folder-switch[aria-checked="true"]::before{content:'ON'}}
+@media(prefers-reduced-motion:reduce){#glassSettingsDialog .artist-folder-group::details-content,#glassSettingsDialog .artist-folder-group summary::after{transition:none}}
+
+#glassSettingsDialog .artist-folder-list{overflow:clip}
+
+#glassSettingsDialog .artist-folder-group-name svg{width:18px;height:18px;flex:none;color:var(--theme-accent)}
+
+#glassSettingsDialog .artist-folder-path:focus span{white-space:normal;overflow-wrap:anywhere}

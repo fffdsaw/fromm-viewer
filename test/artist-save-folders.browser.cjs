@@ -15,7 +15,7 @@ const {seedCollection}=require('./helpers/collection-fixture.cjs');
  await artists();await settings();await page.getByRole('button',{name:'폴더 선택',exact:true}).click();
  await page.evaluate(()=>folderName='Hayoung-fixture');await page.getByRole('button',{name:'송하영 저장 폴더 지정',exact:true}).click();
  await page.locator('[data-artist-folder="host-h"]').getByText('Hayoung-fixture',{exact:true}).waitFor();
- assert.equal(await page.locator('[data-artist-folder="host-j"]').getByText('기본 저장 폴더 사용',{exact:true}).count(),1);
+ assert.equal(await page.locator('[data-artist-folder="host-j"]').getByText('Default-fixture · 기본 폴더',{exact:true}).count(),1);
  if(process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR){fs.mkdirSync(process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.DESKTOP_FOLLOWUP_SCREENSHOT_DIR+'/artist-folders.png'});}
  await close();
  let requests=0;
@@ -43,7 +43,7 @@ const {seedCollection}=require('./helpers/collection-fixture.cjs');
  const media=await page.evaluate(async()=>{const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('Hayoung-fixture'),result=[];async function walk(d,prefix=''){for await(const[name,h]of d.entries())if(h.kind==='directory')await walk(h,prefix+name+'/');else result.push({name:prefix+name,size:(await h.getFile()).size});}await walk(dir);return result;});
  assert.equal(media.filter(f=>f.name.startsWith('audio/')).length,1);assert.ok(media.filter(f=>/\.(jpg|mp4)$/.test(f.name)&&!f.name.startsWith('audio/')).length>=2);assert.ok(media.every(f=>f.size>0));
  await feed();
- await settings();await page.getByRole('button',{name:'송하영 기본 저장 폴더 사용',exact:true}).click();await page.locator('[data-artist-folder="host-h"]').getByText('기본 저장 폴더 사용',{exact:true}).waitFor();await close();assert.match(await save('folder-h'),/저장 완료/);assert.equal((await files())['Hayoung-fixture'].length,3,'reset never deletes existing files');
+ await settings();await page.getByRole('button',{name:'송하영 저장 폴더 메뉴',exact:true}).click();await page.getByRole('menuitem',{name:'송하영 기본 저장 폴더 사용',exact:true}).click();await page.locator('[data-artist-folder="host-h"]').getByText('Default-fixture · 기본 폴더',{exact:true}).waitFor();await close();assert.match(await save('folder-h'),/저장 완료/);assert.equal((await files())['Hayoung-fixture'].length,3,'reset never deletes existing files');
  await page.evaluate(()=>setActiveAuth('other-synthetic','other-device','other-account'));assert.equal(await page.evaluate(()=>FrommSaveFolder.name(currentAccountScope(),'host-h')),'');
  assert.deepEqual(errors,[]);await context.close();console.log('PC per-subscription settings, alias routing, separate real file writes, default fallback, duplicates, IDB reload, denial, non-destructive reset and account isolation PASS');
 }finally{await browser.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

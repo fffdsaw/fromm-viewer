@@ -17,5 +17,5 @@
  const roster=group=>groups.find(g=>g.names.some(name=>normalize(name)===normalize(group)))?.members||[];
  const find=(name,group)=> (group?roster(group):groups.flatMap(g=>g.members)).find(m=>m.aliases.includes(normalize(name)));
  const compare=(a,b)=>(find(a)?.birthday||'9999').localeCompare(find(b)?.birthday||'9999')||a.localeCompare(b,'ko');
- window.FrommArtists=Object.freeze({roster,find,compare,normalize});
+ window.FrommArtists=Object.freeze({roster,find,compare,normalize,group(name){return groups.find(g=>g.members.some(m=>m.aliases.includes(normalize(name))))?.names[0]||'';}});
 })();

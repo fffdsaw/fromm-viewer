@@ -63,7 +63,7 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   // A byte-fetch fallback is kept with its original decoded blob node. Leaving
   // that window releases its object URL instead of accumulating binary caches.
   let blobReads=0,releaseBlob=()=>{},blobGate=Promise.resolve();
-  await page.route('**/broken-scroll.svg',async route=>{
+  await page.route('**/broken-scroll.svg*',async route=>{
    if(route.request().resourceType()==='image')return route.fulfill({status:503,body:'synthetic image failure'});
    blobReads++;await blobGate;return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500"><rect width="600" height="500" fill="#94d9c4"/></svg>'});
   });
@@ -72,9 +72,18 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const blobURL=await page.evaluate(()=>{window.blobImage=document.querySelector('[data-message-id="photo-scroll-30"] img');return blobImage.src;}),reads=blobReads;assert.ok(reads>0);
   await page.evaluate(()=>renderChatWindow(filteredMessages(),42));assert.equal(await page.evaluate(()=>document.querySelector('[data-message-id="photo-scroll-30"] img')===blobImage),true);assert.equal(blobReads,reads);
   await page.evaluate(()=>renderChatWindow(filteredMessages(),140));assert.ok(await page.evaluate(url=>releasedImageURLs.includes(url),blobURL),'discarded blob URLs are released');
-  blobGate=new Promise(r=>releaseBlob=r);
+  // Direct image failure sets complete=true while the byte fallback is still
+  // pending. A text-only prepend must also follow that unresolved photo.
+  blobGate=new Promise(r=>releaseBlob=r);const pendingReads=blobReads;
+  await page.evaluate(async()=>{FrommViewState.cancel();state.chatMessages[30]={...state.chatMessages[30],content:location.origin+'/broken-scroll.svg?pending',width:undefined,height:undefined};renderChatWindow(filteredMessages(),60);for(const key of ['chatRenderObserver','chatTopRenderObserver']){state[key]?.disconnect();state[key]=null;}document.querySelector('[data-message-id="photo-scroll-30"] img').loading='eager';window.pendingReader=document.querySelector('[data-message-id="photo-scroll-32"]');for(let i=0;i<5;i++){scrollBy({top:pendingReader.getBoundingClientRect().top-240,behavior:'instant'});await new Promise(requestAnimationFrame);}});
+  for(let i=0;i<100&&blobReads===pendingReads;i++)await page.waitForTimeout(20);assert.ok(blobReads>pendingReads);
+  const pendingTop=await page.evaluate(()=>{const top=pendingReader.getBoundingClientRect().top;prependChatBatch(1);return top;});releaseBlob();
+  await page.waitForFunction(()=>{const img=document.querySelector('[data-message-id="photo-scroll-30"] img');return img.src.startsWith('blob:')&&img.complete&&img.naturalWidth;});await page.waitForTimeout(100);
+  assert.ok(Math.abs(await page.evaluate(()=>pendingReader.getBoundingClientRect().top)-pendingTop)<3,'text prepend retains the reader while an existing photo recovers');
+  await page.evaluate(()=>{FrommViewState.cancel();renderChatWindow(filteredMessages(),140);});
+  blobGate=new Promise(r=>releaseBlob=r);const lateReads=blobReads;
   await page.evaluate(()=>{window.lateImageURLs=[];const create=URL.createObjectURL.bind(URL);URL.createObjectURL=blob=>{const url=create(blob);lateImageURLs.push(url);return url;};renderChatWindow(filteredMessages(),40);document.querySelector('[data-message-id="photo-scroll-30"] img').loading='eager';});
-  for(let i=0;i<100&&blobReads===reads;i++)await page.waitForTimeout(20);assert.ok(blobReads>reads,'fallback byte request is in flight');
+  for(let i=0;i<100&&blobReads===lateReads;i++)await page.waitForTimeout(20);assert.ok(blobReads>lateReads,'fallback byte request is in flight');
   await page.evaluate(()=>renderChatWindow(filteredMessages(),140));releaseBlob();await page.waitForTimeout(200);
   assert.deepEqual(await page.evaluate(()=>lateImageURLs),[],'retired images do not allocate a late blob URL');
   // A later wheel action ends the late-image watch: it cannot drag the reader back.
@@ -85,6 +94,6 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const interrupted=await page.evaluate(()=>reader.getBoundingClientRect().top);assert.ok(Math.abs(interrupted-240)>150,'late media must not drag the reader back after a wheel action');
   // Account reset clears ephemeral geometry, with no IndexedDB mutation.
   await page.evaluate(()=>resetUserScopedMemory());assert.equal(await page.evaluate(()=>FrommChatLayout.cachedImages),0);
-  assert.deepEqual(errors,[]);await context.close();console.log(`${width}: delayed prepend drift <3px, node/request reuse, intrinsic reservation, source amendment, portrait fit, blob reuse/disposal, narrow-layout exclusion, manual cancellation and scoped geometry PASS (manual Y=${Math.round(manual)})`);
+  assert.deepEqual(errors,[]);await context.close();console.log(`${width}: delayed prepend drift <3px, node/request reuse, intrinsic reservation, source amendment, portrait fit, blob reuse/disposal/pending anchors, narrow-layout exclusion, manual cancellation and scoped geometry PASS (manual Y=${Math.round(manual)})`);
  }
 }finally{await browser?.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

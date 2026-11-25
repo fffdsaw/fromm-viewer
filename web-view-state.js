@@ -103,7 +103,7 @@
  function beforePrepend(start=0,end=0){
   if(!viewerDesktop.matches||state.filter!=='all'||motionCleanup||latestCleanup||pending||restoring)return null;
   const incoming=(state.infiniteList||[]).slice(start,end).some(message=>normType(message.type)==='image');
-  const unresolved=[...document.querySelectorAll('#timeline .media-wrap img')].some(image=>!image.complete);
+  const unresolved=[...document.querySelectorAll('#timeline .media-wrap img')].some(image=>!image.complete||image.dataset.blobRecoveryBusy==='1');
   // Text-only prepends retain their existing scroll and completion behavior.
   if(!incoming&&!unresolved)return null;
   const element=row();if(!element)return null;

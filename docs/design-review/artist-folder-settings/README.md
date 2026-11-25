@@ -26,7 +26,7 @@
 Node.js 24.22.3, Playwright 1.62.1, Chromium 151.0.7922.34의 full Chromium에서 합성 구독·미디어와 별도 OPFS를 사용했습니다. 실제 계정이나 사용자의 OS 폴더는 사용하지 않았습니다.
 
 - 웹·Native 단위 테스트 337 통과, 기존 Agora 관련 1개 건너뜀.
-- 새 `artist-folder-settings` 브라우저 검증: 그룹·생년월일·실제 개수, 확인된 하위 경로와 긴 외부 폴더명, 키보드로 전체 경로 확인, 초기 테마 및 테마 변경의 실제 Canvas RGB, 전환 시 높이 팽창, 연속 클릭과 위치 연속성, Space·Enter, OFF 기본 폴더/ON 개별 폴더에 기존 저장 파이프라인으로 실제 쓰기, OFF 재접속 복원과 핸들 유지, 그룹 기억, 지정 해제 시 파일 유지, 계정 격리, 동작 감소 및 모바일 제외를 검증합니다.
+- 새 `artist-folder-settings` 브라우저 검증: 그룹·생년월일·실제 개수, 확인된 하위 경로와 긴 외부 폴더명, 키보드로 전체 경로 확인, 초기 테마 및 테마 변경의 실제 Canvas RGB, 전환 시 높이 팽창, 연속 클릭과 위치 연속성, Space·Enter, OFF 기본 폴더/ON 개별 폴더에 기존 저장 파이프라인으로 실제 쓰기, OFF 재접속 복원과 핸들 유지, 그룹 기억, 지정 해제 시 파일 유지, 계정 격리, 펼침 후 설정창의 화면 경계 유지, 메뉴에서 Escape로 메뉴만 닫기, 동작 감소 및 모바일 제외를 검증합니다.
 - 기존 `artist-save-folders`, `settings-themes`, `glass-settings`, `media-bulk-save-folder`, `selection-save-ui` 브라우저 검증 통과. 파일명·중복·권한 거부·취소·부분 실패·사진/영상 루트와 기존 소문자 `audio/` 하위 폴더를 유지합니다.
 - 새 검증은 Conversation의 Chromium·Chrome·Edge CI에 포함하고, 배포 검증에 새 모듈 해시를 추가했습니다. 최종 원격 검사와 배포 결과는 PR에 기록합니다.
 

@@ -173,6 +173,7 @@ function mountSaveFolderSettings(panel){
 
  button.onclick=async()=>{button.disabled=true;try{await folder.open(currentAccountScope(),{change:true});refresh();}catch(error){if(error.name!=='AbortError')status.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{button.disabled=false;}};
  window.addEventListener('fromm-save-folder-change',refresh);glassPC.addEventListener('change',refresh);
+ new ResizeObserver(()=>{if(glassPC.matches&&dialog.open)placePanel();}).observe(section);
  return ()=>refresh({snap:true});
 }
 export function mountGlassSettings(){
@@ -213,7 +214,7 @@ export function mountGlassSettings(){
  for(const name of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(name,endDrag);
  dialog.addEventListener('close',()=>{endDrag();emit();const restore=()=>{if(document.querySelector('.app')?.inert||dialog.open)return;if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});if(trigger.checkVisibility())trigger.focus({preventScroll:true});};restore();requestAnimationFrame(restore);});
  dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
- document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
+ document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();const menu=dialog.querySelector('.artist-folder-menu:not([hidden])');if(menu){menu.hidePopover?.();menu.hidden=true;const button=menu.previousElementSibling;button.setAttribute('aria-expanded','false');button.focus();}else close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);
  selectCategory(category);renderControls();renderThemes();

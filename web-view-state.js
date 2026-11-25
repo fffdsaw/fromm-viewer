@@ -100,8 +100,12 @@
   timer=setTimeout(()=>{align();cleanup();},watchMs);
   align();
  }
- function beforePrepend(){
+ function beforePrepend(start=0,end=0){
   if(!viewerDesktop.matches||state.filter!=='all'||motionCleanup||latestCleanup||pending||restoring)return null;
+  const incoming=(state.infiniteList||[]).slice(start,end).some(message=>normType(message.type)==='image');
+  const unresolved=[...document.querySelectorAll('#timeline .media-wrap img')].some(image=>!image.complete);
+  // Text-only prepends retain their existing scroll and completion behavior.
+  if(!incoming&&!unresolved)return null;
   const element=row();if(!element)return null;
   const offset=element.getBoundingClientRect().top,view=key(),account=currentAccountScope(),version=state.infiniteVersion;
   return{element,settle(){settleRestoredMessage(element,offset,()=>viewerDesktop.matches&&state.filter==='all'&&view===key()&&account===currentAccountScope()&&version===state.infiniteVersion,12000,true);}};

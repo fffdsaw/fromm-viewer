@@ -8880,7 +8880,7 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
   const amount = state.chunkSize * Math.max(1,chunkCount);
   const newStart = Math.max(0,oldStart - amount);
 
-  const reading=window.FrommViewState?.beforePrepend();
+  const reading=window.FrommViewState?.beforePrepend(newStart,oldStart);
   const windowDate=tl.querySelector(":scope > .date-sep[data-window-date]");
   const firstVisibleContent = reading?.element || windowDate?.nextElementSibling || tl.querySelector(
     ":scope > .date-sep, :scope > .msg"

@@ -120,48 +120,50 @@
   }
   schedule();
  }
- function toStart(){
+ function travel(latest=false,valid=()=>true){
   cancel();state.chatAutoTopPending=false;
-  const view=key(),chat=state.filter==='all',list=chat&&state.chatHistoryComplete?filteredMessages():null;
+  const view=key(),chat=state.filter==='all',list=chat&&(latest||state.chatHistoryComplete)?filteredMessages():null;
   if(matchMedia('(prefers-reduced-motion: reduce)').matches){
-   if(list?.length)renderChatWindow(list,0);
-   positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});return;
+   if(list?.length)renderChatWindow(list,latest?list.length-1:0);
+   if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}return;
   }
-  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector('#scrollTopBtn');
+  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector(latest?'#conversationNew':'#scrollTopBtn'),motionClass=latest?'is-returning-latest':'is-returning';
   let animation=0,finished=false,version=null,prefix=[];
   const cleanup=()=>{
-   cancelAnimationFrame(animation);button?.classList.remove('is-returning');button?.style.removeProperty('--top-return-duration');
-   // During the trip only the first two chunks are added, never the entire
+   cancelAnimationFrame(animation);button?.classList.remove(motionClass);button?.style.removeProperty('--top-return-duration');
+   // During the trip only two destination chunks are added, never the entire
    // history. Reconcile the virtual window on arrival OR manual interruption.
    if(prefix.some(el=>el.parentNode===tl)&&view===key()&&version===state.infiniteVersion){
     const anchor=finished?null:row(),offset=anchor?.getBoundingClientRect().top,current=filteredMessages();
-    const index=finished?0:current.findIndex(message=>String(message.messageId)===anchor?.dataset.messageId);
+    const index=finished?(latest?current.length-1:0):current.findIndex(message=>String(message.messageId)===anchor?.dataset.messageId);
     if(current.length)renderChatWindow(current,Math.max(0,index));
-    if(finished)scrollTo({top:0,behavior:'instant'});
+    if(finished)scrollTo({top:latest?document.documentElement.scrollHeight:0,behavior:'instant'});
     else if(anchor&&index>=0){const next=tl.querySelector(`[data-message-id="${CSS.escape(anchor.dataset.messageId)}"]`);if(next)scrollBy({top:next.getBoundingClientRect().top-offset,behavior:'instant'});}
    }
    if(motionCleanup===cleanup)motionCleanup=null;
   };
   motionCleanup=cleanup;
-  if(list?.length&&state.chatWindowStart>0){
+  if(list?.length&&(latest?state.infiniteRendered<list.length:state.chatWindowStart>0)){
    // Keep the exact current message in place while adding the destination
-   // above it. Rebuilding first would clamp scrollY and flash another message.
+   // alongside it. Rebuilding first would clamp scrollY and flash another message.
    const anchor=row(),offset=anchor?.getBoundingClientRect().top;
-   const end=Math.min(state.chatWindowStart,state.chunkSize*2);
+   const start=latest?Math.max(state.infiniteRendered,list.length-state.chunkSize*2):0,end=latest?list.length:Math.min(state.chatWindowStart,state.chunkSize*2);
    disconnectInfiniteObserver();version=state.infiniteVersion;
-   const fragment=buildChatRangeFragment(0,end,true);prefix=[...fragment.childNodes];tl.prepend(fragment);
+   const fragment=buildChatRangeFragment(start,end,true);prefix=[...fragment.childNodes];if(latest)tl.append(fragment);else tl.prepend(fragment);
    if(anchor)scrollBy({top:anchor.getBoundingClientRect().top-offset,behavior:'instant'});
   }
-  const origin=scrollY,started=performance.now(),duration=Math.min(650,Math.max(260,origin/12));
-  button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add('is-returning');
+  const origin=scrollY,started=performance.now(),distance=latest?Math.max(0,document.documentElement.scrollHeight-innerHeight-origin):origin,duration=Math.min(650,Math.max(260,distance/12));
+  button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add(motionClass);
   const animate=now=>{
-   if(ticket!==serial||view!==key()||document.hidden||version!==null&&version!==state.infiniteVersion){cleanup();return;}
-   const t=Math.min(1,(now-started)/duration);scrollTo({top:Math.max(0,origin*Math.pow(1-t,3)),behavior:'instant'});
+   if(!valid()||ticket!==serial||view!==key()||document.hidden||version!==null&&version!==state.infiniteVersion){cleanup();return;}
+   const t=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-t,3),target=latest?Math.max(origin,document.documentElement.scrollHeight-innerHeight):0;scrollTo({top:origin+(target-origin)*ease,behavior:'instant'});
    if(t<1)animation=requestAnimationFrame(animate);
-   else{finished=true;cleanup();positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}
+   else{finished=true;cleanup();if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}}
   };
   animation=requestAnimationFrame(animate);
  }
+ function toStart(){return travel();}
+ function toLatest(valid=()=>true){return travel(true,valid);}
  // Only a first chat entry follows late image/font sizing. User input cancels it.
  function settleLatest(valid=()=>true){
   cancel();latestFollowing=true;const ticket=serial,tl=document.querySelector('#timeline');
@@ -192,5 +194,5 @@
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
  function resume(position){cancel();active=key();positions.set(active,position);pending={key:active,position,serial};}
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,toLatest,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
 })();

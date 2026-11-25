@@ -1,3 +1,28 @@
+## PC follow-ups: selection truth, roster, folders and latest motion — 2026-11-25
+
+User steering: PC only; Song Hayoung must appear before her posts load; full birthdate ascending; photo-refresh/reader displacement gets diagnosis and proposals ONLY. User previously authorized review followed by merge and deployment. Continue `codex/media-save-ui-header-20261125` on production `fffdsaw/fromm-viewer`, now including main merge `657938e` / PR #154. Preview repository and unrelated open PRs remain untouched.
+
+Implemented: actual select-all `aria-pressed` drives empty/checked square; public fromis_9 and OH MY GIRL rosters independent of fetched media, with canonical Korean/romanized aliases and birthdate sort; per-subscription destination settings in General with existing default folder fallback; stable pre-resolved per-post batch handles; PC saved-session profile prewarming alongside rooms; user-click-only downward latest motion sharing the existing top-motion easing, bounded destination chunks, cancellation and reduced-motion handling. Unknown/ambiguous Channel authors safely use the default folder. No invented API or author IDs. Module versions are updated together to avoid duplicate settings singletons or stale scripts after deployment.
+
+The destination configuration layer is intentionally extended by the user's new folder request. Actual writing, names, extensions, conversion, duplicate comparison, write-close completion and result panels retain their functions. Source comparisons confirm `mediaFolder`, `saveOneMediaItem`, `runMediaSaveBatch`, `renderChatWindow`, `prependChatBatch`, `renderMessage` and `armResilientImage` are unchanged. Photos/videos stay at the resolved root; audio stays under lowercase `audio/`. Browser OPFS tests cover actual artist media writes, mixed-member batch destinations, default fallback, duplicates, permission denial, reload, account isolation and non-destructive override removal.
+
+Local environment: Node 24.22.3, Playwright 1.62.1, Chromium 151.0.7922.34. Web + Native units: 337 passed / one existing Agora skip. Relevant browser suites passed: desktop-member-latest, artist-save-folders, startup-parallel, login-startup, startup-navigation, media-bulk-save, media-bulk-save-folder, selection-save-ui, direct-selection, channel-photos, channel-videos, scroll-top-motion, conversation-state, conversation-controls and settings-themes. Initial test harness failures came from newly extracted helper dependencies, an asynchronous Morph open, a fixture picker reading a changed global after await, a closing-sheet race and a differing existing result label; dependencies and waits were corrected while preserving assertions. An experiment to force content visibility during travel broke the anchor check and was discarded. Production photo scrolling was not changed.
+
+The screenshot API produced transient blank capture frames during rapid scrolling while compositor video retained the visible header, rail and messages; the GIF uses the actual browser recording. The recording verifies a synthetic 1000×625 message journey; actual button clicks are separately covered by conversation-controls. No optical engine was replaced or initialized for the animation.
+
+See `docs/design-review/desktop-followups/README.md` for Korean results, static screenshots, GIF, exact folder behavior, birthdate sources, startup limitations and the requested photo-scroll proposal. Synthetic delayed photos showed missing size reservation, late document-height growth and DOM replacement. This is not a signed-in user reproduction or a network redownload guarantee. Native OS pickers, real account media/folders, hardware and Safari are unverified. Public rosters currently need manual metadata updates; unknown groups retain received authors. Receipts: `/workspace/scratch/fromm-*-test.log`, `fromm-unit-followups.log`, `fromm-scroll-diagnosis.json`.
+
+At this local checkpoint CI/publication remain pending. The PR and its final verification comment are authoritative for hosted checks, merge and Pages results. Resume:
+
+```sh
+git fetch origin
+gh pr view codex/media-save-ui-header-20261125 --repo fffdsaw/fromm-viewer --json url,headRefOid,statusCheckRollup,mergedAt
+node --test test/*.test.cjs native-live/test/*.test.cjs
+NODE_PATH=/workspace/scratch/fromm-tools/node_modules node test/desktop-member-latest.browser.cjs
+NODE_PATH=/workspace/scratch/fromm-tools/node_modules node test/artist-save-folders.browser.cjs
+NODE_PATH=/workspace/scratch/fromm-tools/node_modules node test/startup-parallel.browser.cjs
+```
+
 ## PC selection save transitions and shared header — 2026-11-25 (Asia/Seoul)
 
 Target confirmed by the user: production `fffdsaw/fromm-viewer`, new branch `codex/media-save-ui-header-20261125` from `c29f6aa`. The user explicitly authorized review followed by merge and deployment. A follow-up excludes mobile improvements; existing touch CSS and behavior are retained. No preview repository was modified.

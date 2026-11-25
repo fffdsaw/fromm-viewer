@@ -1,10 +1,10 @@
-import './web-morph-menu.js?v=media-save-20261124';
-import './web-clear-controls.js?v=meapri-folder-20261124';
-import './web-glass-controls.js?v=meapri-folder-20261124';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=meapri-folder-20261124';
+import './web-morph-menu.js?v=desktop-followups-20261125';
+import './web-clear-controls.js?v=desktop-followups-20261125';
+import './web-glass-controls.js?v=desktop-followups-20261125';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=desktop-followups-20261125';
 import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=meapri-folder-20261124').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=desktop-followups-20261125').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while

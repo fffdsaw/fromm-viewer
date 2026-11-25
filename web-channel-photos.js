@@ -168,15 +168,16 @@ async function saveChannelPhotoPosts(posts,{button,index=null}={}){
   const iconOnly=button?.matches?.('[data-channel-photo-download]')&&window.pcMediaPresentation?.();
   const batchButton=button?.id==='saveSelectedBtn'?button:null;
   if(batchButton)setBulkSaveButtonProgress(batchButton,0);
-  let directory,ok=0,skipped=0,failed=0,status='',phase="idle";
+  let directory,directoryForPost,ok=0,skipped=0,failed=0,status='',phase="idle";
   try{
     if(supportsDirectorySave()){
       if(iconOnly)setDownloadButtonFeedback(button,"picker");
-      directory=await openViewerSaveFolder();
+      directoryForPost=await prepareViewerSaveFolders(posts);directory=directoryForPost(posts[0]);
     }
     if(iconOnly)setDownloadButtonFeedback(button,"active");
     for(const [i,post] of posts.entries()){
       if(!current())break;
+      if(directoryForPost)directory=directoryForPost(post);
       if(batchButton)batchButton.textContent=`저장 ${i+1}/${posts.length}`;
       try{
         const result=await saveChannelPhotoContents(post,{directory,current,index,onProgress:(done,total)=>{

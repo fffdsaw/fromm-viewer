@@ -63,3 +63,5 @@
 @media(forced-colors:active){#glassSettingsDialog[open],#glassSettingsDialog :is(.glass-settings-head,.glass-settings-body,.glass-settings-actions,.settings-categories){background:Canvas;color:CanvasText;border-color:CanvasText}#glassSettingsDialog button{forced-color-adjust:auto}#glassSettingsDialog .glass-switch-track input{opacity:1}#glassSettingsDialog .glass-switch-thumb{display:none}}
 
 .theme-swatch-classic{background:linear-gradient(135deg,#171a21 50%,#ff5b73 50%)}
+
+@media(min-width:701px){.artist-save-folders{margin-top:18px}.artist-save-folders section{padding:10px 0;border-top:1px solid var(--line)}.artist-save-folders h4{margin:4px 0}.artist-save-folders p{overflow-wrap:anywhere}.artist-save-folders .btn{margin:0 6px 6px 0}}

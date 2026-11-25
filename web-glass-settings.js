@@ -105,11 +105,38 @@ function mountSaveFolderSettings(panel){
  section.innerHTML='<h3>기본 저장 폴더</h3><p role="status"></p><button type="button" class="btn">폴더 선택</button>';
  panel.append(section);
  const status=section.querySelector('p'),button=section.querySelector('button');
+ const artists=document.createElement('div');artists.className='artist-save-folders';section.append(artists);
+ let signature='';
+ function refreshArtists(){
+  const account=currentAccountScope(),rows=subscribedSaveArtists();
+  const next=JSON.stringify([account,rows.map(artist=>[artist.id,artist.name])]);
+  if(signature===next){
+   for(const row of artists.querySelectorAll('[data-artist-folder]')){
+    const name=folder.name(account,row.dataset.artistFolder);row.querySelector('p').textContent=name||'기본 저장 폴더 사용';row.querySelectorAll('button')[1].hidden=!name;
+   }
+   return;
+  }
+  signature=next;
+  artists.replaceChildren();
+  const title=document.createElement('h3');title.textContent='아티스트별 저장 폴더';artists.append(title);
+  const note=document.createElement('p');note.textContent='별도 폴더를 지정하지 않으면 기본 저장 폴더를 사용합니다.';artists.append(note);
+  for(const artist of rows){
+   const row=document.createElement('section'),label=document.createElement('h4'),value=document.createElement('p'),choose=document.createElement('button'),reset=document.createElement('button');
+   row.dataset.artistFolder=artist.id;label.textContent=artist.name;value.textContent=folder.name(account,artist.id)||'기본 저장 폴더 사용';value.setAttribute('role','status');
+   choose.type=reset.type='button';choose.className=reset.className='btn';choose.textContent='폴더 지정';choose.setAttribute('aria-label',artist.name+' 저장 폴더 지정');
+   reset.textContent='기본 폴더 사용';reset.setAttribute('aria-label',artist.name+' 기본 저장 폴더 사용');reset.hidden=!folder.name(account,artist.id);
+   choose.onclick=async()=>{choose.disabled=true;try{await folder.open(account,{change:true,artist:artist.id});}catch(error){if(error.name!=='AbortError')value.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{choose.disabled=false;}};
+   reset.onclick=async()=>{reset.disabled=true;try{await folder.useDefault(account,artist.id);}finally{reset.disabled=false;}};
+   row.append(label,value,choose,reset);artists.append(row);
+  }
+ }
+
  function refresh(){
   section.hidden=!glassPC.matches;
   const name=folder.name(currentAccountScope());
   status.textContent=name||'아직 선택한 폴더가 없습니다.';
   button.textContent=name?'폴더 변경':'폴더 선택';
+  refreshArtists();
  }
  button.onclick=async()=>{
   button.disabled=true;

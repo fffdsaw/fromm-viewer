@@ -62,14 +62,15 @@
    }else if(el){
     scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
     pending=null;
-    settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all');
+    const anchor=mediaPoint(el);
+    settleRestoredMessage(anchor,anchor===el?pos.offset:anchor.getBoundingClientRect().top,()=>job.key===key()&&state.filter==='all');
    }else{
     scrollTo({top:pos.y,behavior:'instant'});
     pending=null;
    }
   }finally{restoring=false;}
  }
- // After rebuilding a virtual message window, images can gain height later.
+ // After rebuilding a virtual message window, media can gain height later.
  // Keep the same message at its prior viewport offset for a bounded period.
  function settleRestoredMessage(el,offset,valid){
   anchorCleanup?.();const ticket=serial,tl=document.querySelector('#timeline');
@@ -91,7 +92,12 @@
   function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
   anchorCleanup=cleanup;
   if(typeof ResizeObserver==='function'&&tl){
-   observer=new ResizeObserver(schedule);observer.observe(tl);
+   observer=new ResizeObserver(()=>{
+    // The bookmark owns this interval. Correct PC media reflow before paint
+    // rather than letting the continuous tracker wait on a deferred frame.
+    if(viewerDesktop.matches&&tl.querySelector(':scope > .chat-rich-message')){cancelAnimationFrame(queued);align();}
+    else schedule();
+   });observer.observe(tl);
   }
   tl?.addEventListener('load',schedule,true);
   document.fonts?.addEventListener('loadingdone',schedule);
@@ -206,14 +212,15 @@
  const timeline=document.querySelector('#timeline');
  const mediaScope=()=>JSON.stringify([currentAccountScope(),key(),state.scanGeneration,state.infiniteVersion]);
  const mediaReady=()=>viewerDesktop.matches&&state.filter==='all'&&!document.hidden&&!document.querySelector('#loginGate:not(.hidden)')&&!!timeline.querySelector(':scope > .chat-rich-message');
- function mediaRow(){
-  const element=row();if(!element)return null;
+ function mediaPoint(element){
+  if(!element||!viewerDesktop.matches)return element;
   // If a partially visible card gains intrinsic height, anchor its visible
   // footer. Anchoring only the row's top would still push the following text.
   const foot=element.classList.contains('chat-rich-message')?element.querySelector('.chat-message-foot'):null;
   const top=foot?.getBoundingClientRect().top;
   return foot&&top>=chatHeaderInset()&&top<innerHeight?foot:element;
  }
+ function mediaRow(){return mediaPoint(row());}
  function readMediaAnchor(){
   if(!mediaReady())return null;
   const element=mediaRow();return element?{element,scope:mediaScope(),docTop:element.getBoundingClientRect().top+scrollY,y:scrollY,max:Math.max(0,document.documentElement.scrollHeight-innerHeight)}:null;

@@ -49,6 +49,12 @@ async function scrolling(browser,url,width){
  assert.ok(before.rich.length>=12);assert.ok(before.rich.every(row=>row.visibility==='visible'&&row.height>0),'rich cards use their own layout instead of skipped 80px placeholders: '+JSON.stringify(before.rich));
  // A slow response can arrive after the old 12-second prepend watch expired,
  // and after wheel input. It must preserve the NEW reader, not an old bookmark.
+ // Also cover the active navigation/bookmark owner while media is still held.
+ if(width===900){
+  await page.evaluate(()=>render());await page.waitForFunction(()=>!FrommViewState.pending);
+  await page.evaluate(()=>{window.reader=document.querySelector('[data-message-id="rich-49"]');});
+  assert.ok(Math.abs(await page.evaluate(()=>reader.getBoundingClientRect().top-readerTop))<3,'render restores the current reader before delayed media resolves');
+ }
  await page.waitForTimeout(width===1440?12500:250);
  await page.evaluate(()=>{window.maxRichDrift=0;window.richFrames=0;window.richLayoutObserver=new ResizeObserver(()=>{maxRichDrift=Math.max(maxRichDrift,Math.abs(reader.getBoundingClientRect().top-readerTop));});richLayoutObserver.observe(document.querySelector("#timeline"));const sample=()=>{if(++richFrames<60)requestAnimationFrame(sample);else richLayoutObserver.disconnect();};requestAnimationFrame(sample);});
  release();await page.waitForFunction(()=>richFrames===60);

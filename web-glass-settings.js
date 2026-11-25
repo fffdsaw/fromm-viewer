@@ -1,3 +1,4 @@
+import {mountLiquidGlassSwitch} from './web-artist-folder-switch.js?v=artist-folders-20261126';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
@@ -106,47 +107,74 @@ function mountSaveFolderSettings(panel){
  panel.append(section);
  const status=section.querySelector('p'),button=section.querySelector('button');
  const artists=document.createElement('div');artists.className='artist-save-folders';section.append(artists);
- let signature='';
+ const heading=document.createElement('div');heading.className='artist-folders-heading';
+ const title=document.createElement('h3');title.textContent='아티스트별 저장 폴더';title.id='artistFoldersLabel';heading.append(title);
+ const toggle=document.createElement('button');toggle.type='button';toggle.className='artist-folder-switch';toggle.id='artistFoldersEnabled';toggle.setAttribute('role','switch');toggle.setAttribute('aria-labelledby',title.id);toggle.setAttribute('aria-controls','artistFolderList');toggle.setAttribute('aria-checked','true');toggle.innerHTML='<canvas aria-hidden="true"></canvas>';heading.append(toggle);
+ const switchControl=mountLiquidGlassSwitch(toggle,{onToggle:checked=>folder.setEnabled(currentAccountScope(),checked),effectsEnabled:()=>values.enabled});
+ let switchAccount=null,listAnimation=null,listTarget=null;
+ glassPreferences.subscribe(()=>switchControl.refreshTheme());window.addEventListener('fromm-theme-change',()=>switchControl.refreshTheme());
+ dialog.addEventListener('close',()=>{switchControl.setChecked(folder.enabled(currentAccountScope()),{animate:false});listAnimation?.cancel();});
+ const note=document.createElement('p');note.textContent='별도 지정하지 않은 아티스트는 기본 저장 폴더를 사용합니다.';
+ const list=document.createElement('div');list.className='artist-folder-list';list.id='artistFolderList';artists.append(heading,note,list);
+ const folderIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h5l3 3h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M3 9h18"/></svg>';
+ const memory=new Map();let signature='',revision=0;
+ function groupState(account){if(memory.has(account))return memory.get(account);let value={};try{value=JSON.parse(localStorage.getItem('fromm.artistFolderGroups.v1:'+account)||'{}')||{};}catch{}memory.set(account,value);return value;}
+ function closeMenus(){for(const menu of artists.querySelectorAll('[role="menu"]')){if(menu.hidePopover)menu.hidePopover();menu.hidden=true;menu.previousElementSibling.setAttribute('aria-expanded','false');}}
+ document.addEventListener('pointerdown',event=>{if(!event.target.closest('.artist-folder-menu-wrap'))closeMenus();});
+ artists.addEventListener('keydown',event=>{if(event.key==='Escape'){const open=artists.querySelector('[role="menu"]:not([hidden])');if(open){event.preventDefault();event.stopPropagation();open.previousElementSibling.focus();closeMenus();}}});
  function refreshArtists(){
   const account=currentAccountScope(),rows=subscribedSaveArtists();
   const next=JSON.stringify([account,rows.map(artist=>[artist.id,artist.name])]);
-  if(signature===next){
-   for(const row of artists.querySelectorAll('[data-artist-folder]')){
-    const name=folder.name(account,row.dataset.artistFolder);row.querySelector('p').textContent=name||'기본 저장 폴더 사용';row.querySelectorAll('button')[1].hidden=!name;
+  if(signature!==next){
+   signature=next;list.replaceChildren();
+   const groups=new Map();
+   for(const artist of rows){const group=window.FrommArtists?.group(artist.name)||'기타 아티스트';if(!groups.has(group))groups.set(group,[]);groups.get(group).push(artist);}
+   for(const [group,members] of groups){
+    const details=document.createElement('details'),summary=document.createElement('summary'),label=document.createElement('span'),count=document.createElement('span'),body=document.createElement('div');
+    details.className='artist-folder-group';details.dataset.folderGroup=group;details.open=groupState(account)[group]!==false;
+    label.className='artist-folder-group-name';label.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6m2 5a5 5 0 0 1 3 4v2"/></svg>';label.append(document.createTextNode(group));count.className='artist-folder-count';body.className='artist-folder-members';summary.append(label,count);details.append(summary,body);list.append(details);
+    details.addEventListener('toggle',()=>{if(account!==currentAccountScope()||!details.isConnected)return;const value=groupState(account);value[group]=details.open;try{localStorage.setItem('fromm.artistFolderGroups.v1:'+account,JSON.stringify(value));}catch{}});
+    for(const artist of members){
+     const row=document.createElement('div'),copy=document.createElement('div'),name=document.createElement('h4'),path=document.createElement('p'),value=document.createElement('span'),choose=document.createElement('button'),menuWrap=document.createElement('div'),more=document.createElement('button'),menu=document.createElement('div'),reset=document.createElement('button');
+     row.className='artist-folder-row';row.dataset.artistFolder=artist.id;copy.className='artist-folder-copy';name.textContent=window.FrommArtists?.find(artist.name)?.name||artist.name;
+     path.className='artist-folder-path';path.tabIndex=0;path.setAttribute('role','status');path.innerHTML=folderIcon;value.dataset.folderValue='';path.append(value);copy.append(name,path);
+     choose.type=more.type=reset.type='button';choose.className='btn artist-folder-choose';choose.setAttribute('aria-label',artist.name+' 저장 폴더 지정');
+     more.className='artist-folder-more';more.textContent='…';more.setAttribute('aria-label',artist.name+' 저장 폴더 메뉴');more.setAttribute('aria-haspopup','menu');more.setAttribute('aria-expanded','false');
+     menuWrap.className='artist-folder-menu-wrap';menu.setAttribute('role','menu');menu.className='artist-folder-menu';menu.hidden=true;if(menu.showPopover)menu.setAttribute('popover','auto');reset.setAttribute('role','menuitem');reset.textContent='기본 폴더 사용';reset.setAttribute('aria-label',artist.name+' 기본 저장 폴더 사용');menu.append(reset);menuWrap.append(more,menu);
+     more.onclick=()=>{const open=menu.hidden;closeMenus();menu.hidden=!open;more.setAttribute('aria-expanded',String(open));if(open){const rect=more.getBoundingClientRect();menu.style.left=Math.max(12,Math.min(innerWidth-160,rect.right-152))+'px';menu.style.top=Math.min(innerHeight-60,rect.bottom+4)+'px';menu.showPopover?.();reset.focus();}};
+     choose.onclick=async()=>{choose.disabled=true;try{await folder.open(account,{change:true,artist:artist.id});}catch(error){if(error.name!=='AbortError')value.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{choose.disabled=false;}};
+     reset.onclick=async()=>{reset.disabled=true;try{await folder.useDefault(account,artist.id);closeMenus();choose.focus();}finally{reset.disabled=false;}};
+     row.append(copy,choose,menuWrap);body.append(row);
+    }
    }
-   return;
+   if(!rows.length){const empty=document.createElement('p');empty.textContent='구독한 아티스트가 표시되면 개별 폴더를 지정할 수 있습니다.';list.append(empty);}
   }
-  signature=next;
-  artists.replaceChildren();
-  const title=document.createElement('h3');title.textContent='아티스트별 저장 폴더';artists.append(title);
-  const note=document.createElement('p');note.textContent='별도 폴더를 지정하지 않으면 기본 저장 폴더를 사용합니다.';artists.append(note);
-  for(const artist of rows){
-   const row=document.createElement('section'),label=document.createElement('h4'),value=document.createElement('p'),choose=document.createElement('button'),reset=document.createElement('button');
-   row.dataset.artistFolder=artist.id;label.textContent=artist.name;value.textContent=folder.name(account,artist.id)||'기본 저장 폴더 사용';value.setAttribute('role','status');
-   choose.type=reset.type='button';choose.className=reset.className='btn';choose.textContent='폴더 지정';choose.setAttribute('aria-label',artist.name+' 저장 폴더 지정');
-   reset.textContent='기본 폴더 사용';reset.setAttribute('aria-label',artist.name+' 기본 저장 폴더 사용');reset.hidden=!folder.name(account,artist.id);
-   choose.onclick=async()=>{choose.disabled=true;try{await folder.open(account,{change:true,artist:artist.id});}catch(error){if(error.name!=='AbortError')value.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{choose.disabled=false;}};
-   reset.onclick=async()=>{reset.disabled=true;try{await folder.useDefault(account,artist.id);}finally{reset.disabled=false;}};
-   row.append(label,value,choose,reset);artists.append(row);
+  const ticket=++revision;
+  for(const row of list.querySelectorAll('[data-artist-folder]')){
+   const id=row.dataset.artistFolder,name=folder.name(account,id),value=row.querySelector('[data-folder-value]'),path=row.querySelector('.artist-folder-path');
+   value.textContent=name||(folder.name(account)?folder.name(account)+' · 기본 폴더':'기본 저장 폴더 사용');path.title=value.textContent;path.dataset.assigned=String(!!name);
+   row.querySelector('.artist-folder-choose').textContent=name?'변경':'지정';row.querySelector('.artist-folder-menu-wrap').hidden=!name;
+   if(name)void folder.describe(account,id).then(text=>{if(ticket===revision&&account===currentAccountScope()&&row.isConnected){value.textContent=text;path.title=text;}});
+  }
+  for(const details of list.querySelectorAll('details')){const rows=[...details.querySelectorAll('[data-artist-folder]')],assigned=rows.filter(row=>folder.name(account,row.dataset.artistFolder)).length;details.querySelector('.artist-folder-count').textContent=assigned+'/'+rows.length+' 지정';}
+ }
+ function refresh({snap=false}={}){
+  section.hidden=!glassPC.matches;const account=currentAccountScope(),name=folder.name(account),enabled=folder.enabled(account),initial=switchAccount!==account;
+  status.textContent=name||'아직 선택한 폴더가 없습니다.';button.textContent=name?'폴더 변경':'폴더 선택';refreshArtists();
+  const animate=!snap&&!initial&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&dialog.open&&glassPC.matches;
+  switchControl.setChecked(enabled,{animate});switchAccount=account;
+  if(snap||initial||listTarget!==enabled){
+   listTarget=enabled;
+   const height=list.hidden?0:list.getBoundingClientRect().height;listAnimation?.cancel();listAnimation=null;
+   if(animate){list.hidden=false;const target=enabled?list.scrollHeight:0;listAnimation=list.animate([{height:height+'px',opacity:enabled?0:1},{height:target+'px',opacity:enabled?1:0}],{duration:200,easing:'ease-out'});const current=listAnimation;current.finished.then(()=>{if(listAnimation===current){list.hidden=!enabled;listAnimation=null;}}).catch(()=>{});}
+   else list.hidden=!enabled;
   }
  }
 
- function refresh(){
-  section.hidden=!glassPC.matches;
-  const name=folder.name(currentAccountScope());
-  status.textContent=name||'아직 선택한 폴더가 없습니다.';
-  button.textContent=name?'폴더 변경':'폴더 선택';
-  refreshArtists();
- }
- button.onclick=async()=>{
-  button.disabled=true;
-  try{await folder.open(currentAccountScope(),{change:true});refresh();}
-  catch(error){if(error.name!=='AbortError')status.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}
-  finally{button.disabled=false;}
- };
- window.addEventListener('fromm-save-folder-change',refresh);
- glassPC.addEventListener('change',refresh);
- return refresh;
+ button.onclick=async()=>{button.disabled=true;try{await folder.open(currentAccountScope(),{change:true});refresh();}catch(error){if(error.name!=='AbortError')status.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{button.disabled=false;}};
+ window.addEventListener('fromm-save-folder-change',refresh);glassPC.addEventListener('change',refresh);
+ new ResizeObserver(()=>{if(!glassPC.matches||!dialog.open)return;const saved=position,rect=dialog.getBoundingClientRect();position={x:rect.left,y:rect.top};placePanel();position=saved;}).observe(section);
+ return ()=>refresh({snap:true});
 }
 export function mountGlassSettings(){
  if(trigger||!window.FrommGlowME)return;
@@ -186,7 +214,7 @@ export function mountGlassSettings(){
  for(const name of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(name,endDrag);
  dialog.addEventListener('close',()=>{endDrag();emit();const restore=()=>{if(document.querySelector('.app')?.inert||dialog.open)return;if(!trigger.checkVisibility())window.FrommGlowME?.setRailOpen(true,{focus:false});if(trigger.checkVisibility())trigger.focus({preventScroll:true});};restore();requestAnimationFrame(restore);});
  dialog.addEventListener('keydown',event=>{if(event.key!=='Tab'||dialog.dataset.modal!=='true')return;const items=[...dialog.querySelectorAll('button,input')].filter(e=>!e.matches(':disabled')&&e.tabIndex>=0&&e.checkVisibility()),first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
- document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();close();}},true);
+ document.addEventListener('keydown',event=>{if(dialog.open&&event.key==='Escape'){event.stopImmediatePropagation();event.preventDefault();const menu=dialog.querySelector('.artist-folder-menu:not([hidden])');if(menu){menu.hidePopover?.();menu.hidden=true;const button=menu.previousElementSibling;button.setAttribute('aria-expanded','false');button.focus();}else close();}},true);
  new MutationObserver(()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden')&&dialog.open)close();}).observe(document.querySelector('#loginGate'),{attributes:true,attributeFilter:['class']});
  window.addEventListener('fromm-theme-change',renderThemes);
  selectCategory(category);renderControls();renderThemes();

@@ -4,8 +4,11 @@
   const storeName = 'folders';
   const mode = {mode: 'readwrite'};
   const folders = new Map();
+  const activation=new Map();
+  const enabled=account=>{if(!activation.has(account)){let value=true;try{value=localStorage.getItem('fromm.artistFoldersEnabled.v1:'+account)!=='off';}catch{}activation.set(account,value);}return activation.get(account);};
   // Default keys stay unchanged; artist overrides use a disjoint structured key.
   const keyFor = (account, artist = '') => artist ? JSON.stringify(['artist', account, String(artist)]) : account;
+  window.addEventListener('storage',event=>{if(event.key?.startsWith('fromm.artistFoldersEnabled.v1:')){activation.clear();changed();}});
   const changed = () => window.dispatchEvent(new Event('fromm-save-folder-change'));
   const database = new Promise(resolve => {
     try {
@@ -60,7 +63,16 @@
 
   window.FrommSaveFolder = Object.freeze({
     ready,
+    enabled,
+    setEnabled(account,value){activation.set(account,!!value);try{localStorage.setItem('fromm.artistFoldersEnabled.v1:'+account,value?'on':'off');}catch{}changed();},
     name(account, artist = '') { return folders.get(keyFor(account, artist))?.name || ''; },
+    async describe(account, artist) {
+      await ready;
+      const target=folders.get(keyFor(account,artist)),base=folders.get(account);
+      if(!target)return base?.name||'';
+      if(base&&typeof base.resolve==='function')try{const relative=await base.resolve(target);if(relative)return[base.name,...relative].join(' / ');}catch{}
+      return target.name;
+    },
     async useDefault(account, artist) {
       if (!artist) return;
       await ready;
@@ -75,7 +87,7 @@
       channel?.postMessage(key);
     },
     async open(account, {change = false, artist = ''} = {}) {
-      const key = keyFor(account, artist);
+      const key = keyFor(account, change||enabled(account)?artist:'');
       const remembered = !change && (folders.get(key) || folders.get(account));
       // Call the native API while this Save or Choose button still has user activation.
       if (remembered) {

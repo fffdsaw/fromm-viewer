@@ -173,7 +173,7 @@ function mountSaveFolderSettings(panel){
 
  button.onclick=async()=>{button.disabled=true;try{await folder.open(currentAccountScope(),{change:true});refresh();}catch(error){if(error.name!=='AbortError')status.textContent='폴더를 열지 못했습니다. 다시 선택해주세요.';}finally{button.disabled=false;}};
  window.addEventListener('fromm-save-folder-change',refresh);glassPC.addEventListener('change',refresh);
- new ResizeObserver(()=>{if(glassPC.matches&&dialog.open)placePanel();}).observe(section);
+ new ResizeObserver(()=>{if(!glassPC.matches||!dialog.open)return;const saved=position,rect=dialog.getBoundingClientRect();position={x:rect.left,y:rect.top};placePanel();position=saved;}).observe(section);
  return ()=>refresh({snap:true});
 }
 export function mountGlassSettings(){

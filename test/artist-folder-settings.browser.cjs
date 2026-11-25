@@ -33,7 +33,7 @@ try{
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
  const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*40/164),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const rest=await alpha();await toggle.click();await page.waitForTimeout(250);const middle=await alpha();assert.ok(middle.min<rest.min-3,'approved capsule swells above the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await page.waitForTimeout(250);const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min-3,'approved capsule swells above the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);

@@ -17,7 +17,7 @@ PC에서는 네 종류의 카드에 실제 레이아웃을 유지합니다. 겹�
 - `conversation.css`: PC 미디어 카드의 임시 높이 생략 방지.
 - `web-conversation.js`: PC 갤러리 수신 유지와 목록/통계 갱신.
 - `test/conversation-rich-media-live.browser.cjs`, `test/fixtures/rich-card.mp4`: 합성 지연 로딩·실시간 수신 회귀 검증과 3.6KB 단색 영상.
-- `test/conversation.browser.cjs`, `test/conversation-refresh-cache.browser.cjs`, `.github/workflows/conversation.yml`: PC 수신 유지와 기존 터치 수명주기를 각각 검증하고 새 검증을 브라우저 3종 CI에 포함.
+- `test/conversation.browser.cjs`, `test/conversation-refresh-cache.browser.cjs`, `test/desktop-member-latest.browser.cjs`, `.github/workflows/conversation.yml`: PC 수신 유지와 기존 터치 수명주기를 각각 검증하고 새 검증을 브라우저 3종 CI에 포함.
 - `CODEX_HANDOFF.md`, 이 보고서와 PNG 3개: 작업 및 검증 기록.
 
 ## 로컬 검증
@@ -40,7 +40,7 @@ Node.js 24.22.3, Playwright 1.62.1, Chromium 151.0.7922.34. 별도 브라우저 
 | 웹·Native 단위 테스트 | 337 통과, 기존 Agora 관련 1개 건너뜀 |
 | 50,000개 대화 | 캐시 50,000개 유지, 처음 표시 DOM 241개, 전체 캐시 과거 재조회 0회 |
 
-기존 사진 복구/비율/객체 URL 해제, 기록의 점진적 표시와 캐시 복원, 수신·전송, 계정 격리, 충돌 격리, 저장 중단 복구, 이모티콘, 음성 제어, 검색·달력·인용, 맨 위/최신 이동, 저장 버튼의 실제 쓰기·진행률·중복 건너뛰기 검증도 통과했습니다. 최신 이동 검증은 동시 부하가 있던 첫 실행에서 방향 역전 조건이 한 번 실패했고, 단독 재실행은 통과했습니다. 원격 Chrome/Edge/Chromium CI 결과는 PR의 필수 검사에서 확인합니다.
+기존 사진 복구/비율/객체 URL 해제, 기록의 점진적 표시와 캐시 복원, 수신·전송, 계정 격리, 충돌 격리, 저장 중단 복구, 이모티콘, 음성 제어, 검색·달력·인용, 맨 위/최신 이동, 저장 버튼의 실제 쓰기·진행률·중복 건너뛰기 검증도 통과했습니다. 최신 이동의 간헐적인 방향 역전도 CI에서 재현됐습니다. 첫 프레임의 음수 진행값을 막고, 레이아웃이 줄어 목표 위치가 가까워져도 PC 최신 이동이 역방향으로 돌아가지 않도록 보완했습니다. 실제 화면 밖 메시지 높이를 줄이는 회귀 테스트는 수정 전 실패했고 수정 후 통과했습니다. 전체 Chromium으로 3회, headless shell로 1회 연속 통과했으며, 기존 맨 위 이동·수동 취소·동작 감소 설정도 통과했습니다. 원격 Chrome/Edge/Chromium CI 결과는 PR의 필수 검사에서 확인합니다.
 
 첫 원격 검사에서는 탭 복귀 직후 위치 복원 중 약 12.2px 차이가 재현됐습니다. 복원 담당 코드가 다음 프레임까지 보정을 미루던 경로도 PC 미디어에서는 화면을 그리기 전에 보정하고, 카드 아래쪽을 같은 기준으로 사용하도록 수정했습니다. 기존 검증의 기준을 바꾸지 않고 탭 복귀 오차 약 0.22px로 통과했습니다. 900px 혼합 미디어 테스트에는 복원 중 지연 응답도 추가했으며 최대 변화 0.000px로 통과했습니다.
 

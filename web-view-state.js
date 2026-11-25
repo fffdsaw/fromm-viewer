@@ -145,7 +145,7 @@
    if(list?.length)renderChatWindow(list,latest?list.length-1:0);
    if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}return;
   }
-  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector(latest?'#conversationNew':'#scrollTopBtn'),motionClass=latest?'is-returning-latest':'is-returning';
+  const ticket=serial,tl=document.querySelector('#timeline'),button=document.querySelector(latest?'#conversationNew':'#scrollTopBtn'),motionClass=latest?'is-returning-latest':'is-returning',pcLatest=latest&&viewerDesktop.matches;
   let animation=0,finished=false,version=null,prefix=[];
   const cleanup=()=>{
    cancelAnimationFrame(animation);button?.classList.remove(motionClass);button?.style.removeProperty('--top-return-duration');
@@ -174,7 +174,10 @@
   button?.style.setProperty('--top-return-duration',`${duration}ms`);button?.classList.add(motionClass);
   const animate=now=>{
    if(!valid()||ticket!==serial||view!==key()||document.hidden||version!==null&&version!==state.infiniteVersion){cleanup();return;}
-   const t=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-t,3),target=latest?Math.max(origin,document.documentElement.scrollHeight-innerHeight):0;scrollTo({top:origin+(target-origin)*ease,behavior:'instant'});
+   // A frame timestamp can precede setup, and settled content can bring the
+   // destination closer. Neither should reverse a PC trip toward latest.
+   const progress=(now-started)/duration,t=Math.min(1,pcLatest?Math.max(0,progress):progress),ease=1-Math.pow(1-t,3),target=latest?Math.max(origin,document.documentElement.scrollHeight-innerHeight):0;
+   const position=origin+(target-origin)*ease;scrollTo({top:pcLatest?Math.max(scrollY,position):position,behavior:'instant'});
    if(t<1)animation=requestAnimationFrame(animate);
    else{finished=true;cleanup();if(latest)settleLatest(valid);else{positions.set(view,{y:0});scrollTo({top:0,behavior:'instant'});}}
   };

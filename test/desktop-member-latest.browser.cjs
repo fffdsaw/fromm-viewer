@@ -41,8 +41,15 @@ const {seedCollection}=require('./helpers/collection-fixture.cjs');
  await page.waitForFunction(()=>!FrommViewState.returning&&state.infiniteRendered===state.infiniteList.length);
  const frames=await page.evaluate(()=>latestJourney);
  assert.ok(new Set(frames.slice(0,-1).map(Math.round)).size>=3,'actual downward animation');
- assert.ok(frames.slice(0,-1).every((y,i)=>!i||y>=frames[i-1]-1),'no upward reversal during motion');
+ assert.ok(frames.slice(0,-1).every((y,i)=>!i||y>=frames[i-1]-1),'no upward reversal during motion: '+JSON.stringify(frames));
  assert.equal(await page.locator('#timeline .msg').last().getAttribute('data-message-id'),'latest-2999');if(out)await page.screenshot({path:out+'/latest-arrival.png'});
+ // Real layout can shrink as skipped text/font/media geometry settles. The
+ // latest trip must keep moving down even when its destination gets closer.
+ await start();await page.waitForTimeout(400);
+ await page.evaluate(()=>{for(const row of [...document.querySelectorAll('#timeline .msg')].slice(0,10)){row.style.height='1px';row.style.minHeight='0';row.style.overflow='hidden';}});
+ await page.waitForFunction(()=>!FrommViewState.returning);
+ const reflowFrames=await page.evaluate(()=>latestJourney);
+ assert.ok(reflowFrames.slice(0,-1).every((y,i)=>!i||y>=reflowFrames[i-1]-1),'no reversal after a shrinking offscreen layout: '+JSON.stringify(reflowFrames));
  await start();await page.waitForTimeout(100);await page.mouse.wheel(0,-250);await page.waitForFunction(()=>!FrommViewState.returning);await page.waitForTimeout(700);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight-scrollY-innerHeight>100),'manual movement cancels latest following');
  const count=await page.evaluate(()=>{const ids=[...document.querySelectorAll('#timeline .msg')].map(e=>e.dataset.messageId);return{unique:new Set(ids).size,count:ids.length,start:state.chatWindowStart,end:state.infiniteRendered,first:ids[0],last:ids.at(-1)};});

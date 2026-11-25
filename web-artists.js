@@ -11,7 +11,7 @@
    ['백지헌','2003-04-17','BAEK JI HEON','BAEK JIHEON','지헌','헌이']]},
   {names:['OH MY GIRL','오마이걸'],members:[
    ['효정','1994-07-28','HYOJUNG','최효정','쩡이 💙'],['미미','1995-05-01','MIMI','김미현','친절한 곰돌씨'],
-   ['유아','1995-09-17','YOOA','유시아','🤫'],['승희','1996-01-25','SEUNGHEE','현승희','승희클라미'],
+   ['유아','1995-09-17','YOOA','유시아','😗'],['승희','1996-01-25','SEUNGHEE','현승희','승희클라미'],
    ['유빈','1997-09-09','YUBIN','BINNIE','비니','배유빈'],['아린','1999-06-18','ARIN','최예원']]}
  ].map(group=>({...group,members:group.members.map(([name,birthday,...aliases])=>({key:'artist:'+normalize(name),name,birthday,aliases:[name,...aliases].map(normalize)}))}));
  const roster=group=>groups.find(g=>g.names.some(name=>normalize(name)===normalize(group)))?.members||[];

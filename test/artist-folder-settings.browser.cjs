@@ -10,7 +10,7 @@ try{
   FileSystemHandle.prototype.requestPermission=async()=>denyFolder?'denied':'granted';
  });return c;}};
  const {page,context,errors}=await open(wrapper,server.url,{width:1440});
- const rooms=[['j','박지원'],['c','이채영'],['h','송하영'],['n','이나경'],['b','헌이'],['oh','쩡이 💙'],['y','🤫️'],['s','승희클라미'],['m','친절한 곰돌씨'],['u','유빈'],['a','아린']].map(([id,nick])=>({id:'fixture-'+id,hostChatRoomId:'host-'+id,host:{nick}}));
+ const rooms=[['j','박지원'],['c','이채영'],['h','송하영'],['n','이나경'],['b','헌이'],['oh','쩡이 💙'],['y','😗️'],['s','승희클라미'],['m','친절한 곰돌씨'],['u','유빈'],['a','아린']].map(([id,nick])=>({id:'fixture-'+id,hostChatRoomId:'host-'+id,host:{nick}}));
  const roster=()=>page.evaluate(rooms=>{state.rooms=rooms;state.room=rooms.find(r=>r.hostChatRoomId==='host-h');},rooms);
  const show=async()=>{await page.evaluate(()=>FrommGlowME.setRailOpen(true));await page.locator('#glassSettingsBtn').click();await page.locator('[data-settings-tab="general"]').click();};
  const close=()=>page.locator('#glassSettingsDialog .glass-settings-done').click();

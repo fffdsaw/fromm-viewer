@@ -1,7 +1,7 @@
 name: Conversation receive send and persistence
 on:
   pull_request:
-    paths: ['glowme-controls.css', 'web-morph-menu.js', 'test/helpers/collection-fixture.cjs', 'web-video-playlist.js', 'video-playlist.css', 'test/video-playlist.browser.cjs', 'test/scroll-top-motion.browser.cjs', 'web-small-player.js', 'compact-player.css', 'web-compact-player.js', 'test/uiux-review.browser.cjs', 'test/settings-themes.browser.cjs', 'test/uiux-cards-sidebar.browser.cjs', 'web-themes.js', 'themes.css', 'settings-panel.css', 'web-glass-settings.js', 'index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'test/chat-history-progressive.browser.cjs', 'test/chat-history-scale.browser.cjs', 'test/my-replies.browser.cjs', 'test/search-calendar-panel.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'web-glass-material.js', 'web-rail-lens.js', 'web-clear-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
+    paths: ['web-artists.js', 'test/desktop-member-latest.browser.cjs', 'test/startup-parallel.browser.cjs', 'glowme-controls.css', 'web-morph-menu.js', 'test/helpers/collection-fixture.cjs', 'web-video-playlist.js', 'video-playlist.css', 'test/video-playlist.browser.cjs', 'test/scroll-top-motion.browser.cjs', 'web-small-player.js', 'compact-player.css', 'web-compact-player.js', 'test/uiux-review.browser.cjs', 'test/settings-themes.browser.cjs', 'test/uiux-cards-sidebar.browser.cjs', 'web-themes.js', 'themes.css', 'settings-panel.css', 'web-glass-settings.js', 'index.html', 'web-conversation*.js', 'web-unread.js', 'web-chat-audio.js', 'conversation.css', 'web-view-state.js', 'chrome_extension/**', 'chrome_extension.zip', 'vendor/firebase/**', 'test/conversation*.cjs', 'test/unread.test.cjs', 'test/conversation-unread-rail.browser.cjs', 'test/rail-glyph-lens.browser.cjs', 'test/chat-history-progressive.browser.cjs', 'test/chat-history-scale.browser.cjs', 'test/my-replies.browser.cjs', 'test/search-calendar-panel.browser.cjs', 'web-glowme.js', 'web-glass-controls.js', 'web-glass-material.js', 'web-rail-lens.js', 'web-clear-controls.js', 'glowme.css', 'test/helpers/phase3-fixture.cjs', 'test/helpers/shell-assets.cjs', '.github/workflows/conversation.yml']
 permissions:
   contents: read
 jobs:
@@ -43,6 +43,9 @@ jobs:
         run: |
           node test/conversation.browser.cjs
           node test/scroll-top-motion.browser.cjs
+          node test/conversation-image-scroll.browser.cjs
+          node test/desktop-member-latest.browser.cjs
+          node test/startup-parallel.browser.cjs
           node test/conversation-state.browser.cjs
           node test/conversation-cache-restore.browser.cjs
           node test/conversation-cache-conflicts.browser.cjs

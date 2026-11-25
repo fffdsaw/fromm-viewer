@@ -4,6 +4,8 @@
   const storeName = 'folders';
   const mode = {mode: 'readwrite'};
   const folders = new Map();
+  // Default keys stay unchanged; artist overrides use a disjoint structured key.
+  const keyFor = (account, artist = '') => artist ? JSON.stringify(['artist', account, String(artist)]) : account;
   const changed = () => window.dispatchEvent(new Event('fromm-save-folder-change'));
   const database = new Promise(resolve => {
     try {
@@ -37,7 +39,8 @@
   if (channel) channel.onmessage = async ({data: account}) => {
     if (typeof account !== 'string' || !account) return;
     const [row] = await load(account);
-    if (row) { folders.set(account, row.folder);changed(); }
+    if (row) folders.set(account, row.folder);else folders.delete(account);
+    changed();
   };
 
   async function remember(account, folder) {
@@ -57,16 +60,30 @@
 
   window.FrommSaveFolder = Object.freeze({
     ready,
-    name(account) { return folders.get(account)?.name || ''; },
-    async open(account, {change = false} = {}) {
-      const remembered = !change && folders.get(account);
+    name(account, artist = '') { return folders.get(keyFor(account, artist))?.name || ''; },
+    async useDefault(account, artist) {
+      if (!artist) return;
+      await ready;
+      const key = keyFor(account, artist);
+      folders.delete(key);changed();
+      const db = await database;
+      if (db) await new Promise(resolve => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        transaction.oncomplete = transaction.onabort = resolve;
+        transaction.objectStore(storeName).delete(key);
+      });
+      channel?.postMessage(key);
+    },
+    async open(account, {change = false, artist = ''} = {}) {
+      const key = keyFor(account, artist);
+      const remembered = !change && (folders.get(key) || folders.get(account));
       // Call the native API while this Save or Choose button still has user activation.
       if (remembered) {
         if (await remembered.requestPermission(mode) === 'granted') return remembered;
         throw new DOMException('저장 폴더 쓰기 권한을 허용하거나 설정에서 폴더를 다시 선택해주세요.', 'NotAllowedError');
       }
       const folder = await window.showDirectoryPicker(mode);
-      await remember(account, folder);
+      await remember(change ? key : account, folder);
       return folder;
     }
   });

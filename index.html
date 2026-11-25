@@ -1133,18 +1133,19 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="glowme.css?v=media-save-20261124">
 <link rel="preload" as="script" href="web-glowme.js?v=media-save-ui-20261125">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=live-optics-20261116">
+<link rel="preload" as="script" href="web-view-state.js?v=desktop-image-scroll-20261125">
 <script src="web-video-download.js?v=pool-20261109"></script>
-<script src="web-save-folder.js?v=remember-folder-20261124"></script>
-<link rel="stylesheet" href="conversation.css?v=clear-controls-20261117">
+<script src="web-save-folder.js?v=desktop-followups-20261125"></script>
+<script src="web-artists.js?v=desktop-followups-20261125"></script>
+<link rel="stylesheet" href="conversation.css?v=desktop-followups-20261125">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
-<link rel="stylesheet" href="settings-panel.css?v=meapri-folder-20261124">
+<link rel="stylesheet" href="settings-panel.css?v=desktop-followups-20261125">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
-<link rel="stylesheet" href="glowme-controls.css?v=media-save-ui-20261125">
+<link rel="stylesheet" href="glowme-controls.css?v=desktop-followups-20261125">
 <script src="web-themes.js?v=controls-live-20261116"></script>
 <script src="web-conversation-core.js?v=composer-20261109"></script>
-<script src="web-conversation.js?v=navigation-intent-20261117"></script>
+<script src="web-conversation.js?v=desktop-followups-20261125"></script>
 <script src="web-small-player.js?v=unified-small-20261115"></script>
 <script src="web-chat-audio.js?v=ended-reset-20261116"></script>
 </head>
@@ -1623,10 +1624,12 @@ function visibleChannelPosts(){
 function channelArtistMembers(){
   const members=new Map();
   if(channelVideoState.mediaType!=="artist")return members;
+  const channel=state.live.channels.find(c=>c.id===channelVideoState.channelId);
+  for(const member of window.FrommArtists?.roster(channel?.channelName)||[])members.set(member.key,member.name);
   const selected=channelVideoState.artistMember;
   if(selected?.channelId===channelVideoState.channelId)members.set(selected.key,selected.name);
   for(const post of channelVideoPage()?.posts||[]){
-    if(post._artistMemberKey && post._artistAuthor)members.set(post._artistMemberKey,post._artistAuthor);
+    if(post._artistMemberKey && post._artistAuthor)members.set(post._artistMemberKey,window.FrommArtists?.find(post._artistAuthor)?.name||post._artistAuthor);
   }
   return members;
 }
@@ -1665,7 +1668,7 @@ function channelArtistCards(post,channel) {
   const authorName = post.author?.name || post.author?.nickname;
   const author = typeof authorName === "string" ? authorName.trim() : "";
   const id = post.author?.id;
-  const memberKey = id != null && String(id).trim() ? `id:${id}` : author ? `name:${author}` : "";
+  const memberKey = window.FrommArtists?.find(author,channel.channelName)?.key || (id != null && String(id).trim() ? `id:${id}` : author ? `name:${author}` : "");
   const title = typeof post.content === "string" ? post.content.trim().split(/\r?\n/,1)[0].slice(0,120) : "";
   const number = Number(post.createdAt);
   const displayStartAt = number > 0 && Number.isFinite(number) ? (number < 10_000_000_000 ? number * 1000 : number) : Date.parse(post.createdAt) || null;
@@ -5544,9 +5547,9 @@ async function createReplayDownloadSink(post){
   return {filename,writable:null,chunks:[]};
 }
 
-async function createArtistVideoDownloadSink(){
+async function createArtistVideoDownloadSink(post){
   if(!supportsDirectorySave())return {};
-  try{return {directory:await openViewerSaveFolder()};}
+  try{return {directory:await openViewerSaveFolder(undefined,saveArtistForPost(post))};}
   catch(error){if(error?.name==="AbortError")return null;throw error;}
 }
 
@@ -7188,6 +7191,7 @@ async function connectSavedAuth({silent=false}={}){
   }
 
   setActiveAuth(saved.token,saved.uuid,saved.email);
+  if(viewerDesktop.matches)void ensureReplyIdentity();
 
   try{
     await loadRoomsForSession({attempts:3});
@@ -8637,16 +8641,17 @@ async function saveSelectedPosts(){
   button.disabled=true;
   setBulkSaveButtonProgress(button,0);
   if(replayProgress)window.FrommGlowME?.syncReplaySaveProgress?.();
-  let directory,ok=0,skipped=0;
+  let directory,directoryForPost,ok=0,skipped=0;
   const failures=[];
   try{
     if(supportsDirectorySave()){
-      try{directory=await openViewerSaveFolder();}
+      try{directoryForPost=await prepareViewerSaveFolders(items);directory=directoryForPost(items[0]);}
       catch(e){if(e?.name==="AbortError") return; throw e;}
     }
     for(let i=0;i<items.length;i++){
       if(!current()) break;
       const post=items[i];
+      if(directoryForPost)directory=directoryForPost(post);
       let sink;
       if(replayProgress){
         replayProgress.phase="active";
@@ -8751,6 +8756,7 @@ function updateSelectAllButton(){
   const allSelected = scope.length > 0 &&
     scope.every(m=>downloadSelectionSet(downloadScope.kind).has(downloadSelectionKey(downloadScope.kind,m)));
 
+  btn.setAttribute("aria-pressed",String(allSelected));
   btn.textContent = allSelected ? "전체해제" : "전체선택";
 }
 
@@ -8874,8 +8880,9 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
   const amount = state.chunkSize * Math.max(1,chunkCount);
   const newStart = Math.max(0,oldStart - amount);
 
+  const reading=window.FrommViewState?.beforePrepend(newStart,oldStart);
   const windowDate=tl.querySelector(":scope > .date-sep[data-window-date]");
-  const firstVisibleContent = windowDate?.nextElementSibling || tl.querySelector(
+  const firstVisibleContent = reading?.element || windowDate?.nextElementSibling || tl.querySelector(
     ":scope > .date-sep, :scope > .msg"
   );
 
@@ -8904,6 +8911,7 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
       });
     }
   }
+  reading?.settle();
 }
 
 function armChatTopRenderObserver(version=state.infiniteVersion){
@@ -8991,6 +8999,7 @@ function renderFullConversation(version){
   if(version !== state.infiniteVersion) return;
 
   const tl = $("#timeline");
+  window.FrommChatLayout?.begin(tl);
   tl.className = "timeline";
   tl.innerHTML = "";
 
@@ -9383,6 +9392,7 @@ async function recoverImageAsBlob(img,m,{gallery=false}={}){
 
   try{
     const {blob} = await fetchMediaBlob(m);
+    if(img.dataset.chatImageRetired==="1")return false;
     const objectUrl = URL.createObjectURL(blob);
 
     cleanupImageBlobUrl(img);
@@ -9394,6 +9404,7 @@ async function recoverImageAsBlob(img,m,{gallery=false}={}){
 
     return true;
   }catch(e){
+    if(img.dataset.chatImageRetired==="1")return false;
     console.warn("이미지 blob 재시도 실패:",baseName(m),e);
     setImageFailedUI(img,m,{gallery});
     return false;
@@ -9423,6 +9434,7 @@ function armResilientImage(img,m,{gallery=false,previewFirst=false}={}){
     }
 
     img.dataset.displaySrc = img.src;
+    if(!gallery)window.FrommChatLayout?.imageLoaded(img);
 
     // Keep a successfully loaded preview; originals are opened on demand.
   };
@@ -9604,6 +9616,8 @@ function renderMediaCard(m){
 }
 
 function renderMessage(m){
+  const reused=window.FrommChatLayout?.take(m);
+  if(reused)return reused;
   const t=normType(m.type);
   const artist=isArtist(m);
   const wrap=document.createElement("div");
@@ -9664,7 +9678,7 @@ function renderMessage(m){
       html+=`<div class="text media-missing">[${kind} · 파일 URL 없음]</div>`;
     }else{
       html+=`<div class="media-wrap${t==="image" || t==="video" ? " chat-media-visual" : ""}">`;
-      if(t==="image") html+=`<img loading="lazy" decoding="async" src="${esc(previewUrl(m))}" alt="Fromm image">`;
+      if(t==="image") html+=`<img loading="lazy" decoding="async" src="${esc(window.FrommChatLayout?.source(m)||previewUrl(m))}" alt="Fromm image">`;
       if(t==="video"){
         const poster=resolvePreviewUrl(m);
         const videoPreload=poster ? "none" : "metadata";
@@ -9746,6 +9760,7 @@ function renderMessage(m){
     const chatImg = bubble.querySelector(".media-wrap img");
     if(chatImg){
       chatImg.style.cursor = "default";
+      window.FrommChatLayout?.prepareImage(chatImg,m);
 
       armResilientImage(
         chatImg,
@@ -9779,6 +9794,7 @@ function renderMessage(m){
   timestamp.title=dateKey(m)+" "+timeLabel(m);
   foot.append(timestamp);
   frame.append(bubble,foot);wrap.append(frame);
+  window.FrommChatLayout?.remember(wrap,m);
   return wrap;
 }
 
@@ -10048,6 +10064,7 @@ function oldestLoadedDate(){
 function renderChatWindow(list,targetIndex){
   if(state.filter!=="all" || targetIndex<0 || targetIndex>=list.length) return null;
   const tl = $("#timeline");
+  window.FrommChatLayout?.begin(tl);
 
   disconnectInfiniteObserver();
   const version = state.infiniteVersion;
@@ -11362,11 +11379,35 @@ async function retryFailedSaves(){
   }
 }
 
-function openViewerSaveFolder(options){
-  if(viewerDesktop.matches && window.FrommSaveFolder)return window.FrommSaveFolder.open(currentAccountScope());
+function subscribedSaveArtists(){
+  const artists=new Map();
+  for(const room of state.rooms){
+    const id=String(room.hostChatRoomId||room.id||""),name=String(room.host?.nick||room.host?.defaultNameOverseas?.ko||room.chatRoomName||"").trim();
+    if(id&&name&&!artists.has(id))artists.set(id,{id,name});
+  }
+  return [...artists.values()].sort((a,b)=>window.FrommArtists?.compare(a.name,b.name)||a.name.localeCompare(b.name,"ko"));
+}
+function saveArtistForPost(post){
+  const directory=window.FrommArtists;
+  if(!post?._artistAuthor||!directory)return "";
+  const group=post._channelName||state.live.channels.find(channel=>channel.id===post._channelId)?.channelName;
+  const canonical=directory.find(post._artistAuthor,group)?.key;
+  const matches=subscribedSaveArtists().filter(artist=>canonical ? directory.find(artist.name,group)?.key===canonical : directory.normalize(artist.name)===directory.normalize(post._artistAuthor));
+  return matches.length===1?matches[0].id:"";
+}
+function openViewerSaveFolder(options,artist=state.filter!=="live"?String(state.room?.hostChatRoomId||state.room?.id||""):""){
+  if(viewerDesktop.matches && window.FrommSaveFolder)return window.FrommSaveFolder.open(currentAccountScope(),{artist});
   return window.showDirectoryPicker(options ?? (viewerDesktop.matches?{mode:"readwrite"}:undefined));
 }
 
+// Resolve every configured batch destination during the original trusted click.
+// Only handles are selected here: existing writers, filenames and duplicate checks stay intact.
+async function prepareViewerSaveFolders(posts){
+  const scopes=new Map(),postScopes=new Map(),artistFor=post=>{const artist=saveArtistForPost(post);return viewerDesktop.matches&&window.FrommSaveFolder?.name(currentAccountScope(),artist)?artist:"";};
+  for(const post of posts){const artist=artistFor(post);postScopes.set(post,artist);if(!scopes.has(artist))scopes.set(artist,openViewerSaveFolder(undefined,artist));}
+  const resolved=new Map(await Promise.all([...scopes].map(async([artist,promise])=>[artist,await promise])));
+  return post=>resolved.get(postScopes.get(post));
+}
 function supportsDirectorySave(){
   return typeof window.showDirectoryPicker === "function";
 }
@@ -11908,7 +11949,7 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=live-optics-20261116"></script>
+<script src="web-view-state.js?v=desktop-image-scroll-20261125"></script>
 <script src="web-glowme.js?v=media-save-ui-20261125" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
@@ -11918,7 +11959,7 @@ autoConnectSaved();
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=pc-media-controls-20261118"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>
-<script src="web-channel-photos.js?v=media-save-20261124"></script>
+<script src="web-channel-photos.js?v=desktop-followups-20261125"></script>
 <script>
 (function () {
   // The background-sync experiment belongs to mobile devices only.
@@ -11931,6 +11972,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=media-save-20261124"></script>
+<script type="module" src="web-glass.js?v=desktop-followups-20261125"></script>
 </body>
 </html>

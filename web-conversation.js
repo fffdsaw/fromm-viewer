@@ -66,9 +66,10 @@
   }
   return changed;
  }
- function showLatest(c){
+ function showLatest(c,{animate=false}={}){
   if(!viewing(c))return;
   pendingCount=0;window.FrommViewState?.cancel();state.chatAutoTopPending=false;
+  if(animate&&viewerDesktop.matches&&window.FrommViewState?.toLatest){FrommViewState.toLatest(()=>viewing(c));return;}
   const list=filteredMessages();
   if(list.length&&state.infiniteRendered<list.length)renderChatWindow(list,list.length-1);
   if(window.FrommViewState?.settleLatest)FrommViewState.settleLatest(()=>viewing(c));
@@ -78,7 +79,7 @@
   if(!newButton)return;
   const c=context,list=state.infiniteList||[],away=roomCurrent(c)&&state.filter==='all'&&list.length>0&&(state.infiniteRendered<list.length||document.documentElement.scrollHeight-scrollY-innerHeight>100);
   if(!away&&roomCurrent(c)&&state.filter==='all'&&!state.chatAutoTopPending)pendingCount=0;
-  const show=away&&!(emotePanel&&!emotePanel.hidden);
+  const show=(away||newButton.classList.contains('is-returning-latest'))&&!(emotePanel&&!emotePanel.hidden);
   if(show){
    clearTimeout(latestHideTimer);latestHideTimer=0;
    const entering=newButton.hidden||newButton.classList.contains('conversation-latest-leaving');
@@ -643,7 +644,7 @@
   mountEmoticons();
   dock.addEventListener('submit',submit);input.addEventListener('input',()=>{if(!roomCurrent(context))return;context.draft=input.value;resizeInput();clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),250);paint();});
   input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.keyCode!==229){event.preventDefault();void submit();}});
-  newButton.onclick=()=>{showLatest(context);paint();};
+  newButton.onclick=()=>{showLatest(context,{animate:true});paint();};
   dock.querySelector('#conversationRetry').onclick=()=>{const c=context;if(!roomCurrent(c))return;if(c.phase==='error'){c.feed?.stop();c.feed=null;c.feedLimit=500;}c.feed?.poke();c.notice='';sync();};
   dock.querySelector('#conversationResolve').onclick=()=>{const c=context;if(!roomCurrent(c)||!c.outbox)return;c.feed?.poke();if(confirm('전송 결과가 확인되지 않았습니다. 대화 목록을 확인한 뒤 보류 상태를 해제할까요? 같은 글을 다시 보내면 중복될 수 있습니다.')){c.outbox=null;c.notice='보류 상태를 해제했습니다. 입력 내용을 확인해주세요.';void persist();paint();}};
   dialog=document.createElement('dialog');dialog.id='conversationStorageDialog';dialog.setAttribute('aria-labelledby','conversationStorageTitle');dialog.innerHTML='<h2 id="conversationStorageTitle">설정</h2><h3>대화 저장</h3><p>이 브라우저에 계정·아티스트별 대화를 저장하고, 다시 방문하면 저장된 기록을 먼저 복원합니다. 원본 사진·영상 파일은 저장하지 않습니다.</p><label><input id="conversationStoreEnabled" type="checkbox">이 기기에 대화 자동 저장</label><p role="status" id="conversationStorageState"></p><section class="conversation-alert-settings" aria-label="알림 설정"><h3>알림</h3><label><input id="conversationSoundEnabled" type="checkbox">새 메시지 알림음</label><label><input id="conversationDesktopEnabled" type="checkbox">브라우저 알림</label><div class="conversation-alert-preview"><span>Mellow Glass · 기본 알림음</span><button class="btn" id="conversationSoundPreview" type="button">들어보기</button></div><p role="status" id="conversationAlertState">소리와 브라우저 알림을 꺼도 사이드바 숫자 배지는 유지됩니다.</p></section><div class="conversation-dialog-actions"><button class="btn" type="button" id="conversationClear">이 계정의 저장 기록 지우기</button><button class="btn good" type="button" id="conversationStorageClose">닫기</button></div>';

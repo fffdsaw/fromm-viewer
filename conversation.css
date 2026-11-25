@@ -216,3 +216,9 @@ body.conversation-open #timeline .msg.me,body.conversation-open .conversation-pe
 
 /* Reserve the sticker canvas before its image decodes, preventing row jumps. */
 #timeline .emoticon-img{width:160px;height:160px;max-width:100%;object-fit:contain}
+
+@media(min-width:701px){
+ #conversationDock #conversationNew.is-returning-latest>svg{animation:conversationLatestDrop var(--top-return-duration,550ms) ease-out}
+ @keyframes conversationLatestDrop{0%{transform:translateY(-3px)}45%{transform:translateY(4px)}100%{transform:translateY(0)}}
+}
+@media(prefers-reduced-motion:reduce){#conversationDock #conversationNew.is-returning-latest>svg{animation:none}}

@@ -1,7 +1,7 @@
 'use strict';
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const {serve}=require('./helpers/phase3-fixture.cjs');
-(async()=>{const server=await serve(),browser=await chromium.launch();try{
+(async()=>{const server=await serve();let browser;try{browser=await chromium.launch(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{});
  const context=await browser.newContext({viewport:{width:1440,height:900}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(()=>{localStorage.setItem('fromm_local_access_token_v1','synthetic-startup');localStorage.setItem('fromm_local_device_id_v1','synthetic-startup-device');});
  let releaseRooms,releaseProfile,roomsAt=0,profileAt=0,roomDone=0;
@@ -22,4 +22,4 @@ const {serve}=require('./helpers/phase3-fixture.cjs');
  await page.waitForFunction(()=>currentReplyUserId()==='synthetic-startup-self'&&document.querySelector('#loginGate').classList.contains('hidden'));
  console.log(JSON.stringify({profileStartRelativeToRoomsMs:profileAt-roomsAt,overlappedWaitingMs:roomDone-Math.max(roomsAt,profileAt)}));
  assert.deepEqual(errors,[]);await context.close();console.log('PC saved-session identity prewarming overlaps room lookup; auth gate and existing profile ownership preserved PASS');
-}finally{await browser.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
+}finally{await browser?.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

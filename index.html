@@ -1133,7 +1133,7 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="stylesheet" href="glowme.css?v=media-save-20261124">
 <link rel="preload" as="script" href="web-glowme.js?v=media-save-ui-20261125">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
-<link rel="preload" as="script" href="web-view-state.js?v=desktop-followups-20261125">
+<link rel="preload" as="script" href="web-view-state.js?v=desktop-image-scroll-20261125">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <script src="web-save-folder.js?v=desktop-followups-20261125"></script>
 <script src="web-artists.js?v=desktop-followups-20261125"></script>
@@ -8880,8 +8880,9 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
   const amount = state.chunkSize * Math.max(1,chunkCount);
   const newStart = Math.max(0,oldStart - amount);
 
+  const reading=window.FrommViewState?.beforePrepend();
   const windowDate=tl.querySelector(":scope > .date-sep[data-window-date]");
-  const firstVisibleContent = windowDate?.nextElementSibling || tl.querySelector(
+  const firstVisibleContent = reading?.element || windowDate?.nextElementSibling || tl.querySelector(
     ":scope > .date-sep, :scope > .msg"
   );
 
@@ -8910,6 +8911,7 @@ function prependChatBatch(chunkCount=1, version=state.infiniteVersion){
       });
     }
   }
+  reading?.settle();
 }
 
 function armChatTopRenderObserver(version=state.infiniteVersion){
@@ -8997,6 +8999,7 @@ function renderFullConversation(version){
   if(version !== state.infiniteVersion) return;
 
   const tl = $("#timeline");
+  window.FrommChatLayout?.begin(tl);
   tl.className = "timeline";
   tl.innerHTML = "";
 
@@ -9389,6 +9392,7 @@ async function recoverImageAsBlob(img,m,{gallery=false}={}){
 
   try{
     const {blob} = await fetchMediaBlob(m);
+    if(img.dataset.chatImageRetired==="1")return false;
     const objectUrl = URL.createObjectURL(blob);
 
     cleanupImageBlobUrl(img);
@@ -9400,6 +9404,7 @@ async function recoverImageAsBlob(img,m,{gallery=false}={}){
 
     return true;
   }catch(e){
+    if(img.dataset.chatImageRetired==="1")return false;
     console.warn("이미지 blob 재시도 실패:",baseName(m),e);
     setImageFailedUI(img,m,{gallery});
     return false;
@@ -9429,6 +9434,7 @@ function armResilientImage(img,m,{gallery=false,previewFirst=false}={}){
     }
 
     img.dataset.displaySrc = img.src;
+    if(!gallery)window.FrommChatLayout?.imageLoaded(img);
 
     // Keep a successfully loaded preview; originals are opened on demand.
   };
@@ -9610,6 +9616,8 @@ function renderMediaCard(m){
 }
 
 function renderMessage(m){
+  const reused=window.FrommChatLayout?.take(m);
+  if(reused)return reused;
   const t=normType(m.type);
   const artist=isArtist(m);
   const wrap=document.createElement("div");
@@ -9670,7 +9678,7 @@ function renderMessage(m){
       html+=`<div class="text media-missing">[${kind} · 파일 URL 없음]</div>`;
     }else{
       html+=`<div class="media-wrap${t==="image" || t==="video" ? " chat-media-visual" : ""}">`;
-      if(t==="image") html+=`<img loading="lazy" decoding="async" src="${esc(previewUrl(m))}" alt="Fromm image">`;
+      if(t==="image") html+=`<img loading="lazy" decoding="async" src="${esc(window.FrommChatLayout?.source(m)||previewUrl(m))}" alt="Fromm image">`;
       if(t==="video"){
         const poster=resolvePreviewUrl(m);
         const videoPreload=poster ? "none" : "metadata";
@@ -9752,6 +9760,7 @@ function renderMessage(m){
     const chatImg = bubble.querySelector(".media-wrap img");
     if(chatImg){
       chatImg.style.cursor = "default";
+      window.FrommChatLayout?.prepareImage(chatImg,m);
 
       armResilientImage(
         chatImg,
@@ -9785,6 +9794,7 @@ function renderMessage(m){
   timestamp.title=dateKey(m)+" "+timeLabel(m);
   foot.append(timestamp);
   frame.append(bubble,foot);wrap.append(frame);
+  window.FrommChatLayout?.remember(wrap,m);
   return wrap;
 }
 
@@ -10054,6 +10064,7 @@ function oldestLoadedDate(){
 function renderChatWindow(list,targetIndex){
   if(state.filter!=="all" || targetIndex<0 || targetIndex>=list.length) return null;
   const tl = $("#timeline");
+  window.FrommChatLayout?.begin(tl);
 
   disconnectInfiniteObserver();
   const version = state.infiniteVersion;
@@ -11938,7 +11949,7 @@ autoConnectSaved();
 
 
 <script src="web-ui-a11y.js?v=list-polish-20261107"></script>
-<script src="web-view-state.js?v=desktop-followups-20261125"></script>
+<script src="web-view-state.js?v=desktop-image-scroll-20261125"></script>
 <script src="web-glowme.js?v=media-save-ui-20261125" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>

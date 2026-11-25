@@ -1,0 +1,71 @@
+{
+  "synthetic": true,
+  "baseline": "fed91100e7d16d0b73031256ff95be31a21a69bd",
+  "method": "same 20 delayed eagerly requested photos prepended above the same reader; CSS-pixel bounding boxes; Chromium 151; real user data not used",
+  "measurements": {
+    "before": [
+      {
+        "width": 1440,
+        "before": {
+          "y": 239.890625,
+          "after": 239.890625,
+          "height": 8676
+        },
+        "after": {
+          "y": 6797.359375,
+          "height": 15158,
+          "cache": 0
+        },
+        "drift": 6557.46875,
+        "requests": 20
+      },
+      {
+        "width": 900,
+        "before": {
+          "y": 239.890625,
+          "after": 239.890625,
+          "height": 8676
+        },
+        "after": {
+          "y": 6498.546875,
+          "height": 14860,
+          "cache": 0
+        },
+        "drift": 6258.65625,
+        "requests": 20
+      }
+    ],
+    "after": [
+      {
+        "width": 1440,
+        "before": {
+          "y": 239.890625,
+          "after": 239.890625,
+          "height": 8676
+        },
+        "after": {
+          "y": 239.703125,
+          "height": 18043,
+          "cache": 20
+        },
+        "drift": -0.1875,
+        "requests": 20
+      },
+      {
+        "width": 900,
+        "before": {
+          "y": 239.890625,
+          "after": 239.890625,
+          "height": 8676
+        },
+        "after": {
+          "y": 239.828125,
+          "height": 17616,
+          "cache": 20
+        },
+        "drift": -0.0625,
+        "requests": 20
+      }
+    ]
+  }
+}

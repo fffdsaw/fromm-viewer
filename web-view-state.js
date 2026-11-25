@@ -1,7 +1,7 @@
 /* Ephemeral view positions only: no messages, credentials or account data persisted. */
 (() => {
  'use strict';
- const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false;
+ const positions=new Map();let pending=null,frame=0,restoring=false,serial=0,active='',anchorCleanup=null,motionCleanup=null,latestCleanup=null,latestFollowing=false,prependTracking=false;
  // Our message anchors own reload/navigation restoration, never raw browser Y.
  if('scrollRestoration' in history)history.scrollRestoration='manual';
  const key=(filter=state.filter)=>[state.room?.hostChatRoomId||state.room?.id||'',filter].join(':');
@@ -30,8 +30,10 @@
  }
  function navigate(filter,options){capture();return enter(filter,options);}
  function beforeRender(){
-  if(motionCleanup || latestCleanup || anchorCleanup || chatWaiting())return;
-  if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial};}
+  if(motionCleanup || latestCleanup || (anchorCleanup&&!prependTracking) || chatWaiting())return;
+  // Late media may still be settling, but a real render needs a new bookmark.
+  const watchMedia=prependTracking;if(watchMedia){anchorCleanup?.();anchorCleanup=null;}
+  if(active===key()&&!pending&&capture()){pending={key:active,position:positions.get(active)||{y:scrollY},serial:++serial,watchMedia};}
  }
  function cancel(){anchorCleanup?.();anchorCleanup=null;motionCleanup?.();motionCleanup=null;latestCleanup?.();latestCleanup=null;latestFollowing=false;pending=null;serial++;}
  async function restore(){
@@ -61,7 +63,7 @@
    }else if(el){
     scrollBy({top:el.getBoundingClientRect().top-pos.offset,behavior:'instant'});
     pending=null;
-    settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all');
+    settleRestoredMessage(el,pos.offset,()=>job.key===key()&&state.filter==='all',job.watchMedia?12000:4000,!!job.watchMedia);
    }else{
     scrollTo({top:pos.y,behavior:'instant'});
     pending=null;
@@ -70,7 +72,7 @@
  }
  // After rebuilding a virtual message window, images can gain height later.
  // Keep the same message at its prior viewport offset for a bounded period.
- function settleRestoredMessage(el,offset,valid){
+ function settleRestoredMessage(el,offset,valid,watchMs=4000,immediateResize=false){
   anchorCleanup?.();const ticket=serial,tl=document.querySelector('#timeline');
   let closed=false,queued=0,observer=null,timer=0,frames=0;
   const cleanup=()=>{
@@ -78,7 +80,7 @@
    observer?.disconnect();clearTimeout(timer);tl?.removeEventListener('load',schedule,true);
    document.fonts?.removeEventListener('loadingdone',schedule);
    document.fonts?.removeEventListener('loadingerror',schedule);
-   if(anchorCleanup===cleanup)anchorCleanup=null;
+   if(anchorCleanup===cleanup){anchorCleanup=null;prependTracking=false;}
   };
   const align=()=>{
    queued=0;
@@ -88,15 +90,21 @@
    if(++frames<15)schedule();
   };
   function schedule(){if(!closed&&!queued)queued=requestAnimationFrame(align);}
-  anchorCleanup=cleanup;
+  anchorCleanup=cleanup;prependTracking=immediateResize;
   if(typeof ResizeObserver==='function'&&tl){
-   observer=new ResizeObserver(schedule);observer.observe(tl);
+   observer=new ResizeObserver(()=>{if(immediateResize){cancelAnimationFrame(queued);align();}else schedule();});observer.observe(tl);
   }
   tl?.addEventListener('load',schedule,true);
   document.fonts?.addEventListener('loadingdone',schedule);
   document.fonts?.addEventListener('loadingerror',schedule);
-  timer=setTimeout(()=>{align();cleanup();},4000);
+  timer=setTimeout(()=>{align();cleanup();},watchMs);
   align();
+ }
+ function beforePrepend(){
+  if(!viewerDesktop.matches||state.filter!=='all'||motionCleanup||latestCleanup||pending||restoring)return null;
+  const element=row();if(!element)return null;
+  const offset=element.getBoundingClientRect().top,view=key(),account=currentAccountScope(),version=state.infiniteVersion;
+  return{element,settle(){settleRestoredMessage(element,offset,()=>viewerDesktop.matches&&state.filter==='all'&&view===key()&&account===currentAccountScope()&&version===state.infiniteVersion,12000,true);}};
  }
  function settleAnchor(el,inset,valid=()=>true,watchMs=0){
   cancel();watchMs=Math.max(0,Math.min(2000,Number(watchMs)||0));const ticket=serial;let count=0,queued=false,closed=false,observer=null,timer=0;
@@ -194,5 +202,77 @@
  for(const type of ['wheel','touchstart','pointerdown'])window.addEventListener(type,()=>{cancel();},{passive:true});
  document.addEventListener('keydown',e=>{if(['PageDown','PageUp','Home','End','ArrowDown','ArrowUp'].includes(e.key)&&!e.target.matches('input,select,textarea'))cancel();});
  function resume(position){cancel();active=key();positions.set(active,position);pending={key:active,position,serial};}
- window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,toStart,toLatest,clear(){cancel();positions.clear();active='';},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
+ window.FrommViewState=Object.freeze({capture,enter,navigate,beforeRender,cancel,resume,restore,settleAnchor,settleLatest,beforePrepend,toStart,toLatest,clear(){cancel();positions.clear();active='';window.FrommChatLayout?.clear();},get position(){return pending?.key===key()?pending.position:null;},get pending(){return !!pending;},get followingLatest(){return latestFollowing;},get returning(){return !!motionCleanup;}});
+})();
+
+/* PC chat images: reuse overlapping rows within one synchronous render and
+ * keep a bounded geometry/working-HTTP-URL cache, without binary image data. */
+(() => {
+ 'use strict';
+ const geometry=new Map();let scope='',pool=new Map(),ticket=0,records=new WeakMap(),images=new WeakMap();
+ const enabled=()=>viewerDesktop.matches&&state.filter==='all';
+ const current=()=>JSON.stringify([currentAccountScope(),currentReplyUserId(),String(state.room?.hostChatRoomId||state.room?.id||'')]);
+ function retire(node){
+  if(node.isConnected)return;
+  for(const img of node.querySelectorAll('.media-wrap img')){
+   img.dataset.chatImageRetired='1';img.onload=img.onerror=null;cleanupImageBlobUrl(img);img.removeAttribute('src');
+  }
+ }
+ function release(){for(const node of pool.values())retire(node);pool.clear();}
+ function clear(){release();scope='';geometry.clear();records=new WeakMap();images=new WeakMap();ticket++;}
+ function own(){const next=current();if(scope!==next){clear();scope=next;}return next;}
+ const fingerprint=m=>JSON.stringify([m,getQuotedMessage(m),state.chatQuery,currentReplyUserId()]);
+ const imageKey=m=>JSON.stringify([messageStableKey(m),resolveMediaUrl(m),previewUrl(m)]);
+ function size(img,value){
+  const width=Number(value?.width),height=Number(value?.height);
+  if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0)return;
+  const scale=Math.min(1,560/height);
+  img.width=Math.max(1,Math.round(width*scale));img.height=Math.max(1,Math.round(height*scale));
+  img.style.aspectRatio=`${width} / ${height}`;img.style.height='auto';img.dataset.chatImageSized='1';
+ }
+ new MutationObserver(changes=>{
+  if(!viewerDesktop.matches)return;
+  for(const change of changes)for(const node of change.removedNodes)if(node.nodeType===1&&node.classList.contains('msg'))retire(node);
+ }).observe(document.querySelector('#timeline'),{childList:true});
+ viewerDesktop.addEventListener('change',()=>{
+  if(viewerDesktop.matches)return;
+  for(const img of document.querySelectorAll('#timeline img[data-chat-image-sized]')){
+   img.removeAttribute('width');img.removeAttribute('height');img.style.removeProperty('aspect-ratio');img.style.removeProperty('height');delete img.dataset.chatImageSized;
+  }
+ });
+ window.FrommChatLayout=Object.freeze({
+  begin(timeline){
+   if(!enabled())return;
+   own();
+   const rows=timeline.querySelectorAll(':scope > .msg');
+   if(rows.length){release();pool=new Map([...rows].filter(node=>node.querySelector('.media-wrap img')).map(node=>[node.dataset.messageId,node]));}
+   const job=++ticket;queueMicrotask(()=>{if(job===ticket)release();});
+  },
+  take(m){
+   if(!enabled()||normType(m.type)!=='image')return null;
+   const owner=own(),id=messageStableKey(m),node=pool.get(id),record=node&&records.get(node);
+   if(!record||record.owner!==owner||record.fingerprint!==fingerprint(m))return null;
+   pool.delete(id);node.classList.toggle('chat-match-active',id===state.chatMatchKey);
+   const link=node.querySelector('.dl');if(link){link.href=proxyUrl(m,true);link.setAttribute('aria-label',`${baseName(m)} 다운로드`);link.title='다운로드';}
+   return node;
+  },
+  remember(node,m){if(enabled()&&normType(m.type)==='image'){const owner=own();records.set(node,{owner,fingerprint:fingerprint(m)});}},
+  source(m){if(!enabled())return '';own();return geometry.get(imageKey(m))?.url||'';},
+  prepareImage(img,m){
+   if(!enabled())return;
+   const owner=own(),key=imageKey(m),cached=geometry.get(key);
+   images.set(img,{owner,key});
+   if(cached){geometry.delete(key);geometry.set(key,cached);size(img,cached);if(cached.url)img.src=cached.url;}
+   else size(img,{width:m.width??m.imageWidth,height:m.height??m.imageHeight});
+  },
+  imageLoaded(img){
+   const entry=images.get(img);if(!enabled()||!entry||entry.owner!==current()||img.dataset.chatImageRetired==='1'||!img.naturalWidth||!img.naturalHeight)return;
+   own();
+   const value={width:img.naturalWidth,height:img.naturalHeight,url:/^https?:\/\//.test(img.src)?img.src:''};
+   geometry.delete(entry.key);geometry.set(entry.key,value);while(geometry.size>512)geometry.delete(geometry.keys().next().value);
+   size(img,value);
+  },
+  clear,
+  get cachedImages(){return geometry.size;}
+ });
 })();

@@ -27,7 +27,7 @@ function capsuleDepth(x, y, halfWidth, radius) {
 }
 
 function paintLens(context, lens, palette, sampleTrack) {
-    const { cx, cy, width, height, clarity } = lens;
+    const { cx, cy, width, height, clarity, bendFilledSide } = lens;
     const { a: scaleX, d: scaleY } = context.getTransform();
     const antialias = Math.max(1 / scaleX, 1 / scaleY) / 2;
     const halfWidth = width / 2;
@@ -46,10 +46,14 @@ function paintLens(context, lens, palette, sampleTrack) {
             const coverage = smooth(-antialias, antialias, depth);
             if (!coverage) continue;
 
-            // The broad center magnifies the colored track and the rim joins
-            // the unmoved track continuously at the lens outline.
-            const zoom = 1 - 0.48 * clarity * smooth(0, radius * 0.72, depth);
-            const [red, green, blue, sampledAlpha] = sampleTrack(cx + px * zoom, cy + py * zoom, antialias);
+            // The switches magnify the center. The range keeps the value tip
+            // fixed and bends the filled track as it enters from the left.
+            const interior = smooth(0, radius * 0.72, depth);
+            const leftSide = -px / halfWidth;
+            const bend = smooth(0.2, 0.55, leftSide) * (1 - smooth(0.72, 1, leftSide));
+            const zoomX = bendFilledSide ? 1 : 1 - 0.48 * clarity * interior;
+            const zoomY = bendFilledSide ? 1 - 0.64 * clarity * bend * interior : zoomX;
+            const [red, green, blue, sampledAlpha] = sampleTrack(cx + px * zoomX, cy + py * zoomY, antialias);
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *
                 (0.2 + 0.51 * clamp(-py / radius));
@@ -233,7 +237,7 @@ export function mountLiquidGlassRange(input) {
         capsule(output, 0, cy, width, 6, `rgb(${palette.rail.join(',')})`);
         capsule(output, 0, cy, fillWidth, 6, `rgb(${palette.fill.join(',')})`);
         const swell = smooth(0, 1, growth);
-        paintLens(output, { cx, cy, width: 16 + 22 * swell, height: 12 + 14 * swell, clarity: swell }, palette, (x, y, aa) => {
+        paintLens(output, { cx, cy, width: 16 + 22 * swell, height: 12 + 14 * swell, clarity: swell, bendFilledSide: true }, palette, (x, y, aa) => {
             const railDepth = capsuleDepth(x - width / 2, y - cy, width / 2, 3);
             const rail = smooth(-aa, aa, railDepth);
             const fillDepth = capsuleDepth(x - fillWidth / 2, y - cy, fillWidth / 2, 3);

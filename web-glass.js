@@ -1,10 +1,10 @@
-import './web-morph-menu.js?v=clear-motion-20261126';
-import './web-clear-controls.js?v=clear-motion-20261126';
-import './web-glass-controls.js?v=clear-motion-20261126';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=clear-motion-20261126';
-import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
+import './web-morph-menu.js?v=droplet-sheet-20261126';
+import './web-clear-controls.js?v=droplet-sheet-20261126';
+import './web-glass-controls.js?v=droplet-sheet-20261126';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=droplet-sheet-20261126';
+import {createGlass,materialOptions} from './web-glass-material.js?v=droplet-sheet-20261126';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=clear-motion-20261126').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=droplet-sheet-20261126').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while
@@ -13,7 +13,7 @@ const instances=new Map(),saveFaces=new WeakMap(),reduce=matchMedia('(prefers-re
 const watched=new Set(),failed=new WeakSet(),versions=new WeakMap();
 const visibility=typeof IntersectionObserver==='function'?new IntersectionObserver(()=>sync()):null;
 const saveSheet=document.querySelector('#saveResultModal'),saveCard=saveSheet?.querySelector('.save-result-card');
-let saveGlass=null,saveSettings=null;
+let saveGlass=null,saveSettings=null,saveDesktop=false;
 let preferences=glassPreferences.value,Engine=null,loading=null,importFailed=false,frame=0,leaving=false;
 function eligible(){return preferences.enabled&&!document.hidden&&!reduce.matches&&!opaque.matches&&!contrast.matches&&document.querySelector('#loginGate')?.classList.contains('hidden');}
 function sync(){if(!frame&&!leaving)frame=requestAnimationFrame(update);}
@@ -26,10 +26,12 @@ function update(){
  const enabled=eligible(),showSave=enabled&&saveCard&&saveSheet.isConnected&&!saveSheet.hidden;
  const targets=enabled&&visibility&&!glassPC.matches?controls.filter(el=>{const r=el.getBoundingClientRect();return el.checkVisibility()&&!el.disabled&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&getComputedStyle(el).pointerEvents!=='none';}):[];
  for(const [el,glass]of instances)if(!targets.includes(el)||saveFaces.has(el)&&!saveFaces.get(el).isConnected){release(el,glass);instances.delete(el);}
- if(!showSave)releaseSave();
- if((targets.length||showSave)&&!Engine){if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124').then(module=>{Engine=module.LiquidGlass;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(Engine)sync();});return;}
+ if(!showSave||saveDesktop!==glassPC.matches)releaseSave();
+ if((targets.length||showSave)&&!Engine){if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js?v=droplet-sheet-20261126').then(module=>{Engine=module.LiquidGlass;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(Engine)sync();});return;}
  if(showSave&&saveSettings!==preferences){
   saveSettings=preferences;
+  saveDesktop=glassPC.matches;
+  saveCard.classList.toggle('save-result-depth',saveDesktop);
   try{
    const options=materialOptions(preferences);
    if(saveGlass)saveGlass.update(options);

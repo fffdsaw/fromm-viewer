@@ -2,16 +2,25 @@
 // Synthetic subscriptions and real isolated OPFS. No account or OS folders.
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
-async function waitForClearThumb(page,selector){
- await page.waitForFunction(selector=>{
+async function waitForClearThumb(page,selector,rest){
+ const result=await page.waitForFunction(({selector,rest})=>{
   const canvas=document.querySelector(selector);
   const ctx=canvas.getContext('2d');
   const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/164),Math.floor(y*canvas.height/96),1,1).data];
-  const left=sample(29,48),center=sample(82,48),right=sample(135,48);
-  const upperLip=Math.max(...[12,14,16,18].map(y=>sample(82,y)[3]));
-  return left[3]===255&&right[3]===255&&center[3]===255&&upperLip>90&&sample(82,24)[3]<200&&
-   left.slice(0,3).every((n,i)=>Math.abs(n-right[i])<=2&&Math.abs(n-center[i])<=17);
- },selector,{timeout:3000});
+  const left=sample(23,48),center=sample(82,48),right=sample(141,48);
+  const enlarged=sample(82,19),above=sample(82,16),below=sample(82,79);
+  const transparent=left[3]>235&&right[3]>235&&center[3]>245&&enlarged[3]>215&&above[3]>8&&below[3]>8&&
+   center.slice(0,3).every((n,i)=>Math.abs(n-enlarged[i])<=20&&Math.abs(n-(left[i]+right[i])/2)<=25);
+  if(!transparent||!rest)return transparent;
+  // Measure the silhouette and the transmitted color in the very same frame.
+  const {data}=ctx.getImageData(0,0,canvas.width,canvas.height);
+  let min=canvas.height,max=0;
+  for(let i=3;i<data.length;i+=4)if(data[i]>12){
+   const y=Math.floor((i/4)/canvas.width);min=Math.min(min,y);max=Math.max(max,y);
+  }
+  return min<=rest.min-3&&max>=rest.max+3&&{min,max};
+ },{selector,rest},{timeout:3000});
+ return result.jsonValue();
 }
 
 (async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
@@ -53,7 +62,7 @@ try{
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
  const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*40/164),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await waitForClearThumb(page,'#artistFoldersEnabled canvas');const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min,'the clear thumb has a visible lip above the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();const middle=await waitForClearThumb(page,'#artistFoldersEnabled canvas',rest);assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<=rest.min-3&&middle.max>=rest.max+3,'the lens visibly extends above and below the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);
@@ -95,19 +104,37 @@ try{
  await page.mouse.down();
  try{
   await page.mouse.move(range.x+range.width*.7,range.y+range.height/2,{steps:8});
-  const geometry=await slider.evaluate(input=>{
-   const inputRect=input.getBoundingClientRect(),lens=input.parentElement.querySelector('.glass-range-lens'),rect=lens.getBoundingClientRect();
-   const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min));
-   const fill=getComputedStyle(input.parentElement,'::after');
-   return {fraction,offset:Math.abs(rect.x+rect.width/2-inputRect.x-8-(inputRect.width-16)*fraction),visible:getComputedStyle(lens).visibility,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(Number.parseFloat(fill.width)-(rect.x+rect.width/2-inputRect.x))};
-  });
-  assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.offset<1&&geometry.visible==='visible','the transparent handle stays on the native slider during a drag');
-  assert.ok(geometry.cap>=3&&geometry.fillOffset<1,'the rounded fill finishes under the moving handle');
+  const measured=await page.waitForFunction(()=>{
+   const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling,range=input.parentElement;
+   const rect=canvas.getBoundingClientRect(),ctx=canvas.getContext('2d');
+   const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min)),center=8+(rect.width-16)*fraction,mid=rect.height/2;
+   const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/rect.width),Math.floor(y*canvas.height/rect.height),1,1).data];
+   const colored=(x,y)=>{
+    const [r,g,,a]=sample(center+x,mid+y);
+    return a>190&&r>210&&g<130;
+   };
+   const rimBends=[16,17,18].some(offset=>!colored(-offset,-3)&&colored(-offset,3));
+   const centerStaysFlat=[-25,-12,-8,-2].every(offset=>colored(offset,0)&&!colored(offset,3));
+   const fill=getComputedStyle(range,'::after');
+   return rimBends&&centerStaysFlat&&!colored(2,0)&&
+    sample(center-25,mid+4)[3]===0&&sample(center,mid-11)[3]>10&&{
+    fraction,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(parseFloat(fill.width)-center),
+    visible:getComputedStyle(canvas).visibility
+   };
+  },null,{timeout:3000});
+  const geometry=await measured.jsonValue();
+  assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.fillOffset<1&&geometry.cap>=3&&geometry.visible==='visible','only the left rim deflects the stripe, and the original thickness and tip stay intact at the native value');
+  if(out)await slider.locator('..').screenshot({path:path.join(out,'slider-droplet.png')});
  }finally{await page.mouse.up();}
- await page.waitForFunction(()=>getComputedStyle(document.querySelector('#glass-refraction + .glass-range-lens')).visibility==='hidden');
+ await page.waitForFunction(()=>{
+  const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling,rect=canvas.getBoundingClientRect();
+  const cx=8+(rect.width-16)*input.valueAsNumber/80;
+  const ctx=canvas.getContext('2d'),x=Math.floor(cx*canvas.width/rect.width);
+  return ctx.getImageData(x,Math.floor(canvas.height*.22),1,1).data[3]===0&&ctx.getImageData(x,Math.floor(canvas.height*.5),1,1).data[3]>245;
+ });
  await page.emulateMedia({reducedMotion:'reduce'});
  await slider.press('Home');assert.equal(await slider.inputValue(),'0');
- assert.equal(await slider.locator('..').locator('.glass-range-lens').evaluate(e=>getComputedStyle(e).display),'none','reduced motion keeps the native thumb');
+ assert.equal(await slider.locator('..').locator('.glass-range-art').evaluate(e=>getComputedStyle(e).display),'none','reduced motion keeps the native thumb');
  await page.locator('[data-settings-tab="general"]').click();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.artist-save-folders').isVisible(),false,'mobile stays outside this feature');
  assert.deepEqual(errors,[]);await context.close();console.log('Grouped birthday roster/counts, truthful long paths, matched switch size, transparent rail and reflection, reversal, slider drag, keyboard, OFF/default and ON/override real writes, reload/group/account persistence, non-destructive reset, themes, reduced motion and mobile exclusion PASS');

@@ -1,10 +1,10 @@
 /* Pinned Meapri LiquidMenu drives only the decorative skin. Real menu buttons
  * stay at their final, untransformed hit boxes; normal triggers are CSS only. */
 let engineModule;
-const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
+const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=droplet-sheet-20261126'));
 let LiquidGlass,pending=null;
-import {glassPreferences} from './web-glass-settings.js?v=clear-motion-20261126';
-import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
+import {glassPreferences} from './web-glass-settings.js?v=droplet-sheet-20261126';
+import {createGlass,materialOptions} from './web-glass-material.js?v=droplet-sheet-20261126';
 let owner=null,serial=0,builds=0,disposed=0;
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
 function release(o){if(o.glass){o.glass.destroy();o.glass=null;o.menu.glass=null;disposed++;}}

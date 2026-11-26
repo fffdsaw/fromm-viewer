@@ -1,10 +1,10 @@
 /* PC control optics. Meapri demo: LiquidGlass + LiquidInteractive/PointerField.
  * Only decorative faces flex: native controls, hit boxes and handlers stay put.
  * MIT upstream is preserved in vendor/meapri/LICENSE. */
-import {clearControls} from './web-clear-controls.js?v=clear-motion-20261126';
+import {clearControls} from './web-clear-controls.js?v=droplet-sheet-20261126';
 import {updateRailCrossing} from './web-rail-lens.js?v=continuous-lens-20261117';
-import {glassPC,glassPreferences} from './web-glass-settings.js?v=clear-motion-20261126';
-import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
+import {glassPC,glassPreferences} from './web-glass-settings.js?v=droplet-sheet-20261126';
+import {createGlass,materialOptions} from './web-glass-material.js?v=droplet-sheet-20261126';
 const controls='.card-download,.replay-download,.chat-media-download,.chat-audio-play:not(.small-player-button),.chat-sound-download,.replay-play,#conversationNew,#chatToolsBtn,#chatMatchPrev,#chatMatchNext,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#scrollTopBtn,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.live-mini-btn,.replay-page-back,.replay-page-download,#glassSettingsBtn,.glass-switch-thumb:not(#glassSettingsDialog *),.glass-preview-lens';
 const selected='.sidebar-open #rooms .room.active';
 const sidebarPreset=Object.freeze({refraction:80,thickness:60,blur:0,saturation:80,chromatic:88,opacity:60,specular:28});
@@ -88,7 +88,7 @@ function sync(){
  for(const el of targets)if(!faces.has(el))create(el,relative.has(el));
  if(!useEngine){for(const item of faces.values()){releaseEngine(item);stopInteractive(item);}return;}
  if(!module){
-  if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124').then(m=>{module=m;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(module)schedule();});
+  if(!loading&&!importFailed)loading=import('./vendor/meapri/liquid-glass.js?v=droplet-sheet-20261126').then(m=>{module=m;}).catch(()=>{importFailed=true;}).finally(()=>{loading=null;if(module)schedule();});
   return;
  }
  // Prepare one viewport ahead. Retain completed maps on connected controls;

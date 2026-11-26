@@ -342,6 +342,29 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-failure-meta,.save-failure-reason{margin-top:3px;color:var(--theme-muted,var(--muted));font-size:12px;overflow-wrap:anywhere}
 .save-result-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:8px 16px 12px}
 .save-result-actions .btn{background:var(--theme-soft,var(--card));border-color:var(--theme-line,var(--line));color:var(--theme-text,var(--text))}
+@media(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+ .save-result-sheet.open{animation:save-sheet-rise 260ms cubic-bezier(.2,.75,.25,1) backwards}
+ .save-result-sheet.closing{animation:save-sheet-lower 180ms ease-in both}
+ .save-result-sheet.open .save-result-card{animation:save-glass-unfold 260ms cubic-bezier(.3,.45,.2,1) backwards}
+ .save-result-sheet.closing .save-result-card{animation:save-glass-fold 180ms ease-in both}
+ .save-result-sheet.open .save-result-card>*{animation:save-sheet-content 160ms ease-out 80ms backwards}
+ .save-result-sheet.closing .save-result-card>*{animation:save-sheet-content 100ms ease-in reverse both}
+ @keyframes save-sheet-rise{from{transform:translateY(calc(100% + 24px))}to{transform:none}}
+ @keyframes save-sheet-lower{to{transform:translateY(calc(100% + 24px))}}
+ @keyframes save-glass-unfold{
+  from{clip-path:inset(73% 37% 0 round 100px)}
+  62%{clip-path:inset(16% 12% 0 round 32px)}
+  to{clip-path:inset(0 round 22px)}
+ }
+ @keyframes save-glass-fold{from{clip-path:inset(0 round 22px)}to{clip-path:inset(73% 37% 0 round 100px)}}
+ @keyframes save-sheet-content{from{opacity:0}to{opacity:1}}
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .save-result-card[data-glass-material='convex']{
+  background-color:rgb(255 255 255/.41)!important;box-shadow:inset 0 1px 1px #fff8,0 8px 24px #0003;
+ }
+ .save-result-card[data-glass-material='convex'][data-scheme='dark']{background-color:rgb(17 19 23/.52)!important}
+}
 @media(prefers-reduced-motion:reduce){.save-result-sheet.open,.save-result-sheet.closing{animation:none}}
 @media(prefers-reduced-transparency:reduce),(forced-colors:active){.save-result-card{background-color:var(--theme-card,var(--card))!important;backdrop-filter:none}}
 @media(forced-colors:active){.save-result-card{background-color:Canvas!important;color:CanvasText;border-color:CanvasText}}
@@ -1134,14 +1157,14 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-glowme.js?v=media-save-ui-20261125">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=rich-media-live-20261125">
-<link rel="modulepreload" href="web-glass.js?v=clear-motion-20261126" fetchpriority="low">
+<link rel="modulepreload" href="web-glass.js?v=droplet-sheet-20261126" fetchpriority="low">
 <script src="web-video-download.js?v=pool-20261109"></script>
 <script src="web-save-folder.js?v=artist-folders-20261126"></script>
 <script src="web-artists.js?v=artist-folder-layout-20261126"></script>
 <link rel="stylesheet" href="conversation.css?v=rich-media-live-20261125">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
-<link rel="stylesheet" href="settings-panel.css?v=clear-motion-20261126">
+<link rel="stylesheet" href="settings-panel.css?v=droplet-sheet-20261126">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
 <link rel="stylesheet" href="glowme-controls.css?v=artist-folders-20261126">
 <script src="web-themes.js?v=controls-live-20261116"></script>
@@ -7032,7 +7055,7 @@ function preloadViewerGlass(){
   const engine=document.createElement("link");
   engine.id="viewerGlassPreload";
   engine.rel="modulepreload";
-  engine.href="vendor/meapri/liquid-glass.js?v=convex-edge-20261124";
+  engine.href="vendor/meapri/liquid-glass.js?v=droplet-sheet-20261126";
   engine.fetchPriority="low";
   document.head.append(engine);
 }
@@ -12031,6 +12054,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=clear-motion-20261126"></script>
+<script type="module" src="web-glass.js?v=droplet-sheet-20261126"></script>
 </body>
 </html>

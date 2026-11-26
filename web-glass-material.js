@@ -20,6 +20,7 @@ export function createGlass(Engine,element,options){
   FullGlass=class extends Engine {
    get fixedSurface(){return this.element.classList.contains('fixed-glass-surface');}
    get convexEdge(){return !this.fixedSurface&&!this.element.classList.contains('rail-lens-surface');}
+   get convexInterior(){return this.element.classList.contains('save-result-depth');}
    // Fixed action chrome needs the SDK's specular material, but no displacement
    // map, RGB topology, GPU scene copy or scroll-safe filter swapping.
    shouldFallback(){return this.fixedSurface?false:super.shouldFallback();}

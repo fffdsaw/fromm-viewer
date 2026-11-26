@@ -1,4 +1,74 @@
-/* Shared settings switch. The moving thumb samples the underlying rail in one pass. */
+/* The settings controls bend a local copy of their own track. */
+const clamp = value => Math.max(0, Math.min(1, value));
+const mix = (a, b, t) => a + (b - a) * t;
+function smooth(start, end, value) {
+    const t = clamp((value - start) / (end - start));
+    return t * t * (3 - 2 * t);
+}
+
+function color(context, token, fallback, styles) {
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = fallback;
+    context.fillStyle = styles.getPropertyValue(token).trim() || fallback;
+    context.fillRect(0, 0, 1, 1);
+    return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+}
+
+function capsule(context, left, cy, width, height, fill) {
+    if (width <= 0) return;
+    context.beginPath();
+    context.roundRect(left, cy - height / 2, width, height, height / 2);
+    context.fillStyle = fill;
+    context.fill();
+}
+
+function capsuleDepth(x, y, halfWidth, radius) {
+    return radius - Math.hypot(Math.max(0, Math.abs(x) - halfWidth + radius), y);
+}
+
+function paintLens(context, lens, palette, sampleTrack) {
+    const { cx, cy, width, height, clarity } = lens;
+    const { a: scaleX, d: scaleY } = context.getTransform();
+    const antialias = Math.max(1 / scaleX, 1 / scaleY) / 2;
+    const halfWidth = width / 2;
+    const radius = height / 2;
+    const left = Math.max(0, Math.floor((cx - halfWidth - antialias) * scaleX));
+    const right = Math.min(context.canvas.width, Math.ceil((cx + halfWidth + antialias) * scaleX));
+    const top = Math.max(0, Math.floor((cy - radius - antialias) * scaleY));
+    const bottom = Math.min(context.canvas.height, Math.ceil((cy + radius + antialias) * scaleY));
+    const picture = context.getImageData(left, top, right - left, bottom - top);
+
+    for (let y = top; y < bottom; y++) {
+        const py = (y + 0.5) / scaleY - cy;
+        for (let x = left; x < right; x++) {
+            const px = (x + 0.5) / scaleX - cx;
+            const depth = capsuleDepth(px, py, halfWidth, radius);
+            const coverage = smooth(-antialias, antialias, depth);
+            if (!coverage) continue;
+
+            // The broad center magnifies the colored track and the rim joins
+            // the unmoved track continuously at the lens outline.
+            const zoom = 1 - 0.48 * clarity * smooth(0, radius * 0.72, depth);
+            const [red, green, blue, sampledAlpha] = sampleTrack(cx + px * zoom, cy + py * zoom, antialias);
+            const rim = (depth - antialias) / (antialias + radius * .045);
+            const shine = Math.exp(-rim * rim) *
+                (0.2 + 0.51 * clamp(-py / radius));
+            const front = mix(0.92, 0.06, clarity) * (1 - shine);
+            const behind = (1 - front - shine) * sampledAlpha;
+            const offset = ((y - top) * picture.width + x - left) * 4;
+            const targetAlpha = behind + front + shine;
+            const baseAlpha = picture.data[offset + 3] / 255 * (1 - coverage);
+            const alpha = baseAlpha + targetAlpha * coverage;
+            for (const [channel, fromTrack] of [red, green, blue].entries()) {
+                const shaded = fromTrack * behind + palette.thumb[channel] * front + palette.glint[channel] * shine;
+                picture.data[offset + channel] = (picture.data[offset + channel] * baseAlpha + shaded * coverage) / alpha;
+            }
+            picture.data[offset + 3] = alpha * 255;
+        }
+    }
+    context.putImageData(picture, left, top);
+}
+
 export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled = () => true, canRender = () => true } = {}) {
     const designWidth = 164;
     const designHeight = 96;
@@ -12,8 +82,6 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     const canvas = button.querySelector('canvas');
     const context=(canvas,options)=>{try{return canvas.getContext('2d',options);}catch{return null;}};
     const output = context(canvas);
-    const railCanvas = document.createElement('canvas');
-    const railContext = context(railCanvas, { willReadFrequently: true });
     const colorsCanvas = document.createElement('canvas');
     colorsCanvas.width = colorsCanvas.height = 1;
     const colorContext = context(colorsCanvas, { willReadFrequently: true });
@@ -25,102 +93,11 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     let progress = target;
     let animationFrame = null;
     let previousTime = null;
-    let railAlpha;
-    let pixels;
-    let scaleX;
-    let scaleY;
+    let ready = false;
     let theme;
 
-    const clamp = value => Math.max(0, Math.min(1, value));
-    const mix = (a, b, t) => a + (b - a) * t;
-
-    function smooth(start, end, value) {
-      const t = clamp((value - start) / (end - start));
-      return t * t * (3 - 2 * t);
-    }
-
-    function color(token, fallback, styles) {
-      colorContext.clearRect(0, 0, 1, 1);
-      colorContext.fillStyle = fallback;
-      colorContext.fillStyle = styles.getPropertyValue(token).trim() || fallback;
-      colorContext.fillRect(0, 0, 1, 1);
-      return Array.from(colorContext.getImageData(0, 0, 1, 1).data.slice(0, 3));
-    }
-
-    function capsule(context, left, centerY, width, height, fill) {
-      const radius = height / 2;
-      context.beginPath();
-      context.arc(left + radius, centerY, radius, Math.PI / 2, 3 * Math.PI / 2);
-      context.arc(left + width - radius, centerY, radius, -Math.PI / 2, Math.PI / 2);
-      context.closePath();
-      context.fillStyle = fill;
-      context.fill();
-    }
-
-    function sampleRail(x, y) {
-      x = Math.max(0, Math.min(canvas.width - 1.001, x));
-      y = Math.max(0, Math.min(canvas.height - 1.001, y));
-      const x0 = Math.floor(x);
-      const y0 = Math.floor(y);
-      const row = y0 * canvas.width + x0;
-      const nextRow = row + canvas.width;
-      return mix(
-        mix(railAlpha[row], railAlpha[row + 1], x - x0),
-        mix(railAlpha[nextRow], railAlpha[nextRow + 1], x - x0),
-        y - y0,
-      ) / 255;
-    }
-
-    function drawLens(left, centerY, width, height, clarity, railColor) {
-      const radius = height / 2;
-      const right = left + width;
-      const antialias = Math.max(1 / scaleX, 1 / scaleY) / 2;
-      const x0 = Math.max(0, Math.floor((left - antialias) * scaleX));
-      const x1 = Math.min(canvas.width, Math.ceil((right + antialias) * scaleX));
-      const y0 = Math.max(0, Math.floor((centerY - radius - antialias) * scaleY));
-      const y1 = Math.min(canvas.height, Math.ceil((centerY + radius + antialias) * scaleY));
-      const film = mix(0.76, 0.064, clarity);
-      const outputPixels = pixels.data;
-
-      for (let y = y0; y < y1; y++) {
-        const py = (y + 0.5) / scaleY - centerY;
-        for (let x = x0; x < x1; x++) {
-          const px = (x + 0.5) / scaleX;
-          const dx = px - Math.max(left + radius, Math.min(right - radius, px));
-          const distance = Math.hypot(dx, py);
-          const depth = radius - distance;
-          const length = Math.max(distance, 0.001);
-          const nx = dx / length;
-          const ny = py / length;
-          const coverage = smooth(-antialias, antialias, depth);
-          const rim = Math.exp(-((depth - 7) ** 2) / 65) * smooth(0, 3, depth) * clarity;
-          const index = y * canvas.width + x;
-          const base = railAlpha[index] / 255;
-          const shifted = rim > 0.002 ? sampleRail(x + nx * 32 * rim * scaleX, y + ny * 21 * rim * scaleY) : base;
-          const rail = mix(base, shifted, coverage * clarity);
-
-          // The middle transmits the rail. Reflections stay on the curved lip,
-          // with a stronger top highlight and a smaller reflection beneath it.
-          const reflection = Math.exp(-((depth - 1.25) ** 2) / 2.9) * (0.38 + 0.38 * Math.max(0, -ny));
-          const highlight = coverage * reflection;
-          const front = coverage * film * (1 - highlight);
-          const behind = rail * (1 - front - highlight);
-          const alpha = behind + front + highlight;
-          const offset = index * 4;
-
-          for (let channel = 0; channel < 3; channel++) {
-            outputPixels[offset + channel] = alpha > 0
-              ? (railColor[channel] * behind + theme.thumb[channel] * front + theme.glint[channel] * highlight) / alpha
-              : 0;
-          }
-          outputPixels[offset + 3] = alpha * 255;
-        }
-      }
-      output.putImageData(pixels, 0, 0, x0, y0, x1 - x0, y1 - y0);
-    }
-
     function render() {
-      if (!pixels) return;
+      if (!ready) return;
       const position = smooth(0, 1, progress);
       const colorProgress = smooth(0.24, 0.76, position);
       const railColor = theme.off.map((value, i) => Math.round(mix(value, theme.on[i], colorProgress)));
@@ -128,14 +105,19 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       const clarity = optical ? smooth(0, 0.19, progress) * (1 - smooth(0.81, 1, progress)) : 0;
       const swell = optical ? Math.sin(Math.PI * position) ** 2 : 0;
       // Leave rail exposed at both ends even at peak expansion.
-      const width = thumbWidth + 18 * swell;
-      const height = thumbHeight + 18 * swell;
+      const width = thumbWidth + 42 * swell;
+      const height = thumbHeight + 32 * swell;
       const left = mix(startCenter, endCenter, position) - width / 2;
-      const cy = track.cy - swell;
+      const cy = track.cy;
 
       output.clearRect(0, 0, designWidth, designHeight);
       capsule(output, track.x, track.cy, track.width, track.height, `rgb(${railColor.join(',')})`);
-      if (optical) drawLens(left, cy, width, height, clarity, railColor);
+      if (optical) {
+        paintLens(output, { cx: left + width / 2, cy, width, height, clarity }, theme, (x, y, aa) => {
+          const depth = capsuleDepth(x - designWidth / 2, y - track.cy, track.width / 2, track.height / 2);
+          return [...railColor, smooth(-aa, aa, depth)];
+        });
+      }
       else capsule(output, left, cy, width, height, `rgb(${theme.thumb.join(',')})`);
     }
 
@@ -143,20 +125,20 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       if (!colorContext) return;
       const styles = getComputedStyle(button);
       theme = {
-        off: color('--fromm-switch-track-off', '#524f66', styles),
-        on: color('--fromm-switch-track-on', '#9777f0', styles),
-        thumb: color('--fromm-switch-thumb', '#f4edf9', styles),
-        glint: color('--fromm-switch-glint', '#f9f6ff', styles),
+        off: color(colorContext, '--fromm-switch-track-off', '#524f66', styles),
+        on: color(colorContext, '--fromm-switch-track-on', '#9777f0', styles),
+        thumb: color(colorContext, '--fromm-switch-thumb', '#f4edf9', styles),
+        glint: color(colorContext, '--fromm-switch-glint', '#f9f6ff', styles),
       };
       if(!available())snap();else render();
     }
 
     function resize() {
-      if (!output || !railContext || !theme) return;
+      if (!output?.roundRect || !theme) return;
       const rect = canRender() ? canvas.getBoundingClientRect() : null;
       if (!rect?.width || !rect.height) {
         delete button.dataset.glassReady;
-        pixels = null;
+        ready = false;
         snap();
         return;
       }
@@ -164,17 +146,8 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(2, Math.round(rect.width * dpr));
       canvas.height = Math.max(2, Math.round(rect.height * dpr));
-      railCanvas.width = canvas.width;
-      railCanvas.height = canvas.height;
-      scaleX = canvas.width / designWidth;
-      scaleY = canvas.height / designHeight;
-      railContext.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-      output.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-      capsule(railContext, track.x, track.cy, track.width, track.height, '#fff');
-      const source = railContext.getImageData(0, 0, canvas.width, canvas.height).data;
-      railAlpha = new Uint8Array(canvas.width * canvas.height);
-      for (let i = 0; i < railAlpha.length; i++) railAlpha[i] = source[i * 4 + 3];
-      pixels = output.createImageData(canvas.width, canvas.height);
+      output.setTransform(canvas.width / designWidth, 0, 0, canvas.height / designHeight, 0, 0);
+      ready = true;
       render();
       button.dataset.glassReady = '';
     }
@@ -205,7 +178,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     function setChecked(checked, { animate = true } = {}) {
       target = checked ? 1 : 0;
       if (!input) button.setAttribute('aria-checked', String(Boolean(checked)));
-      if (!animate || motionPreference.matches || !available() || !pixels) {
+      if (!animate || motionPreference.matches || !available() || !ready) {
         snap();
       } else if (animationFrame === null && progress !== target) {
         animationFrame = requestAnimationFrame(tick);
@@ -237,3 +210,113 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       },
     };
   }
+
+export function mountLiquidGlassRange(input) {
+    const range = input.parentElement;
+    const canvas = range.querySelector('canvas');
+    const output = canvas.getContext('2d', { willReadFrequently: true });
+    const swatch = document.createElement('canvas');
+    swatch.width = swatch.height = 1;
+    const colorContext = swatch.getContext('2d', { willReadFrequently: true });
+    if (!output?.roundRect || !colorContext || typeof ResizeObserver !== 'function') return null;
+
+    let width = 0, height = 0, fraction = 0, growth = 0;
+    let pressed = null, pulse = 0, frame = 0, lastTime = 0;
+    let palette;
+
+    function render() {
+        if (!width || !height) return;
+        const cy = height / 2;
+        const cx = 8 + (width - 16) * fraction;
+        const fillWidth = fraction === 1 ? width : fraction === 0 ? 0 : cx;
+        output.clearRect(0, 0, width, height);
+        capsule(output, 0, cy, width, 6, `rgb(${palette.rail.join(',')})`);
+        capsule(output, 0, cy, fillWidth, 6, `rgb(${palette.fill.join(',')})`);
+        const swell = smooth(0, 1, growth);
+        paintLens(output, { cx, cy, width: 16 + 22 * swell, height: 12 + 14 * swell, clarity: swell }, palette, (x, y, aa) => {
+            const railDepth = capsuleDepth(x - width / 2, y - cy, width / 2, 3);
+            const rail = smooth(-aa, aa, railDepth);
+            const fillDepth = capsuleDepth(x - fillWidth / 2, y - cy, fillWidth / 2, 3);
+            const fill = fillWidth > 0 ? smooth(-aa, aa, fillDepth) : 0;
+            return [...palette.fill.map((value, i) => mix(palette.rail[i], value, rail ? fill / rail : 0)), rail];
+        });
+    }
+
+    function refreshTheme() {
+        const styles = getComputedStyle(range);
+        palette = {
+            rail: color(colorContext, '--theme-selected', '#c9e9da', styles),
+            fill: color(colorContext, '--theme-accent', '#167b65', styles),
+            thumb: color(colorContext, '--theme-card', '#fbfdfc', styles),
+            glint: [255, 255, 255],
+        };
+        render();
+    }
+
+    function resize() {
+        const rect = canvas.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        if (!width || !height) {
+            delete range.dataset.glassReady;
+            stop();
+            cancelAnimationFrame(frame);
+            frame = lastTime = growth = 0;
+            return;
+        }
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        output.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+        render();
+        range.dataset.glassReady = '';
+    }
+
+    function tick(time) {
+        const active = pressed !== null || pulse !== 0;
+        const step = Math.min(40, time - (lastTime || time)) / 150;
+        lastTime = time;
+        growth = clamp(growth + (active ? step : -step));
+        render();
+        if (growth !== Number(active)) frame = requestAnimationFrame(tick);
+        else frame = lastTime = 0;
+    }
+
+    function animate() {
+        if (width && !frame) frame = requestAnimationFrame(tick);
+    }
+    function stop() {
+        pressed = null;
+        clearTimeout(pulse);
+        pulse = 0;
+        animate();
+    }
+    input.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || !width) return;
+        pressed = event.pointerId;
+        animate();
+    });
+    const release = event => { if (event.pointerId === pressed) stop(); };
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
+    window.addEventListener('blur', stop);
+    input.addEventListener('blur', stop);
+    refreshTheme();
+    new ResizeObserver(resize).observe(canvas);
+
+    return {
+        update(value) {
+            if (fraction === value) return;
+            fraction = value;
+            render();
+        },
+        pulse() {
+            if (pressed !== null || !width) return;
+            clearTimeout(pulse);
+            pulse = setTimeout(stop, 160);
+            animate();
+        },
+        refreshTheme,
+        stop,
+    };
+}

@@ -59,8 +59,8 @@ const removeGrid=page=>page.evaluate(()=>document.querySelector('#optical-grid')
   if(width===1440){
    const clip={x:100,y:100,width:260,height:82};
    await page.evaluate(async()=>{
-    const {LiquidGlass}=await import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124');
-    const {createGlass,materialOptions}=await import('./web-glass-material.js?v=meapri-folder-20261124');
+    const {LiquidGlass}=await import('./vendor/meapri/liquid-glass.js?v=droplet-sheet-20261126');
+    const {createGlass,materialOptions}=await import('./web-glass-material.js?v=droplet-sheet-20261126');
     const pane=document.createElement('div');pane.id='optical-pane';
     Object.assign(pane.style,{position:'fixed',left:'100px',top:'100px',width:'260px',height:'82px',borderRadius:'30px',zIndex:1701});
     document.body.append(pane);
@@ -80,13 +80,35 @@ const removeGrid=page=>page.evaluate(()=>document.querySelector('#optical-grid')
   await page.evaluate(()=>showSaveNotice('저장 완료 · 2개'));
   await ready(page,card,0);
   const sheet=page.locator('#saveResultModal');
+  if(width===1440){
+   const shape=await sheet.evaluate(async sheet=>{
+    const card=sheet.querySelector('.save-result-card');
+    await Promise.all(sheet.getAnimations({subtree:true}).map(animation=>animation.finished));
+    sheet.classList.remove('open');void sheet.offsetWidth;sheet.classList.add('open');
+    const animations=sheet.getAnimations({subtree:true});
+    animations.forEach(animation=>{animation.pause();animation.currentTime=110;});
+    return {opacity:getComputedStyle(sheet).opacity,clip:getComputedStyle(card).clipPath,content:getComputedStyle(card.querySelector('.save-result-head')).opacity};
+   });
+   assert.equal(shape.opacity,'1','the sheet remains a live backdrop during the morph');
+   assert.notEqual(shape.clip,'none','a rounded smaller shape unfolds into the panel');
+   assert.ok(Number(shape.content)>0&&Number(shape.content)<1,'only text and controls fade');
+   const middle=await gridClip(page,page.locator(card));
+   const flat=await capture(page,middle);
+   await optics(page,34);await ready(page,card,68);
+   const curved=await capture(page,middle,'save-desktop-unfold');
+   const [live]=await compare(page,flat,curved,[{x:125,y:66,w:220,h:27}]);
+   assert.ok(live>.03,'the backdrop remains refracted during the actual morph: '+live);
+   console.log('Desktop middle frame changed pixels:',live);
+   await sheet.evaluate(sheet=>sheet.getAnimations({subtree:true}).forEach(animation=>animation.finish()));
+   await optics(page,0);await ready(page,card,0);
+  }
   await settled(sheet);
   const clip=await gridClip(page,page.locator(card));
   const plain=await capture(page,clip);
   await optics(page,34);await ready(page,card,68);
   const lensed=await capture(page,clip);
   const [centre,edge]=await compare(page,plain,lensed,[{x:120,y:26,w:95,h:35},{x:4,y:24,w:10,h:36}]);
-  assert.ok(centre<.01&&edge>.06,JSON.stringify({width,centre,edge}));
+  assert.ok((width===1440?centre>.02:centre<.01)&&edge>.06,JSON.stringify({width,centre,edge}));
   const id=await page.locator(card).evaluate(e=>/url\(["']?#([^"')]+)/.exec(e.style.backdropFilter)[1]);
   await removeGrid(page);await page.evaluate(()=>showSaveNotice('저장 완료 · 3개'));
   assert.equal(await sheet.locator('#saveResultSummary').textContent(),'저장 완료 · 3개');

@@ -1,5 +1,5 @@
 // Shared by Meapri's map worker and its main-thread fallback.
-export async function convexEdgeMap({width, height, radius, thickness, pixelRatio, intensity}, specular = false) {
+export async function convexEdgeMap({width, height, radius, thickness, pixelRatio, intensity, convexInterior}, specular = false) {
   const shortSide = Math.min(width, height);
   const band = Math.min(shortSide * 0.30, Math.max(2, thickness * 0.48), 24);
   // The maximum shift stays below band / π, including the RGB spread. The
@@ -36,7 +36,7 @@ export async function convexEdgeMap({width, height, radius, thickness, pixelRati
       const oy = Math.max(qy, 0);
       const length = ox && oy ? Math.hypot(ox, oy) : ox + oy;
       const depth = corner - length - Math.min(Math.max(qx, qy), 0);
-      if (depth <= 0 || depth >= (specular ? highlightWidth : band)) continue;
+      if (depth <= 0 || depth >= (specular ? highlightWidth : convexInterior ? Infinity : band)) continue;
       const nx = (length ? ox / length : Number(qx > qy)) * Math.sign(dx);
       const ny = (length ? oy / length : Number(qy >= qx)) * Math.sign(dy);
       if (specular) {
@@ -47,9 +47,13 @@ export async function convexEdgeMap({width, height, radius, thickness, pixelRati
       } else {
         // Sample inward along the surface normal. The slope joins the flat
         // centre and outer contour smoothly, with a neutral map on both sides.
-        const curve = Math.sin(Math.PI * depth / band) ** 2;
-        data[index] = 128 - Math.round(nx * curve * 127);
-        data[index + 1] = 128 - Math.round(ny * curve * 127);
+        const curve = depth < band ? Math.sin(Math.PI * depth / band) ** 2 : 0;
+        // On the result sheet the center has a shallow lens as well. Fade
+        // it in through the bevel so both regions form one continuous map.
+        const blend = convexInterior ? Math.min(1, depth / (band * 1.6)) : 0;
+        const body = .72 * blend * blend * (3 - 2 * blend) * (1 - curve);
+        data[index] = 128 - Math.round((nx * curve + 2 * dx / width * body) * 127);
+        data[index + 1] = 128 - Math.round((ny * curve + 2 * dy / height * body) * 127);
       }
     }
   }

@@ -1,4 +1,4 @@
-import { convexEdgeMap } from './assets/convex-edge.js';
+import { convexEdgeMap } from './assets/convex-edge.js?v=droplet-sheet-20261126';
 
 function Dt(s) {
   const e = qt(s);
@@ -214,7 +214,7 @@ function Gt() {
   try {
     k = new Worker(new URL(
       /* @vite-ignore */
-      "" + new URL("assets/MapWorker-tpM-Txsc.js?v=convex-edge-20261124", import.meta.url).href,
+      "" + new URL("assets/MapWorker-tpM-Txsc.js?v=droplet-sheet-20261126", import.meta.url).href,
       import.meta.url
     ), {
       type: "module",
@@ -416,8 +416,8 @@ function fi(s) {
   const e = Rt(s.pixelRatio);
   return `s:${E(s.width, e)}x${E(s.height, e)}_r${E(s.radius, 2)}_t${E(s.thickness, 2)}_p${s.pixelRatio.toFixed(3)}_i${s.intensity.toFixed(2)}`;
 }
-function convexKey({width, height, radius, thickness, pixelRatio}) {
-  return `convex:${width}x${height}_r${radius}_t${thickness}_p${pixelRatio}`;
+function convexKey({width, height, radius, thickness, pixelRatio, convexInterior}) {
+  return `convex:${width}x${height}_r${radius}_t${thickness}_p${pixelRatio}${convexInterior ? '_interior' : ''}`;
 }
 function le(s) {
   const e = di(s), t = V.get(e);
@@ -1585,6 +1585,9 @@ class S {
   get convexEdge() {
     return false;
   }
+  get convexInterior() {
+    return false;
+  }
   nativeDisplacementMap() {
     return le({
       width: this.currentWidth,
@@ -1593,7 +1596,8 @@ class S {
       thickness: this.computedThickness(),
       pixelRatio: this.displacementDpr(),
       refraction: this.profiledRefraction(),
-      convexEdge: this.convexEdge
+      convexEdge: this.convexEdge,
+      convexInterior: this.convexInterior
     });
   }
   specularMapUrl() {

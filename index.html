@@ -343,14 +343,12 @@ a.dl { color: rgb(255, 255, 255); text-decoration: none; background: rgb(48, 55,
 .save-result-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:8px 16px 12px}
 .save-result-actions .btn{background:var(--theme-soft,var(--card));border-color:var(--theme-line,var(--line));color:var(--theme-text,var(--text))}
 @media(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
- .save-result-sheet.open{animation:save-sheet-rise 260ms cubic-bezier(.2,.75,.25,1) backwards}
- .save-result-sheet.closing{animation:save-sheet-lower 180ms ease-in both}
  .save-result-sheet.open .save-result-card{animation:save-glass-unfold 260ms cubic-bezier(.3,.45,.2,1) backwards}
  .save-result-sheet.closing .save-result-card{animation:save-glass-fold 180ms ease-in both}
  .save-result-sheet.open .save-result-card>*{animation:save-sheet-content 160ms ease-out 80ms backwards}
  .save-result-sheet.closing .save-result-card>*{animation:save-sheet-content 100ms ease-in reverse both}
- @keyframes save-sheet-rise{from{transform:translateY(calc(100% + 24px))}to{transform:none}}
- @keyframes save-sheet-lower{to{transform:translateY(calc(100% + 24px))}}
+ @keyframes save-sheet-enter{from{transform:translateY(calc(100% + 24px))}to{transform:none}}
+ @keyframes save-sheet-exit{to{transform:translateY(calc(100% + 24px))}}
  @keyframes save-glass-unfold{
   from{clip-path:inset(73% 37% 0 round 100px)}
   62%{clip-path:inset(16% 12% 0 round 32px)}

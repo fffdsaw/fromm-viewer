@@ -1,20 +1,11 @@
-/* Scoped rail-pixel sampler adapted from the user-provided Fromm Viewer toggle demo.
- * Only this settings switch uses its Canvas; the existing Meapri engine is unchanged. */
-export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () => true } = {}) {
+/* Shared settings switch. Sample the rail locally, with an always-visible glass thumb. */
+export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled = () => true, canRender = () => true } = {}) {
     const designWidth = 164;
     const designHeight = 96;
     const track = { x: 20, cy: 48, width: 124, height: 55 };
     const fullDuration = 520;
-    // [progress, left relative to track, width, height, vertical offset, glass intensity]
-    const keyframes = [
-      [0.00,   4,  73, 48,  0,    0],
-      [0.16, -10,  99, 64,  0, 0.70],
-      [0.32, -13, 118, 75, -1,    1],
-      [0.53,  13, 115, 73, -2,    1],
-      [0.72,  37,  97, 62, -1, 0.84],
-      [0.87,  47,  83, 54,  0, 0.45],
-      [1.00,  47,  73, 48,  0,    0],
-    ];
+    const startCenter = track.x + 4 + 73 / 2;
+    const endCenter = track.x + 47 + 73 / 2;
 
     const canvas = button.querySelector('canvas');
     const context=(canvas,options)=>{try{return canvas.getContext('2d',options);}catch{return null;}};
@@ -28,7 +19,7 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
     const transparency=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');
     const available=()=>effectsEnabled()&&!transparency.matches&&!contrast.matches;
 
-    let target = button.getAttribute('aria-checked') === 'true' ? 1 : 0;
+    let target = Number(input ? input.checked : button.getAttribute('aria-checked') === 'true');
     let progress = target;
     let animationFrame = null;
     let previousTime = null;
@@ -137,28 +128,37 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
       if (!pixels) return;
       const colorProgress = smooth(0.30, 0.75, progress);
       const railColor = theme.off.map((value, i) => Math.round(mix(value, theme.on[i], colorProgress)));
-      let frame = 1;
-      while (frame < keyframes.length - 1 && progress > keyframes[frame][0]) frame++;
-      const before = keyframes[frame - 1];
-      const after = keyframes[frame];
-      const segment = (progress - before[0]) / (after[0] - before[0]);
-      const position = mix(segment, smooth(0, 1, segment), 0.4);
-      const [relativeLeft, width, height, lift, glass] = before.slice(1).map(
-        (value, index) => mix(value, after[index + 1], position),
-      );
-      const left = track.x + relativeLeft;
-      const cy = track.cy + lift;
+      const optical = available();
+      const position = smooth(0, 1, progress);
+      const swell = optical ? Math.sin(Math.PI * progress) ** 2 : 0;
+      const width = 73 + 42 * swell;
+      const height = 48 + 25 * swell;
+      const left = mix(startCenter, endCenter, position) - width / 2;
+      const cy = track.cy - 2 * swell;
 
       output.clearRect(0, 0, designWidth, designHeight);
       capsule(output, track.x, track.cy, track.width, track.height, `rgb(${railColor.join(',')})`);
-      if (glass > 0.002) drawLens(left, cy, width, height, glass, railColor);
+      if (swell > 0.002) drawLens(left, cy, width, height, swell * 0.78, railColor);
 
-      const solid = (1 - glass) ** 1.7;
-      if (solid > 0.01) {
-        output.globalAlpha = solid;
-        capsule(output, left, cy, width, height, `rgb(${theme.thumb.join(',')})`);
-        output.globalAlpha = 1;
+      const rgb = theme.thumb.join(',');
+      if (!optical) {
+        capsule(output, left, cy, width, height, `rgb(${rgb})`);
+        return;
       }
+      // Keep a continuous silhouette and rounded lip even at peak expansion.
+      const glaze = output.createLinearGradient(0, cy - height / 2, 0, cy + height / 2);
+      glaze.addColorStop(0, `rgba(${rgb}, ${0.91 - 0.22 * swell})`);
+      glaze.addColorStop(0.35, `rgba(${rgb}, ${0.57 - 0.27 * swell})`);
+      glaze.addColorStop(0.72, `rgba(${rgb}, ${0.39 - 0.17 * swell})`);
+      glaze.addColorStop(1, `rgba(${rgb}, ${0.66 - 0.22 * swell})`);
+      capsule(output, left, cy, width, height, glaze);
+      const rim = output.createLinearGradient(0, cy - height / 2, 0, cy + height / 2);
+      rim.addColorStop(0, 'rgba(255,255,255,.95)');
+      rim.addColorStop(0.52, 'rgba(255,255,255,.31)');
+      rim.addColorStop(1, 'rgba(255,255,255,.68)');
+      output.lineWidth = 2.2;
+      output.strokeStyle = rim;
+      output.stroke();
     }
 
     function refreshTheme() {
@@ -175,7 +175,13 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
 
     function resize() {
       if (!output || !railContext || !theme) return;
-      const rect = button.getBoundingClientRect();
+      if (!canRender()) {
+        delete button.dataset.glassReady;
+        pixels = null;
+        snap();
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) { snap(); return; }
       refreshTheme();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -206,7 +212,7 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
 
     function tick(time) {
       if (previousTime !== null) {
-        const step = (time - previousTime) / fullDuration;
+        const step = Math.max(0, time - previousTime) / fullDuration;
         progress = target > progress ? Math.min(target, progress + step) : Math.max(target, progress - step);
       }
       render();
@@ -221,7 +227,7 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
 
     function setChecked(checked, { animate = true } = {}) {
       target = checked ? 1 : 0;
-      button.setAttribute('aria-checked', String(Boolean(checked)));
+      if (!input) button.setAttribute('aria-checked', String(Boolean(checked)));
       if (!animate || motionPreference.matches || !available() || !pixels) {
         snap();
       } else if (animationFrame === null && progress !== target) {
@@ -232,7 +238,7 @@ export function mountLiquidGlassSwitch(button, { onToggle, effectsEnabled = () =
     const activate = () => onToggle?.(target === 0);
     const motionChanged = () => { if (motionPreference.matches) snap(); };
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
-    button.addEventListener('click', activate);
+    if (!input) button.addEventListener('click', activate);
     motionPreference.addEventListener('change', motionChanged);
     transparency.addEventListener('change', refreshTheme);contrast.addEventListener('change', refreshTheme);
     window.addEventListener('resize', resize);

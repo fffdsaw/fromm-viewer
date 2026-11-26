@@ -1134,13 +1134,26 @@ body.download-marquee-active{user-select:none;cursor:default}
 <link rel="preload" as="script" href="web-glowme.js?v=media-save-ui-20261125">
 <link rel="preload" as="script" href="web-ui-a11y.js?v=list-polish-20261107">
 <link rel="preload" as="script" href="web-view-state.js?v=rich-media-live-20261125">
+<link rel="modulepreload" href="web-glass.js?v=glass-startup-20261126" fetchpriority="low">
+<script>
+  if(matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)').matches &&
+     !matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce), (forced-colors: active)').matches){
+    let useGlass=true;
+    try{useGlass=JSON.parse(localStorage.getItem('fromm.pcGlass.v1')||'null')?.enabled!==false;}catch{}
+    if(useGlass){
+      const engine=document.createElement('link');
+      engine.rel='modulepreload';engine.href='vendor/meapri/liquid-glass.js?v=convex-edge-20261124';engine.fetchPriority='low';
+      document.head.append(engine);
+    }
+  }
+</script>
 <script src="web-video-download.js?v=pool-20261109"></script>
 <script src="web-save-folder.js?v=artist-folders-20261126"></script>
 <script src="web-artists.js?v=artist-folder-layout-20261126"></script>
 <link rel="stylesheet" href="conversation.css?v=rich-media-live-20261125">
 <link rel="stylesheet" href="compact-player.css?v=controls-live-20261116">
 <link rel="stylesheet" href="themes.css?v=convex-edge-20261124">
-<link rel="stylesheet" href="settings-panel.css?v=artist-folder-layout-20261126">
+<link rel="stylesheet" href="settings-panel.css?v=glass-startup-20261126">
 <link rel="stylesheet" href="channel-photos.css?v=channel-artist-20261119">
 <link rel="stylesheet" href="glowme-controls.css?v=artist-folders-20261126">
 <script src="web-themes.js?v=controls-live-20261116"></script>
@@ -12014,6 +12027,6 @@ autoConnectSaved();
 })();
 </script>
 <script src="web-pwa.js"></script>
-<script type="module" src="web-glass.js?v=artist-folder-layout-20261126"></script>
+<script type="module" src="web-glass.js?v=glass-startup-20261126"></script>
 </body>
 </html>

@@ -63,6 +63,20 @@ try{
  // Removing an override only changes routing, leaving real files in place.
  await hayoung.getByRole('button',{name:'송하영 저장 폴더 메뉴'}).click();await page.keyboard.press('Escape');assert.equal(await page.locator('#glassSettingsDialog').isVisible(),true,'Escape dismisses only the menu');await hayoung.getByRole('button',{name:'송하영 저장 폴더 메뉴'}).click();await page.getByRole('menuitem',{name:'송하영 기본 저장 폴더 사용'}).click();assert.equal(await fromis.locator('.artist-folder-count').innerText(),'1/5 지정');assert.deepEqual(await counts(),files);
  await page.evaluate(()=>setActiveAuth('other-synthetic','other-device','other-account'));await close();await show();assert.equal(await page.evaluate(()=>FrommSaveFolder.enabled(currentAccountScope())),true);assert.equal(await fromis.locator('.artist-folder-count').innerText(),'0/5 지정');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.locator('[data-settings-tab="glass"]').click();
+ const master=page.locator('#glassEnabled'),masterTrack=page.locator('.glass-switch-track');
+ await page.waitForFunction(()=>document.querySelector('.glass-switch-track').hasAttribute('data-glass-ready'));
+ assert.equal(await masterTrack.locator('.glass-switch-thumb').evaluate(e=>getComputedStyle(e).visibility),'hidden','the native switch has one visible glass face');
+ await master.focus();await master.press('Space');assert.equal(await master.isChecked(),false);
+ await page.waitForFunction(()=>{
+  const canvas=document.querySelector('.glass-switch-art');
+  const [red,,,alpha]=canvas.getContext('2d').getImageData(Math.round(canvas.width/2),Math.round(canvas.height*.19),1,1).data;
+  return red>160&&alpha>55;
+ });
+ await page.waitForTimeout(550);assert.equal(await page.locator('#glass-refraction').isDisabled(),true);
+ await master.press('Space');assert.equal(await master.isChecked(),true);
+ await page.locator('[data-settings-tab="general"]').click();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.artist-save-folders').isVisible(),false,'mobile stays outside this feature');
  assert.deepEqual(errors,[]);await context.close();console.log('Grouped birthday roster/counts, truthful long paths, 520ms capsule sampling/reversal, keyboard, OFF/default and ON/override real writes, reload/group/account persistence, non-destructive reset, themes, reduced motion and mobile exclusion PASS');
 }finally{await browser.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

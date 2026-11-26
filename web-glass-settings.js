@@ -1,4 +1,4 @@
-import {mountLiquidGlassSwitch} from './web-artist-folder-switch.js?v=artist-folders-20261126';
+import {mountLiquidGlassSwitch} from './web-artist-folder-switch.js?v=glass-startup-20261126';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
@@ -56,6 +56,7 @@ function statusText(){
 function renderControls(){
  if(!dialog)return;
  dialog.querySelector('#glassEnabled').checked=values.enabled;
+ glassSwitch?.setChecked(values.enabled,{animate:dialog.open&&category==='glass'});
  dialog.querySelector('fieldset').disabled=!values.enabled;
  for(const[key,,min,max,,,unit]of controls){
   const input=dialog.querySelector(`[name="${key}"]`);if(input.value!==String(values[key]))input.value=values[key];
@@ -65,7 +66,7 @@ function renderControls(){
  const note=dialog.querySelector('.glass-settings-note'),text=statusText();if(note.textContent!==text)note.textContent=text;
 }
 const POSITION_KEY='fromm.settingsPosition.v1';
-let footer=null,position=null,category='general';
+let glassSwitch=null,footer=null,position=null,category='general';
 try{const saved=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isFinite(saved?.x)&&Number.isFinite(saved?.y)){position={x:saved.x,y:saved.y};if(['general','theme','glass','advanced'].includes(saved.category))category=saved.category;}}catch{}
 function bounds(){const v=window.visualViewport;return{x:v?.offsetLeft||0,y:v?.offsetTop||0,w:v?.width||innerWidth,h:v?.height||innerHeight};}
 function placePanel(){
@@ -190,13 +191,17 @@ export function mountGlassSettings(){
  <div class="glass-settings-body">
  <section role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" data-settings-panel="general"><section class="settings-install" aria-label="앱 설치"><h3>앱으로 사용하기</h3><p>설치 가능한 환경이면 설치 버튼이 표시됩니다.</p></section><h3>대화 저장 · 알림</h3><p>전체 대화 입력창의 설정에서 관리할 수 있습니다.</p></section>
  <section role="tabpanel" id="settings-panel-theme" aria-labelledby="settings-tab-theme" data-settings-panel="theme" hidden><h3>테마</h3><p>선택하면 화면 전체에 바로 적용됩니다.</p><div class="theme-choices">${Object.entries(window.FrommThemes?.names||{glow:'Glow ME'}).map(([id,label])=>`<button type="button" data-theme-choice="${id}" aria-pressed="false"><span class="theme-swatch theme-swatch-${id}" aria-hidden="true"></span><span>${label}</span></button>`).join('')}</div><p class="theme-storage-note"></p></section>
- <section role="tabpanel" id="settings-panel-glass" aria-labelledby="settings-tab-glass" data-settings-panel="glass" hidden><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><input id="glassEnabled" type="checkbox" role="switch"></span></label>
+ <section role="tabpanel" id="settings-panel-glass" aria-labelledby="settings-tab-glass" data-settings-panel="glass" hidden><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><canvas class="glass-switch-art" aria-hidden="true"></canvas><input id="glassEnabled" type="checkbox" role="switch"></span></label>
  <div class="glass-settings-preview" role="img" aria-label="실제 유리 엔진 미리보기"><span class="glass-preview-pattern" aria-hidden="true">Aa · Fromm · 123</span><span class="glass-preview-lens" aria-hidden="true"></span><span class="glass-preview-caption">실제 엔진 미리보기</span></div>
  <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset><p class="glass-settings-note" role="status"></p></section>
  <section role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" data-settings-panel="advanced" hidden><h3>효과 동작</h3><p>동시 효과 수와 저사양·영상 재생 중 자동 제한을 해제했습니다. 직접 끄기와 기기의 접근성 설정은 유지합니다.</p><button class="btn settings-position-reset" type="button">설정창 위치 초기화</button><p>기본값 복원은 화면 설정만 변경합니다. 저장된 대화는 유지됩니다.</p></section>
  </div></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
  const refreshSaveFolder=mountSaveFolderSettings(dialog.querySelector('#settings-panel-general'));
  document.body.append(dialog);placeInstall();
+ const glassInput=dialog.querySelector('#glassEnabled');
+ glassSwitch=mountLiquidGlassSwitch(glassInput.parentElement,{input:glassInput,canRender:()=>glassPC.matches});
+ window.addEventListener('fromm-theme-change',glassSwitch.refreshTheme);
+ dialog.addEventListener('close',()=>glassSwitch.setChecked(values.enabled,{animate:false}));
  trigger.onclick=()=>{if(!document.querySelector('#loginGate')?.classList.contains('hidden'))return;renderControls();renderThemes();refreshSaveFolder?.();if(!dialog.open){dialog.dataset.modal=String(!glassPC.matches);if(glassPC.matches)dialog.show();else dialog.showModal();selectCategory(category);placePanel();dialog.querySelector(`[data-settings-tab="${category}"]`).focus({preventScroll:true});}};
  const close=()=>dialog.close();dialog.querySelector('.glass-settings-close').onclick=close;dialog.querySelector('.glass-settings-done').onclick=close;
  dialog.querySelector('.glass-settings-reset').onclick=()=>{glassPreferences.reset();window.FrommThemes?.reset();position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};

@@ -1,5 +1,5 @@
 /* Native actions: fixed clear material + a cheap pointer light, never lensing. */
-import {glassPreferences} from './web-glass-settings.js?v=artist-folder-layout-20261126';
+import {glassPreferences} from './web-glass-settings.js?v=glass-startup-20261126';
 import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 export const clearControls='[data-channel-media-type],#scrollTopBtn,.card-download,.replay-download,.replay-play,.chat-media-download,.chat-sound-download,.chat-audio-play,.small-player-button,.replay-page-download,.replay-page-back,.mvc-button,.video-playlist-toggle,.vote-image-save,.dl,#tokenLifeWrap,#scanBtn,#logoutMiniBtn,#channelRefresh,#sortBtn,#selectAllBtn,#saveSelectedBtn,#clearSelectionBtn,.viewer-header button,.live-mini-btn';
 // Ordinary collection/media controls are immediate CSS droplets. Existing

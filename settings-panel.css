@@ -92,7 +92,14 @@
 }
 
 /* User-approved 124:55 rail and 520ms local Canvas transition. */
-#glassSettingsDialog .artist-folder-switch{--fromm-switch-track-on:var(--theme-accent);--fromm-switch-track-off:var(--theme-line);--fromm-switch-thumb:color-mix(in srgb,var(--theme-accent) 8%,white);--fromm-switch-glint:#fff}
+#glassSettingsDialog :is(.artist-folder-switch,.glass-switch-track){--fromm-switch-track-on:var(--theme-accent);--fromm-switch-track-off:var(--theme-line);--fromm-switch-thumb:color-mix(in srgb,var(--theme-accent) 8%,white);--fromm-switch-glint:#fff}
+#glassSettingsDialog .glass-switch-art{display:none}
+@media(min-width:701px) and (hover:hover) and (pointer:fine) and (not (forced-colors:active)){
+ #glassSettingsDialog .glass-switch-track .glass-switch-art{display:block;position:absolute;left:50%;top:50%;width:calc(100% * 164 / 124);aspect-ratio:164 / 96;translate:-50% -50%;visibility:hidden;pointer-events:none}
+ #glassSettingsDialog .glass-switch-track[data-glass-ready],#glassSettingsDialog .glass-switch-track[data-glass-ready]:has(input:checked){background:transparent;border-color:transparent}
+ #glassSettingsDialog .glass-switch-track[data-glass-ready] .glass-switch-art{visibility:visible}
+ #glassSettingsDialog .glass-switch-track[data-glass-ready] .glass-switch-thumb{visibility:hidden}
+}
 /* The outer button includes space for the expanded glass silhouette. */
 #glassSettingsDialog .artist-folder-switch {
   position: relative;

@@ -1,11 +1,13 @@
-/* Shared settings switch. Sample the rail locally, with an always-visible glass thumb. */
+/* Shared settings switch. The moving thumb samples the underlying rail in one pass. */
 export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled = () => true, canRender = () => true } = {}) {
     const designWidth = 164;
     const designHeight = 96;
     const track = { x: 20, cy: 48, width: 124, height: 55 };
     const fullDuration = 520;
-    const startCenter = track.x + 4 + 73 / 2;
-    const endCenter = track.x + 47 + 73 / 2;
+    const thumbWidth = 68;
+    const thumbHeight = 46;
+    const startCenter = track.x + 4 + thumbWidth / 2;
+    const endCenter = track.x + track.width - 4 - thumbWidth / 2;
 
     const canvas = button.querySelector('canvas');
     const context=(canvas,options)=>{try{return canvas.getContext('2d',options);}catch{return null;}};
@@ -69,96 +71,72 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       ) / 255;
     }
 
-    function drawLens(left, centerY, width, height, glass, railColor) {
+    function drawLens(left, centerY, width, height, clarity, railColor) {
       const radius = height / 2;
       const right = left + width;
-      const bounds = {
-        x0: Math.max(0, Math.floor((left - 2) * scaleX)),
-        x1: Math.min(canvas.width, Math.ceil((right + 2) * scaleX)),
-        y0: Math.max(0, Math.floor((centerY - radius - 2) * scaleY)),
-        y1: Math.min(canvas.height, Math.ceil((centerY + radius + 2) * scaleY)),
-      };
+      const antialias = Math.max(1 / scaleX, 1 / scaleY) / 2;
+      const x0 = Math.max(0, Math.floor((left - antialias) * scaleX));
+      const x1 = Math.min(canvas.width, Math.ceil((right + antialias) * scaleX));
+      const y0 = Math.max(0, Math.floor((centerY - radius - antialias) * scaleY));
+      const y1 = Math.min(canvas.height, Math.ceil((centerY + radius + antialias) * scaleY));
+      const film = mix(0.76, 0.064, clarity);
       const outputPixels = pixels.data;
-      for (let y = bounds.y0; y < bounds.y1; y++) {
+
+      for (let y = y0; y < y1; y++) {
         const py = (y + 0.5) / scaleY - centerY;
-        for (let x = bounds.x0; x < bounds.x1; x++) {
+        for (let x = x0; x < x1; x++) {
           const px = (x + 0.5) / scaleX;
-          const nearestX = Math.max(left + radius, Math.min(right - radius, px));
-          const dx = px - nearestX;
+          const dx = px - Math.max(left + radius, Math.min(right - radius, px));
           const distance = Math.hypot(dx, py);
           const depth = radius - distance;
           const length = Math.max(distance, 0.001);
           const nx = dx / length;
           const ny = py / length;
+          const coverage = smooth(-antialias, antialias, depth);
+          const rim = Math.exp(-((depth - 7) ** 2) / 65) * smooth(0, 3, depth) * clarity;
+          const index = y * canvas.width + x;
+          const base = railAlpha[index] / 255;
+          const shifted = rim > 0.002 ? sampleRail(x + nx * 32 * rim * scaleX, y + ny * 21 * rim * scaleY) : base;
+          const rail = mix(base, shifted, coverage * clarity);
 
-          // The flat center has little displacement. The curved rim samples
-          // the rail farther outward and pinches its two shoulders inward.
-          const immersion = smooth(-0.65, 1.35, depth);
-          const rim = Math.exp(-((depth - 10) ** 2) / 111) * smooth(0, 3, depth) * glass;
-          const refraction = sampleRail(x + nx * 48 * rim * scaleX, y + ny * 14 * rim * scaleY);
-          const base = railAlpha[y * canvas.width + x] / 255;
-          const rail = mix(base, refraction, immersion * glass);
-
-          // The clear bands form a C around the refracted rail. Their width
-          // follows the rail's silhouette as it moves through the lens.
-          const towardFarCap = smooth(0.13, 0.35, (px - left) / width);
-          const diffuse = 0.065 * immersion;
-          const band = (1 - refraction) * smooth(1, 5, depth) * towardFarCap *
-            (0.22 + 0.18 * smooth(-0.2, 0.8, ny));
-          const edge = 0.38 * Math.exp(-((depth - 1.05) ** 2) / 1.7) *
-            (0.62 + 0.38 * Math.abs(ny));
-          const light = clamp((diffuse + band + edge) * glass);
-          const tinted = rail * (1 - light);
-          const alpha = tinted + light;
-          const offset = (y * canvas.width + x) * 4;
+          // The middle transmits the rail. Reflections stay on the curved lip,
+          // with a stronger top highlight and a smaller reflection beneath it.
+          const reflection = Math.exp(-((depth - 1.25) ** 2) / 2.9) * (0.38 + 0.38 * Math.max(0, -ny));
+          const highlight = coverage * reflection;
+          const front = coverage * film * (1 - highlight);
+          const behind = rail * (1 - front - highlight);
+          const alpha = behind + front + highlight;
+          const offset = index * 4;
 
           for (let channel = 0; channel < 3; channel++) {
             outputPixels[offset + channel] = alpha > 0
-              ? (railColor[channel] * tinted + theme.glint[channel] * light) / alpha
+              ? (railColor[channel] * behind + theme.thumb[channel] * front + theme.glint[channel] * highlight) / alpha
               : 0;
           }
           outputPixels[offset + 3] = alpha * 255;
         }
       }
-      output.putImageData(pixels, 0, 0, bounds.x0, bounds.y0,
-        bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
+      output.putImageData(pixels, 0, 0, x0, y0, x1 - x0, y1 - y0);
     }
 
     function render() {
       if (!pixels) return;
-      const colorProgress = smooth(0.30, 0.75, progress);
+      const position = smooth(0, 1, progress);
+      const colorProgress = smooth(0.24, 0.76, position);
       const railColor = theme.off.map((value, i) => Math.round(mix(value, theme.on[i], colorProgress)));
       const optical = available();
-      const position = smooth(0, 1, progress);
-      const swell = optical ? Math.sin(Math.PI * progress) ** 2 : 0;
-      const width = 73 + 42 * swell;
-      const height = 48 + 25 * swell;
+      const clarity = optical ? smooth(0, 0.19, progress) * (1 - smooth(0.81, 1, progress)) : 0;
+      const swell = optical ? Math.sin(Math.PI * position) ** 2 : 0;
+      // Leave rail exposed at both ends even at peak expansion.
+      const width = thumbWidth + 18 * swell;
+      const height = thumbHeight + 18 * swell;
       const left = mix(startCenter, endCenter, position) - width / 2;
-      const cy = track.cy - 2 * swell;
+      const cy = track.cy - swell;
 
       output.clearRect(0, 0, designWidth, designHeight);
       capsule(output, track.x, track.cy, track.width, track.height, `rgb(${railColor.join(',')})`);
-      if (swell > 0.002) drawLens(left, cy, width, height, swell * 0.78, railColor);
-
-      const rgb = theme.thumb.join(',');
-      if (!optical) {
-        capsule(output, left, cy, width, height, `rgb(${rgb})`);
-        return;
-      }
-      // Keep a continuous silhouette and rounded lip even at peak expansion.
-      const glaze = output.createLinearGradient(0, cy - height / 2, 0, cy + height / 2);
-      glaze.addColorStop(0, `rgba(${rgb}, ${0.91 - 0.22 * swell})`);
-      glaze.addColorStop(0.35, `rgba(${rgb}, ${0.57 - 0.27 * swell})`);
-      glaze.addColorStop(0.72, `rgba(${rgb}, ${0.39 - 0.17 * swell})`);
-      glaze.addColorStop(1, `rgba(${rgb}, ${0.66 - 0.22 * swell})`);
-      capsule(output, left, cy, width, height, glaze);
-      const rim = output.createLinearGradient(0, cy - height / 2, 0, cy + height / 2);
-      rim.addColorStop(0, 'rgba(255,255,255,.95)');
-      rim.addColorStop(0.52, 'rgba(255,255,255,.31)');
-      rim.addColorStop(1, 'rgba(255,255,255,.68)');
-      output.lineWidth = 2.2;
-      output.strokeStyle = rim;
-      output.stroke();
+      if (optical) drawLens(left, cy, width, height, clarity, railColor);
+      else capsule(output, left, cy, width, height, `rgb(${theme.thumb.join(',')})`);
     }
 
     function refreshTheme() {
@@ -175,14 +153,13 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
 
     function resize() {
       if (!output || !railContext || !theme) return;
-      if (!canRender()) {
+      const rect = canRender() ? canvas.getBoundingClientRect() : null;
+      if (!rect?.width || !rect.height) {
         delete button.dataset.glassReady;
         pixels = null;
         snap();
         return;
       }
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width || !rect.height) { snap(); return; }
       refreshTheme();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(2, Math.round(rect.width * dpr));
@@ -240,7 +217,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
     if (!input) button.addEventListener('click', activate);
     motionPreference.addEventListener('change', motionChanged);
-    transparency.addEventListener('change', refreshTheme);contrast.addEventListener('change', refreshTheme);
+    transparency.addEventListener('change', refreshTheme);contrast.addEventListener('change', resize);
     window.addEventListener('resize', resize);
     refreshTheme();
     resize();
@@ -254,7 +231,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
         observer?.disconnect();
         button.removeEventListener('click', activate);
         motionPreference.removeEventListener('change', motionChanged);
-        transparency.removeEventListener('change', refreshTheme);contrast.removeEventListener('change', refreshTheme);
+        transparency.removeEventListener('change', refreshTheme);contrast.removeEventListener('change', resize);
         window.removeEventListener('resize', resize);
         delete button.dataset.glassReady;
       },

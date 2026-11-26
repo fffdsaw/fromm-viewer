@@ -1,5 +1,5 @@
 /* Capsule-only adapter. Meapri MIT API + demo references: vendor/meapri/README.md. */
-import {glassPreferences} from './web-glass-settings.js?v=glass-startup-20261126';
+import {glassPreferences} from './web-glass-settings.js?v=clear-motion-20261126';
 import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));

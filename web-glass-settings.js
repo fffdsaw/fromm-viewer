@@ -1,4 +1,4 @@
-import {mountLiquidGlassSwitch} from './web-artist-folder-switch.js?v=glass-startup-20261126';
+import {mountLiquidGlassSwitch} from './web-artist-folder-switch.js?v=clear-motion-20261126';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
@@ -60,7 +60,12 @@ function renderControls(){
  dialog.querySelector('fieldset').disabled=!values.enabled;
  for(const[key,,min,max,,,unit]of controls){
   const input=dialog.querySelector(`[name="${key}"]`);if(input.value!==String(values[key]))input.value=values[key];
-  input.style.setProperty('--glass-range-fill',`${(values[key]-min)/(max-min)*100}%`);
+  const fraction=(values[key]-min)/(max-min);
+  input.style.setProperty('--glass-range-fill',`${fraction*100}%`);
+  const range=input.parentElement;
+  range.style.setProperty('--glass-range-position',fraction);
+  const fillWidth=fraction===0?'0px':fraction===1?'100%':'var(--glass-range-center)';
+  range.style.setProperty('--glass-range-fill-width',fillWidth);
   dialog.querySelector(`[data-value="${key}"]`).textContent=values[key]+unit;
  }
  const note=dialog.querySelector('.glass-settings-note'),text=statusText();if(note.textContent!==text)note.textContent=text;
@@ -110,8 +115,8 @@ function mountSaveFolderSettings(panel){
  const artists=document.createElement('div');artists.className='artist-save-folders';section.append(artists);
  const heading=document.createElement('div');heading.className='artist-folders-heading';
  const title=document.createElement('h3');title.textContent='아티스트별 저장 폴더';title.id='artistFoldersLabel';heading.append(title);
- const toggle=document.createElement('button');toggle.type='button';toggle.className='artist-folder-switch';toggle.id='artistFoldersEnabled';toggle.setAttribute('role','switch');toggle.setAttribute('aria-labelledby',title.id);toggle.setAttribute('aria-controls','artistFolderList');toggle.setAttribute('aria-checked','true');toggle.innerHTML='<canvas aria-hidden="true"></canvas>';heading.append(toggle);
- const switchControl=mountLiquidGlassSwitch(toggle,{onToggle:checked=>folder.setEnabled(currentAccountScope(),checked),effectsEnabled:()=>values.enabled});
+ const toggle=document.createElement('button');toggle.type='button';toggle.className='artist-folder-switch';toggle.id='artistFoldersEnabled';toggle.setAttribute('role','switch');toggle.setAttribute('aria-labelledby',title.id);toggle.setAttribute('aria-controls','artistFolderList');toggle.setAttribute('aria-checked','true');toggle.innerHTML='<canvas class="glass-switch-art" aria-hidden="true"></canvas>';heading.append(toggle);
+ const switchControl=mountLiquidGlassSwitch(toggle,{onToggle:checked=>folder.setEnabled(currentAccountScope(),checked),effectsEnabled:()=>values.enabled,canRender:()=>glassPC.matches});
  let switchAccount=null,listAnimation=null,listTarget=null;
  glassPreferences.subscribe(()=>switchControl.refreshTheme());window.addEventListener('fromm-theme-change',()=>switchControl.refreshTheme());
  dialog.addEventListener('close',()=>{switchControl.setChecked(folder.enabled(currentAccountScope()),{animate:false});listAnimation?.cancel();});
@@ -193,7 +198,7 @@ export function mountGlassSettings(){
  <section role="tabpanel" id="settings-panel-theme" aria-labelledby="settings-tab-theme" data-settings-panel="theme" hidden><h3>테마</h3><p>선택하면 화면 전체에 바로 적용됩니다.</p><div class="theme-choices">${Object.entries(window.FrommThemes?.names||{glow:'Glow ME'}).map(([id,label])=>`<button type="button" data-theme-choice="${id}" aria-pressed="false"><span class="theme-swatch theme-swatch-${id}" aria-hidden="true"></span><span>${label}</span></button>`).join('')}</div><p class="theme-storage-note"></p></section>
  <section role="tabpanel" id="settings-panel-glass" aria-labelledby="settings-tab-glass" data-settings-panel="glass" hidden><label class="glass-settings-switch"><span>투명 유리 사용</span><span class="glass-switch-track"><span class="glass-switch-thumb" aria-hidden="true"></span><canvas class="glass-switch-art" aria-hidden="true"></canvas><input id="glassEnabled" type="checkbox" role="switch"></span></label>
  <div class="glass-settings-preview" role="img" aria-label="실제 유리 엔진 미리보기"><span class="glass-preview-pattern" aria-hidden="true">Aa · Fromm · 123</span><span class="glass-preview-lens" aria-hidden="true"></span><span class="glass-preview-caption">실제 엔진 미리보기</span></div>
- <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join('')}</fieldset><p class="glass-settings-note" role="status"></p></section>
+ <fieldset aria-label="유리 효과 조절">${controls.map(([key,label,min,max,step,value,unit])=>`<div class="glass-setting"><label for="glass-${key}">${label}</label><output for="glass-${key}" data-value="${key}">${value}${unit}</output><span class="glass-range"><input id="glass-${key}" name="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><span class="glass-range-lens" aria-hidden="true"></span></span></div>`).join('')}</fieldset><p class="glass-settings-note" role="status"></p></section>
  <section role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" data-settings-panel="advanced" hidden><h3>효과 동작</h3><p>동시 효과 수와 저사양·영상 재생 중 자동 제한을 해제했습니다. 직접 끄기와 기기의 접근성 설정은 유지합니다.</p><button class="btn settings-position-reset" type="button">설정창 위치 초기화</button><p>기본값 복원은 화면 설정만 변경합니다. 저장된 대화는 유지됩니다.</p></section>
  </div></div><div class="glass-settings-actions"><button type="button" class="btn glass-settings-reset">기본값 복원</button><button type="button" class="btn glass-settings-done">완료</button></div>`;
  const refreshSaveFolder=mountSaveFolderSettings(dialog.querySelector('#settings-panel-general'));
@@ -207,7 +212,27 @@ export function mountGlassSettings(){
  dialog.querySelector('.glass-settings-reset').onclick=()=>{glassPreferences.reset();window.FrommThemes?.reset();position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
  dialog.querySelector('.settings-position-reset').onclick=()=>{position=null;try{localStorage.removeItem(POSITION_KEY);}catch{}placePanel();};
  dialog.querySelector('#glassEnabled').onchange=event=>set({enabled:event.target.checked},{immediate:true});
- for(const[key]of controls){const input=dialog.querySelector(`[name="${key}"]`);input.oninput=()=>set({[key]:Number(input.value)});input.onchange=()=>emit();}
+ let movingRange=null,rangeTimer=0;
+ function clearRangeMotion(){
+  clearTimeout(rangeTimer);
+  movingRange?.removeAttribute('data-glass-moving');
+  movingRange=null;
+ }
+ for(const [key] of controls){
+  const input=dialog.querySelector(`[name="${key}"]`);
+  input.oninput=()=>{
+   if(glassPC.matches){
+    clearRangeMotion();
+    movingRange=input;
+    input.setAttribute('data-glass-moving','');
+    rangeTimer=setTimeout(clearRangeMotion,160);
+   }
+   set({[key]:Number(input.value)});
+  };
+  input.onchange=()=>emit();
+  input.addEventListener('blur',()=>{if(movingRange===input)clearRangeMotion();});
+ }
+ dialog.addEventListener('close',clearRangeMotion);
  for(const button of dialog.querySelectorAll('[data-theme-choice]'))button.onclick=()=>{window.FrommThemes?.set(button.dataset.themeChoice);renderThemes();};
  for(const button of dialog.querySelectorAll('[data-settings-tab]'))button.onclick=()=>selectCategory(button.dataset.settingsTab);
  const tabs=dialog.querySelector('.settings-categories');

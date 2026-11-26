@@ -2,6 +2,18 @@
 // Synthetic subscriptions and real isolated OPFS. No account or OS folders.
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
+async function waitForClearThumb(page,selector){
+ await page.waitForFunction(selector=>{
+  const canvas=document.querySelector(selector);
+  const ctx=canvas.getContext('2d');
+  const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/164),Math.floor(y*canvas.height/96),1,1).data];
+  const left=sample(29,48),center=sample(82,48),right=sample(135,48);
+  const upperLip=Math.max(...[12,14,16,18].map(y=>sample(82,y)[3]));
+  return left[3]===255&&right[3]===255&&center[3]===255&&upperLip>90&&sample(82,24)[3]<200&&
+   left.slice(0,3).every((n,i)=>Math.abs(n-right[i])<=2&&Math.abs(n-center[i])<=17);
+ },selector,{timeout:3000});
+}
+
 (async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
 try{
  const wrapper={newContext:async options=>{const c=await browser.newContext(options);await c.addInitScript(()=>{
@@ -36,11 +48,12 @@ try{
  await page.waitForFunction(name=>document.querySelector('[data-artist-folder="host-j"] .artist-folder-path').title===name,long);
  const overflow=await page.locator('[data-artist-folder="host-j"] [data-folder-value]').evaluate(e=>({scroll:e.scrollWidth,width:e.clientWidth,mode:getComputedStyle(e).textOverflow}));assert.ok(overflow.scroll>overflow.width);assert.equal(overflow.mode,'ellipsis');await page.locator('[data-artist-folder="host-j"] .artist-folder-path').focus();assert.equal(await page.locator('[data-artist-folder="host-j"] [data-folder-value]').evaluate(e=>getComputedStyle(e).whiteSpace),'normal','keyboard focus reveals the full path');await toggle.focus();
  assert.equal(await fromis.locator('.artist-folder-count').innerText(),'2/5 지정');
- const box=await toggle.boundingBox();assert.ok(Math.abs(box.width-84)<1&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
+ const box=await toggle.boundingBox();assert.ok(box.width>=44&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
+ const folderCanvas=await toggle.locator('canvas').boundingBox();
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
  const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*40/164),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await page.waitForTimeout(250);const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min-2,'approved capsule swells above the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();await waitForClearThumb(page,'#artistFoldersEnabled canvas');const middle=await alpha();assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<rest.min,'the clear thumb has a visible lip above the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);
@@ -68,15 +81,34 @@ try{
  const master=page.locator('#glassEnabled'),masterTrack=page.locator('.glass-switch-track');
  await page.waitForFunction(()=>document.querySelector('.glass-switch-track').hasAttribute('data-glass-ready'));
  assert.equal(await masterTrack.locator('.glass-switch-thumb').evaluate(e=>getComputedStyle(e).visibility),'hidden','the native switch has one visible glass face');
+ const masterCanvas=await masterTrack.locator('canvas').boundingBox();
+ assert.ok(Math.abs(folderCanvas.width-masterCanvas.width)<.1&&Math.abs(folderCanvas.height-masterCanvas.height)<.1,'both painted switches use the master switch scale');
  await master.focus();await master.press('Space');assert.equal(await master.isChecked(),false);
- await page.waitForFunction(()=>{
-  const canvas=document.querySelector('.glass-switch-art');
-  const [red,,,alpha]=canvas.getContext('2d').getImageData(Math.round(canvas.width/2),Math.round(canvas.height*.19),1,1).data;
-  return red>160&&alpha>55;
- });
+ await waitForClearThumb(page,'.glass-switch-track canvas');
  await page.waitForTimeout(550);assert.equal(await page.locator('#glass-refraction').isDisabled(),true);
  await master.press('Space');assert.equal(await master.isChecked(),true);
+ await waitForClearThumb(page,'.glass-switch-track canvas');
+ const slider=page.locator('#glass-refraction');
+ await slider.scrollIntoViewIfNeeded();
+ const range=await slider.boundingBox();
+ await page.mouse.move(range.x+range.width*.35,range.y+range.height/2);
+ await page.mouse.down();
+ try{
+  await page.mouse.move(range.x+range.width*.7,range.y+range.height/2,{steps:8});
+  const geometry=await slider.evaluate(input=>{
+   const inputRect=input.getBoundingClientRect(),lens=input.parentElement.querySelector('.glass-range-lens'),rect=lens.getBoundingClientRect();
+   const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min));
+   const fill=getComputedStyle(input.parentElement,'::after');
+   return {fraction,offset:Math.abs(rect.x+rect.width/2-inputRect.x-8-(inputRect.width-16)*fraction),visible:getComputedStyle(lens).visibility,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(Number.parseFloat(fill.width)-(rect.x+rect.width/2-inputRect.x))};
+  });
+  assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.offset<1&&geometry.visible==='visible','the transparent handle stays on the native slider during a drag');
+  assert.ok(geometry.cap>=3&&geometry.fillOffset<1,'the rounded fill finishes under the moving handle');
+ }finally{await page.mouse.up();}
+ await page.waitForFunction(()=>getComputedStyle(document.querySelector('#glass-refraction + .glass-range-lens')).visibility==='hidden');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await slider.press('Home');assert.equal(await slider.inputValue(),'0');
+ assert.equal(await slider.locator('..').locator('.glass-range-lens').evaluate(e=>getComputedStyle(e).display),'none','reduced motion keeps the native thumb');
  await page.locator('[data-settings-tab="general"]').click();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.artist-save-folders').isVisible(),false,'mobile stays outside this feature');
- assert.deepEqual(errors,[]);await context.close();console.log('Grouped birthday roster/counts, truthful long paths, 520ms capsule sampling/reversal, keyboard, OFF/default and ON/override real writes, reload/group/account persistence, non-destructive reset, themes, reduced motion and mobile exclusion PASS');
+ assert.deepEqual(errors,[]);await context.close();console.log('Grouped birthday roster/counts, truthful long paths, matched switch size, transparent rail and reflection, reversal, slider drag, keyboard, OFF/default and ON/override real writes, reload/group/account persistence, non-destructive reset, themes, reduced motion and mobile exclusion PASS');
 }finally{await browser.close();await server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

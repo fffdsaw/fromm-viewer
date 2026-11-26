@@ -3,7 +3,7 @@
 let engineModule;
 const loadEngine=()=>engineModule||(engineModule=import('./vendor/meapri/liquid-glass.js?v=convex-edge-20261124'));
 let LiquidGlass,pending=null;
-import {glassPreferences} from './web-glass-settings.js?v=glass-startup-20261126';
+import {glassPreferences} from './web-glass-settings.js?v=clear-motion-20261126';
 import {createGlass,materialOptions} from './web-glass-material.js?v=meapri-folder-20261124';
 let owner=null,serial=0,builds=0,disposed=0;
 const motion=matchMedia('(prefers-reduced-motion: reduce)'),opaque=matchMedia('(prefers-reduced-transparency: reduce)'),contrast=matchMedia('(forced-colors: active)');

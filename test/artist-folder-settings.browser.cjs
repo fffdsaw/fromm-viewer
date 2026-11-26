@@ -109,21 +109,21 @@ try{
    const rect=canvas.getBoundingClientRect(),ctx=canvas.getContext('2d');
    const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min)),center=8+(rect.width-16)*fraction,mid=rect.height/2;
    const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/rect.width),Math.floor(y*canvas.height/rect.height),1,1).data];
-   const widenedFill=[9,10,11].some(offset=>{
-    const [r,g,,a]=sample(center-offset,mid+4);
-    return a>230&&r>210&&g<130;
-   });
-   const [tipRed,tipGreen]=sample(center-2,mid);
-   const [rightRed]=sample(center+2,mid);
+   const colored=(x,y)=>{
+    const [r,g,,a]=sample(center+x,mid+y);
+    return a>190&&r>210&&g<130;
+   };
+   const rimBends=[16,17,18].some(offset=>!colored(-offset,-3)&&colored(-offset,3));
+   const centerStaysFlat=[-25,-12,-8,-2].every(offset=>colored(offset,0)&&!colored(offset,3));
    const fill=getComputedStyle(range,'::after');
-   return widenedFill&&tipRed>210&&tipGreen<130&&rightRed<100&&
-    sample(center-2,mid+4)[3]<70&&sample(center-25,mid+4)[3]===0&&sample(center,mid-11)[3]>10&&{
+   return rimBends&&centerStaysFlat&&!colored(2,0)&&
+    sample(center-25,mid+4)[3]===0&&sample(center,mid-11)[3]>10&&{
     fraction,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(parseFloat(fill.width)-center),
     visible:getComputedStyle(canvas).visibility
    };
   },null,{timeout:3000});
   const geometry=await measured.jsonValue();
-  assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.fillOffset<1&&geometry.cap>=3&&geometry.visible==='visible','only the filled side bends, and the rounded tip stays centered at the native value');
+  assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.fillOffset<1&&geometry.cap>=3&&geometry.visible==='visible','only the left rim deflects the stripe, and the original thickness and tip stay intact at the native value');
   if(out)await slider.locator('..').screenshot({path:path.join(out,'slider-droplet.png')});
  }finally{await page.mouse.up();}
  await page.waitForFunction(()=>{

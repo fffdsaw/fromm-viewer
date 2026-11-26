@@ -46,14 +46,19 @@ function paintLens(context, lens, palette, sampleTrack) {
             const coverage = smooth(-antialias, antialias, depth);
             if (!coverage) continue;
 
-            // The switches magnify the center. The range keeps the value tip
-            // fixed and bends the filled track as it enters from the left.
-            const interior = smooth(0, radius * 0.72, depth);
-            const leftSide = -px / halfWidth;
-            const bend = smooth(0.2, 0.55, leftSide) * (1 - smooth(0.72, 1, leftSide));
-            const zoomX = bendFilledSide ? 1 : 1 - 0.48 * clarity * interior;
-            const zoomY = bendFilledSide ? 1 - 0.64 * clarity * bend * interior : zoomX;
-            const [red, green, blue, sampledAlpha] = sampleTrack(cx + px * zoomX, cy + py * zoomY, antialias);
+            let sampleX = px, sampleY = py;
+            if (bendFilledSide) {
+                // Deflect the whole stripe just inside the left rim. Its
+                // center and rounded value tip keep their original thickness.
+                const leftRim = smooth(0.70, 0.88, -px / halfWidth);
+                const bend = leftRim * smooth(0, 1.25, depth) * (1 - smooth(2.0, 4.5, depth));
+                sampleY -= 1.8 * clarity * bend;
+            } else {
+                const zoom = 1 - 0.48 * clarity * smooth(0, radius * 0.72, depth);
+                sampleX *= zoom;
+                sampleY *= zoom;
+            }
+            const [red, green, blue, sampledAlpha] = sampleTrack(cx + sampleX, cy + sampleY, antialias);
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *
                 (0.2 + 0.51 * clamp(-py / radius));

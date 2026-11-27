@@ -207,6 +207,12 @@ async function sendFrame(page, sequence) {
       await sendFrame(page, 2);
       const before = await page.locator('#livePipVideo').evaluate(video => video.getVideoPlaybackQuality().totalVideoFrames);
       const coveringTab = await context.newPage(); await coveringTab.goto('about:blank'); await coveringTab.bringToFront();
+      assert.equal(await page.evaluate(()=>{
+        const video=document.pictureInPictureElement;
+        const source=document.getElementById('nativeLiveVideo');
+        renderLiveView();
+        return !!video&&document.pictureInPictureElement===video&&document.getElementById('nativeLiveVideo')===source;
+      }),true,'a background render of the same LIVE keeps the real PiP window and source');
       const openerHidden = await page.evaluate(() => document.visibilityState === 'hidden');
       const openerFocused = await page.evaluate(() => document.hasFocus());
       let openerWindowState = 'not-measured';

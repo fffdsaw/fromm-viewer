@@ -1115,6 +1115,10 @@ body.download-marquee-active{user-select:none;cursor:default}
 .live-player-controls{z-index:7}.live-player-controls .mvc-panel{padding-top:32px}.live-controls-enabled .live-comments-overlay{bottom:0!important;max-height:100%!important}
 .live-controls-enabled:has(.live-comments-overlay) .live-player-controls{align-items:flex-start}
 .live-controls-enabled:has(.live-comments-overlay) .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){
+ .live-controls-enabled .live-player-controls{align-items:flex-start}
+ .live-controls-enabled .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
+}
 .live-player-stage:fullscreen{width:100vw;height:100dvh;max-height:none;aspect-ratio:auto;border-radius:0;background:#080b10}
 .live-player-stage.live-rotated #liveVideoGrid{position:absolute;inset:auto;left:50%;top:50%;width:var(--live-view-width)!important;height:var(--live-view-height)!important;transform:translate(-50%,-50%) rotate(var(--live-view-angle));transform-origin:center}
 .live-player-stage.mvc-menu-fallback{z-index:500}.live-control-badge{font-size:11px;font-weight:700;letter-spacing:.04em;display:flex;align-items:center;gap:6px}.live-control-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff6486}
@@ -4173,6 +4177,10 @@ function renderLiveView(){
   const streaming=!!state.live.config?.isStreaming;
   const mockStreaming=streaming && !!state.live.config?.mock;
   const roomId=String(state.live.config?.liveRoomId || state.live.currentLiveRoomId || "");
+  if(window.FrommLivePip?.keepsStage()){
+    renderLiveEntrances();
+    return;
+  }
   const {title,sub}=liveHeadingText();
 
   let stageHtml;
@@ -12033,9 +12041,9 @@ autoConnectSaved();
 <script src="web-glowme.js?v=media-save-ui-20261125" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
 <script src="web-native-live.js?v=live-fit-20261109"></script>
-<script src="web-live-pip.js?v=3"></script>
-<script src="web-live-chat-probe.js?v=controls-live-20261116"></script>
-<script src="web-live-controls.js?v=stable-glass-glyph-20261115"></script>
+<script src="web-live-pip.js?v=stable-live-composer-20261127"></script>
+<script src="web-live-chat-probe.js?v=stable-live-composer-20261127"></script>
+<script src="web-live-controls.js?v=stable-live-composer-20261127"></script>
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=glass-preferences-20261127"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>

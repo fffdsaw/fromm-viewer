@@ -92,7 +92,7 @@
   }
   const safeMount = () => {try{mount();}catch{dispose();}};
   const originalRender=renderLiveView,originalStop=stopLivePlayback;
-  renderLiveView=function(...args){suspended=false;dispose();const result=originalRender.apply(this,args);safeMount();return result;};
+  renderLiveView=function(...args){suspended=false;if(!window.FrommLivePip?.keepsStage())dispose();const result=originalRender.apply(this,args);safeMount();return result;};
   stopLivePlayback=function(...args){
     suspended=true;const stage=mounted?.stage;dispose();const result=originalStop.apply(this,args);
     try{if(!shuttingDown&&stage?.isConnected&&live()&&state.live.config?.isStreaming&&!args[0]?.clearRoom&&!state.live.lastError){const holder=document.createElement('div');holder.innerHTML=videoLoadingIndicator();const pending=holder.firstElementChild;pending.id='liveControlsPending';stage.append(pending);}}catch{}

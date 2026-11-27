@@ -21,6 +21,8 @@ const root = path.resolve(__dirname, '..');
         };
       });
       let slow = false, messagePages = 0, postMode = 'ack', echo = false, frozen = false, postCount = 0, policyMode = 'full', burst = 0, extraMessages = [], deletedIds = [], firstSentContent='';
+      let releaseFirstAck;
+      const firstAckGate = new Promise(resolve => { releaseFirstAck = resolve; });
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === 'localhost') {
@@ -37,7 +39,8 @@ const root = path.resolve(__dirname, '..');
             assert.deepEqual(Object.keys(body).sort(), ['chatToken', 'content', 'liveChatRoomId']);
             if(postCount===1){firstSentContent=body.content;assert.equal(firstSentContent,'합성 전송 댓글😊','ordinary emoji is preserved in the actual POST body');}
             assert.equal(body.liveChatRoomId, 'synthetic-room'); assert.equal(body.chatToken, 'synthetic-chat-token');
-            await new Promise(resolve => setTimeout(resolve, 200));
+            if (postCount === 1) await firstAckGate;
+            else await new Promise(resolve => setTimeout(resolve, 200));
             if (postMode === 'network') return route.abort();
             try { return await route.fulfill({status: postMode === 'denied' ? 403 : 200, contentType: 'text/xml',
               headers: {'access-control-allow-origin': '*'}, body: postMode === 'denied' ? 'private-error-body' :
@@ -98,24 +101,43 @@ const root = path.resolve(__dirname, '..');
       const input = page.locator('.live-comment-input'), send = page.locator('.live-comment-send');
       await page.waitForFunction(() => !document.querySelector('.live-comment-input').disabled);
       const emoji=page.getByRole('button',{name:'댓글 이모지 선택',exact:true});
+      const emojiButton=await emoji.boundingBox();
+      assert.equal((await input.boundingBox()).x-emojiButton.x-emojiButton.width,width>=701?10:6);
       await input.fill('앞뒤');await input.evaluate(el=>el.setSelectionRange(1,1));await emoji.click();
       const picker=page.getByRole('dialog',{name:'댓글 이모지',exact:true});await picker.waitFor({state:'visible'});
       const emojiBox=await picker.boundingBox();assert.ok(emojiBox.x>=0&&emojiBox.y>=0&&emojiBox.x+emojiBox.width<=width&&emojiBox.y+emojiBox.height<=900,'emoji dialog fits the viewport');
-      await picker.getByRole('button',{name:'웃음 😊',exact:true}).click();assert.equal(await input.inputValue(),'앞😊뒤');assert.equal(await input.evaluate(el=>document.activeElement===el),true,'emoji insertion returns the caret to the composer');
+      await picker.getByRole('button',{name:'웃음 😊',exact:true}).click();assert.equal(await input.inputValue(),'앞😊뒤');
+      if(width>=701){
+        await picker.getByRole('button',{name:'하트 ❤️',exact:true}).click();
+        assert.equal(await input.inputValue(),'앞😊❤️뒤','multiple choices insert at the advancing caret');
+        assert.equal(await picker.isVisible(),true);
+        await page.keyboard.press('Escape');
+      }
+      assert.equal(await input.evaluate(el=>document.activeElement===el),true,'closing the picker returns the caret');
       await input.fill('a'.repeat(499));await emoji.click();await picker.getByRole('button',{name:'웃음 😊',exact:true}).click();assert.equal((await input.inputValue()).length,499,'emoji never splits a surrogate pair or exceeds the 500-unit limit');
+      if(width>=701)await page.keyboard.press('Escape');
       await emoji.click();await page.keyboard.press('Escape');assert.equal(await picker.isVisible(),false);assert.equal(await input.evaluate(el=>document.activeElement===el),true,'Escape returns to typing');
       policyMode = 'omitted'; // Cached read allows writing, fresh send response omits nullable fields like the APK permits.
       await input.fill('합성 전송 댓글');await emoji.click();await picker.getByRole('button',{name:'웃음 😊',exact:true}).click();
+      if(width>=701)await page.keyboard.press('Escape');
       await input.dispatchEvent('compositionstart'); await input.press('Enter');
       assert.equal(postCount, 0, 'Korean IME confirmation cannot submit');
       await input.dispatchEvent('compositionend');
+      const composerY=(await input.boundingBox()).y,emojiY=(await emoji.boundingBox()).y;
       await send.click();
+      if(width>=701){
+        assert.equal(await page.locator('.live-comment-send-status').innerText(),'나 · 전송 중 합성 전송 댓글😊');
+        assert.equal((await input.boundingBox()).y,composerY);
+        assert.equal((await emoji.boundingBox()).y,emojiY);
+      }
       assert.equal(await input.evaluate(el=>document.activeElement===el&&el.readOnly&&!el.disabled),true,'pending send keeps focus without allowing edits');
       // Submit events while the same request is pending must not duplicate the POST.
       await page.locator('.live-comment-form').dispatchEvent('submit');
+      releaseFirstAck();
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'accepted');
       assert.equal(postCount, 1); assert.equal(await input.inputValue(), '');assert.equal(await input.evaluate(el=>document.activeElement===el&&!el.readOnly),true,'send-button ACK keeps the caret ready for the next comment');
-      assert.equal(await page.locator('.live-comment-send-status').isVisible(), false, 'successful acceptance needs no extra status line');
+      if(width>=701)assert.match(await page.locator('.live-comment-send-status').innerText(),/나 · 반영 대기/);
+      else assert.equal(await page.locator('.live-comment-send-status').isVisible(),false);
       assert.equal(await page.locator('.live-comment-row').count(), 1, 'ACK does not insert a fake own comment');
       echo = true;
       await page.waitForFunction(() => FrommChatProbe()?.send?.status === 'delivered');

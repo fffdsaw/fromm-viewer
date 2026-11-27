@@ -212,6 +212,21 @@
   style.textContent = '.live-comments-overlay{--live-comments-max:48%}.live-chat-probe-text{display:-webkit-box}.live-chat-probe-text[hidden]{display:none}.live-comments-list{scrollbar-width:none;overscroll-behavior:contain;overflow-anchor:none}.live-comment-row{flex-shrink:0}.live-comments-unread{position:absolute;right:0;bottom:30px;white-space:nowrap;font-size:11px;background:#15171bd9;border-radius:10px;padding:2px 6px}.live-comments-unread:empty{display:none}.live-comments-list::-webkit-scrollbar{display:none}.live-comments-latest{position:absolute;right:4px;bottom:4px;width:28px;height:28px;border-radius:50%;border:1px solid #ffffff70;background:#15171bd9;color:#fff;padding:0;display:grid;place-items:center;cursor:pointer;pointer-events:auto}.live-comments-latest[hidden]{display:none}@media(max-width:700px){.live-comments-overlay{--live-comments-max:70%}}';
   document.head.append(style);
   style.textContent += '.live-emoji-toggle{flex:0 0 34px;width:34px;height:34px;padding:5px;border:1px solid #ffffff60;border-radius:9px;background:#282b32;color:#fff;cursor:pointer}.live-emoji-toggle:disabled{opacity:.5;cursor:default}.live-emoji-picker{pointer-events:auto;position:fixed;inset:auto;margin:0;box-sizing:border-box;width:260px;max-width:calc(100vw - 24px);padding:10px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;border:1px solid #ffffff60;border-radius:12px;background:#20272a;color:#fff;box-shadow:0 6px 20px #0005;z-index:20}.live-emoji-picker[hidden],.live-emoji-picker[popover]:not(:popover-open){display:none}.live-emoji-picker button{min-width:0;height:36px;padding:0;border:0;border-radius:6px;background:transparent;color:#fff;font-size:24px;cursor:pointer}.live-emoji-picker button:hover{background:#ffffff20}.live-emoji-picker :focus-visible,.live-emoji-toggle:focus-visible{outline:2px solid #72ddbd;outline-offset:-2px}';
+  const desktopComposer = matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
+  style.textContent += `
+    @media ${desktopComposer.media} {
+      .live-emoji-toggle { margin-inline-end: 4px; }
+      .live-comment-send-status {
+        position: absolute;
+        inset: auto 12px 52px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        background: #15171be8;
+        max-height: 3.6em;
+        overflow: hidden;
+        pointer-events: none;
+      }
+    }`;
   // One delegated fallback listener; detached comment panels retain no listeners.
   document.addEventListener('pointerdown',event=>{
     const panel=document.getElementById('liveChatProbeStatus'),picker=panel?.querySelector('.live-emoji-picker');
@@ -220,7 +235,7 @@
   window.addEventListener('resize',()=>document.getElementById('liveChatProbeStatus')?.placeEmoji?.());
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
-  let uncertainAttempt = null, activeAttempt = null;
+  let uncertainAttempt = null, activeAttempt = null, previewContent = '';
   let followLatest = true, unreadCount = 0, lastDiagnostic = '';
   const sendLabels = {
     'sending': '댓글 전송 중…',
@@ -256,7 +271,7 @@
   const isLive = () => state.filter === 'live' && state.live.centerMode === 'live';
   function cancel() {
     if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
-    sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
+    sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false; previewContent = '';
     controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
     followLatest = true; unreadCount = 0; lastDiagnostic = '';
   }
@@ -309,8 +324,12 @@
       button.addEventListener('click',()=>{
         if(input.disabled||input.readOnly)return close();
         const [start,end]=selection;
-        if(input.value.length-(end-start)+glyph.length<=input.maxLength){input.setRangeText(glyph,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));}
-        close();input.focus({preventScroll:true});
+        if(input.value.length-(end-start)+glyph.length<=input.maxLength){
+          input.setRangeText(glyph,start,end,'end');
+          selection=[input.selectionStart,input.selectionEnd];
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+        }
+        if(!desktopComposer.matches){close();input.focus({preventScroll:true});}
       });picker.append(button);
     }
     picker.addEventListener('keydown',event=>{
@@ -333,8 +352,16 @@
     button.textContent = sendController ? '전송 중' : '전송';
     const status = panel.querySelector('.live-comment-send-status');
     const result = report?.send;
-    const message = uncertainDraft(input.value) ? sendLabels['send-unconfirmed'] : ['accepted', 'delivered'].includes(result?.status) ? '' : result ? (sendLabels[result.status] || sendLabels['send-policy-unavailable']) +
-      (result.httpStatus ? ' (HTTP ' + result.httpStatus + ')' : '') : block;
+    let message = block;
+    if (desktopComposer.matches && previewContent && ['sending', 'accepted'].includes(result?.status)) {
+      const label = result.status === 'sending' ? '전송 중' : '반영 대기';
+      message = `나 · ${label} ${previewContent}`;
+    } else if (uncertainDraft(input.value)) {
+      message = sendLabels['send-unconfirmed'];
+    } else if (result) {
+      message = ['accepted', 'delivered'].includes(result.status) ? '' :
+        (sendLabels[result.status] || sendLabels['send-policy-unavailable']) + (result.httpStatus ? ' (HTTP ' + result.httpStatus + ')' : '');
+    }
     if (status.textContent !== message) status.textContent = message;
     status.hidden = !message;
   }
@@ -346,18 +373,20 @@
     input.focus({preventScroll:true});
     const owner = sendController = new AbortController();
     activeAttempt = {roomId: context.roomId, token: context.token, sequence: context.sequence, content};
-    report.send = {status: 'sending'}; ackId = null; ackAt = 0; show();
+    report.send = {status: 'sending'}; previewContent = content; ackId = null; ackAt = 0; show();
     try {
       const result = await sendNormalComment({...context, content, signal: owner.signal});
       if (sendController !== owner || !context.current()) return;
       ackId = result.messageId;
       ackAt = performance.now();
       const delivered = comments.seen.has(ackId);
+      if (delivered) previewContent = '';
       report.send = {status: delivered ? 'delivered' : 'accepted', acceptedAfterMs: Math.round(ackAt - startedAt), ...(delivered ? {echoAfterAckMs: 0} : {})};
       input.value = '';
     } catch (error) {
       if (sendController !== owner || !context.current()) return;
       const status = error instanceof ProbeError && sendLabels[error.code] ? error.code : 'send-policy-unavailable';
+      previewContent = '';
       report.send = {status, ...(error instanceof ProbeError && error.httpStatus ? {httpStatus: error.httpStatus} : {}),
         ...(error instanceof ProbeError && error.shape ? {diagnostic: error.shape} : {})};
       if (status === 'send-unconfirmed') uncertainAttempt = activeAttempt;
@@ -531,6 +560,7 @@
         Object.assign(report, {policy: page.policy, clockSource: page.clockSource, startupWindowMs: page.startupWindowMs, samples: page.samples,
           status: comments.items.size ? 'messages-received' : updated.invalidCount ? 'unrenderable-messages' : 'connected-no-messages'});
         if (ackId && comments.seen.has(ackId) && report.send?.status === 'accepted') {
+          previewContent = '';
           report.send.status = 'delivered';report.send.echoAfterAckMs = Math.max(0, Math.round(performance.now() - ackAt));
         }
         if (updated.invalidCount) {
@@ -558,7 +588,7 @@
     }
   }
   const render = renderLiveView, stop = stopLivePlayback;
-  renderLiveView = function (...args) { cancel(); const result = render.apply(this, args); sync(); return result; };
+  renderLiveView = function (...args) { if (!window.FrommLivePip?.keepsStage()) cancel(); const result = render.apply(this, args); sync(); return result; };
   stopLivePlayback = function (...args) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); const result = stop.apply(this, args); sync(); return result; };
   new MutationObserver(sync).observe(timeline, {childList: true, subtree: true});
   window.addEventListener('pagehide', cancel);

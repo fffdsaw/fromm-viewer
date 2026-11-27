@@ -2,6 +2,7 @@
 (() => {
   let pipWindow = null, mirror = null, source = null, pending = false, version = 0, failed = false;
   let canvasPlayer = null, presentationMask = -1, presentationSequence = -1;
+  let owner = null;
   const readySources = new WeakMap();
   const assignedSources = new WeakMap();
   const timeline = document.getElementById('timeline');
@@ -115,6 +116,7 @@
   }
   function close() {
     version++;
+    owner = null;
     const win = pipWindow;
     pipWindow = null; mirror = null; source = null;
     if (win && !win.closed) win.close();
@@ -135,6 +137,7 @@
     }
     const ticket = ++version, sequence = state.live.connectionSeq;
     const room = state.live.currentLiveRoomId;
+    owner = {sequence, room};
     pending = true;
     failed = false;
     sync();
@@ -186,8 +189,16 @@
     const video = webSource();
     if (video && document.pictureInPictureElement === video) document.exitPictureInPicture().catch(() => {});
   }
+  function keepsStage() {
+    if (!owner || !isLive() || !state.live.config?.isStreaming || state.live.config.mock || state.live.status === 'error' ||
+        owner.sequence !== state.live.connectionSeq || owner.room !== state.live.currentLiveRoomId) return false;
+    if (pipWindow && !pipWindow.closed) return source === nativeSource();
+    const video = document.pictureInPictureElement;
+    return !!video && (canvasPlayer ? canvasPlayer.video === video && canvasPlayer.image === nativeSource() : webSource() === video);
+  }
+  window.FrommLivePip = Object.freeze({keepsStage});
   const originalRender = renderLiveView, originalStop = stopLivePlayback;
-  renderLiveView = function (...args) { closeAll(); const result = originalRender.apply(this, args); sync(); return result; };
+  renderLiveView = function (...args) { if (!keepsStage()) closeAll(); const result = originalRender.apply(this, args); sync(); return result; };
   stopLivePlayback = function (...args) { closeAll(); const result = originalStop.apply(this, args); sync(); return result; };
   new MutationObserver((records = []) => {
     for (const record of records) {

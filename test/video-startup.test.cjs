@@ -67,13 +67,20 @@ test('startup changes preserve LIVE/auth/download and automatic pagination sourc
    const frame=s=>slice(s,"    if (value?.type === 'frame'",'  const originalEncryption').replace('max-height:75vh','max-height:100%');
    assert.equal(frame(current),frame(previous),'Native receive/decode/ACK unchanged except image fit');
   }else if(file==='web-live-chat-probe.js')assert.equal(slice(current,'  async function sendNormalComment','  async function probe'),slice(previous,'  async function sendNormalComment','  async function probe'),'fresh permission check and single-POST protocol preserved');
-  else assert.equal(current,previous,file);
+  else {
+   // Same-room PiP renders preserve the source. Keep the capture, open, and cleanup code pinned around that guard.
+   const captureSource=current.replace('  let owner = null;\n','').replace('    owner = null;\n','')
+    .replace('    owner = {sequence, room};\n','').replace(slice(current,'  function keepsStage()','  const originalRender = renderLiveView'),'')
+    .replace('if (!keepsStage()) closeAll();','closeAll();');
+   assert.equal(captureSource,previous,'PiP capture and cleanup preserved around the same-session render guard');
+  }
  }
 
- // LIVE controls may evolve visually; lifecycle wrappers/readiness wiring stay fixed.
+ // Reuse the attached controls when the PiP stage is kept. The remaining readiness and stop wiring stay fixed.
  const controls=lf(fs.readFileSync(path.join(root,'web-live-controls.js'),'utf8')),oldControls=lf(execFileSync('git',['show','b78f2b1:web-live-controls.js'],{cwd:root,encoding:'utf8'}));
  const marker='  const originalRender=renderLiveView';assert.ok(controls.includes(marker)&&oldControls.includes(marker));
- assert.equal(controls.slice(controls.indexOf(marker)),oldControls.slice(oldControls.indexOf(marker)),'LIVE lifecycle and receive readiness wiring');
+ assert.equal(controls.slice(controls.indexOf(marker)).replace('if(!window.FrommLivePip?.keepsStage())dispose();','dispose();'),
+  oldControls.slice(oldControls.indexOf(marker)),'LIVE cleanup and receive readiness preserved around the same-session render guard');
  assert.equal(execFileSync('git',['diff','b78f2b1','--','native-live/','chrome_extension/',':(exclude)chrome_extension/rules.json'],{cwd:root,encoding:'utf8'}),'');
  const rules=JSON.parse(fs.readFileSync(path.join(root,'chrome_extension/rules.json'),'utf8')),oldRules=JSON.parse(execFileSync('git',['show','b78f2b1:chrome_extension/rules.json'],{cwd:root,encoding:'utf8'}));
  const preserved=JSON.parse(JSON.stringify(rules.slice(0,oldRules.length)));delete preserved[3].condition.excludedRequestDomains;

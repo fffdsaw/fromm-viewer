@@ -2,16 +2,17 @@
 // Synthetic subscriptions and real isolated OPFS. No account or OS folders.
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {serve,open,seed}=require('./helpers/phase3-fixture.cjs');
-async function waitForClearThumb(page,selector,rest){
- const result=await page.waitForFunction(({selector,rest})=>{
+async function waitForClearThumb(page,selector,direction,rest){
+ const result=await page.waitForFunction(({selector,direction,rest})=>{
   const canvas=document.querySelector(selector);
   const ctx=canvas.getContext('2d');
-  const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/164),Math.floor(y*canvas.height/96),1,1).data];
-  const left=sample(18,48),center=sample(82,48),right=sample(146,48);
-  const above=sample(82,16),outsideCenter=sample(82,19),below=sample(82,79);
-  const coloredEdge=left[3]>right[3]?left:right;
-  const transparent=left[3]>12&&right[3]>12&&coloredEdge[3]>215&&center[3]>245&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&
-   center.slice(0,3).every((n,i)=>Math.abs(n-coloredEdge[i])<=32);
+  const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/204),Math.floor(y*canvas.height/96),1,1).data];
+  const leading=sample(102+direction*76,48),trail=sample(102-direction*58,48);
+  const center=sample(102,48),outsideCenter=sample(102,19),above=sample(102,16),below=sample(102,79);
+  const shoulders=[sample(102,24)[3],sample(102,72)[3]];
+  const transparent=leading[3]>25&&leading[3]<175&&trail[3]>235&&center[3]>245&&
+   shoulders.every(alpha=>alpha<155)&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&sample(102-direction*58,16)[3]<8&&
+   center.slice(0,3).every((n,i)=>Math.abs(n-trail[i])<=30);
   if(!transparent||!rest)return transparent;
   // Measure the silhouette and the transmitted color in the very same frame.
   const {data}=ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -20,7 +21,7 @@ async function waitForClearThumb(page,selector,rest){
    const y=Math.floor((i/4)/canvas.width);min=Math.min(min,y);max=Math.max(max,y);
   }
   return min<=rest.min-3&&max>=rest.max+3&&{min,max};
- },{selector,rest},{timeout:3000});
+ },{selector,direction,rest},{timeout:3000});
  return result.jsonValue();
 }
 
@@ -61,9 +62,9 @@ try{
  const box=await toggle.boundingBox();assert.ok(box.width>=44&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
  const folderCanvas=await toggle.locator('canvas').boundingBox();
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
- const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*40/164),Math.floor(c.height/2),1,1).data).slice(0,3));
+ const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*60/204),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();const middle=await waitForClearThumb(page,'#artistFoldersEnabled canvas',rest);assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<=rest.min-3&&middle.max>=rest.max+3,'the lens visibly extends above and below the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();const middle=await waitForClearThumb(page,'#artistFoldersEnabled canvas',-1,rest);assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<=rest.min-3&&middle.max>=rest.max+3,'the lens visibly extends above and below the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);
@@ -94,12 +95,12 @@ try{
  const masterCanvas=await masterTrack.locator('canvas').boundingBox();
  assert.ok(Math.abs(folderCanvas.width-masterCanvas.width)<.1&&Math.abs(folderCanvas.height-masterCanvas.height)<.1,'both painted switches use the master switch scale');
  await master.focus();await master.press('Space');assert.equal(await master.isChecked(),false);
- await waitForClearThumb(page,'.glass-switch-track canvas');
+ await waitForClearThumb(page,'.glass-switch-track canvas',-1);
  await page.waitForTimeout(550);assert.equal(await page.locator('#glass-refraction').isDisabled(),true);
- const restingSwitch=await masterTrack.locator('canvas').evaluate(canvas=>[...canvas.getContext('2d').getImageData(Math.floor(canvas.width*58/164),Math.floor(canvas.height/2),1,1).data]);
+ const restingSwitch=await masterTrack.locator('canvas').evaluate(canvas=>[...canvas.getContext('2d').getImageData(Math.floor(canvas.width*78/204),Math.floor(canvas.height/2),1,1).data]);
  assert.deepEqual(restingSwitch,[255,255,255,255],'the settled switch thumb is white');
  await master.press('Space');assert.equal(await master.isChecked(),true);
- await waitForClearThumb(page,'.glass-switch-track canvas');
+ await waitForClearThumb(page,'.glass-switch-track canvas',1);
  const slider=page.locator('#glass-refraction');
  await slider.scrollIntoViewIfNeeded();
  const range=await slider.boundingBox();
@@ -110,7 +111,9 @@ try{
   const measured=await page.waitForFunction(()=>{
    const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling,range=input.parentElement;
    const rect=canvas.getBoundingClientRect(),ctx=canvas.getContext('2d');
-   const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min)),center=8+(rect.width-16)*fraction,mid=rect.height/2;
+   const track=input.getBoundingClientRect();
+   const fraction=(input.valueAsNumber-Number(input.min))/(Number(input.max)-Number(input.min)),valueCenter=8+(track.width-16)*fraction;
+   const center=track.left-rect.left+valueCenter,mid=rect.height/2;
    const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/rect.width),Math.floor(y*canvas.height/rect.height),1,1).data];
    const colored=(x,y)=>{
     const [r,g,,a]=sample(center+x,mid+y);
@@ -121,17 +124,30 @@ try{
    const fill=getComputedStyle(range,'::after');
    return rimBends&&centerStaysFlat&&!colored(2,0)&&
     sample(center-25,mid+4)[3]===0&&sample(center,mid-11)[3]>10&&{
-    fraction,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(parseFloat(fill.width)-center),
+    fraction,cap:parseFloat(fill.borderTopRightRadius),fillOffset:Math.abs(parseFloat(fill.width)-valueCenter),
     visible:getComputedStyle(canvas).visibility
    };
   },null,{timeout:3000});
   const geometry=await measured.jsonValue();
   assert.ok(geometry.fraction>.64&&geometry.fraction<.76&&geometry.fillOffset<1&&geometry.cap>=3&&geometry.visible==='visible','only the left rim deflects the stripe, and the original thickness and tip stay intact at the native value');
   if(out)await slider.locator('..').screenshot({path:path.join(out,'slider-droplet.png')});
+  for(const end of [-1,1]){
+   await page.mouse.move(end<0?range.x-4:range.x+range.width+4,range.y+range.height/2);
+   await page.waitForFunction(end=>{
+    const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling;
+    if(input.value!==(end<0?input.min:input.max))return false;
+    const art=canvas.getBoundingClientRect(),track=input.getBoundingClientRect();
+    const center=track.left-art.left+(end<0?8:track.width-8);
+    const pixel=Math.floor((center+end*17)*canvas.width/art.width);
+    const data=canvas.getContext('2d').getImageData(pixel,Math.floor(canvas.height/2),1,1).data;
+    return pixel>0&&pixel<canvas.width-1&&data[3]>12;
+   },end,{timeout:3000});
+  }
  }finally{await page.mouse.up();}
  await page.waitForFunction(()=>{
   const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling,rect=canvas.getBoundingClientRect();
-  const cx=8+(rect.width-16)*input.valueAsNumber/80;
+  const track=input.getBoundingClientRect();
+  const cx=track.left-rect.left+8+(track.width-16)*input.valueAsNumber/80;
   const ctx=canvas.getContext('2d'),x=Math.floor(cx*canvas.width/rect.width);
   return ctx.getImageData(x,Math.floor(canvas.height*.22),1,1).data[3]===0&&[...ctx.getImageData(x,Math.floor(canvas.height*.5),1,1).data].every(channel=>channel===255);
  });

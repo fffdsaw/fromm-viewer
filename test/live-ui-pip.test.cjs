@@ -68,7 +68,7 @@ function setup({supported = true, secure = true, topLevel = true, loaded = true,
     finish: () => {const win = makeWindow(); resolver(win); return win;}, reject: error => rejecter(error),
     finishVideo: () => {document.pictureInPictureElement = pipVideo; resolver();},
     video: () => pipVideo, track: () => track, captures: () => captures,
-    load: () => timeline.listeners.get('load')({target: image}), pagehide: () => listeners.get('pagehide')(),
+    load: () => timeline.listeners.get('load')({type: 'load', target: image}), pagehide: () => listeners.get('pagehide')(),
     setWebVideo(value) {grid.replaceChildren(); webVideo = value; observer();},
     counts: () => ({renders, stops})};
 }

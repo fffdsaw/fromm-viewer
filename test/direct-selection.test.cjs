@@ -204,7 +204,10 @@ test('Channel detail/download and LIVE entry sources are preserved; media save r
   const baseline = execFileSync('git', ['show', 'd876793:index.html'], {cwd: root, encoding: 'utf8', maxBuffer: 4e6});
   for (const name of ['fetchChannelVideoDetail',
     'fetchLiveEntrances', 'refreshLiveStatus', 'connectAgoraLive']) {
-    assert.equal(fn(name), fn(name, baseline), name);
+    const current=fn(name).replace(
+      /&&\r?\n    \(\(state\.filter==="live" && state\.live\.centerMode==="live"\) \|\| window\.FrommLivePip\?\.isParked\(\)\);/,
+      '&& state.filter==="live" && state.live.centerMode==="live";');
+    assert.equal(current, fn(name, baseline), name);
   }
   // Channel player gains browser history routing, without changing its
   // authorized detail request, session validation or stale-result guard.

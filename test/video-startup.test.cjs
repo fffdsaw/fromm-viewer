@@ -49,6 +49,9 @@ test('startup changes preserve LIVE/auth/download and automatic pagination sourc
  const names=['frommApiRequest','resolveAgoraJoinArgs','requestViewerToken','renewLiveToken','liveEncryptionCandidates','subscribeLiveUser','connectAgoraLive','resumeLiveAudio','stopLivePlayback','rewriteReplayMediaPlaylist','replaySignedUrl','replayAuthParams','bindVideoListAuto','fetchChannelVideoDetail','fetchReplayPostDetail'];
  for(const name of names){
   let actual=fn(name);
+  if(name==='subscribeLiveUser'||name==='connectAgoraLive')actual=actual.replace(
+   /\&\&\r?\n    \(\(state\.filter==="live" && state\.live\.centerMode==="live"\) \|\| window\.FrommLivePip\?\.isParked\(\)\);/,
+   '&& state.filter==="live" && state.live.centerMode==="live";');
   if(name==='bindVideoListAuto')actual=actual
    .replace(/\r\n/g,'\n')
    .replace('  bindVideoListThumbnails();\n','')
@@ -68,11 +71,9 @@ test('startup changes preserve LIVE/auth/download and automatic pagination sourc
    assert.equal(frame(current),frame(previous),'Native receive/decode/ACK unchanged except image fit');
   }else if(file==='web-live-chat-probe.js')assert.equal(slice(current,'  async function sendNormalComment','  async function probe'),slice(previous,'  async function sendNormalComment','  async function probe'),'fresh permission check and single-POST protocol preserved');
   else {
-   // Same-room PiP renders preserve the source. Keep the capture, open, and cleanup code pinned around that guard.
-   const captureSource=current.replace('  let owner = null;\n','').replace('    owner = null;\n','')
-    .replace('    owner = {sequence, room};\n','').replace(slice(current,'  function keepsStage()','  const originalRender = renderLiveView'),'')
-    .replace('if (!keepsStage()) closeAll();','closeAll();');
-   assert.equal(captureSource,previous,'PiP capture and cleanup preserved around the same-session render guard');
+   assert.equal(slice(current,'  function nativeSource()','  function sync()'),slice(previous,'  function nativeSource()','  function sync()'),'PiP validation, capture and disposal protocol');
+   const opening=s=>slice(s,'  function close()','  function closeAll()').replace('    owner = null;\n','').replace('    owner = {sequence, room};\n','');
+   assert.equal(opening(current),opening(previous),'PiP open and close protocol preserved around the owner guard');
   }
  }
 

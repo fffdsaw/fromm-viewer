@@ -79,7 +79,8 @@
     if (value?.type === 'status' && value.value?.stage === 'native-disconnected') {
       for (const [key, p] of pending) { clearTimeout(p.timer); p.reject(new Error('PC LIVE 연결 도구를 설치하거나 다시 연결해주세요.')); pending.delete(key); }
     }
-    if (!nativeSequence || nativeSequence !== state.live.connectionSeq || state.filter !== 'live' || state.live.centerMode !== 'live') return;
+    const parked = window.FrommLivePip?.isParked();
+    if (!nativeSequence || nativeSequence !== state.live.connectionSeq || (!parked && (state.filter !== 'live' || state.live.centerMode !== 'live'))) return;
     if (value?.type === 'status') {
       const stage = /^[a-z0-9-]{1,64}$/.test(value.value?.stage) ? value.value.stage : 'unknown';
       if(['rtc-video-stats','rtc-audio-stats','rtc-audio-state','pipeline-performance'].includes(stage) && !metricsEnabled) return;
@@ -103,6 +104,7 @@
         nativeSequence=0;metricsEnabled=false;
         if(repaintFrame!==undefined) cancelAnimationFrame(repaintFrame);repaintFrame=undefined;
         state.live.client=null;
+        if (parked) void stopLivePlayback();
       }
     }
     if (value?.type === 'frame' && Number.isSafeInteger(value.sequence) && value.sequence > 0 && typeof value.jpeg === 'string' && value.jpeg.length < 800000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.jpeg)) {

@@ -46,15 +46,18 @@ function paintLens(context, lens, palette, sampleTrack) {
             const coverage = smooth(-antialias, antialias, depth);
             if (!coverage) continue;
 
-            // Range optics deflect the colored line at the left rim. Switches
-            // bend both ends of their rail and keep the center flat.
+            // Range optics deflect the line at the left rim. On a switch,
+            // the curved glass above and below squeezes the visible rail
+            // around the same flat centerline.
             const side = (bendFilledSide ? -px : Math.abs(px)) / halfWidth;
             const band = bendFilledSide ? 4.5 : 14;
             const rimDepth = depth / band;
             const bend = clarity * smooth(0.70, 0.88, side) *
                 smooth(0, .28, rimDepth) * (1 - smooth(.44, 1, rimDepth));
             const sampleX = bendFilledSide ? px : px - Math.sign(px) * 9 * bend;
-            const sampleY = py - (bendFilledSide ? 1.8 : 5) * bend;
+            const curve = bendFilledSide ? 0 : .30 * clarity *
+                smooth(7, 20, Math.abs(py)) * smooth(0, 9, depth);
+            const sampleY = py * (1 + curve) - (bendFilledSide ? 1.8 : 5) * bend;
             const [red, green, blue, sampledAlpha] = sampleTrack(cx + sampleX, cy + sampleY, antialias);
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *

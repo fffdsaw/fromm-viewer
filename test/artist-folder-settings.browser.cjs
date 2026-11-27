@@ -9,8 +9,9 @@ async function waitForClearThumb(page,selector,direction,rest){
   const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/204),Math.floor(y*canvas.height/96),1,1).data];
   const leading=sample(102+direction*76,48),trail=sample(102-direction*58,48);
   const center=sample(102,48),outsideCenter=sample(102,19),above=sample(102,16),below=sample(102,79);
+  const shoulders=[sample(102,24)[3],sample(102,72)[3]];
   const transparent=leading[3]>25&&leading[3]<175&&trail[3]>235&&center[3]>245&&
-   outsideCenter[3]<125&&above[3]>8&&below[3]>8&&sample(102-direction*58,16)[3]<8&&
+   shoulders.every(alpha=>alpha<155)&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&sample(102-direction*58,16)[3]<8&&
    center.slice(0,3).every((n,i)=>Math.abs(n-trail[i])<=30);
   if(!transparent||!rest)return transparent;
   // Measure the silhouette and the transmitted color in the very same frame.

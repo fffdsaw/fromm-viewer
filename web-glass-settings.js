@@ -1,4 +1,4 @@
-import {mountLiquidGlassSwitch,mountLiquidGlassRange} from './web-artist-folder-switch.js?v=clear-rail-morph-20261127';
+import {mountLiquidGlassSwitch,mountLiquidGlassRange} from './web-artist-folder-switch.js?v=glass-preferences-20261127';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');
@@ -47,6 +47,39 @@ export const glassPreferences=Object.freeze({
  get persistent(){return stored;}
 });
 window.FrommGlassSettings=glassPreferences;
+const preferenceFaces=new WeakMap();
+function syncPreferenceSwitch(input,options){
+ if(!input)return;
+ if(!preferenceFaces.has(input)){
+  const track=document.createElement('span');
+  track.className='glass-preference-switch';
+  const canvas=document.createElement('canvas');
+  canvas.className='glass-switch-art';
+  canvas.setAttribute('aria-hidden','true');
+  input.before(track);
+  track.append(input,canvas);
+  const face=mountLiquidGlassSwitch(track,{input,effectsEnabled:()=>values.enabled,canRender:()=>glassPC.matches});
+  const change=()=>face.setChecked(input.checked);
+  input.addEventListener('change',change);
+  const refresh=face.refreshTheme,unsubscribe=glassPreferences.subscribe(refresh);
+  window.addEventListener('fromm-theme-change',refresh);
+  preferenceFaces.set(input,{
+   face,
+   destroy(){
+    input.removeEventListener('change',change);
+    window.removeEventListener('fromm-theme-change',refresh);
+    unsubscribe();face.destroy();
+    track.replaceWith(input);
+   },
+  });
+ }
+ preferenceFaces.get(input).face.setChecked(input.checked,options);
+}
+window.FrommPreferenceSwitch=Object.freeze({
+ sync:syncPreferenceSwitch,
+ destroy(input){preferenceFaces.get(input)?.destroy();preferenceFaces.delete(input);}
+});
+for(const input of document.querySelectorAll('#conversationStorageDialog[open] input[type=checkbox],.video-playlist-auto input'))syncPreferenceSwitch(input,{animate:false});
 function statusText(){
  if(!stored)return '설정은 현재 창에 적용됩니다.';
  if(!values.enabled)return '유리 효과를 끕니다. 설정은 자동으로 저장됩니다.';

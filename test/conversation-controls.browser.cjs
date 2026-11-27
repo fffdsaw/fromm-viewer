@@ -49,13 +49,17 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
     dw:Math.abs(panel.width-left-right-origin.width),dh:Math.abs(panel.height-top-bottom-origin.height),
     finalShape:motion.effect.getKeyframes().at(-1).clipPath,
    };
-   for(const animation of dialog.getAnimations({subtree:true}))animation.finish();
+   const animations=dialog.getAnimations({subtree:true});
+   for(const animation of animations){animation.pause();animation.currentTime=150;}
+   window.chatSettingsMotion.titleOpacity=getComputedStyle(dialog.querySelector('h2')).opacity;
+   for(const animation of animations)animation.finish();
   },{once:true}));
   await settings.click();
   const motion=await page.evaluate(()=>window.chatSettingsMotion);
   if(cfg.width>=701){
    assert.match(motion.finalShape,/inset\(0px/);
    assert.ok([motion.dx,motion.dy,motion.dw,motion.dh].every(value=>value<1),'the settings dialog unfolds from the exact settings button bounds');
+   assert.equal(motion.titleOpacity,'0','the title waits for the panel to unfold past its left edge');
   }else assert.equal(motion,null);
   const alignment=await page.evaluate(()=>{const checkbox=document.querySelector('#conversationStoreEnabled'),label=checkbox.closest('label'),range=document.createRange();range.selectNode(label.lastChild);const text=range.getBoundingClientRect(),box=checkbox.getBoundingClientRect();return{width:box.width,height:box.height,right:box.right,textX:text.x,delta:Math.abs(box.y+box.height/2-text.y-text.height/2)}});
   assert.ok(alignment.width>=16&&alignment.width<=20&&alignment.height>=16&&alignment.height<=20);assert.ok(alignment.right+5<=alignment.textX&&alignment.delta<3,JSON.stringify(alignment));

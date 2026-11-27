@@ -654,7 +654,7 @@
    {transform:`translate(${x}px,${y}px)`,clipPath:start},
    {transform:'translate(0px,0px)',clipPath:'inset(0px round 20px)'},
   ],{duration:310,easing:'cubic-bezier(.23,.69,.23,1)',fill:'backwards'});
-  for(const content of dialog.children)content.animate([{opacity:0},{opacity:1}],{delay:100,duration:185,easing:'ease-out',fill:'backwards'});
+  for(const content of dialog.children)content.animate([{opacity:0},{opacity:1}],{delay:180,duration:130,easing:'ease-out',fill:'backwards'});
  }
  function mount(){
   if(mounted)return;mounted=true;

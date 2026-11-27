@@ -37,6 +37,15 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   await page.locator('#conversationEmoticonButton').click();await page.getByText('사용할 수 있는 이모티콘이 없습니다.',{exact:true}).waitFor();const popup=await page.locator('#conversationEmoticons').boundingBox();assert.ok(popup.x>=0&&popup.x+popup.width<=cfg.width+1);await page.keyboard.press('Escape');
   await page.locator('#conversationStorage').click();const alignment=await page.evaluate(()=>{const checkbox=document.querySelector('#conversationStoreEnabled'),label=checkbox.closest('label'),range=document.createRange();range.selectNode(label.lastChild);const text=range.getBoundingClientRect(),box=checkbox.getBoundingClientRect();return{width:box.width,height:box.height,right:box.right,textX:text.x,delta:Math.abs(box.y+box.height/2-text.y-text.height/2)}});
   assert.ok(alignment.width>=16&&alignment.width<=20&&alignment.height>=16&&alignment.height<=20);assert.ok(alignment.right+5<=alignment.textX&&alignment.delta<3,JSON.stringify(alignment));
+  if(cfg.width>=701){
+   const shade=await page.locator('#conversationStorageDialog').evaluate(dialog=>{
+    const theme=document.documentElement.dataset.frommTheme||'glow';
+    const read=()=>getComputedStyle(dialog,'::backdrop').backgroundColor;
+    const light=read();FrommThemes.set('classic');const dark=read();FrommThemes.set(theme);
+    return {light,dark};
+   });
+   assert.deepEqual(shade,{light:'rgba(0, 0, 0, 0)',dark:'rgba(0, 0, 0, 0)'},'chat settings leave the conversation background visible without an overlay');
+  }
   const checked=page.locator('#conversationStoreEnabled');await checked.uncheck();assert.equal(await checked.isChecked(),false);await checked.check();assert.equal(await checked.isChecked(),true);
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();

@@ -1,10 +1,10 @@
-import './web-morph-menu.js?v=droplet-sheet-20261126';
-import './web-clear-controls.js?v=droplet-sheet-20261126';
-import './web-glass-controls.js?v=droplet-sheet-20261126';
-import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=droplet-sheet-20261126';
+import './web-morph-menu.js?v=white-handles-20261127';
+import './web-clear-controls.js?v=white-handles-20261127';
+import './web-glass-controls.js?v=white-handles-20261127';
+import {glassPC,glassPreferences,mountGlassSettings} from './web-glass-settings.js?v=white-handles-20261127';
 import {createGlass,materialOptions} from './web-glass-material.js?v=droplet-sheet-20261126';
 mountGlassSettings();window.addEventListener('load',mountGlassSettings,{once:true});
-import('./web-capsule-materialize.js?v=droplet-sheet-20261126').then(({createCapsuleMaterializer})=>{
+import('./web-capsule-materialize.js?v=white-handles-20261127').then(({createCapsuleMaterializer})=>{
  window.FrommCapsuleMaterializer=createCapsuleMaterializer;window.dispatchEvent(new Event('fromm-capsule-ready'));
 }).catch(()=>{});
 /* Visible mobile controls use the same material immediately, including while

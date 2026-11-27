@@ -1,3 +1,11 @@
+## White desktop handles and clear chat settings backdrop — 2026-11-27 Korea
+
+Continues main `e2ae98a` after PR #161. The desktop native chat settings dialog now opens over a transparent backdrop. The green tint came from the dialog's own `::backdrop`. On the 1440px Chromium synthetic fixture a white background sample changed from RGB 177/191/194 in production before this fix to 255/255/255 in both Glow ME and Classic locally. The dialog still opens through its chat settings button, closes with Escape and returns focus.
+
+The two desktop switches settle on solid white thumbs. The moving lens grows wider and taller than its rail, with curved edges on both sides and a flat center. The range thumb also returns to white. Its optical bend stays localized to the left edge with the original colored stripe and native value tip across the center. Mobile values, presentation and actual chat/media saves retain their existing paths. The cache keys for the edited CSS and shared control imports advance together.
+
+Node 24.22.3 and Chromium 151.0.7922.34 via Playwright 1.62.1. 337 web and Native tests passed with one existing Agora skip. Conversation browser passes at 1440 desktop, 780 installed simulation and 390 touch, including both desktop theme assertions. Artist folder browser passes on both routes with real synthetic OPFS writes, transparent switch, stationary white controls, left-rim slider drag, keyboard, reduced effects and mobile exclusion. Logs `/workspace/scratch/fromm-chat-settings-*.log` and `/workspace/scratch/fromm-white-handles-controls-final.log`. Check CI with `gh pr list --head codex/media-save-ui-header-20261125 --state all --json number,url,state,headRefOid`.
+
 ## Desktop track lenses and unfolding save sheet — 2026-11-26 Korea
 
 Continues production PR #160 at `d3bd1f7` on `codex/media-save-ui-header-20261125`. Per the approved design, both 40px desktop switches stretch along their path and past the top and bottom of the rail. The shared Canvas lens magnifies the actual rail color at the center. The native glass settings sliders retain their values and hit boxes with an oval visual thumb that swells during drag and returns at the released value. Both ends of the filled track stay round. The alternate native visuals cover reduced motion, reduced transparency, forced colors and touch.

@@ -35,7 +35,29 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   assert.ok(emoji.x>input.x+input.width*.65&&emoji.x+emoji.width<=input.x+input.width+1,'emoticon button lives inside the right end of the input');assert.ok(Math.abs(emoji.y+emoji.height-(input.y+input.height))<2);
   assert.ok(Number(await page.locator('#conversationInput').evaluate(e=>parseFloat(getComputedStyle(e).paddingRight)))>=emoji.width+6,'text has room before the icon');
   await page.locator('#conversationEmoticonButton').click();await page.getByText('사용할 수 있는 이모티콘이 없습니다.',{exact:true}).waitFor();const popup=await page.locator('#conversationEmoticons').boundingBox();assert.ok(popup.x>=0&&popup.x+popup.width<=cfg.width+1);await page.keyboard.press('Escape');
-  await page.locator('#conversationStorage').click();const alignment=await page.evaluate(()=>{const checkbox=document.querySelector('#conversationStoreEnabled'),label=checkbox.closest('label'),range=document.createRange();range.selectNode(label.lastChild);const text=range.getBoundingClientRect(),box=checkbox.getBoundingClientRect();return{width:box.width,height:box.height,right:box.right,textX:text.x,delta:Math.abs(box.y+box.height/2-text.y-text.height/2)}});
+  const settings=page.locator('#conversationStorage');
+  await settings.evaluate(button=>button.addEventListener('click',()=>{
+   const dialog=document.querySelector('#conversationStorageDialog');
+   const motion=dialog.getAnimations().find(animation=>animation.effect.getKeyframes()[0].clipPath);
+   window.chatSettingsMotion=null;
+   if(!motion)return;
+   motion.pause();motion.currentTime=0;
+   const origin=button.getBoundingClientRect(),panel=dialog.getBoundingClientRect();
+   const [top,right,bottom,left]=motion.effect.getKeyframes()[0].clipPath.match(/-?[\d.]+px/g).map(parseFloat);
+   window.chatSettingsMotion={
+    dx:Math.abs(panel.left+left-origin.left),dy:Math.abs(panel.top+top-origin.top),
+    dw:Math.abs(panel.width-left-right-origin.width),dh:Math.abs(panel.height-top-bottom-origin.height),
+    finalShape:motion.effect.getKeyframes().at(-1).clipPath,
+   };
+   for(const animation of dialog.getAnimations({subtree:true}))animation.finish();
+  },{once:true}));
+  await settings.click();
+  const motion=await page.evaluate(()=>window.chatSettingsMotion);
+  if(cfg.width>=701){
+   assert.match(motion.finalShape,/inset\(0px/);
+   assert.ok([motion.dx,motion.dy,motion.dw,motion.dh].every(value=>value<1),'the settings dialog unfolds from the exact settings button bounds');
+  }else assert.equal(motion,null);
+  const alignment=await page.evaluate(()=>{const checkbox=document.querySelector('#conversationStoreEnabled'),label=checkbox.closest('label'),range=document.createRange();range.selectNode(label.lastChild);const text=range.getBoundingClientRect(),box=checkbox.getBoundingClientRect();return{width:box.width,height:box.height,right:box.right,textX:text.x,delta:Math.abs(box.y+box.height/2-text.y-text.height/2)}});
   assert.ok(alignment.width>=16&&alignment.width<=20&&alignment.height>=16&&alignment.height<=20);assert.ok(alignment.right+5<=alignment.textX&&alignment.delta<3,JSON.stringify(alignment));
   if(cfg.width>=701){
    const shade=await page.locator('#conversationStorageDialog').evaluate(dialog=>{
@@ -49,6 +71,14 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
   const checked=page.locator('#conversationStoreEnabled');await checked.uncheck();assert.equal(await checked.isChecked(),false);await checked.check();assert.equal(await checked.isChecked(),true);
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,'storage-aligned-'+cfg.width+'.png')});}
   await page.locator('#conversationStorageClose').click();
+  if(cfg.width>=701){
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await settings.click();
+   assert.equal(await page.locator('#conversationStorageDialog').evaluate(dialog=>dialog.getAnimations({subtree:true}).length),0);
+   await page.keyboard.press('Escape');
+   await page.waitForFunction(()=>document.activeElement?.id==='conversationStorage');
+   await page.emulateMedia({reducedMotion:'no-preference'});
+  }
   const bubble=page.locator('[data-message-id="sound"] .bubble'),download=bubble.locator('.dl');await bubble.scrollIntoViewIfNeeded();
   const incomingText=page.locator('#timeline .msg:not(.me) .bubble:has(.text)').first(),outgoingText=page.locator('#timeline .msg.me .bubble:has(.text)').first();
   assert.equal(await incomingText.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(245, 250, 251)','incoming artist text has an aqua card');

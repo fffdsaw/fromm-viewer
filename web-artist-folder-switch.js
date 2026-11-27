@@ -59,7 +59,8 @@ function paintLens(context, lens, palette, sampleTrack) {
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *
                 (0.2 + 0.51 * clamp(-py / radius));
-            const front = mix(1, 0.06, clarity) * (1 - shine);
+            const clearFilm = bendFilledSide ? .06 : mix(.045, .16, 1 - sampledAlpha) * (.9 + .2 * clamp(-py / radius));
+            const front = mix(1, clearFilm, clarity) * (1 - shine);
             const behind = (1 - front - shine) * sampledAlpha;
             const offset = ((y - top) * picture.width + x - left) * 4;
             const targetAlpha = behind + front + shine;
@@ -76,9 +77,9 @@ function paintLens(context, lens, palette, sampleTrack) {
 }
 
 export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled = () => true, canRender = () => true } = {}) {
-    const designWidth = 164;
+    const designWidth = 204;
     const designHeight = 96;
-    const track = { x: 20, cy: 48, width: 124, height: 55 };
+    const track = { x: 40, cy: 48, width: 124, height: 55 };
     const fullDuration = 520;
     const thumbWidth = 68;
     const thumbHeight = 46;
@@ -99,6 +100,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     let progress = target;
     let animationFrame = null;
     let previousTime = null;
+    let travel = 0;
     let ready = false;
     let theme;
 
@@ -112,7 +114,9 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       const swell = optical ? Math.sin(Math.PI * position) ** 2 : 0;
       const width = thumbWidth + 66 * swell;
       const height = thumbHeight + 32 * swell;
-      const left = mix(startCenter, endCenter, position) - width / 2;
+      // Let the expanded lens lead the motion so it uncovers the trailing
+      // end of the rail and remains visible beyond the leading end.
+      const left = mix(startCenter, endCenter, position) + 24 * travel * swell - width / 2;
       const cy = track.cy;
 
       output.clearRect(0, 0, designWidth, designHeight);
@@ -161,6 +165,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       if (animationFrame !== null) cancelAnimationFrame(animationFrame);
       animationFrame = null;
       previousTime = null;
+      travel = 0;
       progress = target;
       render();
     }
@@ -168,6 +173,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
     function tick(time) {
       if (previousTime !== null) {
         const step = Math.max(0, time - previousTime) / fullDuration;
+        travel = mix(travel, Math.sign(target - progress), clamp(step * 9));
         progress = target > progress ? Math.min(target, progress + step) : Math.max(target, progress - step);
       }
       render();
@@ -225,23 +231,25 @@ export function mountLiquidGlassRange(input) {
     const colorContext = swatch.getContext('2d', { willReadFrequently: true });
     if (!output?.roundRect || !colorContext || typeof ResizeObserver !== 'function') return null;
 
-    let width = 0, height = 0, fraction = 0, growth = 0;
+    let width = 0, height = 0, gutter = 0, fraction = 0, growth = 0;
     let pressed = null, pulse = 0, frame = 0, lastTime = 0;
     let palette;
 
     function render() {
         if (!width || !height) return;
         const cy = height / 2;
-        const cx = 8 + (width - 16) * fraction;
-        const fillWidth = fraction === 1 ? width : fraction === 0 ? 0 : cx;
+        const trackWidth = width - 2 * gutter;
+        if (trackWidth < 16) return;
+        const cx = gutter + 8 + (trackWidth - 16) * fraction;
+        const fillWidth = fraction === 1 ? trackWidth : fraction === 0 ? 0 : cx - gutter;
         output.clearRect(0, 0, width, height);
-        capsule(output, 0, cy, width, 6, `rgb(${palette.rail.join(',')})`);
-        capsule(output, 0, cy, fillWidth, 6, `rgb(${palette.fill.join(',')})`);
+        capsule(output, gutter, cy, trackWidth, 6, `rgb(${palette.rail.join(',')})`);
+        capsule(output, gutter, cy, fillWidth, 6, `rgb(${palette.fill.join(',')})`);
         const swell = smooth(0, 1, growth);
         paintLens(output, { cx, cy, width: 16 + 22 * swell, height: 12 + 14 * swell, clarity: swell, bendFilledSide: true }, palette, (x, y, aa) => {
-            const railDepth = capsuleDepth(x - width / 2, y - cy, width / 2, 3);
+            const railDepth = capsuleDepth(x - width / 2, y - cy, trackWidth / 2, 3);
             const rail = smooth(-aa, aa, railDepth);
-            const fillDepth = capsuleDepth(x - fillWidth / 2, y - cy, fillWidth / 2, 3);
+            const fillDepth = capsuleDepth(x - gutter - fillWidth / 2, y - cy, fillWidth / 2, 3);
             const fill = fillWidth > 0 ? smooth(-aa, aa, fillDepth) : 0;
             return [...palette.fill.map((value, i) => mix(palette.rail[i], value, rail ? fill / rail : 0)), rail];
         });
@@ -252,7 +260,7 @@ export function mountLiquidGlassRange(input) {
         palette = {
             rail: color(colorContext, '--theme-selected', '#c9e9da', styles),
             fill: color(colorContext, '--theme-accent', '#167b65', styles),
-        thumb: [255, 255, 255],
+            thumb: [255, 255, 255],
             glint: [255, 255, 255],
         };
         render();
@@ -269,6 +277,7 @@ export function mountLiquidGlassRange(input) {
             frame = lastTime = growth = 0;
             return;
         }
+        gutter = (width - range.getBoundingClientRect().width) / 2;
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);

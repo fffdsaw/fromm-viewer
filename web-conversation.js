@@ -638,6 +638,24 @@
   else exposeChatHistorySnapshot();
   saveSoon();sync();
  }
+ function openChatSettings(){
+  const source=storage.getBoundingClientRect();
+  dialog.showModal();
+  if(!source.width||!source.height||!dialog.animate||
+     !matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)').matches)return;
+  const panel=dialog.getBoundingClientRect();
+  const half=source.width/2;
+  const sourceX=source.left+half;
+  const center=Math.max(half,Math.min(panel.width-half,sourceX-panel.left));
+  const x=sourceX-panel.left-center;
+  const y=source.bottom-panel.bottom;
+  const start=`inset(${panel.height-source.height}px ${panel.width-center-half}px 0px ${center-half}px round ${half}px)`;
+  dialog.animate([
+   {transform:`translate(${x}px,${y}px)`,clipPath:start},
+   {transform:'translate(0px,0px)',clipPath:'inset(0px round 20px)'},
+  ],{duration:310,easing:'cubic-bezier(.23,.69,.23,1)',fill:'backwards'});
+  for(const content of dialog.children)content.animate([{opacity:0},{opacity:1}],{delay:100,duration:185,easing:'ease-out',fill:'backwards'});
+ }
  function mount(){
   if(mounted)return;mounted=true;
   dock=document.createElement('form');dock.id='conversationDock';dock.hidden=true;dock.setAttribute('aria-label','메시지 보내기');
@@ -657,7 +675,7 @@
    dialog.querySelector('#conversationSoundEnabled').checked=alerts.sound;
    dialog.querySelector('#conversationDesktopEnabled').checked=alerts.desktop;
    dialog.querySelector('#conversationAlertState').textContent='소리와 브라우저 알림을 꺼도 사이드바 숫자 배지는 유지됩니다.';
-   dialog.querySelector('#conversationStorageState').textContent=context?.storageError?'저장 공간 또는 브라우저 설정을 확인해주세요. 현재 대화 조회는 계속 사용할 수 있습니다.':'저장된 대화는 현재 기기에만 보관됩니다.';dialog.showModal();};
+   dialog.querySelector('#conversationStorageState').textContent=context?.storageError?'저장 공간 또는 브라우저 설정을 확인해주세요. 현재 대화 조회는 계속 사용할 수 있습니다.':'저장된 대화는 현재 기기에만 보관됩니다.';openChatSettings();};
   dialog.querySelector('#conversationStoreEnabled').onchange=event=>{const c=context;if(!roomCurrent(c)||!c.storageAccount)return;c.enabled=event.target.checked;if(!c.enabled)try{sessionStorage.removeItem(readerKey(c));}catch{}try{localStorage.setItem(storageKey(c.storageAccount),c.enabled?'on':'off');}catch{}if(c.enabled)void persist({force:true});paint();};
   dialog.querySelector('#conversationSoundEnabled').onchange=event=>window.FrommUnread?.setPrefs({sound:event.target.checked});
   dialog.querySelector('#conversationSoundPreview').onclick=()=>{void window.FrommUnread?.previewSound();};
@@ -676,7 +694,11 @@
    const c=context;if(!authCurrent(c)||!c.storageAccount||!confirm('이 계정의 기기에 저장된 대화와 작성 중인 글을 지울까요? 서버 대화는 유지됩니다.'))return;
    clearTimeout(saveTimer);memories.clear();c.enabled=false;try{localStorage.setItem(storageKey(c.storageAccount),'off');localStorage.removeItem(lastRoomKey(c.storageAccount));}catch{}await store.clear(c.storageAccount);if(roomCurrent(c)){c.persisted.clear();c.saved=false;c.storageError=false;c.draft='';c.selectedEmoticon=null;input.value='';dialog.querySelector('#conversationStoreEnabled').checked=false;dialog.querySelector('#conversationStorageState').textContent='기기 저장 기록을 지우고 자동 저장을 껐습니다. 다시 켜면 현재 대화를 저장합니다.';paint();}
   };
-  dialog.addEventListener('close',()=>storage.focus({preventScroll:true}));
+  dialog.addEventListener('close',()=>{
+   if(dialog.open)return;
+   for(const animation of dialog.getAnimations?.({subtree:true})||[])animation.cancel();
+   storage.focus({preventScroll:true});
+  });
   new ResizeObserver(layout).observe(document.querySelector('.main'));new ResizeObserver(layout).observe(dock);
   window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);
   window.addEventListener('scroll',()=>{updateLatestButton();if(viewing(context)&&!context.restoring){checkpoint(context);clearTimeout(saveTimer);saveTimer=setTimeout(()=>persist(),500);}},{passive:true});

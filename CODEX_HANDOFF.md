@@ -1,3 +1,11 @@
+## Desktop transparent switch travel, slider end clearance and chat settings opening — 2026-11-27 Korea
+
+Continues main `29fad1b` after PR #162. The enlarged switch lens now leads its direction of travel, exposing the trailing rail while retaining a visibly clear area out past the leading rail end. It keeps the established rail size, white resting thumb and localized side refraction. The desktop slider canvas is 14px wider on each side than the input rail to fit the entire 38px lens at the native extremes. The input and its pointer and keyboard value geometry retain their existing widths.
+
+The PC chat settings modal opens as a rounded shape matching the settings button's exact screen bounds, then moves up and unfolds at the existing modal location. Contents fade separately. The native modal, transparent background, close, Escape and focus behavior stay in place. The morph honors reduced motion and is limited to desktop pointer layouts.
+
+Node 24.22.3, Playwright 1.62.1 Chromium 151.0.7922.34. 337 applicable unit tests passed with one existing Agora skip. The existing artist-folder suite now verifies the exposed trailing rail in both directions and the painted slider lens while dragging to both native endpoints, together with keyboard and synthetic OPFS writes. The chat controls browser suite passed at 1440 desktop, 780 installed and 390 touch, testing the modal's start bounds, transparent backdrop, reduced motion, Escape and focus restoration. Logs are under `/workspace/scratch/fromm-clear-rail-*.log`. Check the current PR with `gh pr list --head codex/media-save-ui-header-20261125 --state all --json number,url,state,headRefOid`.
+
 ## White desktop handles and clear chat settings backdrop — 2026-11-27 Korea
 
 Continues main `e2ae98a` after PR #161. The desktop native chat settings dialog now opens over a transparent backdrop. The green tint came from the dialog's own `::backdrop`. On the 1440px Chromium synthetic fixture a white background sample changed from RGB 177/191/194 in production before this fix to 255/255/255 in both Glow ME and Classic locally. The dialog still opens through its chat settings button, closes with Escape and returns focus.

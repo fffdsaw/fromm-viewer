@@ -7,10 +7,11 @@ async function waitForClearThumb(page,selector,rest){
   const canvas=document.querySelector(selector);
   const ctx=canvas.getContext('2d');
   const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/164),Math.floor(y*canvas.height/96),1,1).data];
-  const left=sample(23,48),center=sample(82,48),right=sample(141,48);
-  const enlarged=sample(82,19),above=sample(82,16),below=sample(82,79);
-  const transparent=left[3]>235&&right[3]>235&&center[3]>245&&enlarged[3]>215&&above[3]>8&&below[3]>8&&
-   center.slice(0,3).every((n,i)=>Math.abs(n-enlarged[i])<=20&&Math.abs(n-(left[i]+right[i])/2)<=25);
+  const left=sample(18,48),center=sample(82,48),right=sample(146,48);
+  const above=sample(82,16),outsideCenter=sample(82,19),below=sample(82,79);
+  const coloredEdge=left[3]>right[3]?left:right;
+  const transparent=left[3]>12&&right[3]>12&&coloredEdge[3]>215&&center[3]>245&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&
+   center.slice(0,3).every((n,i)=>Math.abs(n-coloredEdge[i])<=32);
   if(!transparent||!rest)return transparent;
   // Measure the silhouette and the transmitted color in the very same frame.
   const {data}=ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -95,6 +96,8 @@ try{
  await master.focus();await master.press('Space');assert.equal(await master.isChecked(),false);
  await waitForClearThumb(page,'.glass-switch-track canvas');
  await page.waitForTimeout(550);assert.equal(await page.locator('#glass-refraction').isDisabled(),true);
+ const restingSwitch=await masterTrack.locator('canvas').evaluate(canvas=>[...canvas.getContext('2d').getImageData(Math.floor(canvas.width*58/164),Math.floor(canvas.height/2),1,1).data]);
+ assert.deepEqual(restingSwitch,[255,255,255,255],'the settled switch thumb is white');
  await master.press('Space');assert.equal(await master.isChecked(),true);
  await waitForClearThumb(page,'.glass-switch-track canvas');
  const slider=page.locator('#glass-refraction');
@@ -130,7 +133,7 @@ try{
   const input=document.querySelector('#glass-refraction'),canvas=input.nextElementSibling,rect=canvas.getBoundingClientRect();
   const cx=8+(rect.width-16)*input.valueAsNumber/80;
   const ctx=canvas.getContext('2d'),x=Math.floor(cx*canvas.width/rect.width);
-  return ctx.getImageData(x,Math.floor(canvas.height*.22),1,1).data[3]===0&&ctx.getImageData(x,Math.floor(canvas.height*.5),1,1).data[3]>245;
+  return ctx.getImageData(x,Math.floor(canvas.height*.22),1,1).data[3]===0&&[...ctx.getImageData(x,Math.floor(canvas.height*.5),1,1).data].every(channel=>channel===255);
  });
  await page.emulateMedia({reducedMotion:'reduce'});
  await slider.press('Home');assert.equal(await slider.inputValue(),'0');

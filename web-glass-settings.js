@@ -1,4 +1,4 @@
-import {mountLiquidGlassSwitch,mountLiquidGlassRange} from './web-artist-folder-switch.js?v=droplet-sheet-20261126';
+import {mountLiquidGlassSwitch,mountLiquidGlassRange} from './web-artist-folder-switch.js?v=white-handles-20261127';
 /* PC material preferences. Values only; no account or media data is stored. */
 export const GLASS_KEY='fromm.pcGlass.v1';
 export const glassPC=matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine)');

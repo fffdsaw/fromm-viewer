@@ -46,23 +46,20 @@ function paintLens(context, lens, palette, sampleTrack) {
             const coverage = smooth(-antialias, antialias, depth);
             if (!coverage) continue;
 
-            let sampleX = px, sampleY = py;
-            if (bendFilledSide) {
-                // Deflect the whole stripe just inside the left rim. Its
-                // center and rounded value tip keep their original thickness.
-                const leftRim = smooth(0.70, 0.88, -px / halfWidth);
-                const bend = leftRim * smooth(0, 1.25, depth) * (1 - smooth(2.0, 4.5, depth));
-                sampleY -= 1.8 * clarity * bend;
-            } else {
-                const zoom = 1 - 0.48 * clarity * smooth(0, radius * 0.72, depth);
-                sampleX *= zoom;
-                sampleY *= zoom;
-            }
+            // Range optics deflect the colored line at the left rim. Switches
+            // bend both ends of their rail and keep the center flat.
+            const side = (bendFilledSide ? -px : Math.abs(px)) / halfWidth;
+            const band = bendFilledSide ? 4.5 : 14;
+            const rimDepth = depth / band;
+            const bend = clarity * smooth(0.70, 0.88, side) *
+                smooth(0, .28, rimDepth) * (1 - smooth(.44, 1, rimDepth));
+            const sampleX = bendFilledSide ? px : px - Math.sign(px) * 9 * bend;
+            const sampleY = py - (bendFilledSide ? 1.8 : 5) * bend;
             const [red, green, blue, sampledAlpha] = sampleTrack(cx + sampleX, cy + sampleY, antialias);
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *
                 (0.2 + 0.51 * clamp(-py / radius));
-            const front = mix(0.92, 0.06, clarity) * (1 - shine);
+            const front = mix(1, 0.06, clarity) * (1 - shine);
             const behind = (1 - front - shine) * sampledAlpha;
             const offset = ((y - top) * picture.width + x - left) * 4;
             const targetAlpha = behind + front + shine;
@@ -113,8 +110,7 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       const optical = available();
       const clarity = optical ? smooth(0, 0.19, progress) * (1 - smooth(0.81, 1, progress)) : 0;
       const swell = optical ? Math.sin(Math.PI * position) ** 2 : 0;
-      // Leave rail exposed at both ends even at peak expansion.
-      const width = thumbWidth + 42 * swell;
+      const width = thumbWidth + 66 * swell;
       const height = thumbHeight + 32 * swell;
       const left = mix(startCenter, endCenter, position) - width / 2;
       const cy = track.cy;
@@ -256,7 +252,7 @@ export function mountLiquidGlassRange(input) {
         palette = {
             rail: color(colorContext, '--theme-selected', '#c9e9da', styles),
             fill: color(colorContext, '--theme-accent', '#167b65', styles),
-            thumb: color(colorContext, '--theme-card', '#fbfdfc', styles),
+        thumb: [255, 255, 255],
             glint: [255, 255, 255],
         };
         render();

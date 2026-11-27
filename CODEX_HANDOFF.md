@@ -1,3 +1,9 @@
+## Larger desktop lenses on preference switches — 2026-11-27 Korea
+
+Continues main `6dfab9e` after PR #163. The existing desktop lens grows to 160×100 design units at mid-travel (previously 134×78), with a larger surrounding canvas, stronger side displacement and a stable centerline. The 40px rail, white resting thumb and slider lens behavior are preserved. The same renderer now decorates automatic chat storage, new message sound, browser notifications and autoplay-next in the Replay and Channel playlists. Native controls still own input events. The notification rollback and playlist teardown synchronize or release their decoration. The memo reply filter remains a selection checkbox.
+
+Node 24.22.3 and Playwright 1.62.1 Chromium 151.0.7922.34. 337 applicable unit tests passed with one existing Agora skip. Chromium verified the larger moving silhouette in both directions, stronger rail curvature, native input values and real synthetic folder writes. Conversation controls covered three mounts, white and dark themes, modal opening and closing, keyboard and the existing mobile layout. Desktop playlist passed actual playback endings with autoplay on and off through Replay and Channel. Logs `/workspace/scratch/fromm-pref-toggle-*.log`. Read the PR for exact head and hosted and Pages receipts.
+
 ## Desktop transparent switch travel, slider end clearance and chat settings opening — 2026-11-27 Korea
 
 Continues main `29fad1b` after PR #162. The enlarged switch lens now leads its direction of travel, exposing the trailing rail while retaining a visibly clear area out past the leading rail end. It keeps the established rail size, white resting thumb and localized side refraction. The desktop slider canvas is 14px wider on each side than the input rail to fit the entire 38px lens at the native extremes. The input and its pointer and keyboard value geometry retain their existing widths.

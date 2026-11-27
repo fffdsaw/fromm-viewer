@@ -6,12 +6,12 @@ async function waitForClearThumb(page,selector,direction,rest){
  const result=await page.waitForFunction(({selector,direction,rest})=>{
   const canvas=document.querySelector(selector);
   const ctx=canvas.getContext('2d');
-  const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/204),Math.floor(y*canvas.height/96),1,1).data];
-  const leading=sample(102+direction*76,48),trail=sample(102-direction*58,48);
-  const center=sample(102,48),outsideCenter=sample(102,19),above=sample(102,16),below=sample(102,79);
-  const shoulders=[sample(102,24)[3],sample(102,72)[3]];
+  const sample=(x,y)=>[...ctx.getImageData(Math.floor(x*canvas.width/236),Math.floor(y*canvas.height/118),1,1).data];
+  const leading=sample(118+direction*88,59),trail=sample(118-direction*58,59);
+  const center=sample(118,59),outsideCenter=sample(118,30),above=sample(118,17),below=sample(118,101);
+  const shoulders=[sample(118,35)[3],sample(118,83)[3]];
   const transparent=leading[3]>25&&leading[3]<175&&trail[3]>235&&center[3]>245&&
-   shoulders.every(alpha=>alpha<155)&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&sample(102-direction*58,16)[3]<8&&
+   shoulders.every(alpha=>alpha<155)&&outsideCenter[3]<125&&above[3]>8&&below[3]>8&&sample(118-direction*58,17)[3]<8&&
    center.slice(0,3).every((n,i)=>Math.abs(n-trail[i])<=30);
   if(!transparent||!rest)return transparent;
   // Measure the silhouette and the transmitted color in the very same frame.
@@ -20,7 +20,7 @@ async function waitForClearThumb(page,selector,direction,rest){
   for(let i=3;i<data.length;i+=4)if(data[i]>12){
    const y=Math.floor((i/4)/canvas.width);min=Math.min(min,y);max=Math.max(max,y);
   }
-  return min<=rest.min-3&&max>=rest.max+3&&{min,max};
+  return min<=rest.min-6&&max>=rest.max+6&&{min,max};
  },{selector,direction,rest},{timeout:3000});
  return result.jsonValue();
 }
@@ -62,9 +62,9 @@ try{
  const box=await toggle.boundingBox();assert.ok(box.width>=44&&box.height>=44);await page.waitForFunction(()=>document.querySelector('#artistFoldersEnabled').hasAttribute('data-glass-ready'));
  const folderCanvas=await toggle.locator('canvas').boundingBox();
  const alpha=()=>page.locator('#artistFoldersEnabled canvas').evaluate(canvas=>{const {data}=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);let min=canvas.height,max=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>12){min=Math.min(min,y);max=Math.max(max,y);}return{min,max};});
- const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*60/204),Math.floor(c.height/2),1,1).data).slice(0,3));
+ const trackColor=()=>page.locator('#artistFoldersEnabled canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(Math.floor(c.width*76/236),Math.floor(c.height/2),1,1).data).slice(0,3));
  assert.deepEqual(await trackColor(),[22,123,101],'initial connected switch uses the active Glow palette');
- const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();const middle=await waitForClearThumb(page,'#artistFoldersEnabled canvas',-1,rest);assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<=rest.min-3&&middle.max>=rest.max+3,'the lens visibly extends above and below the stationary track');
+ const panelTop=(await page.locator('#glassSettingsDialog').boundingBox()).y;const rest=await alpha();await toggle.click();const middle=await waitForClearThumb(page,'#artistFoldersEnabled canvas',-1,rest);assert.ok(Math.abs((await page.locator('#glassSettingsDialog').boundingBox()).y-panelTop)<1,'collapsing the list retains the panel top');assert.ok(middle.min<=rest.min-6&&middle.max>=rest.max+6,'the lens visibly extends above and below the stationary track');
  const out=process.env.ARTIST_FOLDER_DIR;if(out){fs.mkdirSync(out,{recursive:true});await toggle.screenshot({path:path.join(out,'toggle-transition.png')});}
  // Reversal is continuous within the same event turn, without a new origin.
  const reversed=await toggle.evaluate(button=>{const before=button.querySelector('canvas').toDataURL();for(let i=0;i<5;i++)button.click();return before===button.querySelector('canvas').toDataURL();});assert.equal(reversed,true);
@@ -97,7 +97,7 @@ try{
  await master.focus();await master.press('Space');assert.equal(await master.isChecked(),false);
  await waitForClearThumb(page,'.glass-switch-track canvas',-1);
  await page.waitForTimeout(550);assert.equal(await page.locator('#glass-refraction').isDisabled(),true);
- const restingSwitch=await masterTrack.locator('canvas').evaluate(canvas=>[...canvas.getContext('2d').getImageData(Math.floor(canvas.width*78/204),Math.floor(canvas.height/2),1,1).data]);
+ const restingSwitch=await masterTrack.locator('canvas').evaluate(canvas=>[...canvas.getContext('2d').getImageData(Math.floor(canvas.width*94/236),Math.floor(canvas.height/2),1,1).data]);
  assert.deepEqual(restingSwitch,[255,255,255,255],'the settled switch thumb is white');
  await master.press('Space');assert.equal(await master.isChecked(),true);
  await waitForClearThumb(page,'.glass-switch-track canvas',1);

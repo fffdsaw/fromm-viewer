@@ -640,6 +640,7 @@
  }
  function openChatSettings(){
   const source=storage.getBoundingClientRect();
+  for(const input of dialog.querySelectorAll("input[type=checkbox]"))window.FrommPreferenceSwitch?.sync(input,{animate:false});
   dialog.showModal();
   if(!source.width||!source.height||!dialog.animate||
      !matchMedia('(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)').matches)return;
@@ -687,12 +688,12 @@
    if(permission!=='granted')permission=await Notification.requestPermission();
    if(!dialog.isConnected)return;
    const enabled=permission==='granted';
-   checkbox.checked=enabled;window.FrommUnread?.setPrefs({desktop:enabled});
+   checkbox.checked=enabled;window.FrommPreferenceSwitch?.sync(checkbox);window.FrommUnread?.setPrefs({desktop:enabled});
    status.textContent=enabled?'브라우저 알림을 켰습니다.':'알림 권한을 허용해야 사용할 수 있습니다.';
   };
   dialog.querySelector('#conversationStorageClose').onclick=()=>dialog.close();dialog.querySelector('#conversationClear').onclick=async()=>{
    const c=context;if(!authCurrent(c)||!c.storageAccount||!confirm('이 계정의 기기에 저장된 대화와 작성 중인 글을 지울까요? 서버 대화는 유지됩니다.'))return;
-   clearTimeout(saveTimer);memories.clear();c.enabled=false;try{localStorage.setItem(storageKey(c.storageAccount),'off');localStorage.removeItem(lastRoomKey(c.storageAccount));}catch{}await store.clear(c.storageAccount);if(roomCurrent(c)){c.persisted.clear();c.saved=false;c.storageError=false;c.draft='';c.selectedEmoticon=null;input.value='';dialog.querySelector('#conversationStoreEnabled').checked=false;dialog.querySelector('#conversationStorageState').textContent='기기 저장 기록을 지우고 자동 저장을 껐습니다. 다시 켜면 현재 대화를 저장합니다.';paint();}
+   clearTimeout(saveTimer);memories.clear();c.enabled=false;try{localStorage.setItem(storageKey(c.storageAccount),'off');localStorage.removeItem(lastRoomKey(c.storageAccount));}catch{}await store.clear(c.storageAccount);if(roomCurrent(c)){c.persisted.clear();c.saved=false;c.storageError=false;c.draft='';c.selectedEmoticon=null;input.value='';const autoSave=dialog.querySelector('#conversationStoreEnabled');autoSave.checked=false;window.FrommPreferenceSwitch?.sync(autoSave);dialog.querySelector('#conversationStorageState').textContent='기기 저장 기록을 지우고 자동 저장을 껐습니다. 다시 켜면 현재 대화를 저장합니다.';paint();}
   };
   dialog.addEventListener('close',()=>{
    if(dialog.open)return;

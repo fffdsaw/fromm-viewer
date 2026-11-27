@@ -42,6 +42,7 @@
   const drawer=doc.createElement('section');drawer.className='video-playlist-drawer';drawer.setAttribute('aria-label','영상 재생목록');
   drawer.innerHTML=`<header><strong>재생목록 <span class="video-playlist-count"></span></strong><button type="button" data-queue="close" aria-label="재생목록 닫기">${icon('close')}</button></header><label class="video-playlist-auto"><span>자동으로 다음 영상</span><input type="checkbox" aria-label="자동으로 다음 영상"></label><ol class="video-playlist-items"></ol><p class="video-playlist-notice" role="status"></p><button class="video-playlist-more" type="button" data-queue="more">전체 목록 불러오기</button><footer><button type="button" data-queue="prev">${icon('prev')}이전</button><button type="button" data-queue="next">다음${icon('next')}</button></footer>`;
   const $=s=>drawer.querySelector(s),on=(el,event,fn,options={})=>el.addEventListener(event,fn,{...options,signal:events.signal});
+  const autoSwitch=$('.video-playlist-auto input');
   const key=p=>adapter.keyOf?adapter.keyOf(p):postKey(p),index=items=>items.findIndex(p=>key(p)===adapter.key);
   // The shared controls own their existing idle timer, focus and fade states.
   // Put the icon in that carrier so it disappears/reappears with the seek bar.
@@ -72,7 +73,7 @@
    const items=adapter.items(),at=index(items),more=!!adapter.more?.();
    toggle.setAttribute('aria-expanded',String(pref.open));drawer.classList.toggle('is-open',pref.open);drawer.inert=!pref.open;drawer.setAttribute('aria-hidden',String(!pref.open));
    $('.video-playlist-count').textContent=`${Math.max(0,at+1)} / ${items.length}${more?'+':''}`;
-   $('.video-playlist-auto input').checked=pref.auto;
+   autoSwitch.checked=pref.auto;window.FrommPreferenceSwitch?.sync(autoSwitch);
    const list=$('.video-playlist-items'),top=list.scrollTop;
    if(pref.open)items.forEach((post,offset)=>{
     const id=key(post),existing=rowsByKey.get(id);
@@ -171,7 +172,7 @@
    for(const event of ['play','playing','pause','ended','seeking','waiting'])on(video,event,revealNative);
    revealNative();
   }
-  const dispose=()=>{if(dead)return;dead=true;clearTimeout(closeTimer);clearTimeout(idleTimer);cancelAnimationFrame(alignFrame);events.abort();rowsByKey.clear();toggle.remove();drawer.remove();stage.classList.remove('video-playlist-host');if(mounted.get(stage)===dispose)mounted.delete(stage);};
+  const dispose=()=>{if(dead)return;dead=true;clearTimeout(closeTimer);clearTimeout(idleTimer);cancelAnimationFrame(alignFrame);events.abort();window.FrommPreferenceSwitch?.destroy(autoSwitch);rowsByKey.clear();toggle.remove();drawer.remove();stage.classList.remove('video-playlist-host');if(mounted.get(stage)===dispose)mounted.delete(stage);};
   mounted.set(stage,dispose);paint();if(pref.open){alignCurrent();void loadAll();}return dispose;
  }
  function attachPlayer(player){const adapter=collection(player);return adapter?attach({stage:player.video.closest('.replay-page-stage,.channel-player-stage'),video:player.video,adapter}):()=>{};}

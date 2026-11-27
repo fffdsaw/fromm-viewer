@@ -50,14 +50,14 @@ function paintLens(context, lens, palette, sampleTrack) {
             // the curved glass above and below squeezes the visible rail
             // around the same flat centerline.
             const side = (bendFilledSide ? -px : Math.abs(px)) / halfWidth;
-            const band = bendFilledSide ? 4.5 : 14;
+            const band = bendFilledSide ? 4.5 : 19;
             const rimDepth = depth / band;
             const bend = clarity * smooth(0.70, 0.88, side) *
                 smooth(0, .28, rimDepth) * (1 - smooth(.44, 1, rimDepth));
-            const sampleX = bendFilledSide ? px : px - Math.sign(px) * 9 * bend;
-            const curve = bendFilledSide ? 0 : .30 * clarity *
+            const sampleX = bendFilledSide ? px : px - Math.sign(px) * 16 * bend;
+            const curve = bendFilledSide ? 0 : .44 * clarity *
                 smooth(7, 20, Math.abs(py)) * smooth(0, 9, depth);
-            const sampleY = py * (1 + curve) - (bendFilledSide ? 1.8 : 5) * bend;
+            const sampleY = py * (1 + curve) - (bendFilledSide ? 1.8 : 8) * bend;
             const [red, green, blue, sampledAlpha] = sampleTrack(cx + sampleX, cy + sampleY, antialias);
             const rim = (depth - antialias) / (antialias + radius * .045);
             const shine = Math.exp(-rim * rim) *
@@ -80,9 +80,9 @@ function paintLens(context, lens, palette, sampleTrack) {
 }
 
 export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled = () => true, canRender = () => true } = {}) {
-    const designWidth = 204;
-    const designHeight = 96;
-    const track = { x: 40, cy: 48, width: 124, height: 55 };
+    const designWidth = 236;
+    const designHeight = 118;
+    const track = { x: 56, cy: 59, width: 124, height: 55 };
     const fullDuration = 520;
     const thumbWidth = 68;
     const thumbHeight = 46;
@@ -115,8 +115,8 @@ export function mountLiquidGlassSwitch(button, { input, onToggle, effectsEnabled
       const optical = available();
       const clarity = optical ? smooth(0, 0.19, progress) * (1 - smooth(0.81, 1, progress)) : 0;
       const swell = optical ? Math.sin(Math.PI * position) ** 2 : 0;
-      const width = thumbWidth + 66 * swell;
-      const height = thumbHeight + 32 * swell;
+      const width = thumbWidth + 92 * swell;
+      const height = thumbHeight + 54 * swell;
       // Let the expanded lens lead the motion so it uncovers the trailing
       // end of the rail and remains visible beyond the leading end.
       const left = mix(startCenter, endCenter, position) + 24 * travel * swell - width / 2;

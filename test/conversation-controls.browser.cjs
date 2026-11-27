@@ -61,8 +61,13 @@ const {serve,open}=require('./helpers/phase3-fixture.cjs');
    assert.ok([motion.dx,motion.dy,motion.dw,motion.dh].every(value=>value<1),'the settings dialog unfolds from the exact settings button bounds');
    assert.equal(motion.titleOpacity,'0','the title waits for the panel to unfold past its left edge');
   }else assert.equal(motion,null);
+  if(cfg.width>=701)await page.locator('#conversationStorageDialog .glass-preference-switch[data-glass-ready]').last().waitFor();
   const alignment=await page.evaluate(()=>{const checkbox=document.querySelector('#conversationStoreEnabled'),label=checkbox.closest('label'),range=document.createRange();range.selectNode(label.lastChild);const text=range.getBoundingClientRect(),box=checkbox.getBoundingClientRect();return{width:box.width,height:box.height,right:box.right,textX:text.x,delta:Math.abs(box.y+box.height/2-text.y-text.height/2)}});
-  assert.ok(alignment.width>=16&&alignment.width<=20&&alignment.height>=16&&alignment.height<=20);assert.ok(alignment.right+5<=alignment.textX&&alignment.delta<3,JSON.stringify(alignment));
+  if(cfg.width>=701){
+   assert.equal(await page.locator('#conversationStorageDialog .glass-preference-switch[data-glass-ready]').count(),3);
+   assert.equal(alignment.width,44);assert.equal(alignment.height,26);
+  }else assert.ok(alignment.width>=16&&alignment.width<=20&&alignment.height>=16&&alignment.height<=20);
+ assert.ok(alignment.right+5<=alignment.textX&&alignment.delta<3,JSON.stringify(alignment));
   if(cfg.width>=701){
    const shade=await page.locator('#conversationStorageDialog').evaluate(dialog=>{
     const theme=document.documentElement.dataset.frommTheme||'glow';

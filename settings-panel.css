@@ -92,14 +92,15 @@
 }
 
 /* The master switch sets the visible scale for both switches on desktop. */
-#glassSettingsDialog :is(.artist-folder-switch,.glass-switch-track){
+.glass-preference-switch{display:contents}
+:is(.artist-folder-switch,.glass-switch-track,.glass-preference-switch){
  --settings-switch-rail:40px;
  --fromm-switch-track-on:var(--theme-accent);
  --fromm-switch-track-off:var(--theme-line);
  --fromm-switch-thumb:#fff;
  --fromm-switch-glint:#fff;
 }
-#glassSettingsDialog .glass-switch-art{display:none}
+.glass-switch-art{display:none}
 #glassSettingsDialog .artist-folder-switch{
  position:relative;display:block;flex:none;width:44px;height:44px;border:0;padding:0;
  background:transparent;border-radius:999px;touch-action:manipulation;
@@ -118,13 +119,21 @@
 #glassSettingsDialog .artist-folder-switch:not([data-glass-ready])[aria-checked="true"]::after{left:calc(50% + 9px)}
 #glassSettingsDialog .artist-folder-switch:disabled{cursor:default;opacity:.5}
 @media(min-width:701px) and (hover:hover) and (pointer:fine) and (not (forced-colors:active)){
- #glassSettingsDialog :is(.artist-folder-switch,.glass-switch-track) .glass-switch-art{
-  display:block;position:absolute;left:50%;top:50%;width:calc(var(--settings-switch-rail) * 204 / 124);
-  aspect-ratio:204 / 96;translate:-50% -50%;visibility:hidden;pointer-events:none;
+ .glass-preference-switch{position:relative;display:grid;place-items:center;flex:none;width:44px;height:26px}
+ #conversationStorageDialog label:has(> .glass-preference-switch){column-gap:18px}
+ .video-playlist-auto .glass-preference-switch{margin-inline-end:4px}
+ :is(#conversationStorageDialog,.video-playlist-auto) .glass-preference-switch[data-glass-ready] input{
+  position:absolute;inset:0;width:100%;height:100%;min-width:0;max-width:none;margin:0;opacity:0;cursor:pointer;
+ }
+ .glass-preference-switch:has(input:focus-visible){outline:2px solid var(--theme-accent);outline-offset:2px;border-radius:999px}
+ .glass-preference-switch:has(input:disabled){opacity:.5}
+ :is(.artist-folder-switch,.glass-switch-track,.glass-preference-switch) > .glass-switch-art{
+  display:block;position:absolute;left:50%;top:50%;width:calc(var(--settings-switch-rail) * 236 / 124);
+  aspect-ratio:236 / 118;translate:-50% -50%;visibility:hidden;pointer-events:none;
  }
  #glassSettingsDialog .glass-switch-track[data-glass-ready],
  #glassSettingsDialog .glass-switch-track[data-glass-ready]:has(input:checked){background:transparent;border-color:transparent}
- #glassSettingsDialog [data-glass-ready] > .glass-switch-art{visibility:visible}
+ [data-glass-ready] > .glass-switch-art{visibility:visible}
  #glassSettingsDialog .glass-switch-track[data-glass-ready] .glass-switch-thumb{visibility:hidden}
 }
 

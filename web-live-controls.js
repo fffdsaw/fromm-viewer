@@ -23,7 +23,7 @@
     if (!loader) { const holder = document.createElement('div'); holder.innerHTML = videoLoadingIndicator(); loader = holder.firstElementChild; }
     loader.id = 'livePlayerLoading';
     const errorLabel=document.createElement('div');errorLabel.className='live-player-error';errorLabel.setAttribute('role','status');errorLabel.hidden=true;errorLabel.textContent='LIVE 연결 상태를 확인해주세요.';
-    const $ = selector => controls.querySelector(selector), settings = $('details'), popup = $('.mvc-popover');
+    const $ = selector => controls.querySelector(selector), settings = $('details'), popup = $('.mvc-popover'), panel = $('.mvc-panel');
     const listen = (target,type,fn) => {target.addEventListener(type,fn);removers.push(()=>target.removeEventListener(type,fn));};
     const presentation = () => {const p=window.FrommLivePresentation;return p?.sequence===state.live.connectionSeq?p:null;};
     const error = () => state.live.status === 'error' || !!state.live.lastError;
@@ -43,6 +43,7 @@
     const layout = () => {
       if(dead)return;stage.classList.toggle('live-rotated',angle!==0);
       stage.style.setProperty('--live-view-width',`${angle%180?stage.clientHeight:stage.clientWidth}px`);stage.style.setProperty('--live-view-height',`${angle%180?stage.clientWidth:stage.clientHeight}px`);stage.style.setProperty('--live-view-angle',`${angle}deg`);
+      stage.style.setProperty('--live-controls-clearance',`${Math.ceil(panel.getBoundingClientRect().width)+8}px`);
       const label=$('.mvc-angle');if(label.textContent!==`${angle}°`)label.textContent=`${angle}°`;placePopup();
     };
     const applyVolume = () => {
@@ -62,7 +63,7 @@
     };
     const full = async () => {try{if(document.fullscreenElement===stage)await document.exitFullscreen();else await stage.requestFullscreen();}catch{liveStatusText('전체 화면을 열지 못했습니다. 브라우저의 전체 화면 지원과 허용 설정을 확인해주세요.',true);}reveal();};
     stage.classList.add('live-controls-enabled','live-player-stage');stage.append(loader,errorLabel,controls);
-    const cleanup = () => {if(dead)return;dead=true;clearTimeout(hideTimer);for(const remove of removers)try{remove();}catch{}closePopup();const pip=document.getElementById('livePipBtn'),head=timeline.querySelector('.live-head');if(pip&&controls.contains(pip)&&head)head.append(pip);controls.remove();loader.remove();errorLabel.remove();stage.classList.remove('live-controls-enabled','live-player-stage','live-rotated');stage.removeAttribute('aria-busy');delete stage.dataset.liveWaiting;delete stage.dataset.liveFailed;for(const property of ['--live-view-width','--live-view-height','--live-view-angle'])stage.style.removeProperty(property);};
+    const cleanup = () => {if(dead)return;dead=true;clearTimeout(hideTimer);for(const remove of removers)try{remove();}catch{}closePopup();const pip=document.getElementById('livePipBtn'),head=timeline.querySelector('.live-head');if(pip&&controls.contains(pip)&&head)head.append(pip);controls.remove();loader.remove();errorLabel.remove();stage.classList.remove('live-controls-enabled','live-player-stage','live-rotated');stage.removeAttribute('aria-busy');delete stage.dataset.liveWaiting;delete stage.dataset.liveFailed;for(const property of ['--live-view-width','--live-view-height','--live-view-angle','--live-controls-clearance'])stage.style.removeProperty(property);};
     mounted={stage,sync,dispose:cleanup};
     try {
       if(popup.showPopover)popup.setAttribute('popover','manual');
@@ -73,8 +74,8 @@
       listen(settings,'toggle',()=>{if(settings.open)placePopup();else closePopup();reveal();});
       listen(document,'pointerdown',event=>{if(settings.open&&!settings.contains(event.target))settings.open=false;});
       listen(document,'keydown',()=>{keyboard=true;});
-      listen($('.mvc-panel'),'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
-      listen($('.mvc-panel'),'pointerleave',()=>{controlHovered=false;reveal();});
+      listen(panel,'pointerenter',event=>{if(event.pointerType!=='touch'){controlHovered=true;reveal();}});
+      listen(panel,'pointerleave',()=>{controlHovered=false;reveal();});
       listen(controls,'pointerdown',()=>{controlActive=true;reveal();});
       for(const event of ['pointerup','pointercancel'])listen(window,event,()=>{if(controlActive){controlActive=false;reveal();}});
       listen(stage,'pointerleave',()=>{controlHovered=false;reveal();});
@@ -85,7 +86,7 @@
         if(event.key==='f'){event.preventDefault();void full();}else if(event.key==='r'){event.preventDefault();angle=(angle+90)%360;layout();reveal();}
       });
       listen(window,'resize',layout);listen(document,'fullscreenchange',()=>{layout();fullButton.setAttribute('aria-label',document.fullscreenElement===stage?'전체 화면 종료':'전체 화면');reveal();});
-      if(window.ResizeObserver){const observer=new ResizeObserver(layout);observer.observe(stage);removers.push(()=>observer.disconnect());}
+      if(window.ResizeObserver){const observer=new ResizeObserver(layout);observer.observe(stage);observer.observe(panel);removers.push(()=>observer.disconnect());}
       const timer=setInterval(()=>{try{sync();}catch{dispose();}},500);removers.push(()=>clearInterval(timer));
       layout();sync();reveal();
     }catch{dispose();}

@@ -23,7 +23,7 @@
 body.conversation-open .main{padding-bottom:calc(var(--conversation-height,50px) + 18px)}
 body.conversation-open #scrollTopBtn{bottom:calc(var(--conversation-height,50px) + 18px)}
 .conversation-pending{display:flex;flex-direction:column;align-items:flex-end;gap:9px;width:var(--conversation-column-width,100%);max-width:100%;min-width:0;box-sizing:border-box;margin:9px auto}
-.conversation-pending-bubble{box-sizing:border-box;max-width:min(76%,680px);min-width:0;padding:10px 12px;border:1px dashed var(--line);border-radius:16px;background:#dbf3ec;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;text-align:start}
+.conversation-pending-bubble{box-sizing:border-box;max-width:min(76%,680px);min-width:0;padding:10px 12px;border:1px dashed var(--line);border-radius:16px;background:var(--theme-me,#dbf3ec);color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;text-align:start}
 .conversation-pending-bubble small{display:block;margin-top:5px;color:var(--muted);font-size:11px}
 /* Include padding in each message's width, including narrow windows and long unbroken replies. */
 #timeline .msg{min-width:0;max-width:100%}

@@ -3,7 +3,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {serve,open}=require('./helpers/phase3-fixture.cjs');
 (async()=>{const server=await serve(),browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
-try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
+try{for(const cfg of [{width:1440,theme:'classic'},{width:780,installed:true,theme:'sky'},{width:390,theme:'glow'}]){
  const {page,context,errors}=await open(browser,server.url,{...cfg,login:true});
  let holdRules=null,releaseRules,holdPost=null,releasePost,posts=[],mode='empty';
  const rows=Array.from({length:1200},(_,i)=>({messageId:'m'+i,type:'text',userType:'star',content:'이전 대화 '+i,createdAt:Date.now()-1300000+i*1000}));
@@ -19,9 +19,11 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   return route.fallback();
  });
  await page.evaluate(()=>{setActiveAuth('synthetic','device','');hideLoginGate();FrommConversation.loadFirebase=async()=>{throw Error('fixture fallback')};state.rooms=[{id:'fan',hostChatRoomId:'host',host:{nick:'아티스트'}}];const button=document.createElement('button');button.className='room';document.querySelector('#rooms').replaceChildren(button);selectRoom(0,button)});
+ await page.evaluate(theme=>FrommThemes.set(theme),cfg.theme);
  await page.waitForFunction(()=>state.chatHistoryComplete&&FrommConversation.status.phase==='connected');await page.waitForTimeout(1500);
  async function older(){await page.evaluate(()=>{FrommViewState.cancel();renderChatWindow(filteredMessages(),400);scrollTo({top:600,behavior:'instant'})});await page.waitForFunction(()=>state.infiniteRendered<state.infiniteList.length);}
  async function quiet(){assert.equal(await page.locator('#conversationSend').innerText(),'전송');assert.equal(await page.locator('#conversationStatus').isVisible(),false);assert.equal(await page.locator('.conversation-meta').isVisible(),false);assert.equal(await page.locator('#conversationPending small').count(),0);}
+ function colors(locator){return locator.evaluate(el=>{const style=getComputedStyle(el);return {background:style.backgroundColor,text:style.color};});}
  async function pendingAbove(){await page.waitForFunction(()=>{const bubble=document.querySelector('#conversationPending')?.lastElementChild?.getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect();return bubble&&bubble.bottom<=dock.top-5});const r=await page.locator('#conversationPending').evaluate(e=>({right:e.lastElementChild.getBoundingClientRect().right,input:document.querySelector('#conversationInput').getBoundingClientRect().right}));assert.ok(r.right<=r.input+1);}
  for(const sticker of [false,true]){
   await older();
@@ -33,13 +35,17 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
   assert.equal(posts.length,before,'fresh rules finish before POST');await quiet();
   releaseRules();await page.waitForFunction(()=>!!document.querySelector('#conversationPending'));while(posts.length===before)await page.waitForTimeout(10);
   await pendingAbove();await quiet();assert.ok((await page.locator('#conversationPending').innerText()).includes(sticker?'같이 보내요':'이전 대화에서 보낸 글'));
+  const pendingBubble=page.locator('#conversationPending .conversation-pending-bubble');
+  const sendingColors=await colors(pendingBubble);
   if(sticker){assert.equal(await page.locator('#conversationPending img').getAttribute('src'),'https://fixture.test/heart.svg');assert.equal(await page.locator('#conversationEmoticonPreview').isVisible(),false);}
   if(process.env.CONVERSATION_DIR){fs.mkdirSync(process.env.CONVERSATION_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.CONVERSATION_DIR,(sticker?'sticker':'text')+'-pending-'+cfg.width+'.png')});}
   releasePost();await page.waitForFunction(()=>document.querySelector('#conversationSend').getAttribute('aria-busy')==='false'&&document.querySelector('#conversationInput').value==='');await quiet();await pendingAbove();
+  assert.deepEqual(await colors(pendingBubble),sendingColors,'server acknowledgement keeps the pending bubble colors');
   const id='sent-'+posts.length;rows.push({messageId:id,type:'text',userType:'fan',...posts.at(-1),createdAt:Date.now()-1});
   await page.waitForFunction(id=>state.messages.some(m=>m.messageId===id)&&!document.querySelector('#conversationPending'),id,{timeout:10000});
   await page.waitForFunction(id=>{const bubble=document.querySelector(`[data-message-id="${id}"] .bubble`)?.getBoundingClientRect(),dock=document.querySelector('#conversationDock').getBoundingClientRect();return bubble&&bubble.bottom<=dock.top-5;},id);
   assert.equal(await page.locator(`[data-message-id="${id}"]`).count(),1,'receipt reconciles without a duplicate');if(sticker)assert.equal(await page.locator(`[data-message-id="${id}"] .emoticon-img`).count(),1);await quiet();
+  assert.deepEqual(await colors(page.locator(`[data-message-id="${id}"] .bubble`)),sendingColors,`${cfg.theme}: sending and confirmed bubbles use the same colors`);
  }
  // A direct POST reply can beat the first scroll/preview-resize frame.
  await older();await page.locator('#conversationEmoticonButton').click();await page.locator('[data-emoticon="heart"]').click();await page.locator('#conversationInput').fill('바로 전송한 이모티콘');mode='direct';
@@ -50,5 +56,5 @@ try{for(const cfg of [{width:1440},{width:780,installed:true},{width:390}]){
  await older();mode='denied';await page.locator('#conversationInput').fill('권한 오류 초안');await page.locator('#conversationSend').click();await page.waitForFunction(()=>document.querySelector('#conversationStatus').textContent.includes('보내지 못했습니다'));
  assert.equal(await page.locator('#conversationStatus').isVisible(),true);assert.equal(await page.locator('#conversationInput').inputValue(),'권한 오류 초안');assert.equal(await page.locator('#conversationPending').count(),0);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);await context.close();
- console.log(`${cfg.width}${cfg.installed?' standalone simulation':''}: older reader -> immediate latest on send, delayed validation/POST/echo, quiet text/sticker preview, one canonical receipt and visible failure/draft PASS`);
+ console.log(`${cfg.width}${cfg.installed?' standalone simulation':''} (${cfg.theme}): older reader -> immediate latest on send, delayed validation/POST/echo, matching text/sticker colors, one canonical receipt and visible failure/draft PASS`);
 }}finally{await browser.close();await server.close()}})().catch(error=>{console.error(error);process.exitCode=1});

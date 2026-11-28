@@ -1,3 +1,9 @@
+## Conversation send bubble theme — 2026-11-28 Korea
+
+Continues `codex/media-save-ui-header-20261125` from deployed PR #166 at `2dde9e4`. The temporary own-message bubble now uses the existing `--theme-me` palette. Classic previously rendered the temporary bubble as RGB 219/243/236 and the confirmed bubble as RGB 32/41/55. The theme now provides RGB 32/41/55 at both stages. The conversation stylesheet URL advances with the change.
+
+Node 24.22.3, Playwright 1.62.1, Chromium 151.0.7922.34. The send regression held validation, POST and readback separately and checks text and sticker bubble colors before and after receipt in Classic, Sky and Glow ME. Theme and settings checks passed at 1440 and 900. The isolated web and Native unit run passed 337 tests with one existing Agora skip. A concurrent run hit an intermittent cancellation timing assertion in the untouched video download engine. This follow-up requires its own production approval. Test logs are under `/workspace/scratch/fromm-bubble-colors-*.log`.
+
 ## Desktop LIVE bottom controls and Android comment comparison — 2026-11-28 Korea
 
 Continues PR #166 and its instantaneous own-comment and cross-tab PiP work. Desktop settings, PiP and fullscreen controls stay at the lower right in normal and fullscreen modes. The desktop comment overlay reserves the measured panel width and an 8px gap, leaving the composer at the lower left. A resize observer tracks the control panel as its contents or size change. The prior touch layout remains active on touch. The updated controls script has a new cache key.

@@ -235,7 +235,8 @@
   window.addEventListener('resize',()=>document.getElementById('liveChatProbeStatus')?.placeEmoji?.());
   let controller = null, report = null, comments = messageStore(), renderedVersion = -1;
   let sendController = null, session = null, composing = false, ackId = null;
-  let uncertainAttempt = null, activeAttempt = null, previewContent = '';
+  let uncertainAttempt = null, activeAttempt = null, nextOutgoing = 0;
+  const outgoing = new Map();
   let followLatest = true, unreadCount = 0, lastDiagnostic = '';
   const sendLabels = {
     'sending': '댓글 전송 중…',
@@ -271,10 +272,16 @@
   const isLive = () => state.filter === 'live' && state.live.centerMode === 'live';
   function cancel() {
     if (sendController && activeAttempt) uncertainAttempt = activeAttempt;
-    sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false; previewContent = '';
+    sendController?.abort(); sendController = null; activeAttempt = null; session = null; ackId = null; composing = false;
+    outgoing.clear();
     controller?.abort(); controller = null; report = null; comments = messageStore(); renderedVersion = -1;
     followLatest = true; unreadCount = 0; lastDiagnostic = '';
   }
+  function hide() {
+    cancel();
+    document.getElementById('liveChatProbeStatus')?.remove();
+  }
+  window.FrommLiveComments = Object.freeze({hide});
   function sync() {
     const head = timeline.querySelector('.live-head');
     if (!head || !isLive()) return;
@@ -349,16 +356,13 @@
     button.disabled = input.disabled || input.readOnly || composing || !input.value.trim() || uncertainDraft(input.value);
     const emoji = panel.querySelector('.live-emoji-toggle');
     if (emoji) { emoji.disabled = input.disabled || input.readOnly || composing; if (emoji.disabled) panel.closeEmoji?.(); }
-    button.textContent = sendController ? '전송 중' : '전송';
+    button.textContent = sendController && !desktopComposer.matches ? '전송 중' : '전송';
     const status = panel.querySelector('.live-comment-send-status');
     const result = report?.send;
     let message = block;
-    if (desktopComposer.matches && previewContent && ['sending', 'accepted'].includes(result?.status)) {
-      const label = result.status === 'sending' ? '전송 중' : '반영 대기';
-      message = `나 · ${label} ${previewContent}`;
-    } else if (uncertainDraft(input.value)) {
+    if (uncertainDraft(input.value)) {
       message = sendLabels['send-unconfirmed'];
-    } else if (result) {
+    } else if (result && !(desktopComposer.matches && result.status === 'sending')) {
       message = ['accepted', 'delivered'].includes(result.status) ? '' :
         (sendLabels[result.status] || sendLabels['send-policy-unavailable']) + (result.httpStatus ? ' (HTTP ' + result.httpStatus + ')' : '');
     }
@@ -368,25 +372,33 @@
   let ackAt = 0;
   async function submitComment(input) {
     if (sendController || composing || writeBlock() || uncertainDraft(input.value)) return;
-    const context = session, content = input.value.trim(), startedAt = performance.now();
+    const context = session, draft = input.value, content = draft.trim(), startedAt = performance.now();
     if (!content) return;
     input.focus({preventScroll:true});
     const owner = sendController = new AbortController();
     activeAttempt = {roomId: context.roomId, token: context.token, sequence: context.sequence, content};
-    report.send = {status: 'sending'}; previewContent = content; ackId = null; ackAt = 0; show();
+    const localId = desktopComposer.matches ? ++nextOutgoing : null;
+    if (localId !== null) {
+      outgoing.set(localId, {nickname: '나', content, messageId: null});
+      if (outgoing.size > 100) outgoing.delete(outgoing.keys().next().value);
+      input.value = '';
+      renderedVersion = -1;
+    }
+    report.send = {status: 'sending'}; ackId = null; ackAt = 0; show();
     try {
       const result = await sendNormalComment({...context, content, signal: owner.signal});
       if (sendController !== owner || !context.current()) return;
       ackId = result.messageId;
       ackAt = performance.now();
       const delivered = comments.seen.has(ackId);
-      if (delivered) previewContent = '';
+      const preview = outgoing.get(localId);
+      if (preview) { preview.messageId = ackId; renderedVersion = -1; }
       report.send = {status: delivered ? 'delivered' : 'accepted', acceptedAfterMs: Math.round(ackAt - startedAt), ...(delivered ? {echoAfterAckMs: 0} : {})};
       input.value = '';
     } catch (error) {
       if (sendController !== owner || !context.current()) return;
       const status = error instanceof ProbeError && sendLabels[error.code] ? error.code : 'send-policy-unavailable';
-      previewContent = '';
+      if (localId !== null) { outgoing.delete(localId); input.value = draft; renderedVersion = -1; }
       report.send = {status, ...(error instanceof ProbeError && error.httpStatus ? {httpStatus: error.httpStatus} : {}),
         ...(error instanceof ProbeError && error.shape ? {diagnostic: error.shape} : {})};
       if (status === 'send-unconfirmed') uncertainAttempt = activeAttempt;
@@ -494,19 +506,34 @@
       .map(row => ({row, offset: row.getBoundingClientRect().top - top}));
     if (renderedVersion !== comments.version) {
       const entries = [...comments.items].sort((a, b) => a[1].createdAt - b[1].createdAt);
-      const rows = new Map([...list.children].map(row => [row.dataset.messageId, row]));
+      const rows = new Map([...list.children].map(row => [row.commentKey, row]));
+      for (const [id, message] of outgoing) {
+        const confirmed = message.messageId;
+        if (confirmed && (comments.seen.has(confirmed) || comments.deleted.has(confirmed))) {
+          if (comments.items.has(confirmed) && !rows.has(confirmed) && rows.has(id)) {
+            rows.set(confirmed, rows.get(id));
+            rows.delete(id);
+          }
+          outgoing.delete(id);
+        } else {
+          entries.push([id, message]);
+        }
+      }
       let arriving = 0;
-      for (const [id, row] of rows) if (!comments.items.has(id)) row.remove();
+      for (const [id, row] of rows) if (!comments.items.has(id) && !outgoing.has(id)) row.remove();
       let previous = null;
       for (const [id, message] of entries) {
         let row = rows.get(id);
         if (!row) {
-          row = document.createElement('div'); row.className = 'live-comment-row'; row.dataset.messageId = id;
+          row = document.createElement('div'); row.className = 'live-comment-row';
           row.style.cssText = 'display:flex;gap:10px;flex:0 0 auto;line-height:1.5';
           const name = document.createElement('strong'); name.style.cssText = 'flex:0 0 28%;max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis';
           const content = document.createElement('span'); content.style.cssText = 'min-width:0;white-space:pre-wrap;overflow-wrap:anywhere';
-          row.append(name, content); arriving++;
+          row.append(name, content);
+          if (typeof id === 'string') arriving++;
         }
+        row.commentKey = id;
+        if (typeof id === 'string') row.dataset.messageId = id;
         if (row.firstChild.textContent !== message.nickname) { row.firstChild.textContent = message.nickname; row.firstChild.title = message.nickname; }
         if (row.lastChild.textContent !== message.content) row.lastChild.textContent = message.content;
         const next = previous ? previous.nextSibling : list.firstChild;
@@ -532,7 +559,7 @@
     panel.rememberScrollAnchor();
   }
   async function run() {
-    if (controller) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); sync(); return; }
+    if (controller) { hide(); sync(); return; }
     if (!isLive() || !state.live.config?.isStreaming || state.live.config?.mock) return;
     const live = state.live, roomId = live.currentLiveRoomId, sequence = live.connectionSeq, generation = state.scanGeneration;
     const token = live.liveChat?.chatToken;
@@ -560,7 +587,6 @@
         Object.assign(report, {policy: page.policy, clockSource: page.clockSource, startupWindowMs: page.startupWindowMs, samples: page.samples,
           status: comments.items.size ? 'messages-received' : updated.invalidCount ? 'unrenderable-messages' : 'connected-no-messages'});
         if (ackId && comments.seen.has(ackId) && report.send?.status === 'accepted') {
-          previewContent = '';
           report.send.status = 'delivered';report.send.echoAfterAckMs = Math.max(0, Math.round(performance.now() - ackAt));
         }
         if (updated.invalidCount) {
@@ -570,13 +596,13 @@
         show();
       }});
       if (current()) {
-        if (result.status === 'banned') { comments = messageStore(); renderedVersion = -1; }
+        if (result.status === 'banned') { comments = messageStore(); outgoing.clear(); renderedVersion = -1; }
         Object.assign(report, result);
       }
     } catch (error) {
       if (current()) {
         report.status = error instanceof ProbeError && labels[error.code] ? error.code : 'network-error';
-        if (error instanceof ProbeError && [401, 403].includes(error.httpStatus)) { comments = messageStore(); renderedVersion = -1; }
+        if (error instanceof ProbeError && [401, 403].includes(error.httpStatus)) { comments = messageStore(); outgoing.clear(); renderedVersion = -1; }
         if (error instanceof ProbeError && error.httpStatus) report.httpStatus = error.httpStatus;
         if (error instanceof ProbeError && error.shape) report.responseShape = error.shape;
       }
@@ -589,7 +615,7 @@
   }
   const render = renderLiveView, stop = stopLivePlayback;
   renderLiveView = function (...args) { if (!window.FrommLivePip?.keepsStage()) cancel(); const result = render.apply(this, args); sync(); return result; };
-  stopLivePlayback = function (...args) { cancel(); document.getElementById('liveChatProbeStatus')?.remove(); const result = stop.apply(this, args); sync(); return result; };
+  stopLivePlayback = function (...args) { hide(); const result = stop.apply(this, args); sync(); return result; };
   new MutationObserver(sync).observe(timeline, {childList: true, subtree: true});
   window.addEventListener('pagehide', cancel);
   window.FrommChatProbe = () => report ? JSON.parse(JSON.stringify(report)) : null;

@@ -1113,11 +1113,13 @@ body.download-marquee-active{user-select:none;cursor:default}
 @media(prefers-reduced-motion:reduce){.video-loading-ring{animation:none}}
 .live-player-error{position:absolute;z-index:6;left:16px;right:16px;top:50%;transform:translateY(-50%);max-width:420px;margin:auto;padding:12px;border-radius:10px;background:#111722ed;color:#f7f9fc;text-align:center;font-size:13px;pointer-events:none}.live-player-error[hidden]{display:none}
 .live-player-controls{z-index:7}.live-player-controls .mvc-panel{padding-top:32px}.live-controls-enabled .live-comments-overlay{bottom:0!important;max-height:100%!important}
-.live-controls-enabled:has(.live-comments-overlay) .live-player-controls{align-items:flex-start}
-.live-controls-enabled:has(.live-comments-overlay) .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
+@media not all and (min-width:701px) and (hover:hover) and (pointer:fine){
+ .live-controls-enabled:has(.live-comments-overlay) .live-player-controls{align-items:flex-start}
+ .live-controls-enabled:has(.live-comments-overlay) .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
+}
 @media(min-width:701px) and (hover:hover) and (pointer:fine){
- .live-controls-enabled .live-player-controls{align-items:flex-start}
- .live-controls-enabled .live-player-controls .mvc-panel{padding:12px 12px 32px;background:linear-gradient(rgba(5,8,14,.7),transparent)}
+ .live-controls-enabled .live-player-controls .mvc-panel{width:max-content;margin-inline-start:auto}
+ .live-controls-enabled .live-comments-overlay{max-width:calc(100% - var(--live-controls-clearance,0px))}
 }
 .live-player-stage:fullscreen{width:100vw;height:100dvh;max-height:none;aspect-ratio:auto;border-radius:0;background:#080b10}
 .live-player-stage.live-rotated #liveVideoGrid{position:absolute;inset:auto;left:50%;top:50%;width:var(--live-view-width)!important;height:var(--live-view-height)!important;transform:translate(-50%,-50%) rotate(var(--live-view-angle));transform-origin:center}
@@ -4118,25 +4120,26 @@ async function setLiveCenterMode(mode){
     return;
   }
   stopChannelVideoPlayback();
+  const keepLive=mode!=="live" && window.FrommLivePip?.parkStage();
   state.live.centerMode=mode;
   if(mode==="channel"){
     state.live.requestSeq++;
     state.live.loading=false;
     stopReplayPlayback();
-    await stopLivePlayback();
+    if(!keepLive) await stopLivePlayback();
     if(state.live.centerMode!==mode || state.filter!=="live") return;
     renderLiveView();
     await loadChannelVideos();
   }else if(mode==="replay"){
     state.live.requestSeq++;
     state.live.loading=false;
-    await stopLivePlayback();
+    if(!keepLive) await stopLivePlayback();
     renderLiveView();
     await loadReplayCenter();
   }else{
     stopReplayPlayback();
     renderLiveView();
-    await refreshLiveStatus({force:true,autoplay:true});
+    if(!window.FrommLivePip?.keepsStage()) await refreshLiveStatus({force:true,autoplay:true});
   }
 }
 
@@ -4178,6 +4181,7 @@ function renderLiveView(){
   const mockStreaming=streaming && !!state.live.config?.mock;
   const roomId=String(state.live.config?.liveRoomId || state.live.currentLiveRoomId || "");
   if(window.FrommLivePip?.keepsStage()){
+    window.FrommLivePip.restoreStage();
     renderLiveEntrances();
     return;
   }
@@ -5932,7 +5936,8 @@ function ensureLiveTile(user){
 
 async function subscribeLiveUser(user,mediaType,sourceClient=state.live.client,sourceSeq=state.live.connectionSeq){
   const client=sourceClient;
-  const current=()=>client===state.live.client && sourceSeq===state.live.connectionSeq && state.filter==="live" && state.live.centerMode==="live";
+  const current=()=>client===state.live.client && sourceSeq===state.live.connectionSeq &&
+    ((state.filter==="live" && state.live.centerMode==="live") || window.FrommLivePip?.isParked());
   if(!client || !user || !current()) return;
   const diagnostic={mediaType,uidType:typeof user.uid,hasVideo:!!user.hasVideo,hasAudio:!!user.hasAudio};
   recordLiveDiagnostic("subscribe-started",diagnostic);
@@ -6108,7 +6113,8 @@ async function connectAgoraLive({candidateIndex=0}={}){
   const seq=++state.live.connectionSeq;
   const client=AgoraRTC.createClient({mode:"live",codec:"vp8"});
   state.live.client=client;
-  const active=()=>seq===state.live.connectionSeq && state.live.client===client && state.filter==="live" && state.live.centerMode==="live";
+  const active=()=>seq===state.live.connectionSeq && state.live.client===client &&
+    ((state.filter==="live" && state.live.centerMode==="live") || window.FrommLivePip?.isParked());
 
   try{ await client.setClientRole("audience",{level:1}); }catch{
     try{ await client.setClientRole("audience"); }catch{}
@@ -6331,7 +6337,7 @@ async function probeLiveIndicator(){
     state.live.discoveryLoaded=true;
     state.live.discoveryError="";
     const preferred=pickLiveEntrance(rooms,state.live.entry);
-    if(preferred){
+    if(preferred && !window.FrommLivePip?.isParked()){
       state.live.entry={kind:"channel",channelId:preferred.channelId,liveRoomId:preferred.liveRoomId};
     }
     syncHeaderLiveIndicator();
@@ -7562,9 +7568,8 @@ function selectRoom(i, btn,{restoreHistoryPosition=false}={}){
     stopChannelVideoPlayback();
     stopReplayPlayback();
 
-    // Agora leave can take time. Start it in the background instead of
-    // blocking the artist click/navigation.
-    stopLivePlayback().catch(()=>{});
+    // Leave outside the navigation path unless an open PiP owns the video.
+    if(!window.FrommLivePip?.parkStage()) stopLivePlayback().catch(()=>{});
   }
 
   // Update the selected tab before starting the new artist’s requests.
@@ -10387,7 +10392,7 @@ async function setFilter(f, options={}){
     state.live.requestSeq++;
     state.live.loading=false;
     stopChannelVideoPlayback();
-    await stopLivePlayback();
+    if(!window.FrommLivePip?.parkStage()) await stopLivePlayback();
     stopReplayPlayback();
     restoreArtistHeaderAfterLive();
     // Keep lightweight LIVE discovery running in the background.
@@ -10416,7 +10421,7 @@ async function setFilter(f, options={}){
     startLivePolling();
     if(state.live.centerMode==="replay") await loadReplayCenter();
     else if(state.live.centerMode==="channel") await loadChannelVideos();
-    else await refreshLiveStatus({force:true,autoplay:true});
+    else if(!window.FrommLivePip?.keepsStage()) await refreshLiveStatus({force:true,autoplay:true});
     return;
   }
 
@@ -12040,10 +12045,10 @@ autoConnectSaved();
 <script src="web-view-state.js?v=rich-media-live-20261125"></script>
 <script src="web-glowme.js?v=media-save-ui-20261125" onerror="document.documentElement.classList.add('glowme-shell-failed')"></script>
 <script src="web-unread.js?v=multi-room-20261110"></script>
-<script src="web-native-live.js?v=live-fit-20261109"></script>
-<script src="web-live-pip.js?v=stable-live-composer-20261127"></script>
-<script src="web-live-chat-probe.js?v=stable-live-composer-20261127"></script>
-<script src="web-live-controls.js?v=stable-live-composer-20261127"></script>
+<script src="web-native-live.js?v=live-pip-instant-comments-20261128"></script>
+<script src="web-live-pip.js?v=live-pip-instant-comments-20261128"></script>
+<script src="web-live-chat-probe.js?v=live-pip-instant-comments-20261128"></script>
+<script src="web-live-controls.js?v=live-controls-bottom-20261128"></script>
 <link rel="stylesheet" href="video-playlist.css?v=full-queue-20261117">
 <script src="web-video-playlist.js?v=glass-preferences-20261127"></script>
 <script src="web-compact-player.js?v=ended-reset-20261116"></script>

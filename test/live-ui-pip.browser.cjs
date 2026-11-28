@@ -168,6 +168,16 @@ async function sendFrame(page, sequence) {
       const {context,page,errors}=await openFixture(browser,{width:844,height:390});
       await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;canvas.getContext('2d').fillRect(0,0,640,360);const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=canvas.captureStream(5);document.getElementById('liveVideoGrid').append(video);window.fixtureVolumes=[];state.live.client={connectionState:'CONNECTED',remoteUsers:[{audioTrack:{setVolume:v=>fixtureVolumes.push(v)}}],removeAllListeners(){},leave:async()=>{}};await video.play();});
       await page.locator('#livePlayerLoading').waitFor({state:'hidden'});await page.locator('.live-web-volume').waitFor({state:'visible'});
+      await page.locator('#livePipBtn').click();
+      await page.waitForFunction(()=>!!document.pictureInPictureElement);
+      await page.evaluate(async()=>{
+        const video=document.pictureInPictureElement, client=state.live.client;
+        await setFilter('media');
+        if(document.pictureInPictureElement!==video || state.live.client!==client || !FrommLivePip.isParked()) throw new Error('Web PiP stopped on Media');
+        await setFilter('live');
+        if(document.pictureInPictureElement!==video || !document.querySelector('#timeline #liveVideoGrid').contains(video)) throw new Error('Web PiP lost its source on return');
+        await document.exitPictureInPicture();
+      });
       await checkControlsFade(page,page.locator('.live-player-controls'),page.locator('.live-stage'),{touch:true,outsideQuiet:true});
       await page.locator('[data-live-control="sound"]').click();assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),0);
       await page.locator('.live-player-controls .mvc-volume').evaluate(el=>{el.value='.4';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.equal(await page.evaluate(()=>fixtureVolumes.at(-1)),40);
@@ -205,14 +215,26 @@ async function sendFrame(page, sequence) {
       const windowDimensions = await page.evaluate(() => pipFixtureDimensions);
       assert.ok(Math.abs(windowDimensions.width / windowDimensions.height - 16 / 9) < 0.04, 'actual PiP window uses landscape video aspect');
       await sendFrame(page, 2);
+      await page.evaluate(async()=>{
+        loadChannelVideos=async()=>{};
+        loadReplayCenter=async()=>{};
+        window.fixtureLiveSource=document.getElementById('nativeLiveVideo');
+        window.fixtureLiveSequence=state.live.connectionSeq;
+        renderLiveView();
+        if(document.getElementById('nativeLiveVideo')!==fixtureLiveSource || !document.pictureInPictureElement) throw new Error('Same-room rerender interrupted PiP');
+        await setLiveCenterMode('channel');
+        if(!FrommLivePip.isParked() || state.live.centerMode!=='channel' || document.querySelector('#timeline #liveVideoGrid')) throw new Error('LIVE stage did not leave Channel free to render');
+        await setLiveCenterMode('replay');
+        await setFilter('media');
+        if(!FrommLivePip.isParked() || state.filter!=='media' || !document.pictureInPictureElement) throw new Error('Native PiP stopped on Media');
+      });
       const before = await page.locator('#livePipVideo').evaluate(video => video.getVideoPlaybackQuality().totalVideoFrames);
       const coveringTab = await context.newPage(); await coveringTab.goto('about:blank'); await coveringTab.bringToFront();
       assert.equal(await page.evaluate(()=>{
         const video=document.pictureInPictureElement;
         const source=document.getElementById('nativeLiveVideo');
-        renderLiveView();
-        return !!video&&document.pictureInPictureElement===video&&document.getElementById('nativeLiveVideo')===source;
-      }),true,'a background render of the same LIVE keeps the real PiP window and source');
+        return !!video&&document.pictureInPictureElement===video&&source===window.fixtureLiveSource&&state.live.connectionSeq===window.fixtureLiveSequence;
+      }),true,'another browser tab keeps the parked LIVE source and PiP window');
       const openerHidden = await page.evaluate(() => document.visibilityState === 'hidden');
       const openerFocused = await page.evaluate(() => document.hasFocus());
       let openerWindowState = 'not-measured';
@@ -221,7 +243,12 @@ async function sendFrame(page, sequence) {
         windowSession = await context.newCDPSession(page);
         openerWindowId = (await windowSession.send('Browser.getWindowForTarget')).windowId;
         await windowSession.send('Browser.setWindowBounds', {windowId: openerWindowId, bounds: {windowState: 'minimized'}});
-        openerWindowState = (await windowSession.send('Browser.getWindowBounds', {windowId: openerWindowId})).bounds.windowState;
+        // The window manager applies the minimize request asynchronously.
+        for (let attempt=0;attempt<20;attempt++) {
+          openerWindowState = (await windowSession.send('Browser.getWindowBounds', {windowId: openerWindowId})).bounds.windowState;
+          if (openerWindowState==='minimized') break;
+          await new Promise(resolve=>setTimeout(resolve,50));
+        }
         assert.equal(openerWindowState, 'minimized', 'isolated test browser opener is actually minimized');
       }
       // Chromium can keep a document with active video PiP "visible". Freeze
@@ -235,6 +262,10 @@ async function sendFrame(page, sequence) {
         await windowSession.detach();
       }
       await coveringTab.close(); await page.bringToFront();
+      await page.evaluate(async()=>{
+        await setFilter('live'); await setLiveCenterMode('live');
+        if(!document.querySelector('#timeline #liveVideoGrid').contains(fixtureLiveSource) || state.live.connectionSeq!==fixtureLiveSequence) throw new Error('LIVE did not reattach the original source');
+      });
       const pixels = await page.locator('#livePipVideo').evaluate(video => {
         // Element screenshots show the browser's "playing in PiP" placeholder.
         // Sample the real decoded stream; this is not an OS-window screenshot.
@@ -251,14 +282,15 @@ async function sendFrame(page, sequence) {
       await sendFrame(page, 19);
       await page.locator('#livePipBtn').click();
       await page.waitForFunction(() => !!document.pictureInPictureElement);
-      await page.evaluate(async () => { await stopLivePlayback(); });
+      await page.evaluate(async () => { await setFilter('all'); await document.exitPictureInPicture(); });
       await page.waitForFunction(() => !document.pictureInPictureElement && !document.getElementById('livePipVideo'));
+      await page.waitForFunction(() => !state.live.client && !document.getElementById('nativeLiveVideo'));
       assert.deepEqual(errors, []);
       reports.push({label: 'native-video-pip', synthetic: true, actualBrowserVideoPip: true, ...pip,
         apiWindowDimensions: windowDimensions, decodedPixels: {left: pixels.left, center: pixels.center},
         openerHidden, openerFocused, openerWindowState, openerAnimationFrameFrozen: true,
         framesPresentedWithOpenerRafFrozen: after - before, acks: await page.evaluate(() => nativeFixtureAcks.length),
-        closeStopsCaptureTrack: true, stopClosesPip: true, authenticatedMedia: false});
+        closeStopsCaptureTrack: true, closeStopsParkedConnection: true, retainedAcrossViewerTabs: true, authenticatedMedia: false});
       await context.close();
     }
     if (!baseline) {
@@ -297,6 +329,8 @@ async function sendFrame(page, sequence) {
       assert.equal(opened.mainConnected, true); assert.equal(opened.mainParent, 'liveVideoGrid');
       assert.deepEqual(opened.intrinsic, [720, 1280]);
       assert.equal(opened.objectFit, 'contain');
+      await page.evaluate(()=>setFilter('media'));
+      assert.equal(await page.evaluate(()=>FrommLivePip.isParked()&&!!documentPictureInPicture.window),true);
       await sendFrame(page, 2);
       await page.waitForFunction(() => documentPictureInPicture.window.document.querySelector('img').src === document.querySelector('#nativeLiveVideo').src);
       const pipPage = context.pages().find(candidate => candidate !== page);
@@ -311,6 +345,8 @@ async function sendFrame(page, sequence) {
         if (output) await pipPage.screenshot({path: path.join(output, 'live-video-only-pip-' + (channel || 'chromium') + '.png')});
         await coveringTab.close();
       }
+      await page.evaluate(()=>setFilter('live'));
+      assert.equal(await page.evaluate(()=>!!document.querySelector('#timeline #nativeLiveVideo')&&!!documentPictureInPicture.window),true);
       await page.evaluate(() => documentPictureInPicture.window.close());
       await page.waitForFunction(() => !documentPictureInPicture.window);
       await sendFrame(page, 4);

@@ -2,7 +2,7 @@
 (() => {
   let pipWindow = null, mirror = null, source = null, pending = false, version = 0, failed = false;
   let canvasPlayer = null, presentationMask = -1, presentationSequence = -1;
-  let owner = null;
+  let owner = null, parked = null;
   const readySources = new WeakMap();
   const assignedSources = new WeakMap();
   const timeline = document.getElementById('timeline');
@@ -79,8 +79,9 @@
     return player;
   }
   function sync() {
-    if (pipWindow && (pipWindow.closed || !isLive() || source !== nativeSource())) close();
-    if (canvasPlayer && (!isLive() || canvasPlayer.image !== nativeSource())) close();
+    if (parked && !keepsStage()) { void stopLivePlayback(); return; }
+    if (pipWindow && (pipWindow.closed || !(isLive() || parked) || source !== nativeSource())) close();
+    if (canvasPlayer && (!(isLive() || parked) || canvasPlayer.image !== nativeSource())) close();
     if (mirror && source && !pipWindow?.closed && mirror.src !== source.src) mirror.src = source.src;
     const head = timeline.querySelector('.live-head');
     if (!head || !isLive()) return;
@@ -188,28 +189,67 @@
     close();
     const video = webSource();
     if (video && document.pictureInPictureElement === video) document.exitPictureInPicture().catch(() => {});
+    clearParked();
   }
   function keepsStage() {
-    if (!owner || !isLive() || !state.live.config?.isStreaming || state.live.config.mock || state.live.status === 'error' ||
+    if (!owner || !(isLive() || parked) || !state.live.config?.isStreaming || state.live.config.mock || state.live.status === 'error' ||
         owner.sequence !== state.live.connectionSeq || owner.room !== state.live.currentLiveRoomId) return false;
     if (pipWindow && !pipWindow.closed) return source === nativeSource();
     const video = document.pictureInPictureElement;
     return !!video && (canvasPlayer ? canvasPlayer.video === video && canvasPlayer.image === nativeSource() : webSource() === video);
   }
-  window.FrommLivePip = Object.freeze({keepsStage});
+  function parkStage() {
+    if (!keepsStage()) return false;
+    if (parked) return true;
+    const grid = document.getElementById('liveVideoGrid');
+    const shell = grid?.closest('.live-shell');
+    if (shell?.parentElement !== timeline) return false;
+    const host = document.createElement('div');
+    // Moving an active browser video must preserve its connection to the document.
+    if (!host.moveBefore && !nativeSource()) return false;
+    window.FrommLiveComments?.hide();
+    host.hidden = true;
+    parked = host;
+    document.body.append(host);
+    watchStage(host);
+    if (host.moveBefore) host.moveBefore(shell, null);
+    else host.append(shell);
+    return true;
+  }
+  function restoreStage() {
+    if (!parked) return;
+    const shell = parked.firstElementChild;
+    timeline.replaceChildren();
+    if (timeline.moveBefore) timeline.moveBefore(shell, null);
+    else timeline.append(shell);
+    clearParked();
+  }
+  function clearParked() {
+    if (!parked) return;
+    observer.disconnect();
+    observer.observe(timeline, watch);
+    parked.remove();
+    parked = null;
+  }
+  function endPiP() {
+    if (parked) void stopLivePlayback();
+    else closeAll();
+  }
+  window.FrommLivePip = Object.freeze({keepsStage, parkStage, restoreStage, isParked: () => !!parked});
   const originalRender = renderLiveView, originalStop = stopLivePlayback;
-  renderLiveView = function (...args) { if (!keepsStage()) closeAll(); const result = originalRender.apply(this, args); sync(); return result; };
+  renderLiveView = function (...args) { if (!keepsStage()) endPiP(); const result = originalRender.apply(this, args); sync(); return result; };
   stopLivePlayback = function (...args) { closeAll(); const result = originalStop.apply(this, args); sync(); return result; };
-  new MutationObserver((records = []) => {
+  const watch = {subtree: true, childList: true, attributes: true, attributeFilter: ['src']};
+  const observer = new MutationObserver((records = []) => {
     for (const record of records) {
       if (record.type === 'attributes' && record.target.id === 'nativeLiveVideo') {
         assignedSources.set(record.target, state.live.connectionSeq);
       }
     }
     sync();
-  }).observe(timeline, {subtree: true, childList: true, attributes: true, attributeFilter: ['src']});
-  for (const type of ['load', 'loadeddata', 'enterpictureinpicture', 'leavepictureinpicture']) timeline.addEventListener(type, event => {
-    if (type === 'load' && event.target.id === 'nativeLiveVideo' && event.target.naturalWidth > 0 &&
+  });
+  function onMedia(event) {
+    if (event.type === 'load' && event.target.id === 'nativeLiveVideo' && event.target.naturalWidth > 0 &&
         assignedSources.get(event.target) === state.live.connectionSeq) {
       readySources.set(event.target, state.live.connectionSeq);
       if (canvasPlayer && canvasPlayer.image === event.target) {
@@ -217,8 +257,13 @@
       }
     }
     sync();
-  }, true);
-  window.addEventListener('pagehide', closeAll);
+  }
+  function watchStage(container) {
+    observer.observe(container, watch);
+    for (const type of ['load', 'loadeddata', 'enterpictureinpicture', 'leavepictureinpicture']) container.addEventListener(type, onMedia, true);
+  }
+  watchStage(timeline);
+  window.addEventListener('pagehide', endPiP);
   const existing = document.getElementById('nativeLiveVideo');
   if (existing?.naturalWidth > 0) {
     assignedSources.set(existing, state.live.connectionSeq);
